@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lizmo — Design Language v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal-900:#0E5C52;
+    --teal-tint:#DCEEE9;
+    --canvas:#F6F8F7;
+    --ink:#12211E;
+    --coral:#FF6952;
+    --slate:#6B7B77;
+    --white:#FFFFFF;
+    --amber:#F5A623;
+    --amber-bg:#FDF1DC;
+    --red:#DA4A42;
+    --red-bg:#FBE6E5;
+    --teal-bg:#DEF2EC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:#E7ECEA;
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+    padding:40px 16px 80px;
+  }
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1.title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:38px;
+    letter-spacing:-0.5px;
+    margin:0 0 4px;
+  }
+  p.sub{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    color:var(--teal-900);
+    margin:0 0 40px;
+  }
+  section{margin-bottom:56px;}
+  h2.section-label{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    color:var(--coral);
+    margin:0 0 20px;
+  }
+
+  /* ---------- Color swatches ---------- */
+  .swatch-row{display:flex;flex-wrap:wrap;gap:16px;}
+  .swatch{width:150px;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(18,33,30,0.08);}
+  .swatch-fill{height:90px;}
+  .swatch-meta{background:var(--white);padding:10px 12px;}
+  .swatch-name{font-size:13px;font-weight:600;margin:0 0 2px;}
+  .swatch-hex{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--slate);margin:0;}
+
+  /* ---------- Type specimens ---------- */
+  .type-row{
+    display:flex;align-items:baseline;gap:24px;
+    padding:18px 0;border-bottom:1px solid rgba(18,33,30,0.08);
+  }
+  .type-row:last-child{border-bottom:none;}
+  .type-label{
+    width:180px;flex-shrink:0;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--teal-900);text-transform:uppercase;letter-spacing:1px;
+  }
+  .type-sample-display{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;}
+  .type-sample-body{font-family:'Manrope',sans-serif;font-size:17px;}
+  .type-sample-mono{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;}
+
+  /* ---------- Phone mockup ---------- */
+  .phone-stage{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .phone{
+    width:360px;
+    background:var(--canvas);
+    border-radius:32px;
+    overflow:hidden;
+    box-shadow:0 20px 40px rgba(18,33,30,0.15);
+  }
+  .phone-notch{
+    height:24px;background:var(--canvas);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .phone-notch::after{content:'';width:60px;height:5px;background:rgba(18,33,30,0.2);border-radius:4px;}
+
+  .lattice-header{
+    position:relative;
+    background:var(--teal-900);
+    padding:22px 22px 20px;
+    overflow:hidden;
+    border-radius:0 0 24px 24px;
+  }
+  .lattice-header::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size:18px 18px;
+    pointer-events:none;
+  }
+  .lattice-header .content{position:relative;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    color:rgba(255,255,255,0.7);margin:0 0 6px;
+  }
+  .lattice-header h3{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;
+    font-size:22px;color:var(--white);margin:0 0 14px;
+  }
+  .summary-row{display:flex;gap:10px;}
+  .stat-card{
+    flex:1;background:rgba(255,255,255,0.12);
+    border-radius:12px;padding:10px 12px;
+  }
+  .stat-num{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:19px;color:var(--white);margin:0;}
+  .stat-label{font-family:'Manrope',sans-serif;font-size:11px;color:rgba(255,255,255,0.65);margin:2px 0 0;}
+
+  .list-section{padding:18px 16px 4px;}
+  .list-heading{
+    font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:14px;
+    margin:0 0 10px;color:var(--ink);
+  }
+  .card-row{
+    background:var(--white);
+    border-radius:14px;
+    padding:14px 14px;
+    margin-bottom:10px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    box-shadow:0 1px 2px rgba(18,33,30,0.06);
+  }
+  .row-name{font-family:'Manrope',sans-serif;font-weight:600;font-size:14px;margin:0 0 2px;}
+  .row-sub{font-family:'Manrope',sans-serif;font-size:12px;color:var(--slate);margin:0;}
+  .row-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .row-amount{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;}
+
+  .chip{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:'Manrope',sans-serif;font-weight:600;font-size:11px;
+    padding:4px 10px;border-radius:20px;
+  }
+  .chip-dot{width:6px;height:6px;border-radius:50%;}
+  .chip-paid{background:var(--teal-bg);color:var(--teal-900);}
+  .chip-paid .chip-dot{background:var(--teal-900);}
+  .chip-overdue{background:var(--red-bg);color:var(--red);}
+  .chip-overdue .chip-dot{background:var(--red);}
+  .chip-pending{background:var(--amber-bg);color:#8A5A0A;}
+  .chip-pending .chip-dot{background:var(--amber);}
+
+  .fab{
+    margin:8px 16px 20px;
+    background:var(--coral);
+    color:var(--white);
+    text-align:center;
+    padding:14px;
+    border-radius:14px;
+    font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;
+  }
+
+  .signature-note{
+    max-width:360px;font-size:14px;line-height:1.6;color:var(--slate);padding-top:8px;
+  }
+  .signature-note b{color:var(--teal-900);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1 class="title">Lizmo</h1>
+  <p class="sub">// rental management for Philippine landlords</p>
+
+  <section>
+    <h2 class="section-label">Color</h2>
+    <div class="swatch-row">
+      <div class="swatch"><div class="swatch-fill" style="background:#0E5C52;"></div><div class="swatch-meta"><p class="swatch-name">Teal 900</p><p class="swatch-hex">#0E5C52</p></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#DCEEE9;"></div><div class="swatch-meta"><p class="swatch-name">Teal Tint</p><p class="swatch-hex">#DCEEE9</p></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#F6F8F7;border:1px solid #eee;"></div><div class="swatch-meta"><p class="swatch-name">Canvas</p><p class="swatch-hex">#F6F8F7</p></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#12211E;"></div><div class="swatch-meta"><p class="swatch-name">Ink</p><p class="swatch-hex">#12211E</p></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#FF6952;"></div><div class="swatch-meta"><p class="swatch-name">Coral</p><p class="swatch-hex">#FF6952</p></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#6B7B77;"></div><div class="swatch-meta"><p class="swatch-name">Slate</p><p class="swatch-hex">#6B7B77</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-label">Type</h2>
+    <div class="type-row">
+      <span class="type-label">Display — Space Grotesk</span>
+      <span class="type-sample-display">Rent roll — August</span>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Body — Manrope</span>
+      <span class="type-sample-body">Bed 2, Unit 2B — due on the 5th of every month.</span>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Data — IBM Plex Mono</span>
+      <span class="type-sample-mono">₱5,000.00 confirmed</span>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-label">Applied — mobile screen</h2>
+    <div class="phone-stage">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="lattice-header">
+          <div class="content">
+            <p class="eyebrow">Sunrise Apartments</p>
+            <h3>Rent roll — August</h3>
+            <div class="summary-row">
+              <div class="stat-card">
+                <p class="stat-num">9/12</p>
+                <p class="stat-label">Slots occupied</p>
+              </div>
+              <div class="stat-card">
+                <p class="stat-num">₱2,150</p>
+                <p class="stat-label">Overdue total</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="list-section">
+          <p class="list-heading">Tenants</p>
+          <div class="card-row">
+            <div>
+              <p class="row-name">Ana Reyes — Bed 1</p>
+              <p class="row-sub">due Aug 5</p>
+            </div>
+            <div class="row-right">
+              <span class="row-amount">₱2,500</span>
+              <span class="chip chip-paid"><span class="chip-dot"></span>Paid</span>
+            </div>
+          </div>
+          <div class="card-row">
+            <div>
+              <p class="row-name">Miguel Cruz — Bed 2</p>
+              <p class="row-sub">due Aug 5</p>
+            </div>
+            <div class="row-right">
+              <span class="row-amount">₱2,150</span>
+              <span class="chip chip-overdue"><span class="chip-dot"></span>Overdue</span>
+            </div>
+          </div>
+          <div class="card-row">
+            <div>
+              <p class="row-name">Unit 2B — whole unit</p>
+              <p class="row-sub">due Aug 10</p>
+            </div>
+            <div class="row-right">
+              <span class="row-amount">₱7,000</span>
+              <span class="chip chip-pending"><span class="chip-dot"></span>Pending</span>
+            </div>
+          </div>
+          <div class="card-row">
+            <div>
+              <p class="row-name">Jhun Santos — Bed 3</p>
+              <p class="row-sub">due Aug 5</p>
+            </div>
+            <div class="row-right">
+              <span class="row-amount">₱2,500</span>
+              <span class="chip chip-paid"><span class="chip-dot"></span>Paid</span>
+            </div>
+          </div>
+        </div>
+        <div class="fab">+ Record a payment</div>
+      </div>
+
+      <p class="signature-note">
+        Signature element: a subtle <b>capiz-lattice grid</b> — a nod to the shell-pane windows of Philippine homes — textures the header in low-opacity grid lines. Status is a clean <b>dot + pill chip</b>, tenant cards are flat rounded surfaces with generous whitespace, and amounts stay in monospace for fintech-grade legibility.
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
