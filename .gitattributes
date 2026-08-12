@@ -1,0 +1,22 @@
+# Normalise to LF in both the repo and the working tree.
+#
+# Anything executed inside a Linux container must be LF: with CRLF the shebang
+# parses as "#!/bin/sh\r", which does not exist, and the build dies with the
+# unhelpful "exit code: 127". This bit backend/gradlew and the LocalStack init
+# script once already, on a machine with core.autocrlf=true.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Never transform binaries.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'screens/rent_roll_screen.dart';
-import 'theme/lizmo_colors.dart';
 
 void main() => runApp(const LizmoApp());
 

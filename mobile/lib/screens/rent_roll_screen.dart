@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lizmo_ui/lizmo_ui.dart';
 
-import '../theme/lizmo_colors.dart';
-import '../theme/lizmo_type.dart';
-import '../widgets/lattice_header.dart';
-import '../widgets/primary_action_button.dart';
-import '../widgets/status_chip.dart';
-import '../widgets/tenant_card.dart';
 
 /// Landlord's rent roll for one property and month.
 ///

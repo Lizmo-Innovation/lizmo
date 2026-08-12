@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
-import 'package:lizmo/widgets/status_chip.dart';
+import 'package:lizmo_ui/lizmo_ui.dart';
 
 void main() {
   testWidgets('rent roll renders header, tenants and the single action', (tester) async {

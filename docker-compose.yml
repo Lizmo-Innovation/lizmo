@@ -56,6 +56,34 @@ services:
       # 8080/8081 on the host are taken by the admissions-ph stack; container port is unchanged
       - "8082:8080"
 
+  # Lizmo's internal admin console — a real web deliverable, so it ships as a
+  # container.
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.flutter-web
+      args:
+        APP: admin
+    ports:
+      - "8083:80"
+    depends_on:
+      - api
+
+  # Preview build of the *mobile* app's web target, for sharing a link without
+  # installing the Flutter toolchain. Android/iOS are built locally, never here.
+  # Opt in with: docker compose --profile preview up
+  mobile-web:
+    profiles: [preview]
+    build:
+      context: .
+      dockerfile: Dockerfile.flutter-web
+      args:
+        APP: mobile
+    ports:
+      - "8084:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
   localstack_data:

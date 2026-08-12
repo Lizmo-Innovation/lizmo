@@ -1,0 +1,15 @@
+**/build
+**/.dart_tool
+**/.gradle
+**/test/goldens
+backend/build
+admin/android
+admin/ios
+mobile/android
+mobile/ios
+.git
+.github
+.claude
+docs
+*.iml
+.idea
