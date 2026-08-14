@@ -39,6 +39,13 @@ dependencies:
   lizmo_ui:
     path: ../packages/lizmo_ui
 
+  # Generated from the backend's OpenAPI document — never hand-edited.
+  lizmo_api:
+    path: ../packages/lizmo_api
+
+  flutter_riverpod: ^2.6.1
+  flutter_secure_storage: ^9.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

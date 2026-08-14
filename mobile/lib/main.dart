@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import 'screens/rent_roll_screen.dart';
+import 'app_shell.dart';
 
-void main() => runApp(const LizmoApp());
+void main() => runApp(const ProviderScope(child: LizmoApp()));
 
 class LizmoApp extends StatelessWidget {
   const LizmoApp({super.key});
@@ -22,7 +23,7 @@ class LizmoApp extends StatelessWidget {
         scaffoldBackgroundColor: LizmoColors.canvas,
         useMaterial3: true,
       ),
-      home: const RentRollScreen(),
+      home: const AppShell(),
     );
   }
 }
