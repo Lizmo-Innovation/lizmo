@@ -20,6 +20,11 @@ repositories {
 ext {
     awsSdkVersion = '2.28.11'
     jjwtVersion = '0.12.6'
+    springdocVersion = '2.6.0'
+    // 1.20.x negotiates a Docker API version that Engine 29+ rejects with a
+    // bare HTTP 400 on /info, which surfaces misleadingly as "Could not find a
+    // valid Docker environment".
+    testcontainersVersion = '1.21.3'
 }
 
 dependencies {
@@ -36,11 +41,29 @@ dependencies {
     runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
     runtimeOnly 'org.postgresql:postgresql'
 
+    // Serves the OpenAPI document the Dart client is generated from.
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+
+    // Integration tests run against real Postgres: the schema relies on partial
+    // unique indexes and CHECK constraints that H2 does not honour, so an
+    // in-memory database would pass while production breaks.
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // docker-java negotiates an API version below the 1.40 floor that Docker
+    // Engine 29 enforces. The daemon answers /info with a bare HTTP 400, which
+    // Testcontainers reports as the misleading "Could not find a valid Docker
+    // environment". 1.44 sits inside the supported range of every Docker
+    // version we care about; an explicit DOCKER_API_VERSION still wins.
+    environment 'DOCKER_API_VERSION', System.getenv('DOCKER_API_VERSION') ?: '1.44'
 }

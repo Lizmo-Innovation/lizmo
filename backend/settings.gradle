@@ -1,1 +1,8 @@
+plugins {
+    // Auto-downloads the Java 21 toolchain when the machine does not have one.
+    // Without it, anyone whose JAVA_HOME is not 21 cannot build — the Docker
+    // image pins 21, but local JDKs vary.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'lizmo-api'
