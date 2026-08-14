@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push makes an in-flight run obsolete; cancelling keeps the queue short.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Matches the Dockerfile's runtime and the Gradle toolchain.
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Testcontainers needs a Docker daemon, which ubuntu-latest provides. This
+      # is also the suite that cannot run on the Windows dev machine, where
+      # Docker Desktop's API proxy rejects docker-java.
+      - name: Test
+        working-directory: backend
+        run: ./gradlew test --no-daemon
+
+      - name: Build
+        working-directory: backend
+        run: ./gradlew bootJar --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: backend-test-report
+          path: backend/build/reports/tests/test
+
+  flutter:
+    name: Flutter
+    runs-on: ubuntu-latest
+    strategy:
+      # One package failing should not hide the state of the others.
+      fail-fast: false
+      matrix:
+        package: [packages/lizmo_ui, mobile, admin]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+
+      - name: Resolve dependencies
+        working-directory: ${{ matrix.package }}
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: ${{ matrix.package }}
+        run: flutter analyze
+
+      # `live` needs a running API. `golden` is excluded because goldens are
+      # generated on Windows and render differently on Linux — they would fail
+      # for reasons unrelated to the change. Worth revisiting once the fonts are
+      # bundled, since font fallback is most of that difference.
+      - name: Test
+        working-directory: ${{ matrix.package }}
+        run: flutter test --exclude-tags "live || golden"

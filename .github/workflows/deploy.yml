@@ -1,0 +1,92 @@
+name: Deploy API
+
+# Manual only, for now. Flip to `push: branches: [main]` once the database is
+# provisioned, the secrets have values, and a first apply has proven the stack —
+# continuous deploy to infrastructure that has never been deployed by hand is a
+# poor way to discover its problems.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type "deploy" to confirm
+        required: true
+
+# Never deploy two revisions at once; the later one would race the earlier.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  REGION: asia-southeast1
+  SERVICE: lizmo-api
+
+permissions:
+  contents: read
+  # Required for Workload Identity Federation: this is what lets the job request
+  # an OIDC token to exchange for GCP credentials.
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    # Add a required reviewer on this environment in repository settings to gate
+    # production behind an approval.
+    environment: production
+
+    steps:
+      - name: Guard against an accidental run
+        if: inputs.confirm != 'deploy'
+        run: |
+          echo "::error::Type 'deploy' to confirm."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      # Keyless: exchanges GitHub's OIDC token for short-lived GCP credentials.
+      # No service account JSON exists to leak.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # Tagged with the commit SHA rather than :latest, so a revision can be
+      # traced to exactly one commit and rolled back to a known image.
+      - name: Build and push
+        id: image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/lizmo/api:${GITHUB_SHA}"
+          docker build -t "$IMAGE" ./backend
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${{ steps.image.outputs.image }}" \
+            --region "${REGION}" \
+            --quiet
+
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe "${SERVICE}" --region "${REGION}" --format='value(status.url)')
+          echo "Deployed to ${URL}"
+          # Fail the job if the new revision is not actually serving, rather than
+          # reporting success because the deploy command exited zero.
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${URL}/actuator/health" || true)
+            if [ "$code" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "attempt ${i}: HTTP ${code}"
+            sleep 10
+          done
+          echo "::error::Health check never returned 200"
+          exit 1

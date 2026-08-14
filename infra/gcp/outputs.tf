@@ -18,6 +18,16 @@ output "api_service_account" {
   value       = google_service_account.api.email
 }
 
+output "github_workload_identity_provider" {
+  description = "Value for the WIF_PROVIDER GitHub repository variable."
+  value       = google_iam_workload_identity_pool_provider.github.name
+}
+
+output "github_deployer_service_account" {
+  description = "Value for the WIF_SERVICE_ACCOUNT GitHub repository variable."
+  value       = google_service_account.deployer.email
+}
+
 output "secrets_pending_values" {
   description = "Secrets created empty by Terraform. Cloud Run will not start until each has a version."
   value       = [for s in google_secret_manager_secret.app : s.secret_id]

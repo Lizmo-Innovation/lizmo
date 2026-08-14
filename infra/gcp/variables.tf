@@ -15,6 +15,18 @@ variable "region" {
   default     = "asia-southeast1"
 }
 
+variable "github_repository" {
+  description = <<-EOT
+    The repository allowed to deploy, as "owner/name".
+
+    Workload Identity Federation is scoped to this exact value — without the
+    condition, any GitHub repository in the world could mint tokens for this
+    provider.
+  EOT
+  type        = string
+  default     = "ariel823/lizmo"
+}
+
 variable "service_name" {
   description = "Cloud Run service name."
   type        = string
