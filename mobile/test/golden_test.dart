@@ -4,9 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/app_shell.dart';
-import 'package:lizmo/auth/auth_controller.dart';
-import 'package:lizmo/auth/auth_state.dart';
 
 /// Renders each role's home screen for visual review.
 /// Regenerate with `flutter test test/golden_test.dart --update-goldens`.

@@ -2,8 +2,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lizmo/api/api_failure.dart';
-import 'package:lizmo/auth/auth_state.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_api/api.dart';
 
 /// Exercises the generated client against a running API.

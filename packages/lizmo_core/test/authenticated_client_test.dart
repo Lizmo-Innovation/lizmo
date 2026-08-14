@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:http/http.dart';
 import 'package:http/testing.dart';
-import 'package:lizmo/api/authenticated_client.dart';
 
 void main() {
   Request get(String path) => Request('GET', Uri.parse('http://x$path'));

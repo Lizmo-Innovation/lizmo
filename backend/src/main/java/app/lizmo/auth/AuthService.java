@@ -9,6 +9,7 @@ import app.lizmo.config.JwtProperties;
 import app.lizmo.security.JwtService;
 import app.lizmo.user.LandlordProfile;
 import app.lizmo.user.LandlordProfileRepository;
+import app.lizmo.user.PlatformAdminRepository;
 import app.lizmo.user.TenantProfile;
 import app.lizmo.user.TenantProfileRepository;
 import app.lizmo.user.User;
@@ -35,6 +36,7 @@ public class AuthService {
     private final UserRepository users;
     private final TenantProfileRepository tenantProfiles;
     private final LandlordProfileRepository landlordProfiles;
+    private final PlatformAdminRepository platformAdmins;
     private final RefreshTokenRepository refreshTokens;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
@@ -45,6 +47,7 @@ public class AuthService {
             UserRepository users,
             TenantProfileRepository tenantProfiles,
             LandlordProfileRepository landlordProfiles,
+            PlatformAdminRepository platformAdmins,
             RefreshTokenRepository refreshTokens,
             PasswordEncoder passwordEncoder,
             JwtService jwt,
@@ -53,6 +56,7 @@ public class AuthService {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
+        this.platformAdmins = platformAdmins;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
@@ -184,12 +188,19 @@ public class AuthService {
     }
 
     private List<String> profilesOf(User user) {
-        List<String> profiles = new ArrayList<>(2);
+        List<String> profiles = new ArrayList<>(3);
         if (tenantProfiles.existsById(user.getId())) {
             profiles.add("TENANT");
         }
         if (landlordProfiles.existsById(user.getId())) {
             profiles.add("LANDLORD");
+        }
+        // Internal Lizmo staff. Included so the admin console can refuse a
+        // non-admin at sign-in rather than showing them a console whose every
+        // request will be rejected. It remains a claim about identity, not a
+        // grant: /admin routes must still check server-side.
+        if (platformAdmins.existsById(user.getId())) {
+            profiles.add("ADMIN");
         }
         return profiles;
     }

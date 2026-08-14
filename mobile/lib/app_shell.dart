@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'auth/active_role.dart';
-import 'auth/auth_controller.dart';
-import 'auth/auth_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/rent_roll_screen.dart';
 import 'screens/tenant_home_screen.dart';
@@ -41,6 +40,11 @@ class _RoleHome extends ConsumerWidget {
     return switch (role) {
       LizmoProfile.landlord => const RentRollScreen(),
       LizmoProfile.tenant => const TenantHomeScreen(),
+      // ADMIN is not a role this app serves — platform admins use the web
+      // console. It never becomes the active role (ActiveRoleController only
+      // ever selects tenant or landlord), and an admin who also rents simply
+      // sees the tenant view.
+      LizmoProfile.admin => const _NoProfile(),
       // Only reachable if the account somehow holds no profiles at all.
       // Registration always creates a tenant profile, so this is a guard
       // against bad data rather than an expected state.

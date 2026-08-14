@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import 'screens/platform_payments_screen.dart';
+import 'admin_shell.dart';
 
-void main() => runApp(const LizmoAdminApp());
+void main() {
+  runApp(
+    ProviderScope(
+      overrides: [
+        // Tokens stay in memory. On web, flutter_secure_storage keeps its
+        // encryption key in localStorage beside the data, so any XSS on this
+        // origin could lift a persisted refresh token — and this is the console
+        // where a stolen session can confirm payments to Lizmo.
+        //
+        // The trade is deliberate: closing the tab ends the session. Revisit if
+        // the backend ever issues an httpOnly refresh cookie.
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+      ],
+      child: const LizmoAdminApp(),
+    ),
+  );
+}
 
 /// Lizmo's internal admin console.
 ///
@@ -27,7 +45,7 @@ class LizmoAdminApp extends StatelessWidget {
         scaffoldBackgroundColor: LizmoColors.canvas,
         useMaterial3: true,
       ),
-      home: const PlatformPaymentsScreen(),
+      home: const AdminShell(),
     );
   }
 }

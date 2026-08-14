@@ -35,7 +35,9 @@ final authApiProvider = Provider<AuthApi>((ref) {
   return AuthApi(ref.watch(apiClientProvider));
 });
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
+/// Defaults to platform-backed storage. The admin console overrides this with
+/// an [InMemoryTokenStore], since browser storage is readable by script.
+final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
 
 final authControllerProvider =
     NotifierProvider<AuthController, AuthState>(AuthController.new);

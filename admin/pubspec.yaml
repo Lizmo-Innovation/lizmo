@@ -39,6 +39,12 @@ dependencies:
   lizmo_ui:
     path: ../packages/lizmo_ui
 
+  # Session handling, API client and error contract, shared with mobile.
+  lizmo_core:
+    path: ../packages/lizmo_core
+
+  flutter_riverpod: ^2.6.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

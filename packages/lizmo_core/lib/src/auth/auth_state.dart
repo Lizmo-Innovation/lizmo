@@ -7,11 +7,16 @@ import 'package:lizmo_api/api.dart';
 /// offer role switching at all.
 enum LizmoProfile {
   tenant,
-  landlord;
+  landlord,
+
+  /// Internal Lizmo staff, who verify platform payments. Never held by a
+  /// customer, and unrelated to a landlord's own staff.
+  admin;
 
   static LizmoProfile? parse(String raw) => switch (raw.toUpperCase()) {
         'TENANT' => LizmoProfile.tenant,
         'LANDLORD' => LizmoProfile.landlord,
+        'ADMIN' => LizmoProfile.admin,
         _ => null, // Forward compatible: a profile this build predates.
       };
 }
@@ -32,6 +37,13 @@ class Session {
 
   bool get isLandlord => profiles.contains(LizmoProfile.landlord);
   bool get isTenant => profiles.contains(LizmoProfile.tenant);
+
+  /// Whether the admin console should let this session in.
+  ///
+  /// A convenience for the UI, not a security control: the backend checks
+  /// platform_admins on every /admin route. This only avoids showing someone a
+  /// console where every request would be refused.
+  bool get isPlatformAdmin => profiles.contains(LizmoProfile.admin);
 
   /// Whether the shell should offer a role switcher.
   bool get hasMultipleProfiles => profiles.length > 1;

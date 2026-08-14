@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../auth/active_role.dart';
-import '../auth/auth_controller.dart';
-import '../auth/auth_state.dart';
 
 /// Switches between the tenant and landlord views.
 ///

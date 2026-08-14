@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 
-import 'auth_controller.dart';
-import 'auth_state.dart';
 
 final activeRoleProvider =
     NotifierProvider<ActiveRoleController, LizmoProfile?>(ActiveRoleController.new);

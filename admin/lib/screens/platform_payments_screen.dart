@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../widgets/platform_payment_card.dart';
@@ -58,10 +60,11 @@ class PlatformPaymentsScreen extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: _maxContentWidth),
           child: Column(
             children: [
-              const LatticeHeader(
+              LatticeHeader(
                 eyebrow: 'Lizmo admin',
                 title: 'Platform payments',
-                stats: [
+                trailing: _SignOutButton(),
+                stats: const [
                   LatticeHeaderStat(value: '2', label: 'Awaiting review'),
                   LatticeHeaderStat(value: '1', label: 'Locked accounts'),
                 ],
@@ -88,6 +91,32 @@ class PlatformPaymentsScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sign-out control in the console header.
+///
+/// Present because an admin session can confirm payments to Lizmo, so leaving
+/// one open on a shared desk should be easy to undo.
+class _SignOutButton extends ConsumerWidget {
+  const _SignOutButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TextButton(
+      onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Sign out',
+        style: LizmoType.chipLabel.copyWith(
+          color: LizmoColors.white.withValues(alpha: 0.85),
         ),
       ),
     );

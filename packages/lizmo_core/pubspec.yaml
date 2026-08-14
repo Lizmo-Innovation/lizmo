@@ -1,0 +1,27 @@
+name: lizmo_core
+description: "Session handling, API client and error contract shared by the Lizmo apps."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Generated from the backend's OpenAPI document — never hand-edited.
+  lizmo_api:
+    path: ../lizmo_api
+
+  flutter_riverpod: ^2.6.1
+  flutter_secure_storage: ^9.2.2
+  http: ^1.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
