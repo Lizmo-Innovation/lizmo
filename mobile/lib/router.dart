@@ -76,8 +76,12 @@ String? _signedInRedirect(Ref ref, Session session, String location) {
     LizmoProfile.admin || null => Routes.noProfile,
   };
 
-  // Signed in but sitting on splash or login: move along.
-  if (location == Routes.splash || location == Routes.login) return home;
+  // Signed in but still on an entry screen: move along. Registering signs the
+  // user straight in, so /register belongs here too — leaving it out stranded
+  // new users on the form they had just submitted.
+  if (location == Routes.splash || Routes.signedOutAllowed.contains(location)) {
+    return home;
+  }
 
   if (location == Routes.landlord && !session.isLandlord) return home;
   if (location == Routes.tenant && !session.isTenant) return home;

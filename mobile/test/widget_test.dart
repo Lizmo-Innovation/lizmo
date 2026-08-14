@@ -199,6 +199,57 @@ void main() {
       expect(find.byType(LoginScreen), findsOneWidget);
     });
 
+    testWidgets('signing up moves the user off the form', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      container.read(routerProvider).go(Routes.register);
+      await tester.pumpAndSettle();
+      expect(find.byType(RegisterScreen), findsOneWidget);
+
+      // Registering signs the user straight in. Without /register in the
+      // move-along set they stayed on the form they had just submitted.
+      container.read(authControllerProvider.notifier).state =
+          _signedIn({LizmoProfile.tenant});
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RegisterScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('signing up as a landlord lands on the rent roll', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+      container.read(routerProvider).go(Routes.register);
+      await tester.pumpAndSettle();
+
+      container.read(authControllerProvider.notifier).state =
+          _signedIn({LizmoProfile.tenant, LizmoProfile.landlord});
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RentRollScreen), findsOneWidget);
+    });
+
     testWidgets('rejects empty fields before calling the API', (tester) async {
       await tester.pumpWidget(_app(const AuthSignedOut()));
       await tester.pumpAndSettle();
