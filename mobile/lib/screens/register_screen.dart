@@ -219,11 +219,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-/// Asks whether the new account manages rentals.
+/// Asks whether the new account also manages rentals.
 ///
-/// Phrased as what the person does rather than "are you a landlord", which
-/// someone letting one spare room may not call themselves. Every account gets
-/// a tenant profile regardless, so this only ever adds a capability.
+/// "Also" is doing real work: every account gets a tenant profile, and landlord
+/// is added on top rather than instead. Someone who ticks this can still rent a
+/// bedspace elsewhere, which is a normal case here — the role switcher exists
+/// for exactly those people.
 class _LandlordToggle extends StatelessWidget {
   const _LandlordToggle({required this.value, required this.onChanged});
 
@@ -258,7 +259,7 @@ class _LandlordToggle extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('I rent out property', style: LizmoType.rowName),
+                  Text('I am also a landlord', style: LizmoType.rowName),
                   const SizedBox(height: 2),
                   Text(
                     'Adds tools for managing units, tenants and rent.',

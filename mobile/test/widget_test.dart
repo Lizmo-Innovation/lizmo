@@ -238,7 +238,7 @@ void main() {
       Checkbox box() => tester.widget<Checkbox>(find.byType(Checkbox));
       expect(box().value, isFalse, reason: 'most accounts are tenants');
 
-      await tester.tap(find.text('I rent out property'));
+      await tester.tap(find.text('I am also a landlord'));
       await tester.pump();
 
       expect(box().value, isTrue);
