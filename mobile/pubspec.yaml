@@ -39,6 +39,10 @@ dependencies:
   lizmo_ui:
     path: ../packages/lizmo_ui
 
+  # Generated from the backend's OpenAPI document — never hand-edited.
+  lizmo_api:
+    path: ../packages/lizmo_api
+
   # Session handling, API client and error contract, shared with admin.
   lizmo_core:
     path: ../packages/lizmo_core

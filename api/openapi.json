@@ -31,7 +31,7 @@
                     "Units"
                 ],
                 "summary": "View one unit",
-                "operationId": "get",
+                "operationId": "getUnit",
                 "parameters": [
                     {
                         "name": "id",
@@ -45,7 +45,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "The unit",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -62,7 +62,7 @@
                 ],
                 "summary": "Update a unit",
                 "description": "Rental mode cannot change, and capacity cannot drop below the beds already defined.",
-                "operationId": "update",
+                "operationId": "updateUnit",
                 "parameters": [
                     {
                         "name": "id",
@@ -86,7 +86,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Updated",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -103,7 +103,7 @@
                 ],
                 "summary": "Delete a unit",
                 "description": "Refused while the unit still has beds.",
-                "operationId": "delete",
+                "operationId": "deleteUnit",
                 "parameters": [
                     {
                         "name": "id",
@@ -117,7 +117,7 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "No Content"
+                        "description": "Deleted"
                     }
                 }
             }
@@ -128,7 +128,7 @@
                     "Properties"
                 ],
                 "summary": "View one property",
-                "operationId": "get_1",
+                "operationId": "getProperty",
                 "parameters": [
                     {
                         "name": "id",
@@ -141,6 +141,16 @@
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "The property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyResponse"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "No such property, or it belongs to another landlord",
                         "content": {
@@ -158,7 +168,7 @@
                     "Properties"
                 ],
                 "summary": "Update a property",
-                "operationId": "update_1",
+                "operationId": "updateProperty",
                 "parameters": [
                     {
                         "name": "id",
@@ -182,7 +192,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Updated",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -199,7 +209,7 @@
                 ],
                 "summary": "Delete a property",
                 "description": "Refused while the property still has units, to protect their billing history.",
-                "operationId": "delete_1",
+                "operationId": "deleteProperty",
                 "parameters": [
                     {
                         "name": "id",
@@ -213,7 +223,7 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "No Content"
+                        "description": "Deleted"
                     }
                 }
             }
@@ -238,7 +248,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Beds in the unit",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -301,10 +311,10 @@
                 ],
                 "summary": "List my properties",
                 "description": "Only properties owned by the signed-in landlord are ever returned.",
-                "operationId": "list",
+                "operationId": "listProperties",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "The caller's properties",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -323,7 +333,7 @@
                     "Properties"
                 ],
                 "summary": "Create a property",
-                "operationId": "create",
+                "operationId": "createProperty",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -335,22 +345,22 @@
                     "required": true
                 },
                 "responses": {
-                    "403": {
-                        "description": "Not a landlord, or the account is locked for an unpaid invoice",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
                     "201": {
                         "description": "Created",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PropertyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a landlord, or the account is locked for an unpaid invoice",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -378,7 +388,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Units in the property",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -453,22 +463,22 @@
                     "required": true
                 },
                 "responses": {
-                    "201": {
-                        "description": "Account created, tokens issued",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
-                                }
-                            }
-                        }
-                    },
                     "409": {
                         "description": "Email or phone already registered",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Account created, tokens issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
                                 }
                             }
                         }
@@ -505,22 +515,22 @@
                     "required": true
                 },
                 "responses": {
-                    "200": {
-                        "description": "New tokens issued",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
-                                }
-                            }
-                        }
-                    },
                     "401": {
                         "description": "Refresh token unknown, expired or already used",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "New tokens issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
                                 }
                             }
                         }
@@ -572,6 +582,16 @@
                     "required": true
                 },
                 "responses": {
+                    "200": {
+                        "description": "Tokens issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
                     "401": {
                         "description": "Credentials rejected",
                         "content": {
@@ -588,16 +608,6 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
-                    "200": {
-                        "description": "Tokens issued",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
                                 }
                             }
                         }
@@ -626,7 +636,7 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "No Content"
+                        "description": "Deleted"
                     }
                 }
             }

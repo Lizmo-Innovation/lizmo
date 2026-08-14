@@ -6,9 +6,11 @@ import 'package:lizmo/main.dart';
 import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/register_screen.dart';
-import 'package:lizmo/screens/rent_roll_screen.dart';
+import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
+import 'package:lizmo/property/property_providers.dart';
 
 /// Drives routing directly, without touching secure storage or the network.
 class _FakeAuth extends AuthController {
@@ -24,6 +26,8 @@ Widget _app(AuthState initial) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        // Routing tests care where you land, not what loads there.
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
       ],
       child: const LizmoApp(),
     );
@@ -44,7 +48,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LoginScreen), findsOneWidget);
-      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(PropertyListScreen), findsNothing);
     });
 
     testWidgets('unknown holds on the splash, never app content', (tester) async {
@@ -54,7 +58,7 @@ void main() {
       // Showing content before tokens are checked would flash the app at
       // someone who is not signed in.
       expect(find.byType(LoginScreen), findsNothing);
-      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(PropertyListScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
@@ -64,25 +68,26 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TenantHomeScreen), findsOneWidget);
-      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(PropertyListScreen), findsNothing);
     });
 
-    testWidgets('a landlord lands on the rent roll', (tester) async {
+    testWidgets('a landlord lands on their properties', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
 
-      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.byType(PropertyListScreen), findsOneWidget);
       expect(find.byType(TenantHomeScreen), findsNothing);
     });
   });
 
   group('route guards', () {
-    testWidgets('a tenant cannot reach the rent roll by URL', (tester) async {
+    testWidgets('a tenant cannot reach the landlord home by URL', (tester) async {
       final container = ProviderContainer(
         overrides: [
           authControllerProvider
               .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
         ],
       );
       addTearDown(container.dispose);
@@ -93,12 +98,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigate straight at the landlord route, as a typed URL or stale deep
-      // link would. The rent roll lists every tenant in the property with their
-      // payment status, so reaching it must not be possible.
+      // link would. It exposes another landlord's portfolio, so a tenant must
+      // not reach it.
       container.read(routerProvider).go(Routes.landlord);
       await tester.pumpAndSettle();
 
-      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(PropertyListScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
@@ -107,6 +112,7 @@ void main() {
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
         ],
       );
       addTearDown(container.dispose);
@@ -141,7 +147,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.byType(PropertyListScreen), findsOneWidget);
       expect(find.text('Tenant'), findsOneWidget);
       expect(find.text('Landlord'), findsOneWidget);
     });
@@ -155,11 +161,11 @@ void main() {
       await tester.tap(find.text('Tenant'));
       await tester.pumpAndSettle();
       expect(find.byType(TenantHomeScreen), findsOneWidget);
-      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(PropertyListScreen), findsNothing);
 
       await tester.tap(find.text('Landlord'));
       await tester.pumpAndSettle();
-      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.byType(PropertyListScreen), findsOneWidget);
     });
 
     test('default role prefers landlord when both are held', () {
@@ -204,6 +210,7 @@ void main() {
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
         ],
       );
       addTearDown(container.dispose);
@@ -232,6 +239,7 @@ void main() {
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
         ],
       );
       addTearDown(container.dispose);
@@ -247,7 +255,7 @@ void main() {
           _signedIn({LizmoProfile.tenant, LizmoProfile.landlord});
       await tester.pumpAndSettle();
 
-      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.byType(PropertyListScreen), findsOneWidget);
     });
 
     testWidgets('rejects empty fields before calling the API', (tester) async {
@@ -334,6 +342,93 @@ void main() {
         Routes.noProfile,
       };
       expect(paths.length, 5, reason: 'a duplicated path would shadow a route');
+    });
+  });
+
+  group('property list states', () {
+    Widget appWith(Override propertiesOverride) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesOverride,
+          ],
+          child: const LizmoApp(),
+        );
+
+    PropertyResponse property(String name, int units) => PropertyResponse(
+          id: name,
+          name: name,
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: units,
+        );
+
+    testWidgets('shows the properties and their unit counts', (tester) async {
+      await tester.pumpWidget(appWith(
+        propertiesProvider.overrideWith((ref) async => [
+              property('Sunrise Apartments', 2),
+              property('Sunset Residences', 1),
+            ]),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sunrise Apartments'), findsOneWidget);
+      expect(find.text('Sunset Residences'), findsOneWidget);
+      // Singular and plural, because "1 units" reads as a bug to a user.
+      expect(find.text('units'), findsOneWidget);
+      expect(find.text('unit'), findsOneWidget);
+    });
+
+    testWidgets('header totals are derived from the loaded rows', (tester) async {
+      await tester.pumpWidget(appWith(
+        propertiesProvider.overrideWith((ref) async => [
+              property('Sunrise Apartments', 2),
+              property('Sunset Residences', 3),
+            ]),
+      ));
+      await tester.pumpAndSettle();
+
+      // Two properties, five units — counts cannot disagree with the list.
+      expect(find.text('2'), findsWidgets);
+      expect(find.text('5'), findsOneWidget);
+    });
+
+    testWidgets('an empty portfolio explains what to do', (tester) async {
+      await tester.pumpWidget(appWith(
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No properties yet'), findsOneWidget);
+      // Never a bare spinner or blank screen.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('a network failure is distinguished from a rejection', (tester) async {
+      await tester.pumpWidget(appWith(
+        propertiesProvider.overrideWith((ref) async =>
+            throw const ApiFailure(code: 'NETWORK_UNAVAILABLE', message: 'no signal')),
+      ));
+      await tester.pumpAndSettle();
+
+      // A landlord with no signal and one locked for an unpaid invoice need
+      // different messages; ApiFailure.isNetwork is what separates them.
+      expect(find.text("Can't reach Lizmo"), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    });
+
+    testWidgets('a rejection shows the backend message', (tester) async {
+      await tester.pumpWidget(appWith(
+        propertiesProvider.overrideWith((ref) async => throw const ApiFailure(
+              code: 'ACCOUNT_LOCKED_UNPAID_INVOICE',
+              message: 'Your Lizmo invoice is unpaid.',
+            )),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Something went wrong'), findsOneWidget);
+      expect(find.text('Your Lizmo invoice is unpaid.'), findsOneWidget);
     });
   });
 }

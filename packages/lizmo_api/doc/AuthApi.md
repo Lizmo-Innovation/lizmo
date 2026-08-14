@@ -20,6 +20,8 @@ Method | HTTP request | Description
 
 Sign in with email or phone plus password
 
+Failed attempts are rate limited per account and per client address.
+
 ### Example
 ```dart
 import 'package:lizmo_api/api.dart';

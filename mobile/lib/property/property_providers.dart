@@ -1,0 +1,49 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lizmo_api/api.dart';
+import 'package:lizmo_core/lizmo_core.dart';
+
+final propertiesApiProvider = Provider<PropertiesApi>((ref) {
+  return PropertiesApi(ref.watch(apiClientProvider));
+});
+
+final unitsApiProvider = Provider<UnitsApi>((ref) {
+  return UnitsApi(ref.watch(apiClientProvider));
+});
+
+/// The signed-in landlord's properties.
+///
+/// Errors are normalised to [ApiFailure] here rather than in the widget, so
+/// every screen shows the backend's message and can branch on its code —
+/// including telling "no connection" apart from "your account is locked".
+///
+/// autoDispose so the list is refetched on return rather than showing a stale
+/// count after a unit is added elsewhere.
+final propertiesProvider =
+    FutureProvider.autoDispose<List<PropertyResponse>>((ref) async {
+  try {
+    return await ref.watch(propertiesApiProvider).listProperties() ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// Units within one property.
+final unitsProvider =
+    FutureProvider.autoDispose.family<List<UnitResponse>, String>((ref, propertyId) async {
+  try {
+    return await ref.watch(propertiesApiProvider).listUnits(propertyId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// Beds within one unit. Only meaningful for BEDSPACE units — the API refuses
+/// beds on a whole unit, so callers should not ask.
+final bedsProvider =
+    FutureProvider.autoDispose.family<List<BedResponse>, String>((ref, unitId) async {
+  try {
+    return await ref.watch(unitsApiProvider).listBeds(unitId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

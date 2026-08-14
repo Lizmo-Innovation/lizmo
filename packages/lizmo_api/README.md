@@ -63,15 +63,34 @@ Class | Method | HTTP request | Description
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
 *AuthApi* | [**register**](doc//AuthApi.md#register) | **POST** /api/v1/auth/register | Create an account
+*PropertiesApi* | [**createProperty**](doc//PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
+*PropertiesApi* | [**createUnit**](doc//PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
+*PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
+*PropertiesApi* | [**getProperty**](doc//PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
+*PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
+*PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
+*PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
+*UnitsApi* | [**createBed**](doc//UnitsApi.md#createbed) | **POST** /api/v1/units/{id}/beds | Add a bed
+*UnitsApi* | [**deleteBed**](doc//UnitsApi.md#deletebed) | **DELETE** /api/v1/beds/{id} | Remove a bed
+*UnitsApi* | [**deleteUnit**](doc//UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
+*UnitsApi* | [**getUnit**](doc//UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
+*UnitsApi* | [**listBeds**](doc//UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+*UnitsApi* | [**updateUnit**](doc//UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
 
 ## Documentation For Models
 
  - [ApiError](doc//ApiError.md)
  - [AuthResponse](doc//AuthResponse.md)
+ - [BedRequest](doc//BedRequest.md)
+ - [BedResponse](doc//BedResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
+ - [PropertyRequest](doc//PropertyRequest.md)
+ - [PropertyResponse](doc//PropertyResponse.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RegisterRequest](doc//RegisterRequest.md)
+ - [UnitRequest](doc//UnitRequest.md)
+ - [UnitResponse](doc//UnitResponse.md)
 
 
 ## Documentation For Authorization

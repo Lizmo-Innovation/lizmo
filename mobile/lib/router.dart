@@ -7,7 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import 'auth/active_role.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/rent_roll_screen.dart';
+import 'screens/property_list_screen.dart';
 import 'screens/tenant_home_screen.dart';
 
 /// Route paths, named so a typo is a compile error rather than a blank screen.
@@ -56,7 +56,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
       GoRoute(path: Routes.tenant, builder: (context, state) => const TenantHomeScreen()),
-      GoRoute(path: Routes.landlord, builder: (context, state) => const RentRollScreen()),
+      GoRoute(path: Routes.landlord, builder: (context, state) => const PropertyListScreen()),
       GoRoute(path: Routes.noProfile, builder: (context, state) => const NoProfileScreen()),
     ],
     errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),

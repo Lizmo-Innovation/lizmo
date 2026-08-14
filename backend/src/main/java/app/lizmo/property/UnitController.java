@@ -6,6 +6,10 @@ import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -42,42 +46,54 @@ public class UnitController {
     }
 
     @GetMapping("/units/{id}")
-    @Operation(summary = "View one unit")
+    @Operation(operationId = "getUnit", summary = "View one unit")
+    @ApiResponse(responseCode = "200", description = "The unit",
+            content = @Content(schema = @Schema(implementation = UnitResponse.class)))
     public UnitResponse get(@PathVariable UUID id) {
         return service.getUnit(id, currentUser.requireId());
     }
 
     @PutMapping("/units/{id}")
-    @Operation(summary = "Update a unit",
+    @Operation(operationId = "updateUnit", summary = "Update a unit",
             description = "Rental mode cannot change, and capacity cannot drop below the beds already defined.")
+    @ApiResponse(responseCode = "200", description = "Updated",
+            content = @Content(schema = @Schema(implementation = UnitResponse.class)))
     public UnitResponse update(@PathVariable UUID id, @Valid @RequestBody UnitRequest request) {
         return service.updateUnit(id, request, currentUser.requireId());
     }
 
     @DeleteMapping("/units/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a unit", description = "Refused while the unit still has beds.")
+    @Operation(operationId = "deleteUnit", summary = "Delete a unit",
+            description = "Refused while the unit still has beds.")
+    @ApiResponse(responseCode = "204", description = "Deleted")
     public void delete(@PathVariable UUID id) {
         service.deleteUnit(id, currentUser.requireId());
     }
 
     @GetMapping("/units/{id}/beds")
-    @Operation(summary = "List a unit's beds")
+    @Operation(operationId = "listBeds", summary = "List a unit's beds")
+    @ApiResponse(responseCode = "200", description = "Beds in the unit",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = BedResponse.class))))
     public List<BedResponse> listBeds(@PathVariable UUID id) {
         return service.listBeds(id, currentUser.requireId());
     }
 
     @PostMapping("/units/{id}/beds")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Add a bed",
+    @Operation(operationId = "createBed", summary = "Add a bed",
             description = "Bedspace units only, and never beyond the unit's capacity.")
+    @ApiResponse(responseCode = "201", description = "Created",
+            content = @Content(schema = @Schema(implementation = BedResponse.class)))
     public BedResponse createBed(@PathVariable UUID id, @Valid @RequestBody BedRequest request) {
         return service.createBed(id, request, currentUser.requireId());
     }
 
     @DeleteMapping("/beds/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Remove a bed", description = "Refused while the bed is occupied.")
+    @Operation(operationId = "deleteBed", summary = "Remove a bed",
+            description = "Refused while the bed is occupied.")
+    @ApiResponse(responseCode = "204", description = "Deleted")
     public void deleteBed(@PathVariable UUID id) {
         service.deleteBed(id, currentUser.requireId());
     }

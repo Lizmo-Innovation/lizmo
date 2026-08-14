@@ -18,6 +18,8 @@ class AuthApi {
 
   /// Sign in with email or phone plus password
   ///
+  /// Failed attempts are rate limited per account and per client address.
+  ///
   /// Note: This method returns the HTTP [Response].
   ///
   /// Parameters:
@@ -50,6 +52,8 @@ class AuthApi {
   }
 
   /// Sign in with email or phone plus password
+  ///
+  /// Failed attempts are rate limited per account and per client address.
   ///
   /// Parameters:
   ///

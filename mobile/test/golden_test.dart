@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
+import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
+import 'package:lizmo/property/property_providers.dart';
 
 /// Renders each role's home screen for visual review.
 /// Regenerate with `flutter test test/golden_test.dart --update-goldens`.
@@ -33,6 +35,23 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        // Fixed data so the golden is stable, matching the seeded landlord.
+        propertiesProvider.overrideWith((ref) async => [
+              PropertyResponse(
+                id: 'p1',
+                name: 'Sunrise Apartments',
+                address: '12 Mabini St, Quezon City',
+                type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+                unitCount: 2,
+              ),
+              PropertyResponse(
+                id: 'p2',
+                name: 'Sunset Residences',
+                address: '48 Rizal Ave, Caloocan',
+                type: PropertyResponseTypeEnum.APARTMENT,
+                unitCount: 1,
+              ),
+            ]),
       ],
       child: const LizmoApp(),
     );

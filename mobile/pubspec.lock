@@ -273,7 +273,7 @@ packages:
     source: hosted
     version: "6.1.0"
   lizmo_api:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../packages/lizmo_api"
       relative: true

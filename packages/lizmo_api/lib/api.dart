@@ -29,12 +29,20 @@ part 'auth/http_basic_auth.dart';
 part 'auth/http_bearer_auth.dart';
 
 part 'api/auth_api.dart';
+part 'api/properties_api.dart';
+part 'api/units_api.dart';
 
 part 'model/api_error.dart';
 part 'model/auth_response.dart';
+part 'model/bed_request.dart';
+part 'model/bed_response.dart';
 part 'model/login_request.dart';
+part 'model/property_request.dart';
+part 'model/property_response.dart';
 part 'model/refresh_request.dart';
 part 'model/register_request.dart';
+part 'model/unit_request.dart';
+part 'model/unit_response.dart';
 
 
 /// An [ApiClient] instance that uses the default values obtained from
