@@ -17,3 +17,6 @@ terraform.tfvars
 # Generated Dart client is committed (see api/openapi.json); its build junk is not.
 packages/lizmo_api/.dart_tool/
 packages/lizmo_api/pubspec.lock
+
+# Office lock files (created while a document is open)
+~$*
