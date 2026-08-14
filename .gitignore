@@ -23,3 +23,6 @@ packages/lizmo_api/pubspec.lock
 
 # Golden test failure artifacts (regenerated on each failing run)
 **/test/failures/
+
+# Compiled classes (VS Code / Eclipse-style output dir, alongside Gradle build/)
+bin/
