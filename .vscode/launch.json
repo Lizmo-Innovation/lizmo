@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Physical Android phone over USB.
+      //
+      // Run this first, once per plug-in, so the phone's localhost reaches the
+      // API on this machine through the cable:
+      //   adb reverse tcp:8082 tcp:8082
+      //
+      // Without it the app cannot see the API: 10.0.2.2 (the built-in Android
+      // default) only resolves inside an emulator, and a phone's own localhost
+      // is the phone.
+      "name": "Lizmo — phone (USB)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "mobile",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=LIZMO_API_BASE_URL=http://localhost:8082"]
+    },
+    {
+      // Android emulator. Needs no dart-define: ApiConfig already maps the
+      // emulator to 10.0.2.2, which is how it reaches the host.
+      "name": "Lizmo — emulator",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "mobile",
+      "program": "lib/main.dart"
+    },
+    {
+      // Phone over Wi-Fi instead of USB. Needs a firewall rule allowing
+      // inbound 8082, and the phone on the same network. The USB config above
+      // avoids both.
+      "name": "Lizmo — phone (Wi-Fi)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "mobile",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=LIZMO_API_BASE_URL=http://192.168.1.101:8082"]
+    },
+    {
+      "name": "Lizmo Admin — Chrome",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "admin",
+      "program": "lib/main.dart",
+      "args": ["-d", "chrome"]
+    }
+  ]
+}
