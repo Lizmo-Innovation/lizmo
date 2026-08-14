@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'auth/active_role.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/rent_roll_screen.dart';
 import 'screens/tenant_home_screen.dart';
 
@@ -13,9 +14,13 @@ import 'screens/tenant_home_screen.dart';
 abstract final class Routes {
   static const splash = '/';
   static const login = '/login';
+  static const register = '/register';
   static const tenant = '/tenant';
   static const landlord = '/landlord';
   static const noProfile = '/no-profile';
+
+  /// Reachable without a session. Anything else redirects to login.
+  static const signedOutAllowed = {login, register};
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -38,7 +43,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         // flashing login at someone who turns out to be signed in.
         AuthUnknown() => location == Routes.splash ? null : Routes.splash,
 
-        AuthSignedOut() => location == Routes.login ? null : Routes.login,
+        // Sign-up is reachable without a session too, or a new user could
+        // never get past login.
+        AuthSignedOut() =>
+          Routes.signedOutAllowed.contains(location) ? null : Routes.login,
 
         AuthSignedIn(:final session) => _signedInRedirect(ref, session, location),
       };
@@ -46,6 +54,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
+      GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
       GoRoute(path: Routes.tenant, builder: (context, state) => const TenantHomeScreen()),
       GoRoute(path: Routes.landlord, builder: (context, state) => const RentRollScreen()),
       GoRoute(path: Routes.noProfile, builder: (context, state) => const NoProfileScreen()),

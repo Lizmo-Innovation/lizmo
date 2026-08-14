@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:lizmo_core/lizmo_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
+
+import '../router.dart';
 
 
 /// Sign-in screen.
@@ -127,6 +130,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _submitting
                         ? const _SubmittingButton()
                         : PrimaryActionButton(label: 'Sign in', onPressed: _submit),
+
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.go(Routes.register),
+                      child: Text(
+                        'New to Lizmo? Create an account',
+                        style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -5,6 +5,7 @@ import 'package:lizmo/auth/active_role.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/login_screen.dart';
+import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/rent_roll_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -168,6 +169,79 @@ void main() {
       );
       expect(ActiveRoleController.defaultFor({LizmoProfile.tenant}), LizmoProfile.tenant);
       expect(ActiveRoleController.defaultFor({}), isNull);
+    });
+  });
+
+  group('registration', () {
+    testWidgets('is reachable from login without a session', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await tester.pumpAndSettle();
+
+      // The signed-out redirect has to permit /register, or a new user could
+      // never get past login.
+      expect(find.byType(RegisterScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+    });
+
+    testWidgets('can go back to login', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('I already have an account'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('rejects empty fields before calling the API', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Create account'));
+      await tester.pump();
+
+      expect(find.text('Enter your name'), findsOneWidget);
+      expect(find.text('Enter an email address or phone number'), findsOneWidget);
+      expect(find.text('Choose a password'), findsOneWidget);
+    });
+
+    testWidgets('enforces the same password length as the server', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Ana Reyes');
+      await tester.enterText(find.byType(TextFormField).at(1), 'ana@example.com');
+      await tester.enterText(find.byType(TextFormField).at(2), 'short');
+      await tester.tap(find.text('Create account'));
+      await tester.pump();
+
+      // Caught here rather than after a round trip.
+      expect(find.text('Use at least 8 characters'), findsOneWidget);
+    });
+
+    testWidgets('landlord choice is off by default and toggles', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await tester.pumpAndSettle();
+
+      Checkbox box() => tester.widget<Checkbox>(find.byType(Checkbox));
+      expect(box().value, isFalse, reason: 'most accounts are tenants');
+
+      await tester.tap(find.text('I rent out property'));
+      await tester.pump();
+
+      expect(box().value, isTrue);
     });
   });
 
