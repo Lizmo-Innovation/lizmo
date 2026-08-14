@@ -4,7 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lizmo_admin/admin_shell.dart';
+import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 
 /// Renders the console for visual review.
@@ -26,7 +26,7 @@ Widget _app(AuthState initial) => ProviderScope(
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
       ],
-      child: const MaterialApp(home: AdminShell()),
+      child: const LizmoAdminApp(),
     );
 
 void main() {
@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await expectLater(
-      find.byType(AdminShell),
+      find.byType(LizmoAdminApp),
       matchesGoldenFile('goldens/platform_payments.png'),
     );
   });
@@ -60,7 +60,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await expectLater(
-      find.byType(AdminShell),
+      find.byType(LizmoAdminApp),
       matchesGoldenFile('goldens/admin_login.png'),
     );
   });

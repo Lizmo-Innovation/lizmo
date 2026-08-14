@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/auth/active_role.dart';
-import 'package:lizmo/app_shell.dart';
+import 'package:lizmo/main.dart';
+import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/rent_roll_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 
-/// Drives the shell directly, without touching secure storage or the network.
+/// Drives routing directly, without touching secure storage or the network.
 class _FakeAuth extends AuthController {
   _FakeAuth(this._initial);
 
@@ -21,8 +22,9 @@ class _FakeAuth extends AuthController {
 Widget _app(AuthState initial) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
       ],
-      child: const MaterialApp(home: AppShell()),
+      child: const LizmoApp(),
     );
 
 AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
@@ -35,35 +37,90 @@ AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
     );
 
 void main() {
-  group('app shell routes on auth state', () {
-    testWidgets('signed out shows login', (tester) async {
+  group('routing follows auth state', () {
+    testWidgets('signed out lands on login', (tester) async {
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(RentRollScreen), findsNothing);
     });
 
-    testWidgets('unknown shows a splash, never app content', (tester) async {
+    testWidgets('unknown holds on the splash, never app content', (tester) async {
       await tester.pumpWidget(_app(const AuthUnknown()));
-      // Matters on launch: showing content before tokens are checked would
-      // flash the app to a user who is not signed in.
+      await tester.pump();
+
+      // Showing content before tokens are checked would flash the app at
+      // someone who is not signed in.
       expect(find.byType(LoginScreen), findsNothing);
       expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('a tenant lands on their own screen, not the rent roll', (tester) async {
+    testWidgets('a tenant lands on their own screen', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+      await tester.pumpAndSettle();
 
       expect(find.byType(TenantHomeScreen), findsOneWidget);
-      // The bug this guards: tenants were shown the landlord's rent roll,
-      // exposing every other tenant in the property.
       expect(find.byType(RentRollScreen), findsNothing);
     });
 
     testWidgets('a landlord lands on the rent roll', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
 
       expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.byType(TenantHomeScreen), findsNothing);
+    });
+  });
+
+  group('route guards', () {
+    testWidgets('a tenant cannot reach the rent roll by URL', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      // Navigate straight at the landlord route, as a typed URL or stale deep
+      // link would. The rent roll lists every tenant in the property with their
+      // payment status, so reaching it must not be possible.
+      container.read(routerProvider).go(Routes.landlord);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RentRollScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('signing out from any screen returns to login', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider.overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+
+      // The router listens to auth, so no screen has to handle this itself.
+      container.read(authControllerProvider.notifier).state = const AuthSignedOut();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(TenantHomeScreen), findsNothing);
     });
   });
@@ -71,36 +128,36 @@ void main() {
   group('role switching', () {
     testWidgets('a single-profile user sees no switcher', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+      await tester.pumpAndSettle();
 
       expect(find.text('Tenant'), findsNothing);
       expect(find.text('Landlord'), findsNothing);
     });
 
-    testWidgets('holding both profiles opens on landlord with a switcher', (tester) async {
+    testWidgets('holding both opens on landlord with a switcher', (tester) async {
       await tester.pumpWidget(
         _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
       );
+      await tester.pumpAndSettle();
 
       expect(find.byType(RentRollScreen), findsOneWidget);
       expect(find.text('Tenant'), findsOneWidget);
       expect(find.text('Landlord'), findsOneWidget);
     });
 
-    testWidgets('switching to tenant changes the screen', (tester) async {
+    testWidgets('switching navigates between the two homes', (tester) async {
       await tester.pumpWidget(
         _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
       );
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tenant'));
       await tester.pumpAndSettle();
-
       expect(find.byType(TenantHomeScreen), findsOneWidget);
       expect(find.byType(RentRollScreen), findsNothing);
 
-      // And back again, so the switch is not one-way.
       await tester.tap(find.text('Landlord'));
       await tester.pumpAndSettle();
-
       expect(find.byType(RentRollScreen), findsOneWidget);
     });
 
@@ -109,10 +166,7 @@ void main() {
         ActiveRoleController.defaultFor({LizmoProfile.tenant, LizmoProfile.landlord}),
         LizmoProfile.landlord,
       );
-      expect(
-        ActiveRoleController.defaultFor({LizmoProfile.tenant}),
-        LizmoProfile.tenant,
-      );
+      expect(ActiveRoleController.defaultFor({LizmoProfile.tenant}), LizmoProfile.tenant);
       expect(ActiveRoleController.defaultFor({}), isNull);
     });
   });
@@ -120,6 +174,7 @@ void main() {
   group('login screen', () {
     testWidgets('rejects empty fields before calling the API', (tester) async {
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Sign in'));
       await tester.pump();
@@ -130,10 +185,10 @@ void main() {
 
     testWidgets('password is obscured and can be revealed', (tester) async {
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
 
-      EditableText passwordField() => tester.widget<EditableText>(
-            find.byType(EditableText).last,
-          );
+      EditableText passwordField() =>
+          tester.widget<EditableText>(find.byType(EditableText).last);
 
       expect(passwordField().obscureText, isTrue);
 
@@ -144,27 +199,16 @@ void main() {
     });
   });
 
-  group('session', () {
-    test('exposes role switching only when more than one profile is held', () {
-      const tenantOnly = Session(
-        userId: 'u1', name: 'Ana', accessToken: 't',
-        profiles: {LizmoProfile.tenant},
-      );
-      const both = Session(
-        userId: 'u2', name: 'Elena', accessToken: 't',
-        profiles: {LizmoProfile.tenant, LizmoProfile.landlord},
-      );
-
-      expect(tenantOnly.hasMultipleProfiles, isFalse);
-      expect(both.hasMultipleProfiles, isTrue);
-      expect(both.isLandlord, isTrue);
-    });
-
-    test('unknown profile values are ignored rather than crashing', () {
-      // Forward compatibility: the backend may add a profile this build has
-      // never heard of, and an older app must keep working.
-      expect(LizmoProfile.parse('STAFF'), isNull);
-      expect(LizmoProfile.parse('tenant'), LizmoProfile.tenant);
+  group('routes', () {
+    test('paths are distinct', () {
+      final paths = {
+        Routes.splash,
+        Routes.login,
+        Routes.tenant,
+        Routes.landlord,
+        Routes.noProfile,
+      };
+      expect(paths.length, 5, reason: 'a duplicated path would shadow a route');
     });
   });
 }

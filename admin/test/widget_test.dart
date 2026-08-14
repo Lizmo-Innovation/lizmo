@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lizmo_admin/admin_shell.dart';
+import 'package:lizmo_admin/main.dart';
+import 'package:lizmo_admin/router.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
 import 'package:lizmo_admin/screens/platform_payments_screen.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -22,7 +23,7 @@ Widget _app(AuthState initial) => ProviderScope(
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
       ],
-      child: const MaterialApp(home: AdminShell()),
+      child: const LizmoAdminApp(),
     );
 
 AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
@@ -46,6 +47,7 @@ void main() {
     testWidgets('signed out shows login', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
 
       expect(find.byType(AdminLoginScreen), findsOneWidget);
       expect(find.byType(PlatformPaymentsScreen), findsNothing);
@@ -54,6 +56,7 @@ void main() {
     testWidgets('a platform admin reaches the queue', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
 
       expect(find.byType(PlatformPaymentsScreen), findsOneWidget);
     });
@@ -63,6 +66,7 @@ void main() {
       await tester.pumpWidget(
         _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
       );
+      await tester.pumpAndSettle();
 
       // Signing in successfully is not enough: this console verifies payments
       // made to Lizmo, and a customer must never reach it.
@@ -75,14 +79,45 @@ void main() {
       await tester.pumpWidget(
         _app(_signedIn({LizmoProfile.tenant, LizmoProfile.admin})),
       );
+      await tester.pumpAndSettle();
 
       // Lizmo staff may rent somewhere too; that must not lock them out.
       expect(find.byType(PlatformPaymentsScreen), findsOneWidget);
     });
 
+    testWidgets('a landlord cannot reach the queue by URL', (tester) async {
+      _desktop(tester);
+
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeAuth(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
+          ),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoAdminApp()),
+      );
+      await tester.pumpAndSettle();
+
+      // Typing the URL is the obvious way to try to bypass a client-side gate,
+      // so the redirect must run on direct navigation too, not just on taps.
+      container.read(routerProvider).go(Routes.payments);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformPaymentsScreen), findsNothing);
+      expect(find.textContaining('not a Lizmo admin'), findsOneWidget);
+    });
+
     testWidgets('unknown auth state shows neither login nor the queue', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(const AuthUnknown()));
+      // pump, not pumpAndSettle: the splash spinner never stops animating, so
+      // settling would wait forever.
+      await tester.pump();
 
       expect(find.byType(AdminLoginScreen), findsNothing);
       expect(find.byType(PlatformPaymentsScreen), findsNothing);
@@ -94,6 +129,7 @@ void main() {
     testWidgets('lists payments with their statuses', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
 
       expect(find.text('LIZMO ADMIN'), findsOneWidget);
       expect(find.text('Platform payments'), findsOneWidget);
@@ -103,6 +139,7 @@ void main() {
     testWidgets('only pending payments expose confirm/reject', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
 
       // Confirmed and overdue rows have nothing left to decide.
       expect(find.text('Confirm'), findsNWidgets(2));
@@ -112,6 +149,7 @@ void main() {
     testWidgets('sign out is reachable from the header', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
 
       // An admin session can confirm payments to Lizmo, so ending one on a
       // shared machine must be easy.
@@ -123,6 +161,7 @@ void main() {
     testWidgets('rejects empty fields before calling the API', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Sign in'));
       await tester.pump();
@@ -134,6 +173,7 @@ void main() {
     testWidgets('warns that the session is tab-scoped', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
 
       // Tokens are held in memory only, so this is behaviour worth stating
       // rather than letting admins discover it.

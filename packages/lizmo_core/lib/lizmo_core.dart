@@ -14,5 +14,6 @@ export 'src/api/api_config.dart';
 export 'src/api/api_failure.dart';
 export 'src/api/authenticated_client.dart';
 export 'src/auth/auth_controller.dart';
+export 'src/auth/auth_refresh_notifier.dart';
 export 'src/auth/auth_state.dart';
 export 'src/auth/token_store.dart';

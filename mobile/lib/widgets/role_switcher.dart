@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../auth/active_role.dart';
+import '../router.dart';
 
 /// Switches between the tenant and landlord views.
 ///
@@ -35,7 +37,15 @@ class RoleSwitcher extends ConsumerWidget {
               _RoleTab(
                 label: role == LizmoProfile.tenant ? 'Tenant' : 'Landlord',
                 selected: active == role,
-                onTap: () => ref.read(activeRoleProvider.notifier).switchTo(role),
+                onTap: () {
+                  ref.read(activeRoleProvider.notifier).switchTo(role);
+                  // Navigate explicitly: the router redirects on *auth* changes,
+                  // and switching role is not one. go() rather than push() so
+                  // back does not return to the other role's screen.
+                  context.go(role == LizmoProfile.tenant
+                      ? Routes.tenant
+                      : Routes.landlord);
+                },
               ),
         ],
       ),

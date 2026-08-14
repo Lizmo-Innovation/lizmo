@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import 'admin_shell.dart';
+import 'router.dart';
 
 void main() {
   runApp(
@@ -28,14 +28,15 @@ void main() {
 /// Separate from the mobile app on purpose: platform admins are Lizmo staff,
 /// not landlords, tenants or their caretakers, and this tooling should never
 /// ship inside the app customers install.
-class LizmoAdminApp extends StatelessWidget {
+class LizmoAdminApp extends ConsumerWidget {
   const LizmoAdminApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'Lizmo Admin',
       debugShowCheckedModeBanner: false,
+      routerConfig: ref.watch(routerProvider),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: LizmoColors.teal900,
@@ -45,7 +46,6 @@ class LizmoAdminApp extends StatelessWidget {
         scaffoldBackgroundColor: LizmoColors.canvas,
         useMaterial3: true,
       ),
-      home: const AdminShell(),
     );
   }
 }
