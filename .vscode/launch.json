@@ -14,8 +14,8 @@
       "name": "Lizmo — phone (USB)",
       "request": "launch",
       "type": "dart",
-      "cwd": "mobile",
-      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile",
+      "program": "${workspaceFolder}/mobile/lib/main.dart",
       "args": ["--dart-define=LIZMO_API_BASE_URL=http://localhost:8082"]
     },
     {
@@ -24,8 +24,8 @@
       "name": "Lizmo — emulator",
       "request": "launch",
       "type": "dart",
-      "cwd": "mobile",
-      "program": "lib/main.dart"
+      "cwd": "${workspaceFolder}/mobile",
+      "program": "${workspaceFolder}/mobile/lib/main.dart"
     },
     {
       // Phone over Wi-Fi instead of USB. Needs a firewall rule allowing
@@ -34,16 +34,16 @@
       "name": "Lizmo — phone (Wi-Fi)",
       "request": "launch",
       "type": "dart",
-      "cwd": "mobile",
-      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile",
+      "program": "${workspaceFolder}/mobile/lib/main.dart",
       "args": ["--dart-define=LIZMO_API_BASE_URL=http://192.168.1.101:8082"]
     },
     {
       "name": "Lizmo Admin — Chrome",
       "request": "launch",
       "type": "dart",
-      "cwd": "admin",
-      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/admin",
+      "program": "${workspaceFolder}/admin/lib/main.dart",
       "args": ["-d", "chrome"]
     }
   ]
