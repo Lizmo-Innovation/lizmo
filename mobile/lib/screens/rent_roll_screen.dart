@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../widgets/role_switcher.dart';
+
 
 /// Landlord's rent roll for one property and month.
 ///
@@ -50,6 +52,7 @@ class RentRollScreen extends StatelessWidget {
           const LatticeHeader(
             eyebrow: 'Sunrise Apartments',
             title: 'Rent roll — August',
+            trailing: RoleSwitcher(),
             stats: [
               LatticeHeaderStat(value: '9/12', label: 'Slots occupied'),
               LatticeHeaderStat(value: '₱2,150', label: 'Overdue total'),

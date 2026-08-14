@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import 'auth/auth_state.dart';
+import 'auth/active_role.dart';
 import 'auth/auth_controller.dart';
+import 'auth/auth_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/rent_roll_screen.dart';
+import 'screens/tenant_home_screen.dart';
 
-/// Decides what the app shows, based purely on auth state.
+/// Decides what the app shows, from auth state and the active role.
 ///
 /// Screens never navigate to or from login themselves — they change auth state
 /// and the shell reacts. That keeps "signed out" a single source of truth, so a
@@ -23,9 +25,26 @@ class AppShell extends ConsumerWidget {
     return switch (auth) {
       AuthUnknown() => const _Splash(),
       AuthSignedOut() => const LoginScreen(),
-      // TODO: tenants should land on their own lease view, not the rent roll —
-      // this shows the landlord screen to everyone until that screen exists.
-      AuthSignedIn() => const RentRollScreen(),
+      AuthSignedIn() => const _RoleHome(),
+    };
+  }
+}
+
+/// Routes to the home screen for whichever role is active.
+class _RoleHome extends ConsumerWidget {
+  const _RoleHome();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(activeRoleProvider);
+
+    return switch (role) {
+      LizmoProfile.landlord => const RentRollScreen(),
+      LizmoProfile.tenant => const TenantHomeScreen(),
+      // Only reachable if the account somehow holds no profiles at all.
+      // Registration always creates a tenant profile, so this is a guard
+      // against bad data rather than an expected state.
+      null => const _NoProfile(),
     };
   }
 }
@@ -46,6 +65,48 @@ class _Splash extends StatelessWidget {
           child: CircularProgressIndicator(
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoProfile extends ConsumerWidget {
+  const _NoProfile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'This account has no tenant or landlord profile yet.',
+                  textAlign: TextAlign.center,
+                  style: LizmoType.rowName,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Contact your landlord, or sign in with a different account.',
+                  textAlign: TextAlign.center,
+                  style: LizmoType.rowSub,
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+                  child: Text(
+                    'Sign out',
+                    style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

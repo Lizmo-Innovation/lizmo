@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizmo/auth/active_role.dart';
 import 'package:lizmo/auth/auth_controller.dart';
 import 'package:lizmo/auth/auth_state.dart';
 import 'package:lizmo/app_shell.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/rent_roll_screen.dart';
+import 'package:lizmo/screens/tenant_home_screen.dart';
 
 /// Drives the shell directly, without touching secure storage or the network.
 class _FakeAuth extends AuthController {
@@ -22,6 +24,15 @@ Widget _app(AuthState initial) => ProviderScope(
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
       ],
       child: const MaterialApp(home: AppShell()),
+    );
+
+AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
+      Session(
+        userId: 'u1',
+        name: 'Ana Reyes',
+        profiles: profiles,
+        accessToken: 'token',
+      ),
     );
 
 void main() {
@@ -41,15 +52,69 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('signed in shows app content', (tester) async {
-      await tester.pumpWidget(_app(const AuthSignedIn(Session(
-        userId: 'u1',
-        name: 'Ana Reyes',
-        profiles: {LizmoProfile.tenant},
-        accessToken: 'token',
-      ))));
+    testWidgets('a tenant lands on their own screen, not the rent roll', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+      // The bug this guards: tenants were shown the landlord's rent roll,
+      // exposing every other tenant in the property.
+      expect(find.byType(RentRollScreen), findsNothing);
+    });
+
+    testWidgets('a landlord lands on the rent roll', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+
       expect(find.byType(RentRollScreen), findsOneWidget);
-      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsNothing);
+    });
+  });
+
+  group('role switching', () {
+    testWidgets('a single-profile user sees no switcher', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+
+      expect(find.text('Tenant'), findsNothing);
+      expect(find.text('Landlord'), findsNothing);
+    });
+
+    testWidgets('holding both profiles opens on landlord with a switcher', (tester) async {
+      await tester.pumpWidget(
+        _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
+      );
+
+      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(find.text('Tenant'), findsOneWidget);
+      expect(find.text('Landlord'), findsOneWidget);
+    });
+
+    testWidgets('switching to tenant changes the screen', (tester) async {
+      await tester.pumpWidget(
+        _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
+      );
+
+      await tester.tap(find.text('Tenant'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+      expect(find.byType(RentRollScreen), findsNothing);
+
+      // And back again, so the switch is not one-way.
+      await tester.tap(find.text('Landlord'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RentRollScreen), findsOneWidget);
+    });
+
+    test('default role prefers landlord when both are held', () {
+      expect(
+        ActiveRoleController.defaultFor({LizmoProfile.tenant, LizmoProfile.landlord}),
+        LizmoProfile.landlord,
+      );
+      expect(
+        ActiveRoleController.defaultFor({LizmoProfile.tenant}),
+        LizmoProfile.tenant,
+      );
+      expect(ActiveRoleController.defaultFor({}), isNull);
     });
   });
 

@@ -15,6 +15,7 @@ class LatticeHeader extends StatelessWidget {
     required this.eyebrow,
     required this.title,
     this.stats = const [],
+    this.trailing,
   });
 
   /// Property name shown above the title, uppercased.
@@ -23,6 +24,10 @@ class LatticeHeader extends StatelessWidget {
 
   /// Summary figures rendered across the bottom of the header.
   final List<LatticeHeaderStat> stats;
+
+  /// Optional control aligned to the title, e.g. the role switcher. Kept in the
+  /// header rather than an app bar because this header *is* the app bar.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +48,26 @@ class LatticeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(eyebrow.toUpperCase(), style: LizmoType.eyebrow),
+              // The trailing control sits on the eyebrow row rather than beside
+              // the title: the eyebrow is short, so the title keeps the full
+              // width instead of wrapping into a narrow column.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      eyebrow.toUpperCase(),
+                      style: LizmoType.eyebrow,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 12),
+                    trailing!,
+                  ],
+                ],
+              ),
               const SizedBox(height: 6),
               Text(title, style: LizmoType.screenTitle),
               if (stats.isNotEmpty) ...[
