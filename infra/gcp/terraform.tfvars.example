@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+#
+# No secrets belong in this file — the database URL and JWT signing key go into
+# Secret Manager directly (see secrets.tf), so they never reach Terraform state.
+
+project_id = "your-gcp-project-id"
+
+# Singapore: ~40ms from the Philippines.
+region = "asia-southeast1"
+
+# Leave at 0 to stay inside the free tier; expect a 10-20s cold start.
+# Set to 1 when that becomes unacceptable — this is the main cost lever.
+min_instances = 0
+max_instances = 3

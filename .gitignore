@@ -5,3 +5,11 @@ build/
 *.iml
 .env
 .DS_Store
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
