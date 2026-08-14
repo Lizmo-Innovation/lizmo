@@ -20,3 +20,6 @@ packages/lizmo_api/pubspec.lock
 
 # Office lock files (created while a document is open)
 ~$*
+
+# Golden test failure artifacts (regenerated on each failing run)
+**/test/failures/
