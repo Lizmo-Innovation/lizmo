@@ -14,9 +14,426 @@
         {
             "name": "Auth",
             "description": "Registration, login and token lifecycle"
+        },
+        {
+            "name": "Units",
+            "description": "Units and the beds within them"
+        },
+        {
+            "name": "Properties",
+            "description": "A landlord's properties and their units"
         }
     ],
     "paths": {
+        "/api/v1/units/{id}": {
+            "get": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "View one unit",
+                "operationId": "get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnitResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Update a unit",
+                "description": "Rental mode cannot change, and capacity cannot drop below the beds already defined.",
+                "operationId": "update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnitRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnitResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Delete a unit",
+                "description": "Refused while the unit still has beds.",
+                "operationId": "delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/properties/{id}": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "View one property",
+                "operationId": "get_1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "404": {
+                        "description": "No such property, or it belongs to another landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Update a property",
+                "operationId": "update_1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Delete a property",
+                "description": "Refused while the property still has units, to protect their billing history.",
+                "operationId": "delete_1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/units/{id}/beds": {
+            "get": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "List a unit's beds",
+                "operationId": "listBeds",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/BedResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Add a bed",
+                "description": "Bedspace units only, and never beyond the unit's capacity.",
+                "operationId": "createBed",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BedRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BedResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/properties": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "List my properties",
+                "description": "Only properties owned by the signed-in landlord are ever returned.",
+                "operationId": "list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PropertyResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Create a property",
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "403": {
+                        "description": "Not a landlord, or the account is locked for an unpaid invoice",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/properties/{id}/units": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "List a property's units",
+                "operationId": "listUnits",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UnitResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Add a unit to a property",
+                "description": "Rental mode is fixed at creation and cannot be changed afterwards.",
+                "operationId": "createUnit",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnitRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnitResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -142,6 +559,7 @@
                     "Auth"
                 ],
                 "summary": "Sign in with email or phone plus password",
+                "description": "Failed attempts are rate limited per account and per client address.",
                 "operationId": "login",
                 "requestBody": {
                     "content": {
@@ -164,6 +582,16 @@
                             }
                         }
                     },
+                    "429": {
+                        "description": "Too many failed attempts; see Retry-After",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "Tokens issued",
                         "content": {
@@ -176,10 +604,258 @@
                     }
                 }
             }
+        },
+        "/api/v1/beds/{id}": {
+            "delete": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Remove a bed",
+                "description": "Refused while the bed is occupied.",
+                "operationId": "deleteBed",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
+            "UnitRequest": {
+                "required": [
+                    "rentalMode",
+                    "unitNumber"
+                ],
+                "type": "object",
+                "properties": {
+                    "unitNumber": {
+                        "maxLength": 50,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "2B"
+                    },
+                    "floor": {
+                        "maxLength": 20,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "2"
+                    },
+                    "sizeSqm": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
+                        "type": "number",
+                        "example": 24.5
+                    },
+                    "rentalMode": {
+                        "type": "string",
+                        "example": "BEDSPACE",
+                        "enum": [
+                            "WHOLE_UNIT",
+                            "BEDSPACE"
+                        ]
+                    },
+                    "capacity": {
+                        "minimum": 1,
+                        "type": "integer",
+                        "format": "int32",
+                        "example": 4,
+                        "default": 1
+                    }
+                },
+                "description": "Unit details"
+            },
+            "UnitResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "floor": {
+                        "type": "string"
+                    },
+                    "sizeSqm": {
+                        "type": "number"
+                    },
+                    "rentalMode": {
+                        "type": "string",
+                        "enum": [
+                            "WHOLE_UNIT",
+                            "BEDSPACE"
+                        ]
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "VACANT",
+                            "PARTIALLY_OCCUPIED",
+                            "OCCUPIED",
+                            "MAINTENANCE"
+                        ]
+                    },
+                    "bedCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "A unit within a property"
+            },
+            "PropertyRequest": {
+                "required": [
+                    "address",
+                    "name",
+                    "type"
+                ],
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sunrise Apartments"
+                    },
+                    "address": {
+                        "type": "string",
+                        "example": "12 Mabini St, Quezon City"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "BOARDING_HOUSE",
+                        "enum": [
+                            "APARTMENT",
+                            "BOARDING_HOUSE",
+                            "CONDO",
+                            "SINGLE_HOUSE"
+                        ]
+                    }
+                },
+                "description": "Property details"
+            },
+            "PropertyResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "APARTMENT",
+                            "BOARDING_HOUSE",
+                            "CONDO",
+                            "SINGLE_HOUSE"
+                        ]
+                    },
+                    "unitCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A property owned by the signed-in landlord"
+            },
+            "BedRequest": {
+                "required": [
+                    "bedLabel"
+                ],
+                "type": "object",
+                "properties": {
+                    "bedLabel": {
+                        "maxLength": 50,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Bed 1"
+                    }
+                },
+                "description": "Bed details"
+            },
+            "BedResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "VACANT",
+                            "OCCUPIED",
+                            "MAINTENANCE"
+                        ]
+                    }
+                },
+                "description": "A bed within a bedspace unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "RegisterRequest": {
                 "required": [
                     "name",
@@ -220,30 +896,6 @@
                     }
                 },
                 "description": "New account details"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "AuthResponse": {
                 "type": "object",
