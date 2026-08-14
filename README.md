@@ -21,12 +21,14 @@ docker compose up --build
 ```
 
 - API: http://localhost:8082 (health at `/actuator/health`)
-- Postgres: `localhost:5432`, db/user `lizmo`, password `lizmo_dev`
+- Postgres: `localhost:5433`, db/user `lizmo`, password `lizmo_dev`
 - LocalStack S3: `http://localhost:4567`, bucket `lizmo-uploads-local`
 
-Host ports 8082/4567 are non-default: 8080, 8081, and 4566 are occupied by the
-`admissions-ph` stack on this machine. Container-internal ports are unchanged
-(8080 and 4566), so nothing inside the compose network is affected.
+Every host port here is non-default, because the defaults are already taken on
+this machine: 8080/8081 and 4566 by the `admissions-ph` stack, and 5432 by a
+native PostgreSQL service. Container-internal ports are unchanged (8080, 4566,
+5432), so nothing inside the compose network is affected — only host clients
+such as DBeaver need the remapped numbers.
 
 Flyway applies `V1__init.sql` on API startup, so the schema is created automatically.
 
@@ -42,8 +44,12 @@ docker compose up -d postgres localstack
 cd backend && ./gradlew bootRun
 ```
 
-Defaults in `application.yml` already point at `localhost:5432`. Set
-`AWS_S3_ENDPOINT=http://localhost:4567` to reach the containerized LocalStack.
+Point it at the containers explicitly — `application.yml` defaults to port 5432,
+which on this machine reaches a native PostgreSQL service rather than ours:
+
+```bash
+DB_URL=jdbc:postgresql://localhost:5433/lizmo AWS_S3_ENDPOINT=http://localhost:4567 ./gradlew bootRun
+```
 
 ## Notes
 

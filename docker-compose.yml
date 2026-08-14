@@ -6,7 +6,10 @@ services:
       POSTGRES_USER: lizmo
       POSTGRES_PASSWORD: lizmo_dev
     ports:
-      - "5432:5432"
+      # A native PostgreSQL 18 service already owns 5432 on this machine and
+      # wins for localhost connections. Container port is unchanged, so the API
+      # (which connects over the compose network) is unaffected.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
