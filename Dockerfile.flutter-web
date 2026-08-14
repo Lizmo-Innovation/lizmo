@@ -26,10 +26,11 @@ RUN flutter precache --web
 ARG APP=admin
 WORKDIR /src
 
-# Resolve dependencies from the manifests alone, so edits under lib/ don't
-# invalidate this layer. The shared package is copied whole — its pubspec is
-# part of the app's dependency graph.
-COPY packages/lizmo_ui packages/lizmo_ui
+# Every local package is copied, not just the ones an app names directly:
+# lizmo_core pulls in lizmo_api, and a path dependency that is absent fails
+# `pub get` with a bare exit 66. Copying packages/ wholesale means adding a
+# package never silently breaks this build.
+COPY packages packages
 COPY ${APP}/pubspec.yaml ${APP}/pubspec.lock ./${APP}/
 RUN cd ${APP} && flutter pub get
 
