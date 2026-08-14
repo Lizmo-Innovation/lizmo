@@ -11,8 +11,9 @@ import 'package:lizmo/auth/auth_state.dart';
 /// Renders each role's home screen for visual review.
 /// Regenerate with `flutter test test/golden_test.dart --update-goldens`.
 ///
-/// google_fonts cannot fetch under `flutter test`, so these verify layout and
-/// colour only — type falls back until the fonts are bundled.
+/// Now that the fonts are bundled in lizmo_ui these render with real type, so a
+/// typography regression is visible here. Tagged `golden` and excluded from CI:
+/// they are generated on Windows and rasterise differently on Linux.
 class _FakeAuth extends AuthController {
   _FakeAuth(this._initial);
 

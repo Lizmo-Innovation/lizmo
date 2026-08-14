@@ -8,8 +8,8 @@ import 'package:lizmo_admin/main.dart';
 /// Renders the admin console at desktop size for visual review.
 /// Regenerate with `flutter test --update-goldens`.
 ///
-/// As with the mobile goldens, google_fonts cannot fetch under `flutter test`,
-/// so type falls back — this verifies layout and colour only.
+/// Renders with real type now that the fonts are bundled in lizmo_ui, so a
+/// typography regression shows up here.
 void main() {
   testWidgets('platform payments golden', (tester) async {
     tester.view

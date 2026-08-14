@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +17,20 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  # Bundled rather than fetched at runtime: the app must render correctly
+  # offline, and google_fonts cannot fetch under `flutter test`, which left
+  # every golden rendering fallback type. See fonts/README.md.
+  fonts:
+    - family: Space Grotesk
+      fonts:
+        # Variable font with a wght axis; LizmoType drives it via fontVariations.
+        - asset: fonts/SpaceGrotesk-Variable.ttf
+    - family: Manrope
+      fonts:
+        - asset: fonts/Manrope-Variable.ttf
+    - family: IBM Plex Mono
+      fonts:
+        - asset: fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
