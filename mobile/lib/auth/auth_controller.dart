@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:lizmo_api/api.dart';
 
 import '../api/api_config.dart';
 import '../api/api_failure.dart';
+import '../api/authenticated_client.dart';
 import 'auth_state.dart';
 import 'token_store.dart';
 
@@ -12,10 +14,21 @@ import 'token_store.dart';
 final bearerAuthProvider = Provider<HttpBearerAuth>((ref) => HttpBearerAuth());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(
+  final client = ApiClient(
     basePath: ApiConfig.baseUrl,
     authentication: ref.watch(bearerAuthProvider),
   );
+
+  // Reading the controller lazily inside the callback rather than here: the
+  // controller depends on this provider, so resolving it eagerly would be a
+  // cycle. By the time a 401 arrives it is long since built.
+  client.client = AuthenticatedClient(
+    inner: http.Client(),
+    onUnauthorized: () =>
+        ref.read(authControllerProvider.notifier).refreshAccessToken(),
+  );
+
+  return client;
 });
 
 final authApiProvider = Provider<AuthApi>((ref) {
@@ -110,6 +123,40 @@ class AuthController extends Notifier<AuthState> {
       await _persist(response);
     } catch (error) {
       throw ApiFailure.from(error);
+    }
+  }
+
+  /// Exchanges the stored refresh token for a new access token, mid-session.
+  ///
+  /// Called by [AuthenticatedClient] when a request comes back 401, and returns
+  /// the new access token so that request can be replayed. Returns null when
+  /// the session is genuinely over, having signed out first so the shell moves
+  /// to login.
+  ///
+  /// A network failure returns null *without* signing out: the tokens may still
+  /// be perfectly valid, and discarding a 30-day credential because the train
+  /// went into a tunnel would be its own bug.
+  Future<String?> refreshAccessToken() async {
+    final refreshToken = await _tokens.readRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) {
+      await _signOutLocally();
+      return null;
+    }
+
+    try {
+      final response = await _api.refresh(RefreshRequest(refreshToken: refreshToken));
+      if (response == null) {
+        await _signOutLocally();
+        return null;
+      }
+      await _persist(response);
+      return response.accessToken;
+    } catch (error) {
+      if (ApiFailure.from(error).isNetwork) {
+        return null;
+      }
+      await _signOutLocally();
+      return null;
     }
   }
 
