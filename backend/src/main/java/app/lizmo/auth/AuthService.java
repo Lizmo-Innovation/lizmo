@@ -39,6 +39,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
     private final JwtProperties jwtProps;
+    private final LoginThrottle throttle;
 
     public AuthService(
             UserRepository users,
@@ -47,7 +48,8 @@ public class AuthService {
             RefreshTokenRepository refreshTokens,
             PasswordEncoder passwordEncoder,
             JwtService jwt,
-            JwtProperties jwtProps) {
+            JwtProperties jwtProps,
+            LoginThrottle throttle) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
@@ -55,6 +57,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
         this.jwtProps = jwtProps;
+        this.throttle = throttle;
     }
 
     @Transactional
@@ -90,25 +93,29 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String clientAddress) {
         String identifier = normalise(request.identifier());
 
-        User user = findByIdentifier(identifier)
-                // Same error whether the account is missing or the password is
-                // wrong — distinguishing them tells an attacker which accounts
-                // exist.
-                .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS,
-                        "Email, phone or password is incorrect."));
+        // Checked before touching the password: a throttled caller should cost
+        // us nothing, and bcrypt verification is deliberately expensive.
+        if (throttle.isThrottled(identifier, clientAddress)) {
+            throw new ThrottledException(throttle.retryAfterSeconds(identifier, clientAddress));
+        }
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        User user = findByIdentifier(identifier).orElse(null);
+
+        // Same error whether the account is missing, the password is wrong, or
+        // the account is inactive — distinguishing them tells an attacker which
+        // accounts exist.
+        if (user == null
+                || !passwordEncoder.matches(request.password(), user.getPasswordHash())
+                || !user.isActive()) {
+            throttle.recordFailure(identifier, clientAddress);
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS,
                     "Email, phone or password is incorrect.");
         }
-        if (!user.isActive()) {
-            throw new ApiException(ErrorCode.INVALID_CREDENTIALS,
-                    "Email, phone or password is incorrect.");
-        }
 
+        throttle.recordSuccess(identifier);
         return issueTokens(user);
     }
 

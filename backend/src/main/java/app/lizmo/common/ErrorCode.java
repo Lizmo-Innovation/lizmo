@@ -30,6 +30,9 @@ public enum ErrorCode {
     /** Neither email nor phone was supplied — chk_contact requires one. */
     CONTACT_REQUIRED(HttpStatus.BAD_REQUEST),
 
+    /** Too many failed sign-in attempts. Carries Retry-After. */
+    TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
+
     NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /**

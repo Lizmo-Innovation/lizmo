@@ -1,9 +1,11 @@
 package app.lizmo.common;
 
+import app.lizmo.auth.ThrottledException;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +21,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiError> handleApi(ApiException ex) {
+        // Throttling carries a retry delay, so a locked-out user can be told how
+        // long to wait rather than guessing.
+        if (ex instanceof ThrottledException throttled) {
+            return ResponseEntity.status(ex.getCode().status())
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(throttled.getRetryAfterSeconds()))
+                    .body(ApiError.of(ex.getCode(), ex.getMessage()));
+        }
+
         return ResponseEntity.status(ex.getCode().status())
                 .body(ApiError.of(ex.getCode(), ex.getMessage()));
     }
