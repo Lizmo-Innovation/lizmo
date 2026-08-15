@@ -39,6 +39,19 @@ public class Unit {
     @Column(name = "size_sqm")
     private BigDecimal sizeSqm;
 
+    /**
+     * Asking rent: per bed for BEDSPACE, for the whole unit for WHOLE_UNIT.
+     *
+     * <p>Nullable, because a landlord may set a unit up before deciding what to
+     * charge. Null means "not set" — never zero, which would read as free.
+     *
+     * <p>A default for new leases, not the truth about what is charged:
+     * {@code leases.rent_amount} stays authoritative, since a sitting tenant may
+     * be on an older rate.
+     */
+    @Column(name = "rent")
+    private BigDecimal rent;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "rental_mode", nullable = false, updatable = false)
     private RentalMode rentalMode;
@@ -67,7 +80,8 @@ public class Unit {
             String floor,
             BigDecimal sizeSqm,
             RentalMode rentalMode,
-            int capacity) {
+            int capacity,
+            BigDecimal rent) {
         this.id = UUID.randomUUID();
         this.propertyId = propertyId;
         this.unitNumber = unitNumber;
@@ -75,6 +89,7 @@ public class Unit {
         this.sizeSqm = sizeSqm;
         this.rentalMode = rentalMode;
         this.capacity = capacity;
+        this.rent = rent;
         this.status = UnitStatus.VACANT;
     }
 
@@ -91,11 +106,13 @@ public class Unit {
     }
 
     /** Rental mode is deliberately absent: it cannot change after creation. */
-    public void update(String unitNumber, String floor, BigDecimal sizeSqm, int capacity) {
+    public void update(
+            String unitNumber, String floor, BigDecimal sizeSqm, int capacity, BigDecimal rent) {
         this.unitNumber = unitNumber;
         this.floor = floor;
         this.sizeSqm = sizeSqm;
         this.capacity = capacity;
+        this.rent = rent;
     }
 
     public void markMaintenance(boolean underMaintenance) {
@@ -132,6 +149,10 @@ public class Unit {
 
     public int getCapacity() {
         return capacity;
+    }
+
+    public BigDecimal getRent() {
+        return rent;
     }
 
     public UnitStatus getStatus() {

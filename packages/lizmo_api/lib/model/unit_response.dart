@@ -22,6 +22,7 @@ class UnitResponse {
     this.capacity,
     this.status,
     this.bedCount,
+    this.rent,
   });
 
   ///
@@ -84,6 +85,14 @@ class UnitResponse {
   ///
   int? bedCount;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? rent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitResponse &&
     other.id == id &&
@@ -94,7 +103,8 @@ class UnitResponse {
     other.rentalMode == rentalMode &&
     other.capacity == capacity &&
     other.status == status &&
-    other.bedCount == bedCount;
+    other.bedCount == bedCount &&
+    other.rent == rent;
 
   @override
   int get hashCode =>
@@ -107,10 +117,11 @@ class UnitResponse {
     (rentalMode == null ? 0 : rentalMode!.hashCode) +
     (capacity == null ? 0 : capacity!.hashCode) +
     (status == null ? 0 : status!.hashCode) +
-    (bedCount == null ? 0 : bedCount!.hashCode);
+    (bedCount == null ? 0 : bedCount!.hashCode) +
+    (rent == null ? 0 : rent!.hashCode);
 
   @override
-  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount]';
+  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, rent=$rent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -159,6 +170,11 @@ class UnitResponse {
     } else {
       json[r'bedCount'] = null;
     }
+    if (this.rent != null) {
+      json[r'rent'] = this.rent;
+    } else {
+      json[r'rent'] = null;
+    }
     return json;
   }
 
@@ -188,6 +204,9 @@ class UnitResponse {
         capacity: mapValueOfType<int>(json, r'capacity'),
         status: UnitResponseStatusEnum.fromJson(json[r'status']),
         bedCount: mapValueOfType<int>(json, r'bedCount'),
+        rent: json[r'rent'] == null
+            ? null
+            : num.parse('${json[r'rent']}'),
       );
     }
     return null;

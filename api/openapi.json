@@ -463,8 +463,8 @@
                     "required": true
                 },
                 "responses": {
-                    "409": {
-                        "description": "Email or phone already registered",
+                    "400": {
+                        "description": "Validation failed, or neither email nor phone given",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -483,8 +483,8 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Validation failed, or neither email nor phone given",
+                    "409": {
+                        "description": "Email or phone already registered",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -582,16 +582,6 @@
                     "required": true
                 },
                 "responses": {
-                    "200": {
-                        "description": "Tokens issued",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
-                                }
-                            }
-                        }
-                    },
                     "401": {
                         "description": "Credentials rejected",
                         "content": {
@@ -608,6 +598,16 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Tokens issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
                                 }
                             }
                         }
@@ -683,6 +683,13 @@
                         "format": "int32",
                         "example": 4,
                         "default": 1
+                    },
+                    "rent": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
+                        "type": "number",
+                        "description": "Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional \u00e2\u20ac\u201d a landlord may set the unit up before deciding.",
+                        "example": 2500.0
                     }
                 },
                 "description": "Unit details"
@@ -730,6 +737,9 @@
                     "bedCount": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "rent": {
+                        "type": "number"
                     }
                 },
                 "description": "A unit within a property"

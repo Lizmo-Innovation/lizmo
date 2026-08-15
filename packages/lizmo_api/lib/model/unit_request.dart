@@ -18,6 +18,7 @@ class UnitRequest {
     this.sizeSqm,
     required this.rentalMode,
     this.capacity = 1,
+    this.rent,
   });
 
   String unitNumber;
@@ -44,13 +45,25 @@ class UnitRequest {
   /// Minimum value: 1
   int capacity;
 
+  /// Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional â€” a landlord may set the unit up before deciding.
+  ///
+  /// Minimum value: 0.0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? rent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitRequest &&
     other.unitNumber == unitNumber &&
     other.floor == floor &&
     other.sizeSqm == sizeSqm &&
     other.rentalMode == rentalMode &&
-    other.capacity == capacity;
+    other.capacity == capacity &&
+    other.rent == rent;
 
   @override
   int get hashCode =>
@@ -59,10 +72,11 @@ class UnitRequest {
     (floor == null ? 0 : floor!.hashCode) +
     (sizeSqm == null ? 0 : sizeSqm!.hashCode) +
     (rentalMode.hashCode) +
-    (capacity.hashCode);
+    (capacity.hashCode) +
+    (rent == null ? 0 : rent!.hashCode);
 
   @override
-  String toString() => 'UnitRequest[unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity]';
+  String toString() => 'UnitRequest[unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, rent=$rent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -79,6 +93,11 @@ class UnitRequest {
     }
       json[r'rentalMode'] = this.rentalMode;
       json[r'capacity'] = this.capacity;
+    if (this.rent != null) {
+      json[r'rent'] = this.rent;
+    } else {
+      json[r'rent'] = null;
+    }
     return json;
   }
 
@@ -108,6 +127,9 @@ class UnitRequest {
             : num.parse('${json[r'sizeSqm']}'),
         rentalMode: UnitRequestRentalModeEnum.fromJson(json[r'rentalMode'])!,
         capacity: mapValueOfType<int>(json, r'capacity') ?? 1,
+        rent: json[r'rent'] == null
+            ? null
+            : num.parse('${json[r'rent']}'),
       );
     }
     return null;

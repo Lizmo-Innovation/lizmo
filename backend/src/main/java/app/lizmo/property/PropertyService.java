@@ -117,7 +117,8 @@ public class PropertyService {
                 trimToNull(request.floor()),
                 request.sizeSqm(),
                 request.rentalMode(),
-                request.effectiveCapacity()));
+                request.effectiveCapacity(),
+                request.rent()));
 
         return UnitResponse.of(unit, 0);
     }
@@ -151,7 +152,8 @@ public class PropertyService {
                     "Capacity cannot be lower than the %d beds already defined.".formatted(bedCount));
         }
 
-        unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(), request.effectiveCapacity());
+        unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
+                request.effectiveCapacity(), request.rent());
         return UnitResponse.of(units.save(unit), bedCount);
     }
 

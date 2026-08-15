@@ -390,4 +390,68 @@ class PropertyIntegrationTest {
                                 """))
                 .andExpect(status().isBadRequest());
     }
+
+    // ---------- Unit rent ----------
+
+    @Test
+    void a_unit_can_carry_its_asking_rent() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":4,"rent":2500.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rent").value(2500.00));
+    }
+
+    @Test
+    void rent_is_optional_and_stays_null_rather_than_zero() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        // A landlord may set a unit up before deciding what to charge. Zero
+        // would read as free, which is a different claim from "not decided".
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","rentalMode":"WHOLE_UNIT"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rent").doesNotExist());
+    }
+
+    @Test
+    void rent_must_be_positive() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":2,"rent":0}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rent_can_be_changed_without_touching_anything_else() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        // Raising the asking price is routine; it must not disturb the unit's
+        // identity or mode.
+        mvc.perform(put("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":4,"rent":2750.50}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rent").value(2750.50))
+                .andExpect(jsonPath("$.unitNumber").value("2B"))
+                .andExpect(jsonPath("$.rentalMode").value("BEDSPACE"));
+    }
 }

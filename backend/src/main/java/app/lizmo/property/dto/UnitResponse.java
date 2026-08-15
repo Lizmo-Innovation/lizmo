@@ -9,6 +9,8 @@ import java.util.UUID;
 
 /**
  * @param bedCount number of beds defined; always 0 for WHOLE_UNIT
+ * @param rent     asking rent, per bed for BEDSPACE. Null when the landlord has
+ *                 not set one — never 0, which would read as free.
  */
 @Schema(description = "A unit within a property")
 public record UnitResponse(
@@ -20,7 +22,8 @@ public record UnitResponse(
         RentalMode rentalMode,
         int capacity,
         UnitStatus status,
-        long bedCount) {
+        long bedCount,
+        BigDecimal rent) {
 
     public static UnitResponse of(Unit unit, long bedCount) {
         return new UnitResponse(
@@ -32,6 +35,7 @@ public record UnitResponse(
                 unit.getRentalMode(),
                 unit.getCapacity(),
                 unit.getStatus(),
-                bedCount);
+                bedCount,
+                unit.getRent());
     }
 }

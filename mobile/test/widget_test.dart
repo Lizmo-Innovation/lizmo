@@ -7,6 +7,8 @@ import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
+import 'package:lizmo/screens/create_unit_screen.dart';
+import 'package:lizmo/screens/property_detail_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo_api/api.dart';
@@ -654,6 +656,162 @@ void main() {
       expect(find.byType(CreatePropertyScreen), findsNothing);
       expect(find.text('Mabuhay Bedspace'), findsOneWidget);
       expect(find.text('No properties yet'), findsNothing);
+    });
+  });
+
+  group('LZ-031 units', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 2,
+        );
+
+    UnitResponse unit({
+      required String number,
+      required UnitResponseRentalModeEnum mode,
+      int capacity = 1,
+      int bedCount = 0,
+      num? rent,
+    }) =>
+        UnitResponse(
+          id: 'u-$number',
+          propertyId: 'p1',
+          unitNumber: number,
+          rentalMode: mode,
+          capacity: capacity,
+          bedCount: bedCount,
+          rent: rent,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Widget appWith(List<UnitResponse> units) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesProvider.overrideWith((ref) async => [property()]),
+            unitsProvider('p1').overrideWith((ref) async => units),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('tapping a property opens its units', (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 4, rent: 2500),
+      ]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PropertyDetailScreen), findsOneWidget);
+      expect(find.text('Unit 2B'), findsOneWidget);
+    });
+
+    testWidgets('bedspace and whole units read differently', (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 2, rent: 2500),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT, rent: 7000),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // The distinction the whole product turns on, visible at a glance.
+      expect(find.textContaining('Bedspace'), findsOneWidget);
+      expect(find.textContaining('Whole unit'), findsOneWidget);
+      expect(find.text('per bed'), findsOneWidget);
+      expect(find.text('per month'), findsOneWidget);
+      expect(find.text('2 of 4 beds'), findsOneWidget);
+    });
+
+    testWidgets('a unit with no rent shows a dash, not zero', (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // Zero would claim the unit is free; not-set is a different statement.
+      expect(find.text('—'), findsOneWidget);
+      expect(find.textContaining('₱0'), findsNothing);
+    });
+
+    testWidgets('a property with no units explains what to add', (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No units yet'), findsOneWidget);
+    });
+
+    testWidgets('the add-unit form asks the mode first and warns it is final',
+        (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Add a unit'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreateUnitScreen), findsOneWidget);
+      expect(find.text('Bedspace'), findsOneWidget);
+      expect(find.text('Whole unit'), findsOneWidget);
+      // The API refuses to change it later; discovering that afterwards is worse.
+      expect(find.text('This cannot be changed later.'), findsOneWidget);
+    });
+
+    testWidgets('capacity is asked for bedspaces and hidden for whole units',
+        (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a unit'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How many beds?'), findsOneWidget);
+      expect(find.text('Rent per bed (optional)'), findsOneWidget);
+
+      await tester.tap(find.text('Whole unit'));
+      await tester.pumpAndSettle();
+
+      // A whole unit has one tenancy, so a bed count would be meaningless.
+      expect(find.text('How many beds?'), findsNothing);
+      expect(find.text('Rent (optional)'), findsOneWidget);
+    });
+
+    testWidgets('the new-property route is not swallowed by the id route',
+        (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      // /properties/new and /properties/:id both match the same shape; order
+      // decides, and getting it wrong would open a property called "new".
+      container.read(routerProvider).go(Routes.propertyNew);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreatePropertyScreen), findsOneWidget);
+      expect(find.byType(PropertyDetailScreen), findsNothing);
     });
   });
 }

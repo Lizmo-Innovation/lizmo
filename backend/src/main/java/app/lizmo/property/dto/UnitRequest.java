@@ -29,7 +29,13 @@ public record UnitRequest(
         @Schema(example = "BEDSPACE") RentalMode rentalMode,
 
         @Min(1)
-        @Schema(example = "4", defaultValue = "1") Integer capacity) {
+        @Schema(example = "4", defaultValue = "1") Integer capacity,
+
+        @DecimalMin(value = "0.0", inclusive = false)
+        @Schema(example = "2500.00",
+                description = "Asking rent: per bed for BEDSPACE, for the whole unit otherwise. "
+                        + "Optional — a landlord may set the unit up before deciding.")
+        BigDecimal rent) {
 
     /** Whole units hold one tenancy, so capacity is meaningless there. */
     public int effectiveCapacity() {

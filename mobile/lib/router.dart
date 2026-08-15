@@ -8,6 +8,8 @@ import 'auth/active_role.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/create_property_screen.dart';
+import 'screens/create_unit_screen.dart';
+import 'screens/property_detail_screen.dart';
 import 'screens/property_list_screen.dart';
 import 'screens/tenant_home_screen.dart';
 
@@ -19,6 +21,11 @@ abstract final class Routes {
   static const tenant = '/tenant';
   static const landlord = '/landlord';
   static const propertyNew = '/landlord/properties/new';
+
+  /// Detail and unit routes take the property id, so they are functions
+  /// rather than constants — a typo in the path becomes a compile error.
+  static String propertyDetail(String id) => '/landlord/properties/$id';
+  static String unitNew(String id) => '/landlord/properties/$id/units/new';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -67,6 +74,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'properties/new',
             builder: (context, state) => const CreatePropertyScreen(),
+          ),
+          GoRoute(
+            path: 'properties/:id',
+            builder: (context, state) =>
+                PropertyDetailScreen(propertyId: state.pathParameters['id']!),
+            routes: [
+              GoRoute(
+                path: 'units/new',
+                builder: (context, state) =>
+                    CreateUnitScreen(propertyId: state.pathParameters['id']!),
+              ),
+            ],
           ),
         ],
       ),
