@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Make Gradle wrapper executable
+        working-directory: backend
         run: chmod +x gradlew
 
       - uses: actions/setup-java@v4
