@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../widgets/account_sheet.dart';
 import '../widgets/role_switcher.dart';
 
 /// A landlord's properties — the first screen backed by real data.
@@ -30,7 +31,10 @@ class PropertyListScreen extends ConsumerWidget {
           LatticeHeader(
             eyebrow: session?.name ?? 'Lizmo',
             title: 'My properties',
-            trailing: const RoleSwitcher(),
+            trailing: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+            ),
             stats: [
               LatticeHeaderStat(
                 // Counts come from the loaded list, so they cannot disagree

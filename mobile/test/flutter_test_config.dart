@@ -42,4 +42,14 @@ Future<void> _loadBundledFonts() async {
     }
     await loader.load();
   }
+
+  // Material icons too, or every icon in a golden renders as an empty box and
+  // the image cannot show whether the right one was used.
+  try {
+    final icons = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await icons.load();
+  } catch (_) {
+    // Icons are cosmetic in tests; a missing font must not fail the suite.
+  }
 }

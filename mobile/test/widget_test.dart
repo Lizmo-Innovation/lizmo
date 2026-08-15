@@ -431,4 +431,71 @@ void main() {
       expect(find.text('Your Lizmo invoice is unpaid.'), findsOneWidget);
     });
   });
+
+  group('signing out', () {
+    testWidgets('a tenant can sign out from the account sheet', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+      await tester.pumpAndSettle();
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+
+      // The sheet says who is signed in, so a shared phone does not sign the
+      // wrong person out.
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('a landlord can reach the account sheet too', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('the sheet names which roles the account holds', (tester) async {
+      await tester.pumpWidget(
+        _app(_signedIn({LizmoProfile.tenant, LizmoProfile.landlord})),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tenant · Landlord'), findsOneWidget);
+    });
+
+    testWidgets('signing out lands on login', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sign out'));
+      await tester.pumpAndSettle();
+
+      // The sheet closes and the router reacts to auth state — no screen
+      // navigates to login itself.
+      expect(find.text('Sign out'), findsNothing);
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(TenantHomeScreen), findsNothing);
+    });
+  });
 }

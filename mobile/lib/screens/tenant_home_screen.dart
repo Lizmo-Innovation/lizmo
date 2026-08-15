@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../widgets/account_sheet.dart';
 import '../widgets/role_switcher.dart';
 
 /// What a tenant sees: what they owe, when it is due, and what they have paid.
@@ -48,7 +49,10 @@ class TenantHomeScreen extends ConsumerWidget {
           const LatticeHeader(
             eyebrow: 'Sunrise Apartments',
             title: 'Bed 2, Unit 2B',
-            trailing: RoleSwitcher(),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+            ),
             stats: [
               // The two facts a tenant opens the app for.
               LatticeHeaderStat(value: '₱2,500', label: 'Due now'),
