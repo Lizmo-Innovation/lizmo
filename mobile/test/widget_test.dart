@@ -42,6 +42,33 @@ AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
       ),
     );
 
+
+/// Records created properties so a test can assert the list reflects them,
+/// standing in for the API without touching the network.
+class _FakePropertiesApi extends PropertiesApi {
+  _FakePropertiesApi(this.store);
+
+  final List<PropertyResponse> store;
+  PropertyRequest? lastRequest;
+
+  @override
+  Future<PropertyResponse?> createProperty(
+    PropertyRequest propertyRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastRequest = propertyRequest;
+    final created = PropertyResponse(
+      id: 'new-${store.length}',
+      name: propertyRequest.name,
+      address: propertyRequest.address,
+      type: PropertyResponseTypeEnum.fromJson(propertyRequest.type.toJson()),
+      unitCount: 0,
+    );
+    store.add(created);
+    return created;
+  }
+}
+
 void main() {
   group('routing follows auth state', () {
     testWidgets('signed out lands on login', (tester) async {
@@ -580,6 +607,53 @@ void main() {
 
       expect(find.byType(CreatePropertyScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+  });
+
+  group('LZ-030 acceptance', () {
+    testWidgets('name, address and type reach the API, and the property '
+        'then appears in the list', (tester) async {
+      final store = <PropertyResponse>[];
+      final api = _FakePropertiesApi(store);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          // Reads the same store the fake writes to, so invalidating after a
+          // save is what makes the new row appear.
+          propertiesProvider.overrideWith((ref) async => List.of(store)),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No properties yet'), findsOneWidget);
+
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Mabuhay Bedspace');
+      await tester.enterText(find.byType(TextFormField).at(1), '7 Katipunan Ave');
+      await tester.tap(find.text('Condo'));
+      await tester.pump();
+
+      await tester.tap(find.text('Save property'));
+      await tester.pumpAndSettle();
+
+      // All three fields captured, and the type is the one chosen rather than
+      // the default.
+      expect(api.lastRequest!.name, 'Mabuhay Bedspace');
+      expect(api.lastRequest!.address, '7 Katipunan Ave');
+      expect(api.lastRequest!.type, PropertyRequestTypeEnum.CONDO);
+
+      // Back on the list, with the new property visible — no manual refresh.
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(CreatePropertyScreen), findsNothing);
+      expect(find.text('Mabuhay Bedspace'), findsOneWidget);
+      expect(find.text('No properties yet'), findsNothing);
     });
   });
 }
