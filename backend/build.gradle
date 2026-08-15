@@ -61,9 +61,14 @@ tasks.named('test') {
     useJUnitPlatform()
 
     // docker-java negotiates an API version below the 1.40 floor that Docker
-    // Engine 29 enforces. The daemon answers /info with a bare HTTP 400, which
-    // Testcontainers reports as the misleading "Could not find a valid Docker
-    // environment". 1.44 sits inside the supported range of every Docker
-    // version we care about; an explicit DOCKER_API_VERSION still wins.
+    // Engine 29 enforces, so the daemon answers /info with a bare HTTP 400 and
+    // Testcontainers reports the misleading "Could not find a valid Docker
+    // environment". Reproduce it with: DOCKER_API_VERSION=1.24 docker info
+    //
+    // docker-java reads the `api.version` *system property*, not the
+    // DOCKER_API_VERSION environment variable — setting the env var alone
+    // changed nothing. 1.44 sits inside the supported range of every Docker
+    // version this project cares about.
+    systemProperty 'api.version', System.getenv('DOCKER_API_VERSION') ?: '1.44'
     environment 'DOCKER_API_VERSION', System.getenv('DOCKER_API_VERSION') ?: '1.44'
 }
