@@ -33,7 +33,13 @@ class PropertyDetailScreen extends ConsumerWidget {
           LatticeHeader(
             eyebrow: name ?? 'Property',
             title: 'Units',
-            trailing: const _BackButton(),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _BackButton(),
+                _EditButton(propertyId: propertyId),
+              ],
+            ),
             stats: [
               LatticeHeaderStat(
                 value: units.valueOrNull?.length.toString() ?? '—',
@@ -95,6 +101,26 @@ class _BackButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: 'Back',
+    );
+  }
+}
+
+class _EditButton extends StatelessWidget {
+  const _EditButton({required this.propertyId});
+
+  final String propertyId;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () => context.push(Routes.propertyEdit(propertyId)),
+      icon: const Icon(Icons.edit_outlined),
+      color: LizmoColors.white,
+      iconSize: 20,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      tooltip: 'Edit property',
     );
   }
 }

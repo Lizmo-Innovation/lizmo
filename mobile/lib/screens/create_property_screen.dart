@@ -7,12 +7,21 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 
-/// Adds a property.
+/// Adds or edits a property.
+///
+/// One screen for both: the fields, validation and error handling are
+/// identical, and two copies would drift the moment one gained a field.
+/// Passing a [propertyId] switches it to editing.
 ///
 /// A full screen rather than a sheet: the address is a real typing task on a
 /// phone, and a sheet fighting the keyboard for room makes it worse.
 class CreatePropertyScreen extends ConsumerStatefulWidget {
-  const CreatePropertyScreen({super.key});
+  const CreatePropertyScreen({super.key, this.propertyId});
+
+  /// Null when creating.
+  final String? propertyId;
+
+  bool get isEditing => propertyId != null;
 
   @override
   ConsumerState<CreatePropertyScreen> createState() => _CreatePropertyScreenState();
@@ -27,6 +36,10 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   bool _saving = false;
   String? _error;
   Map<String, String> _fieldErrors = const {};
+
+  /// Prefill happens once. Rebuilding must not overwrite what the landlord has
+  /// typed while the fetch was in flight, or an edit would silently revert.
+  bool _prefilled = false;
 
   @override
   void dispose() {
@@ -45,17 +58,23 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
     });
 
     try {
-      await ref.read(propertiesApiProvider).createProperty(
-            PropertyRequest(
-              name: _name.text.trim(),
-              address: _address.text.trim(),
-              type: _type,
-            ),
-          );
+      final request = PropertyRequest(
+        name: _name.text.trim(),
+        address: _address.text.trim(),
+        type: _type,
+      );
+
+      final api = ref.read(propertiesApiProvider);
+      if (widget.isEditing) {
+        await api.updateProperty(widget.propertyId!, request);
+        ref.invalidate(propertyProvider(widget.propertyId!));
+      } else {
+        await api.createProperty(request);
+      }
 
       // The list is autoDispose, but it may still be alive behind this screen —
-      // invalidating makes the new property appear rather than waiting for a
-      // manual refresh.
+      // invalidating makes the change appear rather than waiting for a manual
+      // refresh.
       ref.invalidate(propertiesProvider);
 
       if (mounted) context.pop();
@@ -74,13 +93,30 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Editing waits for the property before showing fields, so the landlord
+    // never types into a form that is about to be overwritten by the fetch.
+    if (widget.isEditing && !_prefilled) {
+      final existing = ref.watch(propertyProvider(widget.propertyId!));
+      switch (existing) {
+        case AsyncData(:final value):
+          _name.text = value.name ?? '';
+          _address.text = value.address ?? '';
+          _type = PropertyRequestTypeEnum.fromJson(value.type?.toJson()) ?? _type;
+          _prefilled = true;
+        case AsyncError(:final error):
+          return _LoadFailed(failure: ApiFailure.from(error));
+        default:
+          return const _LoadingScaffold();
+      }
+    }
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
         backgroundColor: LizmoColors.teal900,
         foregroundColor: LizmoColors.white,
         elevation: 0,
-        title: Text('Add a property',
+        title: Text(widget.isEditing ? 'Edit property' : 'Add a property',
             style: LizmoType.screenTitle.copyWith(fontSize: 18)),
       ),
       body: SafeArea(
@@ -134,7 +170,10 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
                 const SizedBox(height: 28),
                 _saving
                     ? const _SavingButton()
-                    : PrimaryActionButton(label: 'Save property', onPressed: _save),
+                    : PrimaryActionButton(
+                        label: widget.isEditing ? 'Save changes' : 'Save property',
+                        onPressed: _save,
+                      ),
               ],
             ),
           ),
@@ -295,6 +334,52 @@ class _SavingButton extends StatelessWidget {
         child: CircularProgressIndicator(
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation(LizmoColors.white),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _LoadingScaffold extends StatelessWidget {
+  const _LoadingScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The property could not be loaded, so there is nothing to edit.
+class _LoadFailed extends StatelessWidget {
+  const _LoadFailed({required this.failure});
+
+  final ApiFailure failure;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: SafeArea(
+        child: LizmoMessageState(
+          tone: LizmoMessageTone.problem,
+          icon: failure.isNetwork ? Icons.wifi_off_outlined : Icons.error_outline,
+          title: failure.isNetwork ? "Can't reach Lizmo" : "Can't open this property",
+          detail: failure.message,
+          actionLabel: 'Go back',
+          onAction: () => Navigator.of(context).pop(),
         ),
       ),
     );

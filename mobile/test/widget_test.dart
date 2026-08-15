@@ -71,6 +71,37 @@ class _FakePropertiesApi extends PropertiesApi {
   }
 }
 
+
+/// Serves one property and records updates, so the edit flow can be driven
+/// without the network.
+class _EditablePropertiesApi extends PropertiesApi {
+  _EditablePropertiesApi(this.current);
+
+  PropertyResponse current;
+  PropertyRequest? lastUpdate;
+
+  @override
+  Future<PropertyResponse?> getProperty(String id, {Future<void>? abortTrigger}) async =>
+      current;
+
+  @override
+  Future<PropertyResponse?> updateProperty(
+    String id,
+    PropertyRequest propertyRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastUpdate = propertyRequest;
+    current = PropertyResponse(
+      id: id,
+      name: propertyRequest.name,
+      address: propertyRequest.address,
+      type: PropertyResponseTypeEnum.fromJson(propertyRequest.type.toJson()),
+      unitCount: current.unitCount,
+    );
+    return current;
+  }
+}
+
 void main() {
   group('routing follows auth state', () {
     testWidgets('signed out lands on login', (tester) async {
@@ -812,6 +843,96 @@ void main() {
 
       expect(find.byType(CreatePropertyScreen), findsOneWidget);
       expect(find.byType(PropertyDetailScreen), findsNothing);
+    });
+  });
+
+  group('editing a property', () {
+    PropertyResponse existing() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St, Quezon City',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 2,
+        );
+
+    Widget appWith(_EditablePropertiesApi api) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesApiProvider.overrideWithValue(api),
+            propertiesProvider.overrideWith((ref) async => [api.current]),
+            unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('the form opens prefilled with the current values', (tester) async {
+      final api = _EditablePropertiesApi(existing());
+      await tester.pumpWidget(appWith(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit property'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreatePropertyScreen), findsOneWidget);
+      expect(find.text('Save changes'), findsOneWidget);
+
+      // Read the field values rather than matching text: the list beneath is
+      // still in the tree, and the name field's own hint is the same string.
+      final fields = tester
+          .widgetList<EditableText>(find.descendant(
+            of: find.byType(CreatePropertyScreen),
+            matching: find.byType(EditableText),
+          ))
+          .toList();
+
+      // Prefilled, so a landlord fixing a typo does not retype everything.
+      expect(fields[0].controller.text, 'Sunrise Apartments');
+      expect(fields[1].controller.text, '12 Mabini St, Quezon City');
+    });
+
+    testWidgets('changes are sent and reflected in the list', (tester) async {
+      final api = _EditablePropertiesApi(existing());
+      await tester.pumpWidget(appWith(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit property'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Sunrise Residences');
+      await tester.tap(find.text('Apartment'));
+      await tester.pump();
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUpdate!.name, 'Sunrise Residences');
+      expect(api.lastUpdate!.type, PropertyRequestTypeEnum.APARTMENT);
+      // The address was untouched, so it must survive unchanged rather than
+      // being blanked by a partial update.
+      expect(api.lastUpdate!.address, '12 Mabini St, Quezon City');
+    });
+
+    testWidgets('an empty name is refused before calling the API', (tester) async {
+      final api = _EditablePropertiesApi(existing());
+      await tester.pumpWidget(appWith(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit property'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), '');
+      await tester.tap(find.text('Save changes'));
+      await tester.pump();
+
+      expect(find.text('Give the property a name'), findsOneWidget);
+      expect(api.lastUpdate, isNull);
     });
   });
 }
