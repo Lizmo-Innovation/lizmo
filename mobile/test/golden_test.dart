@@ -63,6 +63,54 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
+Widget _detailApp() => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(AuthSignedIn(Session(
+            userId: 'u1',
+            name: 'Ana Reyes',
+            profiles: {LizmoProfile.landlord},
+            accessToken: 'token',
+          ))),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => [
+              PropertyResponse(
+                id: 'p1',
+                name: 'Sunrise Apartments',
+                address: '12 Mabini St, Quezon City',
+                type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+                unitCount: 2,
+              ),
+            ]),
+        unitsProvider('p1').overrideWith((ref) async => [
+              UnitResponse(
+                id: 'u1',
+                propertyId: 'p1',
+                unitNumber: '2B',
+                floor: '2',
+                rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+                capacity: 4,
+                bedCount: 4,
+                rent: 2500,
+                status: UnitResponseStatusEnum.VACANT,
+              ),
+              UnitResponse(
+                id: 'u2',
+                propertyId: 'p1',
+                unitNumber: '1A',
+                floor: '1',
+                rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+                capacity: 1,
+                bedCount: 0,
+                rent: 7000,
+                status: UnitResponseStatusEnum.VACANT,
+              ),
+            ]),
+      ],
+      child: const LizmoApp(),
+    );
+
 void main() {
   testWidgets('tenant home', (tester) async {
     _phone(tester);
@@ -86,6 +134,21 @@ void main() {
     await expectLater(
       find.byType(LizmoApp),
       matchesGoldenFile('goldens/rent_roll_switcher.png'),
+    );
+  });
+
+  testWidgets('property detail', (tester) async {
+    _phone(tester);
+
+    await tester.pumpWidget(_detailApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sunrise Apartments'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(LizmoApp),
+      matchesGoldenFile('goldens/property_detail.png'),
     );
   });
 }

@@ -26,6 +26,7 @@ abstract final class Routes {
   /// rather than constants — a typo in the path becomes a compile error.
   static String propertyDetail(String id) => '/landlord/properties/$id';
   static String unitNew(String id) => '/landlord/properties/$id/units/new';
+  static String propertyEdit(String id) => '/landlord/properties/$id/edit';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -84,6 +85,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'units/new',
                 builder: (context, state) =>
                     CreateUnitScreen(propertyId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) => CreatePropertyScreen(
+                  propertyId: state.pathParameters['id'],
+                ),
               ),
             ],
           ),

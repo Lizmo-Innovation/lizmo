@@ -27,6 +27,24 @@ final propertiesProvider =
   }
 });
 
+/// One property, fetched by id.
+///
+/// Used by the edit form, which may be reached by deep link with nothing
+/// loaded — so it fetches rather than digging through [propertiesProvider],
+/// which might be empty or stale.
+final propertyProvider =
+    FutureProvider.autoDispose.family<PropertyResponse, String>((ref, id) async {
+  try {
+    final property = await ref.watch(propertiesApiProvider).getProperty(id);
+    if (property == null) {
+      throw const ApiFailure(code: 'NOT_FOUND', message: 'No such property.');
+    }
+    return property;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 /// Units within one property.
 final unitsProvider =
     FutureProvider.autoDispose.family<List<UnitResponse>, String>((ref, propertyId) async {
