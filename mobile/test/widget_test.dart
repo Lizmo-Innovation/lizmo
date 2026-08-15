@@ -6,6 +6,7 @@ import 'package:lizmo/main.dart';
 import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/register_screen.dart';
+import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo_api/api.dart';
@@ -496,6 +497,89 @@ void main() {
       expect(find.text('Sign out'), findsNothing);
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(TenantHomeScreen), findsNothing);
+    });
+  });
+
+  group('creating a property', () {
+    testWidgets('the add button opens the form', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreatePropertyScreen), findsOneWidget);
+      expect(find.text('Add a property'), findsOneWidget);
+    });
+
+    testWidgets('empty fields are caught before calling the API', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save property'));
+      await tester.pump();
+
+      expect(find.text('Give the property a name'), findsOneWidget);
+      expect(find.text('Add an address'), findsOneWidget);
+    });
+
+    testWidgets('type defaults to boarding house and can be changed', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      // All four are visible rather than hidden behind a dropdown, so the
+      // default is a visible choice rather than an unnoticed one.
+      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.text('Apartment'), findsOneWidget);
+      expect(find.text('Condo'), findsOneWidget);
+      expect(find.text('Single house'), findsOneWidget);
+
+      await tester.tap(find.text('Condo'));
+      await tester.pump();
+    });
+
+    testWidgets('the back arrow returns to the property list', (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      // Nested under /landlord, so back goes to the list rather than out of
+      // the app.
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(CreatePropertyScreen), findsNothing);
+    });
+
+    testWidgets('a tenant cannot reach the form by URL', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      // The guard matched exact paths before this, so every sub-route under
+      // /landlord was reachable by anyone signed in.
+      container.read(routerProvider).go(Routes.propertyNew);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreatePropertyScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
   });
 }

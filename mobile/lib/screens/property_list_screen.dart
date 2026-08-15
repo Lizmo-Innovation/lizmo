@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../router.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/role_switcher.dart';
 
@@ -75,8 +77,7 @@ class PropertyListScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: PrimaryActionButton(
                 label: '+ Add a property',
-                // TODO: property creation form — the endpoint already exists.
-                onPressed: () {},
+                onPressed: () => context.push(Routes.propertyNew),
               ),
             ),
           ),

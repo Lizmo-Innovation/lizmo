@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import 'auth/active_role.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/create_property_screen.dart';
 import 'screens/property_list_screen.dart';
 import 'screens/tenant_home_screen.dart';
 
@@ -17,6 +18,7 @@ abstract final class Routes {
   static const register = '/register';
   static const tenant = '/tenant';
   static const landlord = '/landlord';
+  static const propertyNew = '/landlord/properties/new';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -56,7 +58,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
       GoRoute(path: Routes.tenant, builder: (context, state) => const TenantHomeScreen()),
-      GoRoute(path: Routes.landlord, builder: (context, state) => const PropertyListScreen()),
+      GoRoute(
+        path: Routes.landlord,
+        builder: (context, state) => const PropertyListScreen(),
+        routes: [
+          // Nested, so the back arrow returns to the property list rather than
+          // leaving the app.
+          GoRoute(
+            path: 'properties/new',
+            builder: (context, state) => const CreatePropertyScreen(),
+          ),
+        ],
+      ),
       GoRoute(path: Routes.noProfile, builder: (context, state) => const NoProfileScreen()),
     ],
     errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
@@ -83,8 +96,10 @@ String? _signedInRedirect(Ref ref, Session session, String location) {
     return home;
   }
 
-  if (location == Routes.landlord && !session.isLandlord) return home;
-  if (location == Routes.tenant && !session.isTenant) return home;
+  // Prefix, not equality: /landlord/properties/new is as much a landlord
+  // screen as /landlord, and matching exactly left every sub-route unguarded.
+  if (location.startsWith(Routes.landlord) && !session.isLandlord) return home;
+  if (location.startsWith(Routes.tenant) && !session.isTenant) return home;
 
   return null;
 }
