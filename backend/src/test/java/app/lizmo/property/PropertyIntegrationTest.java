@@ -78,7 +78,7 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"%s","address":"12 Mabini St","type":"BOARDING_HOUSE"}
+                                {"name":"%s","address":"12 Mabini St","type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
                                 """.formatted(name)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -131,7 +131,7 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + otherLandlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Stolen","address":"Somewhere","type":"CONDO"}
+                                {"name":"Stolen","address":"Somewhere","type":"CONDO","usage":"RESIDENTIAL"}
                                 """))
                 .andExpect(status().isNotFound());
 
@@ -162,7 +162,7 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + tenantToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Not Mine","address":"12 Mabini St","type":"CONDO"}
+                                {"name":"Not Mine","address":"12 Mabini St","type":"CONDO","usage":"RESIDENTIAL"}
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -185,7 +185,7 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Sunrise Residences","address":"14 Mabini St","type":"APARTMENT"}
+                                {"name":"Sunrise Residences","address":"14 Mabini St","type":"APARTMENT","usage":"RESIDENTIAL"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Sunrise Residences"))
@@ -198,7 +198,7 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"","address":"12 Mabini St","type":"CONDO"}
+                                {"name":"","address":"12 Mabini St","type":"CONDO","usage":"RESIDENTIAL"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
@@ -513,5 +513,186 @@ class PropertyIntegrationTest {
                 .andExpect(jsonPath("$.rent").value(2750.50))
                 .andExpect(jsonPath("$.unitNumber").value("2B"))
                 .andExpect(jsonPath("$.rentalMode").value("BEDSPACE"));
+    }
+
+    // ---------- Residential vs commercial ----------
+
+    @Test
+    void a_property_is_residential_or_commercial() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usage").value("RESIDENTIAL"));
+    }
+
+    @Test
+    void a_commercial_property_can_be_created() throws Exception {
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"14 Mabini St","type":"RETAIL_SPACE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usage").value("COMMERCIAL"))
+                .andExpect(jsonPath("$.type").value("RETAIL_SPACE"));
+    }
+
+    @Test
+    void a_type_from_the_wrong_usage_is_refused() throws Exception {
+        // A commercial boarding house is not a thing. The database says so too,
+        // in chk_properties_usage_type; this proves the caller gets a message
+        // rather than a constraint violation.
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Nonsense","address":"14 Mabini St","type":"BOARDING_HOUSE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("commercial")));
+
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Nonsense","address":"14 Mabini St","type":"WAREHOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void usage_is_required() throws Exception {
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St","type":"CONDO"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.usage").exists());
+    }
+
+    @Test
+    void a_property_can_be_converted_to_commercial() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        // Conversions happen, so this is not locked the way rental mode is --
+        // but the type has to move with it.
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"12 Mabini St","type":"OFFICE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usage").value("COMMERCIAL"))
+                .andExpect(jsonPath("$.type").value("OFFICE"));
+    }
+
+    @Test
+    void converting_without_moving_the_type_is_refused() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St","type":"BOARDING_HOUSE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        // Unchanged.
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.usage").value("RESIDENTIAL"));
+    }
+
+    @Test
+    void a_unit_in_a_commercial_property_is_always_a_whole_unit() throws Exception {
+        String body = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"14 Mabini St","type":"RETAIL_SPACE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String propertyId = json.readTree(body).get("id").asText();
+
+        // BEDSPACE is coerced rather than refused -- a shop cannot be let by the
+        // bed, and the request is answerable without an error.
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"Stall 1","rentalMode":"BEDSPACE","capacity":6}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rentalMode").value("WHOLE_UNIT"))
+                // Capacity follows the coerced mode, not the 6 that was sent.
+                .andExpect(jsonPath("$.capacity").value(1));
+    }
+
+    @Test
+    void beds_cannot_be_added_in_a_commercial_property() throws Exception {
+        String body = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"14 Mabini St","type":"WAREHOUSE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String propertyId = json.readTree(body).get("id").asText();
+
+        String unitId = createUnit(landlordToken, propertyId, "Bay 1", "BEDSPACE", 4);
+
+        // Falls out of the coercion: the unit is a whole unit, and whole units
+        // refuse beds.
+        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void a_property_with_bedspace_units_cannot_be_converted_to_commercial() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        // A unit's rental mode cannot change after creation, so converting would
+        // strand the bedspace unit in a state nothing else allows.
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"12 Mabini St","type":"OFFICE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("bedspace")));
+    }
+
+    @Test
+    void a_property_with_only_whole_units_can_still_be_converted() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        createUnit(landlordToken, propertyId, "2B", "WHOLE_UNIT", 1);
+
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Mabini Arcade","address":"12 Mabini St","type":"OFFICE","usage":"COMMERCIAL"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usage").value("COMMERCIAL"));
     }
 }

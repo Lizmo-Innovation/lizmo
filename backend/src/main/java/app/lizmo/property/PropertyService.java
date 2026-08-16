@@ -58,8 +58,11 @@ public class PropertyService {
     public PropertyResponse createProperty(PropertyRequest request, UUID userId) {
         access.requireActiveLandlord(userId);
 
+        requireTypeMatchesUsage(request);
+
         Property property = properties.save(new Property(
-                userId, request.name().trim(), request.address().trim(), request.type()));
+                userId, request.name().trim(), request.address().trim(),
+                request.type(), request.usage()));
 
         return PropertyResponse.of(property, 0);
     }
@@ -67,8 +70,39 @@ public class PropertyService {
     @Transactional
     public PropertyResponse updateProperty(UUID propertyId, PropertyRequest request, UUID userId) {
         Property property = access.writable(propertyId, userId);
-        property.update(request.name().trim(), request.address().trim(), request.type());
+
+        // A landlord may convert a property between residential and commercial —
+        // it happens — so this is not locked the way a unit's rental mode is.
+        // The type has to move with it, which the check below enforces.
+        requireTypeMatchesUsage(request);
+
+        // Commercial properties hold no bedspaces, and a unit's rental mode
+        // cannot be changed after creation. Converting a property that still has
+        // bedspace units would therefore strand them in a state the rest of the
+        // system says is impossible, with no way for the landlord to fix it.
+        if (request.usage() == PropertyUsage.COMMERCIAL
+                && units.existsByPropertyIdAndRentalMode(propertyId, RentalMode.BEDSPACE)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "This property has bedspace units, which a commercial property "
+                            + "cannot hold. Delete them before converting it.");
+        }
+
+        property.update(request.name().trim(), request.address().trim(),
+                request.type(), request.usage());
         return PropertyResponse.of(properties.save(property), units.countByPropertyId(propertyId));
+    }
+
+    /**
+     * Rejects a type that does not belong to the chosen usage — a commercial
+     * boarding house, say. The database enforces this too; checked here so the
+     * caller gets a message naming both values instead of a constraint violation.
+     */
+    private void requireTypeMatchesUsage(PropertyRequest request) {
+        if (!request.usage().allows(request.type())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "%s is not a %s property type.".formatted(
+                            request.type(), request.usage().name().toLowerCase()));
+        }
     }
 
     /**
@@ -101,7 +135,7 @@ public class PropertyService {
 
     @Transactional
     public UnitResponse createUnit(UUID propertyId, UnitRequest request, UUID userId) {
-        access.writable(propertyId, userId);
+        Property property = access.writable(propertyId, userId);
 
         String unitNumber = request.unitNumber().trim();
         // Checked here as well as by the unique index, so the caller gets a
@@ -111,13 +145,24 @@ public class PropertyService {
                     "A unit with that number already exists in this property.");
         }
 
+        // Bedspace is letting individual beds in a shared room, which a shop or a
+        // warehouse cannot be. Coerced rather than refused, matching the way a
+        // whole unit's capacity is forced to 1 whatever the caller sent: the
+        // request is answerable, so answering it beats an error the landlord can
+        // do nothing useful with.
+        RentalMode mode = property.getUsage() == PropertyUsage.COMMERCIAL
+                ? RentalMode.WHOLE_UNIT
+                : request.rentalMode();
+
+        int capacity = mode == RentalMode.WHOLE_UNIT ? 1 : request.effectiveCapacity();
+
         Unit unit = units.save(new Unit(
                 propertyId,
                 unitNumber,
                 trimToNull(request.floor()),
                 request.sizeSqm(),
-                request.rentalMode(),
-                request.effectiveCapacity(),
+                mode,
+                capacity,
                 request.rent()));
 
         return UnitResponse.of(unit, 0);

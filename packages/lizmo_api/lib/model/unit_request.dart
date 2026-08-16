@@ -45,7 +45,7 @@ class UnitRequest {
   /// Minimum value: 1
   int capacity;
 
-  /// Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional â€” a landlord may set the unit up before deciding.
+  /// Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional — a landlord may set the unit up before deciding.
   ///
   /// Minimum value: 0.0
   ///

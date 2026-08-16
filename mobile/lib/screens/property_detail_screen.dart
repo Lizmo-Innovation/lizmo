@@ -21,10 +21,21 @@ class PropertyDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final units = ref.watch(unitsProvider(propertyId));
-    final property = ref.watch(propertiesProvider).valueOrNull?.where(
-          (p) => p.id == propertyId,
-        );
-    final name = property?.isNotEmpty == true ? property!.first.name : null;
+
+    // Taken from the list rather than fetched by id: this screen is reached
+    // from the list, so it is normally loaded. On a deep link it may not be,
+    // which is why the name falls back below.
+    final matches = ref.watch(propertiesProvider).valueOrNull?.where(
+              (p) => p.id == propertyId,
+            ) ??
+        const <PropertyResponse>[];
+    final property = matches.isEmpty ? null : matches.first;
+    final name = property?.name;
+
+    // Commercial properties hold no bedspaces, so a bed count there is always
+    // zero and reads as something the landlord has forgotten to set up.
+    final isCommercial =
+        property?.usage == PropertyResponseUsageEnum.COMMERCIAL;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -45,15 +56,16 @@ class PropertyDetailScreen extends ConsumerWidget {
                 value: units.valueOrNull?.length.toString() ?? '—',
                 label: 'Units',
               ),
-              LatticeHeaderStat(
-                // Beds across the property, which is what the platform bill is
-                // ultimately counted from.
-                value: units.valueOrNull
-                        ?.fold<int>(0, (sum, u) => sum + (u.bedCount ?? 0))
-                        .toString() ??
-                    '—',
-                label: 'Beds',
-              ),
+              if (!isCommercial)
+                LatticeHeaderStat(
+                  // Beds across the property, which is what the platform bill is
+                  // ultimately counted from.
+                  value: units.valueOrNull
+                          ?.fold<int>(0, (sum, u) => sum + (u.bedCount ?? 0))
+                          .toString() ??
+                      '—',
+                  label: 'Beds',
+                ),
             ],
           ),
           Expanded(

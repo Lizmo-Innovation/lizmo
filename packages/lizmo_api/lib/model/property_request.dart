@@ -16,6 +16,7 @@ class PropertyRequest {
     required this.name,
     required this.address,
     required this.type,
+    required this.usage,
   });
 
   String name;
@@ -24,27 +25,33 @@ class PropertyRequest {
 
   PropertyRequestTypeEnum type;
 
+  /// Constrains type: residential properties take APARTMENT, BOARDING_HOUSE, CONDO or SINGLE_HOUSE; commercial ones take OFFICE, RETAIL_SPACE, WAREHOUSE or STALL.
+  PropertyRequestUsageEnum usage;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PropertyRequest &&
     other.name == name &&
     other.address == address &&
-    other.type == type;
+    other.type == type &&
+    other.usage == usage;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (name.hashCode) +
     (address.hashCode) +
-    (type.hashCode);
+    (type.hashCode) +
+    (usage.hashCode);
 
   @override
-  String toString() => 'PropertyRequest[name=$name, address=$address, type=$type]';
+  String toString() => 'PropertyRequest[name=$name, address=$address, type=$type, usage=$usage]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'name'] = this.name;
       json[r'address'] = this.address;
       json[r'type'] = this.type;
+      json[r'usage'] = this.usage;
     return json;
   }
 
@@ -65,6 +72,8 @@ class PropertyRequest {
         assert(json[r'address'] != null, 'Required key "PropertyRequest[address]" has a null value in JSON.');
         assert(json.containsKey(r'type'), 'Required key "PropertyRequest[type]" is missing from JSON.');
         assert(json[r'type'] != null, 'Required key "PropertyRequest[type]" has a null value in JSON.');
+        assert(json.containsKey(r'usage'), 'Required key "PropertyRequest[usage]" is missing from JSON.');
+        assert(json[r'usage'] != null, 'Required key "PropertyRequest[usage]" has a null value in JSON.');
         return true;
       }());
 
@@ -72,6 +81,7 @@ class PropertyRequest {
         name: mapValueOfType<String>(json, r'name')!,
         address: mapValueOfType<String>(json, r'address')!,
         type: PropertyRequestTypeEnum.fromJson(json[r'type'])!,
+        usage: PropertyRequestUsageEnum.fromJson(json[r'usage'])!,
       );
     }
     return null;
@@ -122,6 +132,7 @@ class PropertyRequest {
     'name',
     'address',
     'type',
+    'usage',
   };
 }
 
@@ -131,6 +142,10 @@ enum PropertyRequestTypeEnum {
   BOARDING_HOUSE._(r'BOARDING_HOUSE'),
   CONDO._(r'CONDO'),
   SINGLE_HOUSE._(r'SINGLE_HOUSE'),
+  OFFICE._(r'OFFICE'),
+  RETAIL_SPACE._(r'RETAIL_SPACE'),
+  WAREHOUSE._(r'WAREHOUSE'),
+  STALL._(r'STALL'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -193,6 +208,10 @@ class PropertyRequestTypeEnumTypeTransformer {
         case r'BOARDING_HOUSE': return PropertyRequestTypeEnum.BOARDING_HOUSE;
         case r'CONDO': return PropertyRequestTypeEnum.CONDO;
         case r'SINGLE_HOUSE': return PropertyRequestTypeEnum.SINGLE_HOUSE;
+        case r'OFFICE': return PropertyRequestTypeEnum.OFFICE;
+        case r'RETAIL_SPACE': return PropertyRequestTypeEnum.RETAIL_SPACE;
+        case r'WAREHOUSE': return PropertyRequestTypeEnum.WAREHOUSE;
+        case r'STALL': return PropertyRequestTypeEnum.STALL;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
@@ -204,6 +223,84 @@ class PropertyRequestTypeEnumTypeTransformer {
 
   /// The singleton instance of this transformer.
   static PropertyRequestTypeEnumTypeTransformer? _instance;
+}
+
+
+/// Constrains type: residential properties take APARTMENT, BOARDING_HOUSE, CONDO or SINGLE_HOUSE; commercial ones take OFFICE, RETAIL_SPACE, WAREHOUSE or STALL.
+enum PropertyRequestUsageEnum {
+  RESIDENTIAL._(r'RESIDENTIAL'),
+  COMMERCIAL._(r'COMMERCIAL'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const PropertyRequestUsageEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [PropertyRequestUsageEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static PropertyRequestUsageEnum? fromJson(dynamic value) => PropertyRequestUsageEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [PropertyRequestUsageEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<PropertyRequestUsageEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PropertyRequestUsageEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PropertyRequestUsageEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PropertyRequestUsageEnum] to String,
+/// and [decode] dynamic data back to [PropertyRequestUsageEnum].
+class PropertyRequestUsageEnumTypeTransformer {
+  factory PropertyRequestUsageEnumTypeTransformer() => _instance ??= const PropertyRequestUsageEnumTypeTransformer._();
+
+  const PropertyRequestUsageEnumTypeTransformer._();
+
+  String encode(PropertyRequestUsageEnum data) => data._value;
+
+  /// Returns the instance of [PropertyRequestUsageEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PropertyRequestUsageEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is PropertyRequestUsageEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'RESIDENTIAL': return PropertyRequestUsageEnum.RESIDENTIAL;
+        case r'COMMERCIAL': return PropertyRequestUsageEnum.COMMERCIAL;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static PropertyRequestUsageEnumTypeTransformer? _instance;
 }
 
 

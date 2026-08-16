@@ -463,22 +463,22 @@
                     "required": true
                 },
                 "responses": {
-                    "400": {
-                        "description": "Validation failed, or neither email nor phone given",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
                     "201": {
                         "description": "Account created, tokens issued",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed, or neither email nor phone given",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -515,22 +515,22 @@
                     "required": true
                 },
                 "responses": {
-                    "401": {
-                        "description": "Refresh token unknown, expired or already used",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
                     "200": {
                         "description": "New tokens issued",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Refresh token unknown, expired or already used",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -582,6 +582,16 @@
                     "required": true
                 },
                 "responses": {
+                    "200": {
+                        "description": "Tokens issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
                     "401": {
                         "description": "Credentials rejected",
                         "content": {
@@ -598,16 +608,6 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
-                    "200": {
-                        "description": "Tokens issued",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthResponse"
                                 }
                             }
                         }
@@ -688,7 +688,7 @@
                         "minimum": 0.0,
                         "exclusiveMinimum": true,
                         "type": "number",
-                        "description": "Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional \u00e2\u20ac\u201d a landlord may set the unit up before deciding.",
+                        "description": "Asking rent: per bed for BEDSPACE, for the whole unit otherwise. Optional — a landlord may set the unit up before deciding.",
                         "example": 2500.0
                     }
                 },
@@ -748,7 +748,8 @@
                 "required": [
                     "address",
                     "name",
-                    "type"
+                    "type",
+                    "usage"
                 ],
                 "type": "object",
                 "properties": {
@@ -769,7 +770,20 @@
                             "APARTMENT",
                             "BOARDING_HOUSE",
                             "CONDO",
-                            "SINGLE_HOUSE"
+                            "SINGLE_HOUSE",
+                            "OFFICE",
+                            "RETAIL_SPACE",
+                            "WAREHOUSE",
+                            "STALL"
+                        ]
+                    },
+                    "usage": {
+                        "type": "string",
+                        "description": "Constrains type: residential properties take APARTMENT, BOARDING_HOUSE, CONDO or SINGLE_HOUSE; commercial ones take OFFICE, RETAIL_SPACE, WAREHOUSE or STALL.",
+                        "example": "RESIDENTIAL",
+                        "enum": [
+                            "RESIDENTIAL",
+                            "COMMERCIAL"
                         ]
                     }
                 },
@@ -794,7 +808,18 @@
                             "APARTMENT",
                             "BOARDING_HOUSE",
                             "CONDO",
-                            "SINGLE_HOUSE"
+                            "SINGLE_HOUSE",
+                            "OFFICE",
+                            "RETAIL_SPACE",
+                            "WAREHOUSE",
+                            "STALL"
+                        ]
+                    },
+                    "usage": {
+                        "type": "string",
+                        "enum": [
+                            "RESIDENTIAL",
+                            "COMMERCIAL"
                         ]
                     },
                     "unitCount": {

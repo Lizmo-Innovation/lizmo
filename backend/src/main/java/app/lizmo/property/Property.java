@@ -42,6 +42,15 @@ public class Property {
     @Column(nullable = false)
     private PropertyType type;
 
+    /**
+     * Residential or commercial. Constrains which {@link PropertyType} values
+     * are legal — the database enforces the pairing too, in
+     * chk_properties_usage_type.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PropertyUsage usage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -52,12 +61,14 @@ public class Property {
         // for JPA
     }
 
-    public Property(UUID landlordId, String name, String address, PropertyType type) {
+    public Property(
+            UUID landlordId, String name, String address, PropertyType type, PropertyUsage usage) {
         this.id = UUID.randomUUID();
         this.landlordId = landlordId;
         this.name = name;
         this.address = address;
         this.type = type;
+        this.usage = usage;
     }
 
     @PrePersist
@@ -72,10 +83,11 @@ public class Property {
         this.updatedAt = Instant.now();
     }
 
-    public void update(String name, String address, PropertyType type) {
+    public void update(String name, String address, PropertyType type, PropertyUsage usage) {
         this.name = name;
         this.address = address;
         this.type = type;
+        this.usage = usage;
     }
 
     public boolean isOwnedBy(UUID landlordId) {
@@ -100,6 +112,10 @@ public class Property {
 
     public PropertyType getType() {
         return type;
+    }
+
+    public PropertyUsage getUsage() {
+        return usage;
     }
 
     public Instant getCreatedAt() {

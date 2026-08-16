@@ -130,6 +130,20 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
       }
     }
 
+    // Bedspace means letting individual beds in a shared room, which a shop or
+    // a warehouse cannot be, so commercial properties are not asked.
+    //
+    // Read without blocking: if the property has not loaded, the picker is
+    // shown as normal. The server coerces the mode for a commercial property
+    // whatever the form sends, so guessing wrong here costs nothing worse than
+    // an unnecessary question.
+    final isCommercial = ref.watch(propertyProvider(widget.propertyId)).valueOrNull?.usage ==
+        PropertyResponseUsageEnum.COMMERCIAL;
+
+    if (isCommercial) {
+      _mode = UnitRequestRentalModeEnum.WHOLE_UNIT;
+    }
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
@@ -149,31 +163,41 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
               children: [
                 _Label('How is it rented?'),
                 const SizedBox(height: 6),
-                _ModePicker(
-                  value: _mode,
-                  // Locked when editing: the API refuses a change, so
-                  // offering one would only produce an error the landlord
-                  // cannot act on.
-                  onChanged: widget.isEditing
-                      ? null
-                      : (next) => setState(() => _mode = next),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _isBedspace
-                      ? 'Each bed is rented separately, with its own tenant and rent.'
-                      : 'The whole unit is rented to one tenant.',
-                  style: LizmoType.rowSub,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.isEditing
-                      ? 'This cannot be changed. Create a new unit instead.'
-                      // Stated up front because the API refuses to change it
-                      // later, and finding that out afterwards is worse.
-                      : 'This cannot be changed later.',
-                  style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
-                ),
+
+                if (isCommercial) ...[
+                  // No mode picker: bedspace cannot apply to a commercial
+                  // property, so the only answer is stated rather than asked.
+                  Text(
+                    'The whole unit is rented to one tenant.',
+                    style: LizmoType.rowSub,
+                  ),
+                ] else ...[
+                  _ModePicker(
+                    value: _mode,
+                    // Locked when editing: the API refuses a change, so
+                    // offering one would only produce an error the landlord
+                    // cannot act on.
+                    onChanged: widget.isEditing
+                        ? null
+                        : (next) => setState(() => _mode = next),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _isBedspace
+                        ? 'Each bed is rented separately, with its own tenant and rent.'
+                        : 'The whole unit is rented to one tenant.',
+                    style: LizmoType.rowSub,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.isEditing
+                        ? 'This cannot be changed. Create a new unit instead.'
+                        // Stated up front because the API refuses to change it
+                        // later, and finding that out afterwards is worse.
+                        : 'This cannot be changed later.',
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 _Label('Unit number'),

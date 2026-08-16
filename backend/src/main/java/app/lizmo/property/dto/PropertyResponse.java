@@ -2,6 +2,7 @@ package app.lizmo.property.dto;
 
 import app.lizmo.property.Property;
 import app.lizmo.property.PropertyType;
+import app.lizmo.property.PropertyUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,6 +17,7 @@ public record PropertyResponse(
         String name,
         String address,
         PropertyType type,
+        PropertyUsage usage,
         long unitCount,
         Instant createdAt,
         Instant updatedAt) {
@@ -26,6 +28,7 @@ public record PropertyResponse(
                 property.getName(),
                 property.getAddress(),
                 property.getType(),
+                property.getUsage(),
                 unitCount,
                 property.getCreatedAt(),
                 property.getUpdatedAt());

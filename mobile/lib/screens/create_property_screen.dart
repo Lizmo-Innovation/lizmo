@@ -32,6 +32,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   final _name = TextEditingController();
   final _address = TextEditingController();
 
+  PropertyRequestUsageEnum _usage = PropertyRequestUsageEnum.RESIDENTIAL;
   PropertyRequestTypeEnum _type = PropertyRequestTypeEnum.BOARDING_HOUSE;
   bool _saving = false;
   String? _error;
@@ -62,6 +63,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
         name: _name.text.trim(),
         address: _address.text.trim(),
         type: _type,
+        usage: _usage,
       );
 
       final api = ref.read(propertiesApiProvider);
@@ -102,6 +104,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
           _name.text = value.name ?? '';
           _address.text = value.address ?? '';
           _type = PropertyRequestTypeEnum.fromJson(value.type?.toJson()) ?? _type;
+          _usage = PropertyRequestUsageEnum.fromJson(value.usage?.toJson()) ?? _usage;
           _prefilled = true;
         case AsyncError(:final error):
           return _LoadFailed(failure: ApiFailure.from(error));
@@ -155,9 +158,26 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
                 ),
                 const SizedBox(height: 18),
 
+                _Label('Used for'),
+                const SizedBox(height: 6),
+                _UsagePicker(
+                  value: _usage,
+                  onChanged: (next) => setState(() {
+                    _usage = next;
+                    // The type sets do not overlap, so a type carried across
+                    // would be one the API refuses. Falling back to the first
+                    // of the new set keeps the form in a state that can save.
+                    if (!typesFor(next).contains(_type)) {
+                      _type = typesFor(next).first;
+                    }
+                  }),
+                ),
+                const SizedBox(height: 18),
+
                 _Label('Type'),
                 const SizedBox(height: 6),
                 _TypePicker(
+                  types: typesFor(_usage),
                   value: _type,
                   onChanged: (next) => setState(() => _type = next),
                 ),
@@ -203,22 +223,38 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   }
 }
 
-/// Property type as tappable chips rather than a dropdown.
-///
-/// Four options fit on screen, so showing them costs nothing and saves a tap.
-/// A dropdown would also hide the choice behind a control whose default the
-/// landlord might never question.
-class _TypePicker extends StatelessWidget {
-  const _TypePicker({required this.value, required this.onChanged});
+/// Which types a usage allows. Mirrors PropertyUsage on the server, which is
+/// the authority — this copy exists so the form can offer only valid types
+/// rather than letting the landlord pick a combination the API will refuse.
+const _typesByUsage = {
+  PropertyRequestUsageEnum.RESIDENTIAL: [
+    PropertyRequestTypeEnum.BOARDING_HOUSE,
+    PropertyRequestTypeEnum.APARTMENT,
+    PropertyRequestTypeEnum.CONDO,
+    PropertyRequestTypeEnum.SINGLE_HOUSE,
+  ],
+  PropertyRequestUsageEnum.COMMERCIAL: [
+    PropertyRequestTypeEnum.OFFICE,
+    PropertyRequestTypeEnum.RETAIL_SPACE,
+    PropertyRequestTypeEnum.WAREHOUSE,
+    PropertyRequestTypeEnum.STALL,
+  ],
+};
 
-  final PropertyRequestTypeEnum value;
-  final ValueChanged<PropertyRequestTypeEnum> onChanged;
+List<PropertyRequestTypeEnum> typesFor(PropertyRequestUsageEnum usage) =>
+    _typesByUsage[usage] ?? _typesByUsage[PropertyRequestUsageEnum.RESIDENTIAL]!;
+
+/// Residential or commercial. Asked before the type, because it decides which
+/// types are on offer.
+class _UsagePicker extends StatelessWidget {
+  const _UsagePicker({required this.value, required this.onChanged});
+
+  final PropertyRequestUsageEnum value;
+  final ValueChanged<PropertyRequestUsageEnum> onChanged;
 
   static const _labels = {
-    PropertyRequestTypeEnum.BOARDING_HOUSE: 'Boarding house',
-    PropertyRequestTypeEnum.APARTMENT: 'Apartment',
-    PropertyRequestTypeEnum.CONDO: 'Condo',
-    PropertyRequestTypeEnum.SINGLE_HOUSE: 'Single house',
+    PropertyRequestUsageEnum.RESIDENTIAL: 'Residential',
+    PropertyRequestUsageEnum.COMMERCIAL: 'Commercial',
   };
 
   @override
@@ -232,6 +268,51 @@ class _TypePicker extends StatelessWidget {
             label: entry.value,
             selected: entry.key == value,
             onTap: () => onChanged(entry.key),
+          ),
+      ],
+    );
+  }
+}
+
+/// Property type as tappable chips rather than a dropdown.
+///
+/// Four options fit on screen, so showing them costs nothing and saves a tap.
+/// A dropdown would also hide the choice behind a control whose default the
+/// landlord might never question.
+class _TypePicker extends StatelessWidget {
+  const _TypePicker({
+    required this.types,
+    required this.value,
+    required this.onChanged,
+  });
+
+  /// Only the types the chosen usage allows.
+  final List<PropertyRequestTypeEnum> types;
+  final PropertyRequestTypeEnum value;
+  final ValueChanged<PropertyRequestTypeEnum> onChanged;
+
+  static const _labels = {
+    PropertyRequestTypeEnum.BOARDING_HOUSE: 'Boarding house',
+    PropertyRequestTypeEnum.APARTMENT: 'Apartment',
+    PropertyRequestTypeEnum.CONDO: 'Condo',
+    PropertyRequestTypeEnum.SINGLE_HOUSE: 'Single house',
+    PropertyRequestTypeEnum.OFFICE: 'Office',
+    PropertyRequestTypeEnum.RETAIL_SPACE: 'Retail space',
+    PropertyRequestTypeEnum.WAREHOUSE: 'Warehouse',
+    PropertyRequestTypeEnum.STALL: 'Stall',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final type in types)
+          _TypeChip(
+            label: _labels[type] ?? '',
+            selected: type == value,
+            onTap: () => onChanged(type),
           ),
       ],
     );
