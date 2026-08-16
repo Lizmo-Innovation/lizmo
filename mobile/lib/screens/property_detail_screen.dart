@@ -66,7 +66,8 @@ class PropertyDetailScreen extends ConsumerWidget {
                     onRetry: () => ref.invalidate(unitsProvider(propertyId)),
                   ),
                 AsyncData(:final value) when value.isEmpty => const _Empty(),
-                AsyncData(:final value) => _UnitList(units: value),
+                AsyncData(:final value) =>
+                  _UnitList(units: value, propertyId: propertyId),
                 _ => const _Loading(),
               },
             ),
@@ -126,24 +127,27 @@ class _EditButton extends StatelessWidget {
 }
 
 class _UnitList extends StatelessWidget {
-  const _UnitList({required this.units});
+  const _UnitList({required this.units, required this.propertyId});
 
   final List<UnitResponse> units;
+  final String propertyId;
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
       itemCount: units.length,
-      itemBuilder: (context, index) => _UnitCard(unit: units[index]),
+      itemBuilder: (context, index) =>
+          _UnitCard(unit: units[index], propertyId: propertyId),
     );
   }
 }
 
 class _UnitCard extends StatelessWidget {
-  const _UnitCard({required this.unit});
+  const _UnitCard({required this.unit, required this.propertyId});
 
   final UnitResponse unit;
+  final String propertyId;
 
   bool get _isBedspace =>
       unit.rentalMode == UnitResponseRentalModeEnum.BEDSPACE;
@@ -152,13 +156,22 @@ class _UnitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: LizmoColors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [LizmoColors.cardShadow],
       ),
-      child: Column(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: unit.id == null
+              ? null
+              : () => context.push(Routes.unitEdit(propertyId, unit.id!)),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -211,7 +224,10 @@ class _UnitCard extends StatelessWidget {
               ],
             ),
           ],
-        ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -55,6 +55,23 @@ final unitsProvider =
   }
 });
 
+/// One unit, fetched by id.
+///
+/// The edit form needs the current values, and may be reached by deep link with
+/// no list loaded.
+final unitProvider =
+    FutureProvider.autoDispose.family<UnitResponse, String>((ref, id) async {
+  try {
+    final unit = await ref.watch(unitsApiProvider).getUnit(id);
+    if (unit == null) {
+      throw const ApiFailure(code: 'NOT_FOUND', message: 'No such unit.');
+    }
+    return unit;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 /// Beds within one unit. Only meaningful for BEDSPACE units — the API refuses
 /// beds on a whole unit, so callers should not ask.
 final bedsProvider =

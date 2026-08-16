@@ -8,15 +8,25 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 
-/// Adds a unit to a property.
+/// Adds or edits a unit.
 ///
-/// Rental mode is the first decision on the form because everything below it
-/// depends on the answer: a bedspace needs a capacity and prices per bed, a
+/// Rental mode is the first decision when creating, because everything below
+/// it depends on the answer: a bedspace needs a capacity and prices per bed, a
 /// whole unit has neither.
+///
+/// When editing, that choice is shown but locked. The API refuses to change
+/// it, since switching would orphan either the beds or the unit's own lease —
+/// and a disabled control that explains itself is kinder than one that accepts
+/// a tap and then fails.
 class CreateUnitScreen extends ConsumerStatefulWidget {
-  const CreateUnitScreen({super.key, required this.propertyId});
+  const CreateUnitScreen({super.key, required this.propertyId, this.unitId});
 
   final String propertyId;
+
+  /// Null when creating.
+  final String? unitId;
+
+  bool get isEditing => unitId != null;
 
   @override
   ConsumerState<CreateUnitScreen> createState() => _CreateUnitScreenState();
@@ -33,6 +43,15 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
   bool _saving = false;
   String? _error;
   Map<String, String> _fieldErrors = const {};
+
+  /// Prefill once, so a rebuild never overwrites what has been typed.
+  bool _prefilled = false;
+
+  /// Beds already defined. Capacity cannot drop below this — the API refuses,
+  /// and the form says so before the landlord tries.
+  int _existingBeds = 0;
+
+  bool _deleting = false;
 
   bool get _isBedspace => _mode == UnitRequestRentalModeEnum.BEDSPACE;
 
@@ -55,20 +74,24 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
     });
 
     try {
-      await ref.read(propertiesApiProvider).createUnit(
-            widget.propertyId,
-            UnitRequest(
-              unitNumber: _unitNumber.text.trim(),
-              floor: _floor.text.trim().isEmpty ? null : _floor.text.trim(),
-              rentalMode: _mode,
-              // Only meaningful for a bedspace; the API normalises a whole
-              // unit to 1 regardless of what is sent.
-              capacity: _isBedspace ? int.tryParse(_capacity.text.trim()) ?? 1 : 1,
-              // Left null rather than zero when blank: a landlord may not have
-              // decided yet, and zero would read as free.
-              rent: _rent.text.trim().isEmpty ? null : num.tryParse(_rent.text.trim()),
-            ),
-          );
+      final request = UnitRequest(
+        unitNumber: _unitNumber.text.trim(),
+        floor: _floor.text.trim().isEmpty ? null : _floor.text.trim(),
+        rentalMode: _mode,
+        // Only meaningful for a bedspace; the API normalises a whole unit to 1
+        // regardless of what is sent.
+        capacity: _isBedspace ? int.tryParse(_capacity.text.trim()) ?? 1 : 1,
+        // Left null rather than zero when blank: a landlord may not have
+        // decided yet, and zero would read as free.
+        rent: _rent.text.trim().isEmpty ? null : num.tryParse(_rent.text.trim()),
+      );
+
+      if (widget.isEditing) {
+        await ref.read(unitsApiProvider).updateUnit(widget.unitId!, request);
+        ref.invalidate(unitProvider(widget.unitId!));
+      } else {
+        await ref.read(propertiesApiProvider).createUnit(widget.propertyId, request);
+      }
 
       ref.invalidate(unitsProvider(widget.propertyId));
       ref.invalidate(propertiesProvider); // the unit count on the list changes
@@ -89,13 +112,32 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isEditing && !_prefilled) {
+      final existing = ref.watch(unitProvider(widget.unitId!));
+      switch (existing) {
+        case AsyncData(:final value):
+          _unitNumber.text = value.unitNumber ?? '';
+          _floor.text = value.floor ?? '';
+          _rent.text = value.rent?.toString() ?? '';
+          _capacity.text = (value.capacity ?? 1).toString();
+          _mode = UnitRequestRentalModeEnum.fromJson(value.rentalMode?.toJson()) ?? _mode;
+          _existingBeds = value.bedCount ?? 0;
+          _prefilled = true;
+        case AsyncError(:final error):
+          return _LoadFailed(failure: ApiFailure.from(error));
+        default:
+          return const _LoadingScaffold();
+      }
+    }
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
         backgroundColor: LizmoColors.teal900,
         foregroundColor: LizmoColors.white,
         elevation: 0,
-        title: Text('Add a unit', style: LizmoType.screenTitle.copyWith(fontSize: 18)),
+        title: Text(widget.isEditing ? 'Edit unit' : 'Add a unit',
+            style: LizmoType.screenTitle.copyWith(fontSize: 18)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -109,7 +151,12 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                 const SizedBox(height: 6),
                 _ModePicker(
                   value: _mode,
-                  onChanged: (next) => setState(() => _mode = next),
+                  // Locked when editing: the API refuses a change, so
+                  // offering one would only produce an error the landlord
+                  // cannot act on.
+                  onChanged: widget.isEditing
+                      ? null
+                      : (next) => setState(() => _mode = next),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -120,9 +167,11 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  // Stated up front because the API refuses to change it later,
-                  // and discovering that after the fact is worse.
-                  'This cannot be changed later.',
+                  widget.isEditing
+                      ? 'This cannot be changed. Create a new unit instead.'
+                      // Stated up front because the API refuses to change it
+                      // later, and finding that out afterwards is worse.
+                      : 'This cannot be changed later.',
                   style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
                 ),
                 const SizedBox(height: 20),
@@ -162,12 +211,19 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                     validator: (value) {
                       final parsed = int.tryParse((value ?? '').trim());
                       if (parsed == null || parsed < 1) return 'Enter at least 1';
+                      // The API refuses this too; saying it here means the
+                      // landlord is not told only after a round trip.
+                      if (parsed < _existingBeds) {
+                        return 'You already have $_existingBeds beds here';
+                      }
                       return _fieldErrors['capacity'];
                     },
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Beds are added afterwards, up to this many.',
+                    _existingBeds > 0
+                        ? '$_existingBeds already added. Remove beds before lowering this.'
+                        : 'Beds are added afterwards, up to this many.',
                     style: LizmoType.rowSub,
                   ),
                   const SizedBox(height: 18),
@@ -204,13 +260,79 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                 const SizedBox(height: 28),
                 _saving
                     ? const _SavingButton()
-                    : PrimaryActionButton(label: 'Save unit', onPressed: _save),
+                    : PrimaryActionButton(
+                        label: widget.isEditing ? 'Save changes' : 'Save unit',
+                        onPressed: _save,
+                      ),
+
+                if (widget.isEditing) ...[
+                  const SizedBox(height: 12),
+                  _DeleteSection(
+                    blockedByBeds: _existingBeds,
+                    deleting: _deleting,
+                    onDelete: _confirmDelete,
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// Deletes the unit, after asking.
+  ///
+  /// Deletion is permanent and there is no undo, so it is confirmed rather than
+  /// taken on a single tap — and the dialog names the unit, because a landlord
+  /// with several open screens should not have to trust that they tapped the
+  /// one they meant.
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: LizmoColors.white,
+        title: Text('Delete unit ${_unitNumber.text.trim()}?',
+            style: LizmoType.rowName.copyWith(fontSize: 16)),
+        content: Text(
+          'This cannot be undone.',
+          style: LizmoType.rowSub,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('Cancel',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('Delete',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(unitsApiProvider).deleteUnit(widget.unitId!);
+
+      ref.invalidate(unitsProvider(widget.propertyId));
+      ref.invalidate(propertiesProvider); // the unit count on the list changes
+
+      if (mounted) context.pop();
+    } catch (error) {
+      final failure = ApiFailure.from(error);
+      if (mounted) setState(() => _error = failure.message);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   InputDecoration _decoration(String hint) {
@@ -238,7 +360,9 @@ class _ModePicker extends StatelessWidget {
   const _ModePicker({required this.value, required this.onChanged});
 
   final UnitRequestRentalModeEnum value;
-  final ValueChanged<UnitRequestRentalModeEnum> onChanged;
+
+  /// Null renders the picker as locked — used when editing.
+  final ValueChanged<UnitRequestRentalModeEnum>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +372,9 @@ class _ModePicker extends StatelessWidget {
           child: _ModeOption(
             label: 'Bedspace',
             selected: value == UnitRequestRentalModeEnum.BEDSPACE,
-            onTap: () => onChanged(UnitRequestRentalModeEnum.BEDSPACE),
+            onTap: onChanged == null
+                ? null
+                : () => onChanged!(UnitRequestRentalModeEnum.BEDSPACE),
           ),
         ),
         const SizedBox(width: 8),
@@ -256,7 +382,9 @@ class _ModePicker extends StatelessWidget {
           child: _ModeOption(
             label: 'Whole unit',
             selected: value == UnitRequestRentalModeEnum.WHOLE_UNIT,
-            onTap: () => onChanged(UnitRequestRentalModeEnum.WHOLE_UNIT),
+            onTap: onChanged == null
+                ? null
+                : () => onChanged!(UnitRequestRentalModeEnum.WHOLE_UNIT),
           ),
         ),
       ],
@@ -273,7 +401,9 @@ class _ModeOption extends StatelessWidget {
 
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+
+  /// Null when the choice is locked.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +491,123 @@ class _SavingButton extends StatelessWidget {
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation(LizmoColors.white),
         ),
+      ),
+    );
+  }
+}
+
+
+class _LoadingScaffold extends StatelessWidget {
+  const _LoadingScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadFailed extends StatelessWidget {
+  const _LoadFailed({required this.failure});
+
+  final ApiFailure failure;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: SafeArea(
+        child: LizmoMessageState(
+          tone: LizmoMessageTone.problem,
+          icon: failure.isNetwork ? Icons.wifi_off_outlined : Icons.error_outline,
+          title: failure.isNetwork ? "Can't reach Lizmo" : "Can't open this unit",
+          detail: failure.message,
+          actionLabel: 'Go back',
+          onAction: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Deletion, kept apart from the save action and styled as a departure.
+///
+/// The API refuses while the unit still has beds, so when it does, this
+/// explains that instead of offering a button that cannot work. Bed removal is
+/// not built yet, which the message deliberately does not pretend otherwise
+/// about.
+class _DeleteSection extends StatelessWidget {
+  const _DeleteSection({
+    required this.blockedByBeds,
+    required this.deleting,
+    required this.onDelete,
+  });
+
+  final int blockedByBeds;
+  final bool deleting;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (blockedByBeds > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: LizmoColors.amberBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 18, color: LizmoColors.amberText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'This unit has $blockedByBeds beds, so it cannot be deleted. '
+                'Its beds hold the tenancy history.',
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (deleting) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(LizmoColors.red),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return TextButton(
+      onPressed: onDelete,
+      child: Text(
+        'Delete this unit',
+        // Red, not coral: coral is the action accent and belongs to the screen's
+        // main action, which this is the opposite of.
+        style: LizmoType.rowName.copyWith(color: LizmoColors.red),
       ),
     );
   }

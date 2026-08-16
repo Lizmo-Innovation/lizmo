@@ -274,6 +274,66 @@ class PropertyIntegrationTest {
                 .andExpect(jsonPath("$.capacity").value(1));
     }
 
+    @Test
+    void an_empty_unit_can_be_deleted() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "WHOLE_UNIT", 1);
+
+        mvc.perform(delete("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNotFound());
+
+        // The property survives, and stops counting the unit.
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unitCount").value(0));
+    }
+
+    @Test
+    void a_unit_with_beds_cannot_be_deleted() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1"}
+                                """))
+                .andExpect(status().isCreated());
+
+        // Deleting would strand the bed's occupancy and billing history.
+        mvc.perform(delete("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("beds")));
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void another_landlord_cannot_delete_a_unit() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "WHOLE_UNIT", 1);
+
+        // 404 rather than 403, so this does not confirm the unit exists.
+        mvc.perform(delete("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + otherLandlordToken))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk());
+    }
+
     // ---------- Beds ----------
 
     @Test
