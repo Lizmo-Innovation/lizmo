@@ -102,6 +102,28 @@ class _EditablePropertiesApi extends PropertiesApi {
   }
 }
 
+
+/// Serves one unit and records updates, for driving the unit edit form.
+class _EditableUnitsApi extends UnitsApi {
+  _EditableUnitsApi(this.current);
+
+  UnitResponse current;
+  UnitRequest? lastUpdate;
+
+  @override
+  Future<UnitResponse?> getUnit(String id, {Future<void>? abortTrigger}) async => current;
+
+  @override
+  Future<UnitResponse?> updateUnit(
+    String id,
+    UnitRequest unitRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastUpdate = unitRequest;
+    return current;
+  }
+}
+
 void main() {
   group('routing follows auth state', () {
     testWidgets('signed out lands on login', (tester) async {
@@ -933,6 +955,119 @@ void main() {
 
       expect(find.text('Give the property a name'), findsOneWidget);
       expect(api.lastUpdate, isNull);
+    });
+  });
+
+  group('editing a unit', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 1,
+        );
+
+    UnitResponse bedspace({int capacity = 4, int bedCount = 4, num? rent = 2500}) =>
+        UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          floor: '2',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: capacity,
+          bedCount: bedCount,
+          rent: rent,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Widget appWith(_EditableUnitsApi api) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            unitsApiProvider.overrideWithValue(api),
+            propertiesProvider.overrideWith((ref) async => [property()]),
+            unitsProvider('p1').overrideWith((ref) async => [api.current]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    Future<void> openEditForm(WidgetTester tester, _EditableUnitsApi api) async {
+      await tester.pumpWidget(appWith(api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('tapping a unit opens it prefilled', (tester) async {
+      final api = _EditableUnitsApi(bedspace());
+      await openEditForm(tester, api);
+
+      expect(find.text('Edit unit'), findsOneWidget);
+
+      final fields = tester
+          .widgetList<EditableText>(find.descendant(
+            of: find.byType(CreateUnitScreen),
+            matching: find.byType(EditableText),
+          ))
+          .toList();
+
+      // Unit number, floor, capacity, rent — in the order they appear.
+      expect(fields[0].controller.text, '2B');
+      expect(fields[1].controller.text, '2');
+      expect(fields[2].controller.text, '4');
+      expect(fields[3].controller.text, '2500');
+    });
+
+    testWidgets('rental mode is locked while editing', (tester) async {
+      final api = _EditableUnitsApi(bedspace());
+      await openEditForm(tester, api);
+
+      // Shown so the landlord can see what it is, but not offered as a choice:
+      // the API refuses to change it.
+      expect(find.text('This cannot be changed. Create a new unit instead.'),
+          findsOneWidget);
+
+      await tester.tap(find.text('Whole unit'));
+      await tester.pump();
+
+      // Still a bedspace, so the bed count question remains.
+      expect(find.text('How many beds?'), findsOneWidget);
+    });
+
+    testWidgets('capacity cannot drop below the beds already added', (tester) async {
+      final api = _EditableUnitsApi(bedspace(capacity: 4, bedCount: 4));
+      await openEditForm(tester, api);
+
+      expect(find.textContaining('4 already added'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).at(2), '2');
+      await tester.ensureVisible(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save changes'));
+      await tester.pump();
+
+      // Caught here rather than after a round trip; the API refuses it too.
+      expect(find.text('You already have 4 beds here'), findsOneWidget);
+      expect(api.lastUpdate, isNull);
+    });
+
+    testWidgets('changes are sent, with the mode unchanged', (tester) async {
+      final api = _EditableUnitsApi(bedspace());
+      await openEditForm(tester, api);
+
+      await tester.enterText(find.byType(TextFormField).at(3), '2750');
+      await tester.ensureVisible(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUpdate!.rent, 2750);
+      expect(api.lastUpdate!.unitNumber, '2B');
+      // Sent back as it was, since the API compares it and rejects a change.
+      expect(api.lastUpdate!.rentalMode, UnitRequestRentalModeEnum.BEDSPACE);
     });
   });
 }

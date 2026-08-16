@@ -27,6 +27,8 @@ abstract final class Routes {
   static String propertyDetail(String id) => '/landlord/properties/$id';
   static String unitNew(String id) => '/landlord/properties/$id/units/new';
   static String propertyEdit(String id) => '/landlord/properties/$id/edit';
+  static String unitEdit(String propertyId, String unitId) =>
+      '/landlord/properties/$propertyId/units/$unitId/edit';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -90,6 +92,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'edit',
                 builder: (context, state) => CreatePropertyScreen(
                   propertyId: state.pathParameters['id'],
+                ),
+              ),
+              GoRoute(
+                // Declared after units/new, which would otherwise match with
+                // unitId = "new".
+                path: 'units/:unitId/edit',
+                builder: (context, state) => CreateUnitScreen(
+                  propertyId: state.pathParameters['id']!,
+                  unitId: state.pathParameters['unitId'],
                 ),
               ),
             ],
