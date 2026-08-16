@@ -122,6 +122,13 @@ class _EditableUnitsApi extends UnitsApi {
     lastUpdate = unitRequest;
     return current;
   }
+
+  String? deletedId;
+
+  @override
+  Future<void> deleteUnit(String id, {Future<void>? abortTrigger}) async {
+    deletedId = id;
+  }
 }
 
 void main() {
@@ -1068,6 +1075,117 @@ void main() {
       expect(api.lastUpdate!.unitNumber, '2B');
       // Sent back as it was, since the API compares it and rejects a change.
       expect(api.lastUpdate!.rentalMode, UnitRequestRentalModeEnum.BEDSPACE);
+    });
+  });
+
+  group('deleting a unit', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 1,
+        );
+
+    UnitResponse unit({required int bedCount, required int capacity}) => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: capacity > 1
+              ? UnitResponseRentalModeEnum.BEDSPACE
+              : UnitResponseRentalModeEnum.WHOLE_UNIT,
+          capacity: capacity,
+          bedCount: bedCount,
+          rent: 2500,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Future<_EditableUnitsApi> openEdit(WidgetTester tester, UnitResponse u) async {
+      final api = _EditableUnitsApi(u);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [u]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('an empty unit can be deleted, after confirming', (tester) async {
+      final api = await openEdit(tester, unit(bedCount: 0, capacity: 1));
+
+      await tester.ensureVisible(find.text('Delete this unit'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this unit'));
+      await tester.pumpAndSettle();
+
+      // Named in the dialog, so a landlord with several screens open does not
+      // have to trust they tapped the right one.
+      expect(find.text('Delete unit 2B?'), findsOneWidget);
+      expect(find.text('This cannot be undone.'), findsOneWidget);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, 'u1');
+    });
+
+    testWidgets('cancelling deletes nothing', (tester) async {
+      final api = await openEdit(tester, unit(bedCount: 0, capacity: 1));
+
+      await tester.ensureVisible(find.text('Delete this unit'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this unit'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, isNull);
+      // Still on the form, not popped back.
+      expect(find.byType(CreateUnitScreen), findsOneWidget);
+    });
+
+    testWidgets('a unit with beds explains why it cannot be deleted', (tester) async {
+      final api = await openEdit(tester, unit(bedCount: 4, capacity: 4));
+
+      await tester.ensureVisible(find.textContaining('cannot be deleted'));
+      await tester.pumpAndSettle();
+
+      // The API refuses this, so no button is offered that cannot work.
+      expect(find.textContaining('This unit has 4 beds'), findsOneWidget);
+      expect(find.text('Delete this unit'), findsNothing);
+      expect(api.deletedId, isNull);
+    });
+
+    testWidgets('creating a unit offers no delete', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a unit'));
+      await tester.pumpAndSettle();
+
+      // There is nothing to delete yet.
+      expect(find.text('Delete this unit'), findsNothing);
     });
   });
 }

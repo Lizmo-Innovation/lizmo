@@ -51,6 +51,8 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
   /// and the form says so before the landlord tries.
   int _existingBeds = 0;
 
+  bool _deleting = false;
+
   bool get _isBedspace => _mode == UnitRequestRentalModeEnum.BEDSPACE;
 
   @override
@@ -262,12 +264,75 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                         label: widget.isEditing ? 'Save changes' : 'Save unit',
                         onPressed: _save,
                       ),
+
+                if (widget.isEditing) ...[
+                  const SizedBox(height: 12),
+                  _DeleteSection(
+                    blockedByBeds: _existingBeds,
+                    deleting: _deleting,
+                    onDelete: _confirmDelete,
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// Deletes the unit, after asking.
+  ///
+  /// Deletion is permanent and there is no undo, so it is confirmed rather than
+  /// taken on a single tap — and the dialog names the unit, because a landlord
+  /// with several open screens should not have to trust that they tapped the
+  /// one they meant.
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: LizmoColors.white,
+        title: Text('Delete unit ${_unitNumber.text.trim()}?',
+            style: LizmoType.rowName.copyWith(fontSize: 16)),
+        content: Text(
+          'This cannot be undone.',
+          style: LizmoType.rowSub,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('Cancel',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('Delete',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(unitsApiProvider).deleteUnit(widget.unitId!);
+
+      ref.invalidate(unitsProvider(widget.propertyId));
+      ref.invalidate(propertiesProvider); // the unit count on the list changes
+
+      if (mounted) context.pop();
+    } catch (error) {
+      final failure = ApiFailure.from(error);
+      if (mounted) setState(() => _error = failure.message);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   InputDecoration _decoration(String hint) {
@@ -471,6 +536,78 @@ class _LoadFailed extends StatelessWidget {
           actionLabel: 'Go back',
           onAction: () => Navigator.of(context).pop(),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Deletion, kept apart from the save action and styled as a departure.
+///
+/// The API refuses while the unit still has beds, so when it does, this
+/// explains that instead of offering a button that cannot work. Bed removal is
+/// not built yet, which the message deliberately does not pretend otherwise
+/// about.
+class _DeleteSection extends StatelessWidget {
+  const _DeleteSection({
+    required this.blockedByBeds,
+    required this.deleting,
+    required this.onDelete,
+  });
+
+  final int blockedByBeds;
+  final bool deleting;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (blockedByBeds > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: LizmoColors.amberBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 18, color: LizmoColors.amberText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'This unit has $blockedByBeds beds, so it cannot be deleted. '
+                'Its beds hold the tenancy history.',
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (deleting) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(LizmoColors.red),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return TextButton(
+      onPressed: onDelete,
+      child: Text(
+        'Delete this unit',
+        // Red, not coral: coral is the action accent and belongs to the screen's
+        // main action, which this is the opposite of.
+        style: LizmoType.rowName.copyWith(color: LizmoColors.red),
       ),
     );
   }
