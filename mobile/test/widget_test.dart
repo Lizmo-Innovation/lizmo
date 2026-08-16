@@ -64,6 +64,7 @@ class _FakePropertiesApi extends PropertiesApi {
       name: propertyRequest.name,
       address: propertyRequest.address,
       type: PropertyResponseTypeEnum.fromJson(propertyRequest.type.toJson()),
+      usage: PropertyResponseUsageEnum.fromJson(propertyRequest.usage.toJson()),
       unitCount: 0,
     );
     store.add(created);
@@ -96,6 +97,7 @@ class _EditablePropertiesApi extends PropertiesApi {
       name: propertyRequest.name,
       address: propertyRequest.address,
       type: PropertyResponseTypeEnum.fromJson(propertyRequest.type.toJson()),
+      usage: PropertyResponseUsageEnum.fromJson(propertyRequest.usage.toJson()),
       unitCount: current.unitCount,
     );
     return current;
@@ -1186,6 +1188,298 @@ void main() {
 
       // There is nothing to delete yet.
       expect(find.text('Delete this unit'), findsNothing);
+    });
+  });
+
+  group('residential or commercial', () {
+    Widget appWith(_FakePropertiesApi api, List<PropertyResponse> store) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesApiProvider.overrideWithValue(api),
+            propertiesProvider.overrideWith((ref) async => store),
+          ],
+          child: const LizmoApp(),
+        );
+
+    Future<_FakePropertiesApi> openForm(WidgetTester tester) async {
+      final store = <PropertyResponse>[];
+      final api = _FakePropertiesApi(store);
+      await tester.pumpWidget(appWith(api, store));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('the form asks usage first and starts residential', (tester) async {
+      await openForm(tester);
+
+      expect(find.text('Used for'), findsOneWidget);
+      expect(find.text('Residential'), findsOneWidget);
+      expect(find.text('Commercial'), findsOneWidget);
+
+      // Residential types on offer, commercial ones not.
+      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.text('Office'), findsNothing);
+      expect(find.text('Warehouse'), findsNothing);
+    });
+
+    testWidgets('choosing commercial swaps the type list', (tester) async {
+      await openForm(tester);
+
+      await tester.tap(find.text('Commercial'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Office'), findsOneWidget);
+      expect(find.text('Retail space'), findsOneWidget);
+      expect(find.text('Warehouse'), findsOneWidget);
+      expect(find.text('Stall'), findsOneWidget);
+
+      // The residential types are gone, so an invalid pair cannot be assembled.
+      expect(find.text('Boarding house'), findsNothing);
+      expect(find.text('Condo'), findsNothing);
+    });
+
+    testWidgets('a commercial property saves a matching pair', (tester) async {
+      final api = await openForm(tester);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Mabini Arcade');
+      await tester.enterText(find.byType(TextFormField).at(1), '14 Mabini St');
+
+      await tester.tap(find.text('Commercial'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Warehouse'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save property'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRequest!.usage, PropertyRequestUsageEnum.COMMERCIAL);
+      expect(api.lastRequest!.type, PropertyRequestTypeEnum.WAREHOUSE);
+    });
+
+    testWidgets('switching usage drops a type the new usage forbids', (tester) async {
+      final api = await openForm(tester);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Mabini Arcade');
+      await tester.enterText(find.byType(TextFormField).at(1), '14 Mabini St');
+
+      // Pick a residential type, then convert. Carrying CONDO across would send
+      // a pair the API refuses.
+      await tester.tap(find.text('Condo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Commercial'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save property'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRequest!.usage, PropertyRequestUsageEnum.COMMERCIAL);
+      expect(api.lastRequest!.type, PropertyRequestTypeEnum.OFFICE);
+    });
+
+    testWidgets('the list marks commercial properties and leaves the rest alone',
+        (tester) async {
+      final store = [
+        PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 2,
+        ),
+        PropertyResponse(
+          id: 'p2',
+          name: 'Mabini Arcade',
+          address: '14 Mabini St',
+          type: PropertyResponseTypeEnum.OFFICE,
+          usage: PropertyResponseUsageEnum.COMMERCIAL,
+          unitCount: 1,
+        ),
+      ];
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => store),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Commercial \u00b7 Office'), findsOneWidget);
+      // Residential is the norm; labelling it on every card would be noise.
+      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Residential'), findsNothing);
+    });
+
+    testWidgets('editing a commercial property opens on its usage', (tester) async {
+      final api = _EditablePropertiesApi(PropertyResponse(
+        id: 'p1',
+        name: 'Mabini Arcade',
+        address: '14 Mabini St',
+        type: PropertyResponseTypeEnum.RETAIL_SPACE,
+        usage: PropertyResponseUsageEnum.COMMERCIAL,
+        unitCount: 0,
+      ));
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [api.current]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mabini Arcade'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+
+      // Commercial types on offer, not residential ones -- the form opened on
+      // the property's own usage rather than the default.
+      expect(find.text('Retail space'), findsOneWidget);
+      expect(find.text('Boarding house'), findsNothing);
+    });
+  });
+
+  group('units in a commercial property', () {
+    PropertyResponse commercial() => PropertyResponse(
+          id: 'p1',
+          name: 'Mabini Arcade',
+          address: '14 Mabini St',
+          type: PropertyResponseTypeEnum.RETAIL_SPACE,
+          usage: PropertyResponseUsageEnum.COMMERCIAL,
+          unitCount: 0,
+        );
+
+    PropertyResponse residential() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 0,
+        );
+
+    Future<void> openAddUnit(WidgetTester tester, PropertyResponse property) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property]),
+          propertyProvider('p1').overrideWith((ref) async => property),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(property.name!));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a unit'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the rental mode question is not asked', (tester) async {
+      await openAddUnit(tester, commercial());
+
+      // No choice offered -- a shop cannot be let by the bed.
+      expect(find.text('Bedspace'), findsNothing);
+      expect(find.text('Whole unit'), findsNothing);
+
+      // The single possible answer is stated instead of asked.
+      expect(find.text('The whole unit is rented to one tenant.'), findsOneWidget);
+
+      // And the warning that the choice is permanent goes with the choice.
+      expect(find.text('This cannot be changed later.'), findsNothing);
+    });
+
+    testWidgets('no bed count is asked either', (tester) async {
+      await openAddUnit(tester, commercial());
+
+      expect(find.text('How many beds?'), findsNothing);
+    });
+
+    testWidgets('the property screen hides the beds counter', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [commercial()]),
+          unitsProvider('p1').overrideWith((ref) async => [
+                UnitResponse(
+                  id: 'u1',
+                  propertyId: 'p1',
+                  unitNumber: 'Stall 1',
+                  rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+                  capacity: 1,
+                  bedCount: 0,
+                  rent: 8000,
+                  status: UnitResponseStatusEnum.VACANT,
+                ),
+              ]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mabini Arcade'));
+      await tester.pumpAndSettle();
+
+      // A bed count here is always zero, which reads as setup the landlord has
+      // forgotten rather than something that cannot apply.
+      expect(find.text('Beds'), findsNothing);
+      expect(find.text('Units'), findsWidgets);
+    });
+
+    testWidgets('a residential property keeps the beds counter', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [residential()]),
+          unitsProvider('p1').overrideWith((ref) async => [
+                UnitResponse(
+                  id: 'u1',
+                  propertyId: 'p1',
+                  unitNumber: '2B',
+                  rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+                  capacity: 4,
+                  bedCount: 3,
+                  rent: 2500,
+                  status: UnitResponseStatusEnum.VACANT,
+                ),
+              ]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Beds'), findsOneWidget);
+    });
+
+    testWidgets('a residential property is still asked', (tester) async {
+      await openAddUnit(tester, residential());
+
+      expect(find.text('Bedspace'), findsOneWidget);
+      expect(find.text('Whole unit'), findsOneWidget);
+      expect(find.text('This cannot be changed later.'), findsOneWidget);
     });
   });
 }

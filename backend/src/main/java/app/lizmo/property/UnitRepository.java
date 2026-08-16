@@ -11,4 +11,6 @@ public interface UnitRepository extends JpaRepository<Unit, UUID> {
     boolean existsByPropertyIdAndUnitNumberIgnoreCase(UUID propertyId, String unitNumber);
 
     long countByPropertyId(UUID propertyId);
+
+    boolean existsByPropertyIdAndRentalMode(UUID propertyId, RentalMode rentalMode);
 }

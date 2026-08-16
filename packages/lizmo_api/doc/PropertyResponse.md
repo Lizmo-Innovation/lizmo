@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **name** | **String** |  | [optional] 
 **address** | **String** |  | [optional] 
 **type** | **String** |  | [optional] 
+**usage** | **String** |  | [optional] 
 **unitCount** | **int** |  | [optional] 
 **createdAt** | [**DateTime**](DateTime.md) |  | [optional] 
 **updatedAt** | [**DateTime**](DateTime.md) |  | [optional] 

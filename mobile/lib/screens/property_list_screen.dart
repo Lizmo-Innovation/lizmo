@@ -206,7 +206,7 @@ class _PropertyCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
-                      Text(_typeLabel(property.type), style: LizmoType.rowSub),
+                      Text(_kindLabel(property), style: LizmoType.rowSub),
                     ],
                   ),
                 ),
@@ -229,6 +229,17 @@ class _PropertyCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// "Boarding house", or "Commercial · Office".
+  ///
+  /// Residential is the overwhelming majority, so naming it on every card would
+  /// be noise. Commercial is the exception, and worth marking.
+  static String _kindLabel(PropertyResponse property) {
+    final type = _typeLabel(property.type);
+    return property.usage == PropertyResponseUsageEnum.COMMERCIAL
+        ? 'Commercial · $type'
+        : type;
   }
 
   /// Turns BOARDING_HOUSE into "Boarding house". The enum is the API's

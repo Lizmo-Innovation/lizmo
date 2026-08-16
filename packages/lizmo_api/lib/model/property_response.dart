@@ -17,6 +17,7 @@ class PropertyResponse {
     this.name,
     this.address,
     this.type,
+    this.usage,
     this.unitCount,
     this.createdAt,
     this.updatedAt,
@@ -48,6 +49,8 @@ class PropertyResponse {
 
   PropertyResponseTypeEnum? type;
 
+  PropertyResponseUsageEnum? usage;
+
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
@@ -78,6 +81,7 @@ class PropertyResponse {
     other.name == name &&
     other.address == address &&
     other.type == type &&
+    other.usage == usage &&
     other.unitCount == unitCount &&
     other.createdAt == createdAt &&
     other.updatedAt == updatedAt;
@@ -89,12 +93,13 @@ class PropertyResponse {
     (name == null ? 0 : name!.hashCode) +
     (address == null ? 0 : address!.hashCode) +
     (type == null ? 0 : type!.hashCode) +
+    (usage == null ? 0 : usage!.hashCode) +
     (unitCount == null ? 0 : unitCount!.hashCode) +
     (createdAt == null ? 0 : createdAt!.hashCode) +
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, type=$type, unitCount=$unitCount, createdAt=$createdAt, updatedAt=$updatedAt]';
+  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, type=$type, usage=$usage, unitCount=$unitCount, createdAt=$createdAt, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -117,6 +122,11 @@ class PropertyResponse {
       json[r'type'] = this.type;
     } else {
       json[r'type'] = null;
+    }
+    if (this.usage != null) {
+      json[r'usage'] = this.usage;
+    } else {
+      json[r'usage'] = null;
     }
     if (this.unitCount != null) {
       json[r'unitCount'] = this.unitCount;
@@ -155,6 +165,7 @@ class PropertyResponse {
         name: mapValueOfType<String>(json, r'name'),
         address: mapValueOfType<String>(json, r'address'),
         type: PropertyResponseTypeEnum.fromJson(json[r'type']),
+        usage: PropertyResponseUsageEnum.fromJson(json[r'usage']),
         unitCount: mapValueOfType<int>(json, r'unitCount'),
         createdAt: mapDateTime(json, r'createdAt', r''),
         updatedAt: mapDateTime(json, r'updatedAt', r''),
@@ -214,6 +225,10 @@ enum PropertyResponseTypeEnum {
   BOARDING_HOUSE._(r'BOARDING_HOUSE'),
   CONDO._(r'CONDO'),
   SINGLE_HOUSE._(r'SINGLE_HOUSE'),
+  OFFICE._(r'OFFICE'),
+  RETAIL_SPACE._(r'RETAIL_SPACE'),
+  WAREHOUSE._(r'WAREHOUSE'),
+  STALL._(r'STALL'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -276,6 +291,10 @@ class PropertyResponseTypeEnumTypeTransformer {
         case r'BOARDING_HOUSE': return PropertyResponseTypeEnum.BOARDING_HOUSE;
         case r'CONDO': return PropertyResponseTypeEnum.CONDO;
         case r'SINGLE_HOUSE': return PropertyResponseTypeEnum.SINGLE_HOUSE;
+        case r'OFFICE': return PropertyResponseTypeEnum.OFFICE;
+        case r'RETAIL_SPACE': return PropertyResponseTypeEnum.RETAIL_SPACE;
+        case r'WAREHOUSE': return PropertyResponseTypeEnum.WAREHOUSE;
+        case r'STALL': return PropertyResponseTypeEnum.STALL;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
@@ -287,6 +306,84 @@ class PropertyResponseTypeEnumTypeTransformer {
 
   /// The singleton instance of this transformer.
   static PropertyResponseTypeEnumTypeTransformer? _instance;
+}
+
+
+
+enum PropertyResponseUsageEnum {
+  RESIDENTIAL._(r'RESIDENTIAL'),
+  COMMERCIAL._(r'COMMERCIAL'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const PropertyResponseUsageEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [PropertyResponseUsageEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static PropertyResponseUsageEnum? fromJson(dynamic value) => PropertyResponseUsageEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [PropertyResponseUsageEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<PropertyResponseUsageEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PropertyResponseUsageEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PropertyResponseUsageEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PropertyResponseUsageEnum] to String,
+/// and [decode] dynamic data back to [PropertyResponseUsageEnum].
+class PropertyResponseUsageEnumTypeTransformer {
+  factory PropertyResponseUsageEnumTypeTransformer() => _instance ??= const PropertyResponseUsageEnumTypeTransformer._();
+
+  const PropertyResponseUsageEnumTypeTransformer._();
+
+  String encode(PropertyResponseUsageEnum data) => data._value;
+
+  /// Returns the instance of [PropertyResponseUsageEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PropertyResponseUsageEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is PropertyResponseUsageEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'RESIDENTIAL': return PropertyResponseUsageEnum.RESIDENTIAL;
+        case r'COMMERCIAL': return PropertyResponseUsageEnum.COMMERCIAL;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static PropertyResponseUsageEnumTypeTransformer? _instance;
 }
 
 
