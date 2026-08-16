@@ -15,6 +15,7 @@ class LatticeHeader extends StatelessWidget {
     required this.eyebrow,
     required this.title,
     this.stats = const [],
+    this.leading,
     this.trailing,
   });
 
@@ -25,8 +26,19 @@ class LatticeHeader extends StatelessWidget {
   /// Summary figures rendered across the bottom of the header.
   final List<LatticeHeaderStat> stats;
 
+  /// Optional control at the top left — in practice always the back arrow,
+  /// which belongs there on every screen that has one, the same place an
+  /// [AppBar] would put it.
+  ///
+  /// Giving it its own row keeps the eyebrow and title flush with the content
+  /// edge rather than indented around it.
+  final Widget? leading;
+
   /// Optional control aligned to the title, e.g. the role switcher. Kept in the
   /// header rather than an app bar because this header *is* the app bar.
+  ///
+  /// Moves up beside [leading] when one is given, so the two never straddle
+  /// different rows.
   final Widget? trailing;
 
   @override
@@ -48,9 +60,21 @@ class LatticeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The trailing control sits on the eyebrow row rather than beside
-              // the title: the eyebrow is short, so the title keeps the full
-              // width instead of wrapping into a narrow column.
+              if (leading != null) ...[
+                Row(
+                  children: [
+                    leading!,
+                    const Spacer(),
+                    ?trailing,
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // With no leading control the trailing one sits on the eyebrow
+              // row rather than beside the title: the eyebrow is short, so the
+              // title keeps the full width instead of wrapping into a narrow
+              // column.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -62,7 +86,7 @@ class LatticeHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (trailing != null) ...[
+                  if (leading == null && trailing != null) ...[
                     const SizedBox(width: 12),
                     trailing!,
                   ],

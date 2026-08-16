@@ -37,7 +37,7 @@ class UnitBedsScreen extends ConsumerWidget {
           LatticeHeader(
             eyebrow: unit == null ? 'Unit' : 'Unit ${unit.unitNumber ?? ''}',
             title: 'Beds',
-            trailing: const _BackButton(),
+            leading: const _BackButton(),
             stats: [
               LatticeHeaderStat(
                 value: beds.valueOrNull?.length.toString() ?? '—',

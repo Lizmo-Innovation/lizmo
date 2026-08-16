@@ -44,13 +44,8 @@ class PropertyDetailScreen extends ConsumerWidget {
           LatticeHeader(
             eyebrow: name ?? 'Property',
             title: 'Units',
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _BackButton(),
-                _EditButton(propertyId: propertyId),
-              ],
-            ),
+            leading: const _BackButton(),
+            trailing: _EditButton(propertyId: propertyId),
             stats: [
               LatticeHeaderStat(
                 value: units.valueOrNull?.length.toString() ?? '—',

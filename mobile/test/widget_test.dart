@@ -1571,6 +1571,110 @@ void main() {
     });
   });
 
+  group('the back arrow', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+        );
+
+    UnitResponse unit() => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: 2,
+          bedCount: 2,
+          rent: 2500,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    /// Left of centre is the whole claim: "upper left" is a position, so the
+    /// test checks the position rather than which slot it was passed to.
+    void expectUpperLeft(WidgetTester tester, Finder backArrow) {
+      final screen = tester.getSize(find.byType(MaterialApp)).width;
+      final arrow = tester.getCenter(backArrow);
+      expect(arrow.dx, lessThan(screen / 2));
+    }
+
+    testWidgets('sits upper left on the property screen, opposite edit',
+        (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [unit()]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expectUpperLeft(tester, find.byTooltip('Back'));
+
+      // It used to share a row with edit on the right; they now face each other.
+      expect(
+        tester.getCenter(find.byTooltip('Back')).dx,
+        lessThan(tester.getCenter(find.byTooltip('Edit property')).dx),
+      );
+    });
+
+    testWidgets('sits upper left on the beds screen', (tester) async {
+      final api = _FakeBedsApi(unit(), [
+        BedResponse(
+          id: 'b1',
+          unitId: 'u1',
+          bedLabel: 'Bed 1',
+          status: BedResponseStatusEnum.VACANT,
+        ),
+      ]);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [unit()]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View beds'));
+      await tester.pumpAndSettle();
+
+      expectUpperLeft(tester, find.byTooltip('Back'));
+    });
+
+    testWidgets('the form screens keep theirs upper left too', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      // These use an AppBar, which places it there already -- pinned so the two
+      // patterns cannot drift apart again.
+      expectUpperLeft(tester, find.byType(BackButton));
+    });
+  });
+
   group('beds in a bedspace unit', () {
     PropertyResponse property() => PropertyResponse(
           id: 'p1',
