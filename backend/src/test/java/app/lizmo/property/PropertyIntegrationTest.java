@@ -295,28 +295,19 @@ class PropertyIntegrationTest {
     }
 
     @Test
-    void a_unit_with_beds_cannot_be_deleted() throws Exception {
+    void a_bedspace_unit_is_deleted_together_with_its_beds() throws Exception {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
         String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
 
-        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"bedLabel":"Bed 1"}
-                                """))
-                .andExpect(status().isCreated());
-
-        // Deleting would strand the bed's occupancy and billing history.
+        // Beds are no longer set up by hand, so refusing while any exist would
+        // leave every bedspace unit undeletable.
         mvc.perform(delete("/api/v1/units/" + unitId)
                         .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(
-                        org.hamcrest.Matchers.containsString("beds")));
+                .andExpect(status().isNoContent());
 
         mvc.perform(get("/api/v1/units/" + unitId)
                         .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -337,25 +328,34 @@ class PropertyIntegrationTest {
     // ---------- Beds ----------
 
     @Test
-    void beds_can_be_added_to_a_bedspace_unit() throws Exception {
+    void beds_are_created_with_a_bedspace_unit() throws Exception {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
         String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
 
-        for (String label : new String[] {"Bed 1", "Bed 2", "Bed 3"}) {
-            mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                            .header("Authorization", "Bearer " + landlordToken)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"bedLabel":"%s"}
-                                    """.formatted(label)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.status").value("VACANT"));
-        }
+        // Capacity is the bed count -- the form asks "How many beds?" -- so the
+        // landlord does not have to say the same number twice.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].bedLabel").value("Bed 1"))
+                .andExpect(jsonPath("$[2].bedLabel").value("Bed 3"))
+                .andExpect(jsonPath("$[0].status").value("VACANT"));
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.bedCount").value(3));
+    }
+
+    @Test
+    void a_whole_unit_gets_no_beds() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "1A", "WHOLE_UNIT", 1);
 
         mvc.perform(get("/api/v1/units/" + unitId + "/beds")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3));
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -377,7 +377,7 @@ class PropertyIntegrationTest {
     }
 
     @Test
-    void beds_cannot_exceed_capacity() throws Exception {
+    void adding_a_bed_directly_raises_capacity() throws Exception {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
         String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 1);
 
@@ -385,19 +385,17 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"bedLabel":"Bed 1"}
+                                {"bedLabel":"Bed 2"}
                                 """))
                 .andExpect(status().isCreated());
 
-        // Capacity is what the landlord said the room holds; silently exceeding
-        // it would inflate the platform bill too.
-        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"bedLabel":"Bed 2"}
-                                """))
-                .andExpect(status().isBadRequest());
+        // Capacity and bed count are two views of the same number, so whichever
+        // end moves, the other follows. Letting them disagree would mean the
+        // next edit of the unit silently deleted this bed again.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.capacity").value(2))
+                .andExpect(jsonPath("$.bedCount").value(2));
     }
 
     @Test
@@ -405,14 +403,8 @@ class PropertyIntegrationTest {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
         String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
 
-        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"bedLabel":"Bed 1"}
-                                """))
-                .andExpect(status().isCreated());
-
+        // "Bed 1" through "Bed 4" already exist, created with the unit. The
+        // index is case-insensitive, so this collides with one of them.
         mvc.perform(post("/api/v1/units/" + unitId + "/beds")
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -420,35 +412,81 @@ class PropertyIntegrationTest {
                                 {"bedLabel":"bed 1"}
                                 """))
                 .andExpect(status().isBadRequest());
+
+        // A label the auto-created set did not take is accepted.
+        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Upper bunk"}
+                                """))
+                .andExpect(status().isCreated());
     }
 
     @Test
-    void capacity_cannot_drop_below_the_beds_already_defined() throws Exception {
+    void raising_capacity_adds_beds() throws Exception {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
-        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
-
-        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"bedLabel":"Bed 1"}
-                                """))
-                .andExpect(status().isCreated());
-        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"bedLabel":"Bed 2"}
-                                """))
-                .andExpect(status().isCreated());
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
 
         mvc.perform(put("/api/v1/units/" + unitId)
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":1}
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":4}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedCount").value(4));
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[3].bedLabel").value("Bed 4"));
+    }
+
+    @Test
+    void lowering_capacity_removes_beds() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        mvc.perform(put("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":2}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedCount").value(2));
+
+        // The lowest-numbered beds survive: those are the ones a landlord is
+        // most likely to have already written down somewhere.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].bedLabel").value("Bed 1"))
+                .andExpect(jsonPath("$[1].bedLabel").value("Bed 2"));
+    }
+
+    @Test
+    void resizing_twice_does_not_duplicate_labels() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
+
+        for (int capacity : new int[] {1, 3, 2, 4}) {
+            mvc.perform(put("/api/v1/units/" + unitId)
+                            .header("Authorization", "Bearer " + landlordToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":%d}
+                                    """.formatted(capacity)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.bedCount").value(capacity));
+        }
+
+        // Labels are unique per unit and the index is case-insensitive, so
+        // refilling has to skip numbers already taken rather than restart at 1.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(4));
     }
 
     // ---------- Unit rent ----------
@@ -694,5 +732,111 @@ class PropertyIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usage").value("COMMERCIAL"));
+    }
+
+    @Test
+    void a_bed_can_be_renamed() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String bedId = json.readTree(beds).get(0).get("id").asText();
+
+        // "Bed 1" says nothing about the room; a landlord letting bunks knows
+        // the difference between the upper and the lower one.
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1 upper bunk"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedLabel").value("Bed 1 upper bunk"));
+    }
+
+    @Test
+    void renaming_a_bed_cannot_take_another_beds_label() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        String bedId = json.readTree(beds).get(0).get("id").asText();
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"bed 2"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        // Saving a bed under its own name is not a clash with itself.
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1"}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void another_landlord_cannot_rename_a_bed() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        String bedId = json.readTree(beds).get(0).get("id").asText();
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + otherLandlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Mine now"}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shrinking_removes_default_named_beds_before_renamed_ones() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        // Rename the last one, which plain label ordering would delete first.
+        String lastBedId = json.readTree(beds).get(3).get("id").asText();
+
+        mvc.perform(put("/api/v1/beds/" + lastBedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Upper bunk"}
+                                """))
+                .andExpect(status().isOk());
+
+        mvc.perform(put("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":2}
+                                """))
+                .andExpect(status().isOk());
+
+        // A renamed bed is one the landlord told us matters; "Bed 3" is just the
+        // number we gave it.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].bedLabel").value("Bed 1"))
+                .andExpect(jsonPath("$[1].bedLabel").value("Upper bunk"));
     }
 }

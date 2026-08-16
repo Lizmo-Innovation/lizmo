@@ -11,6 +11,7 @@ import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo/screens/unit_beds_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
@@ -130,6 +131,72 @@ class _EditableUnitsApi extends UnitsApi {
   @override
   Future<void> deleteUnit(String id, {Future<void>? abortTrigger}) async {
     deletedId = id;
+  }
+}
+
+
+/// Serves one unit's beds and records what was added or removed.
+class _FakeBedsApi extends UnitsApi {
+  _FakeBedsApi(this.unit, this.beds);
+
+  final UnitResponse unit;
+  final List<BedResponse> beds;
+
+  BedRequest? lastCreated;
+  String? deletedId;
+  Object? createFailure;
+
+  @override
+  Future<UnitResponse?> getUnit(String id, {Future<void>? abortTrigger}) async => unit;
+
+  @override
+  Future<List<BedResponse>?> listBeds(String id, {Future<void>? abortTrigger}) async =>
+      List.of(beds);
+
+  @override
+  Future<BedResponse?> createBed(
+    String id,
+    BedRequest bedRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastCreated = bedRequest;
+    if (createFailure != null) throw createFailure!;
+    final created = BedResponse(
+      id: 'b${beds.length + 1}',
+      unitId: id,
+      bedLabel: bedRequest.bedLabel,
+      status: BedResponseStatusEnum.VACANT,
+    );
+    beds.add(created);
+    return created;
+  }
+
+  @override
+  Future<void> deleteBed(String id, {Future<void>? abortTrigger}) async {
+    deletedId = id;
+    beds.removeWhere((b) => b.id == id);
+  }
+
+  BedRequest? lastRename;
+  Object? renameFailure;
+
+  @override
+  Future<BedResponse?> updateBed(
+    String id,
+    BedRequest bedRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastRename = bedRequest;
+    if (renameFailure != null) throw renameFailure!;
+    final index = beds.indexWhere((b) => b.id == id);
+    final renamed = BedResponse(
+      id: id,
+      unitId: beds[index].unitId,
+      bedLabel: bedRequest.bedLabel,
+      status: beds[index].status,
+    );
+    beds[index] = renamed;
+    return renamed;
   }
 }
 
@@ -788,7 +855,7 @@ void main() {
       expect(find.textContaining('Whole unit'), findsOneWidget);
       expect(find.text('per bed'), findsOneWidget);
       expect(find.text('per month'), findsOneWidget);
-      expect(find.text('2 of 4 beds'), findsOneWidget);
+      expect(find.text('2 beds'), findsOneWidget);
     });
 
     testWidgets('a unit with no rent shows a dash, not zero', (tester) async {
@@ -1046,21 +1113,42 @@ void main() {
       expect(find.text('How many beds?'), findsOneWidget);
     });
 
-    testWidgets('capacity cannot drop below the beds already added', (tester) async {
+    testWidgets('lowering the bed count warns what it will remove', (tester) async {
       final api = _EditableUnitsApi(bedspace(capacity: 4, bedCount: 4));
       await openEditForm(tester, api);
 
-      expect(find.textContaining('4 already added'), findsOneWidget);
-
       await tester.enterText(find.byType(TextFormField).at(2), '2');
+      await tester.pump();
+
+      // Beds follow the count now, so lowering it deletes them. Said before
+      // saving rather than discovered afterwards.
+      expect(find.text('Saving will remove 2 beds.'), findsOneWidget);
+
+      // The warning makes the form taller, so the button can sit below the fold.
       await tester.ensureVisible(find.text('Save changes'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+
+      // No longer refused -- this is how a landlord removes beds.
+      expect(api.lastUpdate!.capacity, 2);
+    });
+
+    testWidgets('raising the bed count warns about nothing', (tester) async {
+      final api = _EditableUnitsApi(bedspace(capacity: 4, bedCount: 4));
+      await openEditForm(tester, api);
+
+      await tester.enterText(find.byType(TextFormField).at(2), '6');
       await tester.pump();
 
-      // Caught here rather than after a round trip; the API refuses it too.
-      expect(find.text('You already have 4 beds here'), findsOneWidget);
-      expect(api.lastUpdate, isNull);
+      expect(find.textContaining('will remove'), findsNothing);
+
+      await tester.ensureVisible(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUpdate!.capacity, 6);
     });
 
     testWidgets('changes are sent, with the mode unchanged', (tester) async {
@@ -1480,6 +1568,206 @@ void main() {
       expect(find.text('Bedspace'), findsOneWidget);
       expect(find.text('Whole unit'), findsOneWidget);
       expect(find.text('This cannot be changed later.'), findsOneWidget);
+    });
+  });
+
+  group('beds in a bedspace unit', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+        );
+
+    UnitResponse unit({int capacity = 4, int bedCount = 4}) => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: capacity,
+          bedCount: bedCount,
+          rent: 2500,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    BedResponse bed(String id, String label, BedResponseStatusEnum status) =>
+        BedResponse(id: id, unitId: 'u1', bedLabel: label, status: status);
+
+    Future<_FakeBedsApi> openBeds(WidgetTester tester,
+        {List<BedResponse>? beds}) async {
+      final rows = beds ??
+          [
+            bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT),
+            bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+          ];
+      final u = unit(capacity: rows.length, bedCount: rows.length);
+      final api = _FakeBedsApi(u, rows);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [u]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      // The bed row on the unit card is its own tap target, separate from the
+      // card itself, which opens the unit's settings.
+      await tester.tap(find.text('View beds'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('the bed row on a unit card opens its beds', (tester) async {
+      await openBeds(tester);
+
+      expect(find.byType(UnitBedsScreen), findsOneWidget);
+      expect(find.text('Bed 1'), findsOneWidget);
+      expect(find.text('Bed 2'), findsOneWidget);
+      // Not the edit form -- that is what the card itself opens.
+      expect(find.byType(CreateUnitScreen), findsNothing);
+    });
+
+    testWidgets('beds cannot be added or removed here', (tester) async {
+      await openBeds(tester);
+
+      // How many beds a unit has is its bed count, set on the unit. A second
+      // control here would let the two disagree.
+      expect(find.text('+ Add a bed'), findsNothing);
+      expect(find.byTooltip('Remove Bed 1'), findsNothing);
+      expect(find.byTooltip('Remove Bed 2'), findsNothing);
+    });
+
+    testWidgets('it points at where the count is changed', (tester) async {
+      await openBeds(tester);
+
+      expect(find.text("Beds follow the unit's bed count."), findsOneWidget);
+
+      await tester.tap(find.text('Change it'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreateUnitScreen), findsOneWidget);
+    });
+
+    testWidgets('occupancy is shown per bed', (tester) async {
+      await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.OCCUPIED),
+        bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+        bed('b3', 'Bed 3', BedResponseStatusEnum.MAINTENANCE),
+      ]);
+
+      expect(find.text('Occupied'), findsOneWidget);
+      expect(find.text('Vacant'), findsOneWidget);
+      expect(find.text('Maintenance'), findsOneWidget);
+    });
+
+    testWidgets('a bed can be renamed', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+
+      // Prefilled with the current name, so a small correction is a small edit.
+      final field = tester.widget<EditableText>(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(EditableText),
+      ));
+      expect(field.controller.text, 'Bed 1');
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Bed 1 upper bunk',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename!.bedLabel, 'Bed 1 upper bunk');
+      expect(find.text('Bed 1 upper bunk'), findsOneWidget);
+    });
+
+    testWidgets('an empty name is refused before calling the API', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '   ',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Give the bed a name'), findsOneWidget);
+      expect(api.lastRename, isNull);
+    });
+
+    testWidgets('cancelling renames nothing', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename, isNull);
+      expect(find.text('Bed 1'), findsOneWidget);
+    });
+
+    testWidgets('a duplicate name is reported without leaving the list',
+        (tester) async {
+      final api = await openBeds(tester);
+      api.renameFailure = const ApiFailure(
+        code: 'VALIDATION_FAILED',
+        message: 'A bed with that label already exists in this unit.',
+      );
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Bed 2',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A bed with that label already exists in this unit.'),
+          findsOneWidget);
+      expect(find.byType(UnitBedsScreen), findsOneWidget);
+    });
+
+    testWidgets('an occupied bed can still be renamed', (tester) async {
+      await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.OCCUPIED),
+      ]);
+
+      // The name describes the bed, not the tenancy.
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rename bed'), findsOneWidget);
+    });
+
+    testWidgets('a unit with no beds says where they come from', (tester) async {
+      await openBeds(tester, beds: []);
+
+      expect(find.text('No beds yet'), findsOneWidget);
     });
   });
 }

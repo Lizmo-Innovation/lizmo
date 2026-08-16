@@ -1,5 +1,6 @@
 package app.lizmo.property;
 
+import app.lizmo.common.ApiError;
 import app.lizmo.property.dto.BedRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.UnitRequest;
@@ -87,6 +88,16 @@ public class UnitController {
             content = @Content(schema = @Schema(implementation = BedResponse.class)))
     public BedResponse createBed(@PathVariable UUID id, @Valid @RequestBody BedRequest request) {
         return service.createBed(id, request, currentUser.requireId());
+    }
+
+    @PutMapping("/beds/{id}")
+    @Operation(operationId = "updateBed", summary = "Rename a bed",
+            description = "Labels must be unique within the unit, case-insensitively.")
+    @ApiResponse(responseCode = "200", description = "The renamed bed")
+    @ApiResponse(responseCode = "400", description = "Validation failed, or the label is taken",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public BedResponse updateBed(@PathVariable UUID id, @Valid @RequestBody BedRequest request) {
+        return service.updateBed(id, request, currentUser.requireId());
     }
 
     @DeleteMapping("/beds/{id}")

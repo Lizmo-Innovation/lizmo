@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**deleteUnit**](UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
 [**getUnit**](UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 [**listBeds**](UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+[**updateBed**](UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 [**updateUnit**](UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
 
@@ -224,6 +225,51 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updateBed**
+> BedResponse updateBed(id, bedRequest)
+
+Rename a bed
+
+Labels must be unique within the unit, case-insensitively.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = UnitsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final bedRequest = BedRequest(); // BedRequest | 
+
+try {
+    final result = api_instance.updateBed(id, bedRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling UnitsApi->updateBed: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **bedRequest** | [**BedRequest**](BedRequest.md)|  | 
+
+### Return type
+
+[**BedResponse**](BedResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

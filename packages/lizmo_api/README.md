@@ -75,6 +75,7 @@ Class | Method | HTTP request | Description
 *UnitsApi* | [**deleteUnit**](doc//UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
 *UnitsApi* | [**getUnit**](doc//UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 *UnitsApi* | [**listBeds**](doc//UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+*UnitsApi* | [**updateBed**](doc//UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 *UnitsApi* | [**updateUnit**](doc//UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
 
