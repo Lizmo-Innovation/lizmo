@@ -44,13 +44,8 @@ class PropertyDetailScreen extends ConsumerWidget {
           LatticeHeader(
             eyebrow: name ?? 'Property',
             title: 'Units',
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _BackButton(),
-                _EditButton(propertyId: propertyId),
-              ],
-            ),
+            leading: const _BackButton(),
+            trailing: _EditButton(propertyId: propertyId),
             stats: [
               LatticeHeaderStat(
                 value: units.valueOrNull?.length.toString() ?? '—',
@@ -220,20 +215,43 @@ class _UnitCard extends StatelessWidget {
           ),
           if (_isBedspace) ...[
             const SizedBox(height: 12),
-            Row(
-              children: [
-                StatusChip(
-                  // Grey, not teal: beds existing is neither good nor bad news,
-                  // it is just how far setup has got.
-                  status: (unit.bedCount ?? 0) >= (unit.capacity ?? 0)
-                      ? LizmoStatus.paid
-                      : LizmoStatus.vacant,
-                  label: '${unit.bedCount ?? 0} of ${unit.capacity ?? 0} beds',
+            // Its own tap target inside the card: the card opens the unit's
+            // settings, this opens its beds. Nested rather than a second card,
+            // because the bed count is what a landlord looks at to decide
+            // whether the beds need attention at all.
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: unit.id == null
+                    ? null
+                    : () => context.push(Routes.unitBeds(propertyId, unit.id!)),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      StatusChip(
+                        // Grey: how many beds a room has is neither good news
+                        // nor bad, it is just the shape of the room.
+                        status: LizmoStatus.vacant,
+                        // No "3 of 4": beds are created to match the bed count,
+                        // so the two halves would always be the same number.
+                        label: (unit.bedCount ?? 0) == 1
+                            ? '1 bed'
+                            : '${unit.bedCount ?? 0} beds',
+                      ),
+                      const Spacer(),
+                      Text(
+                        'View beds',
+                        style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                      ),
+                      const Icon(Icons.chevron_right,
+                          size: 16, color: LizmoColors.teal900),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                if ((unit.bedCount ?? 0) < (unit.capacity ?? 0))
-                  Text('Add beds to fill it', style: LizmoType.rowSub),
-              ],
+              ),
             ),
           ],
               ],

@@ -289,6 +289,68 @@ class UnitsApi {
     return null;
   }
 
+  /// Rename a bed
+  ///
+  /// Labels must be unique within the unit, case-insensitively.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [BedRequest] bedRequest (required):
+  Future<Response> updateBedWithHttpInfo(String id, BedRequest bedRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/beds/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = bedRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Rename a bed
+  ///
+  /// Labels must be unique within the unit, case-insensitively.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [BedRequest] bedRequest (required):
+  Future<BedResponse?> updateBed(String id, BedRequest bedRequest, { Future<void>? abortTrigger, }) async {
+    final response = await updateBedWithHttpInfo(id, bedRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'BedResponse',) as BedResponse;
+    
+    }
+    return null;
+  }
+
   /// Update a unit
   ///
   /// Rental mode cannot change, and capacity cannot drop below the beds already defined.

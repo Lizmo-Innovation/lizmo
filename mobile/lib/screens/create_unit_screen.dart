@@ -55,6 +55,17 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
 
   bool get _isBedspace => _mode == UnitRequestRentalModeEnum.BEDSPACE;
 
+  /// How many beds saving would delete, given what is currently typed.
+  ///
+  /// Beds follow capacity now, so lowering it destroys the surplus. The server
+  /// refuses if any of them are occupied.
+  int get _bedsToRemove {
+    if (!widget.isEditing || !_isBedspace) return 0;
+    final wanted = int.tryParse(_capacity.text.trim());
+    if (wanted == null) return 0;
+    return _existingBeds > wanted ? _existingBeds - wanted : 0;
+  }
+
   @override
   void dispose() {
     _unitNumber.dispose();
@@ -232,24 +243,34 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: _decoration('4'),
+                    // Rebuilt on every keystroke so the warning below tracks
+                    // what the landlord has actually typed.
+                    onChanged: (_) => setState(() {}),
                     validator: (value) {
                       final parsed = int.tryParse((value ?? '').trim());
                       if (parsed == null || parsed < 1) return 'Enter at least 1';
-                      // The API refuses this too; saying it here means the
-                      // landlord is not told only after a round trip.
-                      if (parsed < _existingBeds) {
-                        return 'You already have $_existingBeds beds here';
-                      }
                       return _fieldErrors['capacity'];
                     },
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _existingBeds > 0
-                        ? '$_existingBeds already added. Remove beds before lowering this.'
-                        : 'Beds are added afterwards, up to this many.',
+                    widget.isEditing
+                        ? 'The beds in this unit follow this number.'
+                        : 'Beds are created with the unit, one per bedspace.',
                     style: LizmoType.rowSub,
                   ),
+
+                  // Lowering this deletes beds, so it is said before saving
+                  // rather than discovered afterwards.
+                  if (_bedsToRemove > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _bedsToRemove == 1
+                          ? 'Saving will remove 1 bed.'
+                          : 'Saving will remove $_bedsToRemove beds.',
+                      style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                 ],
 

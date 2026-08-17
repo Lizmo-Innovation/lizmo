@@ -12,6 +12,7 @@ import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_list_screen.dart';
 import 'screens/tenant_home_screen.dart';
+import 'screens/unit_beds_screen.dart';
 
 /// Route paths, named so a typo is a compile error rather than a blank screen.
 abstract final class Routes {
@@ -29,6 +30,8 @@ abstract final class Routes {
   static String propertyEdit(String id) => '/landlord/properties/$id/edit';
   static String unitEdit(String propertyId, String unitId) =>
       '/landlord/properties/$propertyId/units/$unitId/edit';
+  static String unitBeds(String propertyId, String unitId) =>
+      '/landlord/properties/$propertyId/units/$unitId/beds';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -101,6 +104,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => CreateUnitScreen(
                   propertyId: state.pathParameters['id']!,
                   unitId: state.pathParameters['unitId'],
+                ),
+              ),
+              GoRoute(
+                path: 'units/:unitId/beds',
+                builder: (context, state) => UnitBedsScreen(
+                  propertyId: state.pathParameters['id']!,
+                  unitId: state.pathParameters['unitId']!,
                 ),
               ),
             ],

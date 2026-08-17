@@ -8,8 +8,13 @@ import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -165,7 +170,12 @@ public class PropertyService {
                 capacity,
                 request.rent()));
 
-        return UnitResponse.of(unit, 0);
+        // Capacity is the bed count — the form asks "How many beds?" — so the
+        // beds are created with the unit rather than left as a second job the
+        // landlord has to remember.
+        int created = mode == RentalMode.BEDSPACE ? fillBedsTo(unit.getId(), capacity) : 0;
+
+        return UnitResponse.of(unit, created);
     }
 
     @Transactional(readOnly = true)
@@ -191,14 +201,17 @@ public class PropertyService {
                     "A unit's rental mode cannot be changed. Create a new unit instead.");
         }
 
-        long bedCount = beds.countByUnitId(unitId);
-        if (unit.isBedspace() && request.effectiveCapacity() < bedCount) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "Capacity cannot be lower than the %d beds already defined.".formatted(bedCount));
-        }
+        int capacity = request.effectiveCapacity();
+
+        // Beds follow capacity rather than constraining it: the landlord sets
+        // how many beds the room has, and the beds themselves are reconciled to
+        // match. Lowering capacity therefore removes beds.
+        long bedCount = unit.isBedspace()
+                ? reconcileBeds(unitId, capacity)
+                : beds.countByUnitId(unitId);
 
         unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
-                request.effectiveCapacity(), request.rent());
+                capacity, request.rent());
         return UnitResponse.of(units.save(unit), bedCount);
     }
 
@@ -206,10 +219,17 @@ public class PropertyService {
     public void deleteUnit(UUID unitId, UUID userId) {
         Unit unit = requireWritableUnit(unitId, userId);
 
-        if (beds.countByUnitId(unitId) > 0) {
+        // Beds are no longer something the landlord manages by hand — a bedspace
+        // unit always has them — so refusing while any exist would make such a
+        // unit undeletable. Only a live tenancy is a real obstacle.
+        List<Bed> existing = beds.findByUnitIdOrderByBedLabelAsc(unitId);
+        long occupied = existing.stream().filter(Bed::isOccupied).count();
+        if (occupied > 0) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "Remove this unit's beds before deleting it.");
+                    "%d of this unit's beds are occupied. End those leases before deleting it."
+                            .formatted(occupied));
         }
+        beds.deleteAll(existing);
         units.delete(unit);
     }
 
@@ -238,20 +258,49 @@ public class PropertyService {
                     "A bed with that label already exists in this unit.");
         }
 
-        if (beds.countByUnitId(unitId) >= unit.getCapacity()) {
+        Bed created = beds.save(new Bed(unitId, label));
+
+        // Capacity is the bed count, so adding a bed raises it rather than being
+        // refused for exceeding it. Without this the two could disagree, and
+        // the next edit of the unit would silently delete the bed again.
+        syncCapacityToBeds(unit);
+
+        return BedResponse.of(created);
+    }
+
+    /**
+     * Renames a bed.
+     *
+     * <p>Labels are generated as "Bed 1", "Bed 2" and so on, which is enough to
+     * tell them apart but says nothing useful about the room. A landlord who
+     * lets bunks knows the difference between the upper and the lower one, and
+     * so does the tenant paying for it.
+     */
+    @Transactional
+    public BedResponse updateBed(UUID bedId, BedRequest request, UUID userId) {
+        Bed bed = beds.findById(bedId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such bed."));
+        requireWritableUnit(bed.getUnitId(), userId);
+
+        String label = request.bedLabel().trim();
+
+        // Compared against the current label first, so saving a bed without
+        // changing its name is not treated as a clash with itself.
+        if (!bed.getBedLabel().equalsIgnoreCase(label)
+                && beds.existsByUnitIdAndBedLabelIgnoreCase(bed.getUnitId(), label)) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "This unit's capacity is %d. Raise it before adding another bed."
-                            .formatted(unit.getCapacity()));
+                    "A bed with that label already exists in this unit.");
         }
 
-        return BedResponse.of(beds.save(new Bed(unitId, label)));
+        bed.rename(label);
+        return BedResponse.of(beds.save(bed));
     }
 
     @Transactional
     public void deleteBed(UUID bedId, UUID userId) {
         Bed bed = beds.findById(bedId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such bed."));
-        requireWritableUnit(bed.getUnitId(), userId);
+        Unit unit = requireWritableUnit(bed.getUnitId(), userId);
 
         // An occupied bed has a live lease behind it; deleting it would strand
         // that tenant's billing history.
@@ -260,6 +309,111 @@ public class PropertyService {
                     "This bed is occupied. End the lease before removing it.");
         }
         beds.delete(bed);
+
+        // The unit is one bed smaller, so its capacity is too.
+        syncCapacityToBeds(unit);
+    }
+
+    /**
+     * Pulls a unit's capacity to whatever its bed count now is.
+     *
+     * <p>Only for the endpoints that change beds directly. Capacity and bed
+     * count are two views of the same number, so whichever end the landlord
+     * moves, the other follows.
+     */
+    private void syncCapacityToBeds(Unit unit) {
+        long count = beds.countByUnitId(unit.getId());
+        // A unit holds at least one lettable space even with no beds set up.
+        int capacity = (int) Math.max(1, count);
+
+        if (unit.isBedspace() && unit.getCapacity() != capacity) {
+            unit.update(unit.getUnitNumber(), unit.getFloor(), unit.getSizeSqm(),
+                    capacity, unit.getRent());
+            units.save(unit);
+        }
+    }
+
+    // ---------- Bed reconciliation ----------
+
+    /**
+     * Brings a unit's beds to exactly {@code capacity}, and returns how many it
+     * ends up with.
+     *
+     * <p>Growing adds beds; shrinking removes them. Occupied beds are never
+     * removed — a live lease sits behind each one — so shrinking below the
+     * number occupied is refused rather than partially applied.
+     */
+    private long reconcileBeds(UUID unitId, int capacity) {
+        List<Bed> existing = beds.findByUnitIdOrderByBedLabelAsc(unitId);
+
+        if (existing.size() == capacity) {
+            return capacity;
+        }
+
+        if (existing.size() < capacity) {
+            fillBedsTo(unitId, capacity);
+            return capacity;
+        }
+
+        // Shrinking. Only vacant beds can go, and still-default names go before
+        // renamed ones: a landlord who bothered to call a bed "Upper bunk" has
+        // told us it matters, where "Bed 4" is just the number we gave it.
+        // Within the defaults, the highest number goes first.
+        List<Bed> removable = existing.stream()
+                .filter(bed -> !bed.isOccupied())
+                .sorted(Comparator
+                        .comparing((Bed bed) -> defaultLabelNumber(bed.getBedLabel()) == null)
+                        .thenComparing(
+                                bed -> defaultLabelNumber(bed.getBedLabel()),
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Comparator.comparing(Bed::getBedLabel).reversed()))
+                .toList();
+
+        int surplus = existing.size() - capacity;
+        if (removable.size() < surplus) {
+            long occupied = existing.size() - removable.size();
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    ("%d of this unit's beds are occupied, so it cannot hold fewer than %d. "
+                            + "End those leases first.").formatted(occupied, occupied));
+        }
+
+        beds.deleteAll(removable.subList(0, surplus));
+        return capacity;
+    }
+
+    /**
+     * The number in a still-default "Bed 7" label, or null if it has been
+     * renamed to anything else.
+     */
+    private static Integer defaultLabelNumber(String label) {
+        var matcher = DEFAULT_LABEL.matcher(label.trim());
+        return matcher.matches() ? Integer.valueOf(matcher.group(1)) : null;
+    }
+
+    private static final Pattern DEFAULT_LABEL =
+            Pattern.compile("(?i)bed\\s+(\\d{1,9})");
+
+    /**
+     * Adds beds until the unit has {@code target} of them, and returns how many
+     * it now has.
+     *
+     * <p>Labels are "Bed 1", "Bed 2" and so on, skipping any number already
+     * taken — the unique index is case-insensitive, and a unit that has been
+     * resized more than once can have gaps.
+     */
+    private int fillBedsTo(UUID unitId, int target) {
+        Set<String> taken = beds.findByUnitIdOrderByBedLabelAsc(unitId).stream()
+                .map(bed -> bed.getBedLabel().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+
+        int next = 1;
+        while (taken.size() < target) {
+            String label = "Bed " + next++;
+            if (taken.add(label.toLowerCase(Locale.ROOT))) {
+                beds.save(new Bed(unitId, label));
+            }
+        }
+        return target;
     }
 
     // ---------- Shared ----------
