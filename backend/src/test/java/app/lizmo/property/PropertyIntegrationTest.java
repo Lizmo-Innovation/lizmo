@@ -206,6 +206,39 @@ class PropertyIntegrationTest {
     }
 
     @Test
+    void an_empty_property_can_be_deleted() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(delete("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void a_property_becomes_deletable_once_its_units_are_gone() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+
+        // The refusal is not a dead end: the unit can be deleted, beds and all,
+        // and the property then goes with it.
+        mvc.perform(delete("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(delete("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
     void a_property_with_units_cannot_be_deleted() throws Exception {
         String propertyId = createProperty(landlordToken, "Sunrise Apartments");
         createUnit(landlordToken, propertyId, "2B", "WHOLE_UNIT", 1);

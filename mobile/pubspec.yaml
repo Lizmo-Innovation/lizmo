@@ -53,6 +53,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -65,6 +66,29 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
+# Generated from assets/icon by flutter_launcher_icons, so the six mipmap
+# folders and the iOS asset catalog are never hand-edited.
+#
+# The square icon is full-bleed on purpose: iOS and Android round the corners
+# themselves, and pre-rounded art gets rounded twice.
+#
+# The adaptive foreground is the mark alone, unscaled. The generated
+# mipmap-anydpi-v26/ic_launcher.xml already insets it 16%, which is what keeps
+# it clear of a circular launcher mask. Pre-scaling it here as well shrank it
+# twice and left it looking lost inside the circle.
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0E5C52"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#0E5C52"
+    theme_color: "#0E5C52"
+
 flutter:
 
   # The following line ensures that the Material Icons font is

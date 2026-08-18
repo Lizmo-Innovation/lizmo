@@ -103,6 +103,13 @@ class _EditablePropertiesApi extends PropertiesApi {
     );
     return current;
   }
+
+  String? deletedId;
+
+  @override
+  Future<void> deleteProperty(String id, {Future<void>? abortTrigger}) async {
+    deletedId = id;
+  }
 }
 
 
@@ -1878,6 +1885,102 @@ void main() {
       await openBeds(tester, beds: []);
 
       expect(find.text('No beds yet'), findsOneWidget);
+    });
+  });
+
+  group('deleting a property', () {
+    Future<_EditablePropertiesApi> openEdit(WidgetTester tester,
+        {int unitCount = 0}) async {
+      final api = _EditablePropertiesApi(PropertyResponse(
+        id: 'p1',
+        name: 'Sunrise Apartments',
+        address: '12 Mabini St',
+        type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+        usage: PropertyResponseUsageEnum.RESIDENTIAL,
+        unitCount: unitCount,
+      ));
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [api.current]),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit property'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('an empty property can be deleted, after confirming',
+        (tester) async {
+      final api = await openEdit(tester);
+
+      await tester.ensureVisible(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Sunrise Apartments?'), findsOneWidget);
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, 'p1');
+
+      // Back on the list, not on the property's own screen -- that one is
+      // about to stop existing.
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(PropertyDetailScreen), findsNothing);
+    });
+
+    testWidgets('cancelling deletes nothing', (tester) async {
+      final api = await openEdit(tester);
+
+      await tester.ensureVisible(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, isNull);
+      expect(find.byType(CreatePropertyScreen), findsOneWidget);
+    });
+
+    testWidgets('a property with units explains what to clear first',
+        (tester) async {
+      final api = await openEdit(tester, unitCount: 3);
+
+      await tester.ensureVisible(find.textContaining('This property has 3 units'));
+      await tester.pumpAndSettle();
+
+      // The API refuses this, so no button is offered that cannot work.
+      expect(find.text('Delete this property'), findsNothing);
+      expect(api.deletedId, isNull);
+    });
+
+    testWidgets('creating a property offers no delete', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this property'), findsNothing);
     });
   });
 }

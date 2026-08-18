@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../router.dart';
 
 /// Adds or edits a property.
 ///
@@ -35,7 +36,12 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   PropertyRequestUsageEnum _usage = PropertyRequestUsageEnum.RESIDENTIAL;
   PropertyRequestTypeEnum _type = PropertyRequestTypeEnum.BOARDING_HOUSE;
   bool _saving = false;
+  bool _deleting = false;
   String? _error;
+
+  /// Units in this property. The API refuses to delete one that still holds
+  /// any, so the form says so instead of offering a button that cannot work.
+  int _units = 0;
   Map<String, String> _fieldErrors = const {};
 
   /// Prefill happens once. Rebuilding must not overwrite what the landlord has
@@ -93,6 +99,53 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
     }
   }
 
+  /// Deletes the property, after asking.
+  ///
+  /// Lands on the property list rather than popping: the screen underneath
+  /// this one is the property's own, which is about to stop existing.
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: LizmoColors.white,
+        title: Text('Delete ${_name.text.trim()}?',
+            style: LizmoType.rowName.copyWith(fontSize: 16)),
+        content: Text('This cannot be undone.', style: LizmoType.rowSub),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('Cancel',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('Delete',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(propertiesApiProvider).deleteProperty(widget.propertyId!);
+      ref.invalidate(propertiesProvider);
+
+      if (mounted) context.go(Routes.landlord);
+    } catch (error) {
+      final failure = ApiFailure.from(error);
+      if (mounted) setState(() => _error = failure.message);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Editing waits for the property before showing fields, so the landlord
@@ -105,6 +158,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
           _address.text = value.address ?? '';
           _type = PropertyRequestTypeEnum.fromJson(value.type?.toJson()) ?? _type;
           _usage = PropertyRequestUsageEnum.fromJson(value.usage?.toJson()) ?? _usage;
+          _units = value.unitCount ?? 0;
           _prefilled = true;
         case AsyncError(:final error):
           return _LoadFailed(failure: ApiFailure.from(error));
@@ -194,6 +248,15 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
                         label: widget.isEditing ? 'Save changes' : 'Save property',
                         onPressed: _save,
                       ),
+
+                if (widget.isEditing) ...[
+                  const SizedBox(height: 12),
+                  _DeleteSection(
+                    blockedByUnits: _units,
+                    deleting: _deleting,
+                    onDelete: _confirmDelete,
+                  ),
+                ],
               ],
             ),
           ),
@@ -462,6 +525,78 @@ class _LoadFailed extends StatelessWidget {
           actionLabel: 'Go back',
           onAction: () => Navigator.of(context).pop(),
         ),
+      ),
+    );
+  }
+}
+
+/// Deletion, kept apart from the save action and styled as a departure.
+///
+/// A property with units cannot be deleted: it is the root of their leases and
+/// billing history, and removing it would either cascade that away or orphan
+/// it. Unlike the bed case, there is a way out — units can be deleted — so this
+/// names the obstacle rather than being a dead end.
+class _DeleteSection extends StatelessWidget {
+  const _DeleteSection({
+    required this.blockedByUnits,
+    required this.deleting,
+    required this.onDelete,
+  });
+
+  final int blockedByUnits;
+  final bool deleting;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (blockedByUnits > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: LizmoColors.amberBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 18, color: LizmoColors.amberText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                blockedByUnits == 1
+                    ? 'This property has 1 unit. Delete it before deleting the property.'
+                    : 'This property has $blockedByUnits units. Delete them before '
+                        'deleting the property.',
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (deleting) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(LizmoColors.red),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return TextButton(
+      onPressed: onDelete,
+      child: Text(
+        'Delete this property',
+        // Red, not coral: coral is the action accent and belongs to Save.
+        style: LizmoType.rowName.copyWith(color: LizmoColors.red),
       ),
     );
   }
