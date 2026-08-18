@@ -8,6 +8,7 @@ library;
 
 export 'src/theme/lizmo_colors.dart';
 export 'src/theme/lizmo_type.dart';
+export 'src/widgets/lattice_background.dart';
 export 'src/widgets/lattice_header.dart';
 export 'src/widgets/message_state.dart';
 export 'src/widgets/primary_action_button.dart';

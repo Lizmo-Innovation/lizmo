@@ -174,7 +174,7 @@ class _UnitCard extends StatelessWidget {
         child: InkWell(
           onTap: unit.id == null
               ? null
-              : () => context.push(Routes.unitEdit(propertyId, unit.id!)),
+              : () => context.push(Routes.unitDetail(propertyId, unit.id!)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -215,43 +215,20 @@ class _UnitCard extends StatelessWidget {
           ),
           if (_isBedspace) ...[
             const SizedBox(height: 12),
-            // Its own tap target inside the card: the card opens the unit's
-            // settings, this opens its beds. Nested rather than a second card,
-            // because the bed count is what a landlord looks at to decide
-            // whether the beds need attention at all.
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(
-                onTap: unit.id == null
-                    ? null
-                    : () => context.push(Routes.unitBeds(propertyId, unit.id!)),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      StatusChip(
-                        // Grey: how many beds a room has is neither good news
-                        // nor bad, it is just the shape of the room.
-                        status: LizmoStatus.vacant,
-                        // No "3 of 4": beds are created to match the bed count,
-                        // so the two halves would always be the same number.
-                        label: (unit.bedCount ?? 0) == 1
-                            ? '1 bed'
-                            : '${unit.bedCount ?? 0} beds',
-                      ),
-                      const Spacer(),
-                      Text(
-                        'View beds',
-                        style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-                      ),
-                      const Icon(Icons.chevron_right,
-                          size: 16, color: LizmoColors.teal900),
-                    ],
-                  ),
+            // Not its own tap target any more. The card opens the unit, and the
+            // beds are already on the screen it opens — nesting a second target
+            // inside a card only makes both harder to hit.
+            Row(
+              children: [
+                StatusChip(
+                  // Grey: how many beds a room has is neither good news nor
+                  // bad, it is just the shape of the room.
+                  status: LizmoStatus.vacant,
+                  label: (unit.bedCount ?? 0) == 1
+                      ? '1 bed'
+                      : '${unit.bedCount ?? 0} beds',
                 ),
-              ),
+              ],
             ),
           ],
               ],

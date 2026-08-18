@@ -1,11 +1,11 @@
 {
-    "name": "lizmo_admin",
-    "short_name": "lizmo_admin",
+    "name": "Lizmo Admin",
+    "short_name": "Lizmo Admin",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0E5C52",
+    "theme_color": "#0E5C52",
+    "description": "Lizmo platform administration.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

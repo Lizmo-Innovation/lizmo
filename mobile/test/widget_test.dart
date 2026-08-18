@@ -10,11 +10,29 @@ import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
+import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
-import 'package:lizmo/screens/unit_beds_screen.dart';
+import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
+
+/// Serves a fixed reachability, and becomes reachable when retried.
+class _FakeHealth extends BackendHealth {
+  _FakeHealth(this._initial);
+
+  final BackendReachability _initial;
+  int checks = 0;
+
+  @override
+  BackendReachability build() => _initial;
+
+  @override
+  Future<void> check() async {
+    checks++;
+    state = BackendReachability.reachable;
+  }
+}
 
 /// Drives routing directly, without touching secure storage or the network.
 class _FakeAuth extends AuthController {
@@ -102,6 +120,13 @@ class _EditablePropertiesApi extends PropertiesApi {
       unitCount: current.unitCount,
     );
     return current;
+  }
+
+  String? deletedId;
+
+  @override
+  Future<void> deleteProperty(String id, {Future<void>? abortTrigger}) async {
+    deletedId = id;
   }
 }
 
@@ -1075,9 +1100,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
+      // The unit card shows the unit; its fields are behind the pencil, as on
+      // the property screen.
+      await tester.tap(find.byTooltip('Edit unit'));
+      await tester.pumpAndSettle();
     }
 
-    testWidgets('tapping a unit opens it prefilled', (tester) async {
+    testWidgets('the edit pencil opens the unit prefilled', (tester) async {
       final api = _EditableUnitsApi(bedspace());
       await openEditForm(tester, api);
 
@@ -1207,6 +1236,8 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit unit'));
       await tester.pumpAndSettle();
       return api;
     }
@@ -1649,7 +1680,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('View beds'));
+      await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
 
       expectUpperLeft(tester, find.byTooltip('Back'));
@@ -1723,9 +1754,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
-      // The bed row on the unit card is its own tap target, separate from the
-      // card itself, which opens the unit's settings.
-      await tester.tap(find.text('View beds'));
+      // One target now: the card opens the unit, and its beds are already on
+      // the screen that opens.
+      await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
       return api;
     }
@@ -1733,10 +1764,11 @@ void main() {
     testWidgets('the bed row on a unit card opens its beds', (tester) async {
       await openBeds(tester);
 
-      expect(find.byType(UnitBedsScreen), findsOneWidget);
+      expect(find.byType(UnitDetailScreen), findsOneWidget);
       expect(find.text('Bed 1'), findsOneWidget);
       expect(find.text('Bed 2'), findsOneWidget);
-      // Not the edit form -- that is what the card itself opens.
+      // Tapping a unit shows it. It used to open the edit form, past a live
+      // delete button.
       expect(find.byType(CreateUnitScreen), findsNothing);
     });
 
@@ -1750,12 +1782,11 @@ void main() {
       expect(find.byTooltip('Remove Bed 2'), findsNothing);
     });
 
-    testWidgets('it points at where the count is changed', (tester) async {
+    testWidgets('editing is behind the pencil, not the whole screen',
+        (tester) async {
       await openBeds(tester);
 
-      expect(find.text("Beds follow the unit's bed count."), findsOneWidget);
-
-      await tester.tap(find.text('Change it'));
+      await tester.tap(find.byTooltip('Edit unit'));
       await tester.pumpAndSettle();
 
       expect(find.byType(CreateUnitScreen), findsOneWidget);
@@ -1853,7 +1884,7 @@ void main() {
 
       expect(find.text('A bed with that label already exists in this unit.'),
           findsOneWidget);
-      expect(find.byType(UnitBedsScreen), findsOneWidget);
+      expect(find.byType(UnitDetailScreen), findsOneWidget);
     });
 
     testWidgets('an occupied bed can still be renamed', (tester) async {
@@ -1872,6 +1903,154 @@ void main() {
       await openBeds(tester, beds: []);
 
       expect(find.text('No beds yet'), findsOneWidget);
+    });
+  });
+
+  group('deleting a property', () {
+    Future<_EditablePropertiesApi> openEdit(WidgetTester tester,
+        {int unitCount = 0}) async {
+      final api = _EditablePropertiesApi(PropertyResponse(
+        id: 'p1',
+        name: 'Sunrise Apartments',
+        address: '12 Mabini St',
+        type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+        usage: PropertyResponseUsageEnum.RESIDENTIAL,
+        unitCount: unitCount,
+      ));
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [api.current]),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit property'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('an empty property can be deleted, after confirming',
+        (tester) async {
+      final api = await openEdit(tester);
+
+      await tester.ensureVisible(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Sunrise Apartments?'), findsOneWidget);
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, 'p1');
+
+      // Back on the list, not on the property's own screen -- that one is
+      // about to stop existing.
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(PropertyDetailScreen), findsNothing);
+    });
+
+    testWidgets('cancelling deletes nothing', (tester) async {
+      final api = await openEdit(tester);
+
+      await tester.ensureVisible(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete this property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(api.deletedId, isNull);
+      expect(find.byType(CreatePropertyScreen), findsOneWidget);
+    });
+
+    testWidgets('a property with units explains what to clear first',
+        (tester) async {
+      final api = await openEdit(tester, unitCount: 3);
+
+      await tester.ensureVisible(find.textContaining('This property has 3 units'));
+      await tester.pumpAndSettle();
+
+      // The API refuses this, so no button is offered that cannot work.
+      expect(find.text('Delete this property'), findsNothing);
+      expect(api.deletedId, isNull);
+    });
+
+    testWidgets('creating a property offers no delete', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this property'), findsNothing);
+    });
+  });
+
+  group('the backend must be reachable before the app opens', () {
+    Widget appWith(_FakeHealth health) => ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            backendHealthProvider.overrideWith(() => health),
+            propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('an unreachable backend holds the splash', (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.unreachable)));
+      await tester.pump(const Duration(seconds: 4)); // past the splash hold
+
+      // Login would only fail, and a restored session would show a portfolio
+      // that looks empty rather than unreachable.
+      expect(find.byType(SplashScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.text("Can't reach Lizmo"), findsOneWidget);
+    });
+
+    testWidgets('retrying lets the app through', (tester) async {
+      final health = _FakeHealth(BackendReachability.unreachable);
+      await tester.pumpWidget(appWith(health));
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+
+      expect(health.checks, 1);
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('a reachable backend is not held up', (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.reachable)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('the splash still waits out its hold when reachable',
+        (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.reachable)));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Reachable is not a licence to skip the splash.
+      expect(find.byType(SplashScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
     });
   });
 }

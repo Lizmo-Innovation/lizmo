@@ -12,6 +12,7 @@ library;
 
 export 'src/api/api_config.dart';
 export 'src/api/api_failure.dart';
+export 'src/api/backend_health.dart';
 export 'src/api/authenticated_client.dart';
 export 'src/auth/auth_controller.dart';
 export 'src/auth/auth_refresh_notifier.dart';

@@ -8,13 +8,18 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
-/// The beds inside one bedspace unit, and who is in them.
+/// One unit and what is inside it.
 ///
-/// Read-only by design. How many beds a unit has is its bed count, set on the
-/// unit itself — the beds are created and removed to match. A second way to
-/// change the number here would let the two disagree.
-class UnitBedsScreen extends ConsumerWidget {
-  const UnitBedsScreen({
+/// Stands to a unit as the property screen stands to a property, and for the
+/// same reason: tapping a thing should show it, not open a form over it. Before
+/// this screen existed, tapping a unit went straight to its editable fields —
+/// past a live delete button — and a whole unit had nowhere to be looked at
+/// at all.
+///
+/// For a bedspace that means its beds. For a whole unit there is nothing inside
+/// yet; the tenancy will land here once leases exist.
+class UnitDetailScreen extends ConsumerWidget {
+  const UnitDetailScreen({
     super.key,
     required this.propertyId,
     required this.unitId,
@@ -25,57 +30,75 @@ class UnitBedsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final beds = ref.watch(bedsProvider(unitId));
     final unit = ref.watch(unitProvider(unitId)).valueOrNull;
+    final beds = ref.watch(bedsProvider(unitId));
 
-    final capacity = unit?.capacity ?? 0;
+    // Taken from the list rather than fetched: this screen is reached from the
+    // property screen, which has it loaded.
+    final matches = ref.watch(propertiesProvider).valueOrNull?.where(
+              (p) => p.id == propertyId,
+            ) ??
+        const <PropertyResponse>[];
+    final propertyName = matches.isEmpty ? null : matches.first.name;
+
+    final isBedspace = unit?.rentalMode == UnitResponseRentalModeEnum.BEDSPACE;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: Column(
         children: [
           LatticeHeader(
-            eyebrow: unit == null ? 'Unit' : 'Unit ${unit.unitNumber ?? ''}',
-            title: 'Beds',
+            eyebrow: propertyName ?? 'Property',
+            title: unit == null ? 'Unit' : 'Unit ${unit.unitNumber ?? ''}',
             leading: const _BackButton(),
+            trailing: _EditButton(propertyId: propertyId, unitId: unitId),
             stats: [
+              if (isBedspace)
+                LatticeHeaderStat(
+                  value: beds.valueOrNull?.length.toString() ?? '—',
+                  label: 'Beds',
+                )
+              else
+                LatticeHeaderStat(
+                  value: (unit?.floor ?? '').isEmpty ? '—' : unit!.floor!,
+                  label: 'Floor',
+                ),
               LatticeHeaderStat(
-                value: beds.valueOrNull?.length.toString() ?? '—',
-                label: 'Beds',
-              ),
-              LatticeHeaderStat(
-                value: capacity == 0 ? '—' : capacity.toString(),
-                label: 'Capacity',
+                value: _rentLabel(unit?.rent),
+                label: isBedspace ? 'Per bed' : 'Per month',
               ),
             ],
           ),
           Expanded(
-            child: RefreshIndicator(
-              color: LizmoColors.teal900,
-              onRefresh: () => ref.refresh(bedsProvider(unitId).future),
-              child: switch (beds) {
-                AsyncError(:final error) => _Failed(
-                    failure: ApiFailure.from(error),
-                    onRetry: () => ref.invalidate(bedsProvider(unitId)),
-                  ),
-                AsyncData(:final value) when value.isEmpty => const _Empty(),
-                AsyncData(:final value) => _BedList(beds: value, unitId: unitId),
-                _ => const _Loading(),
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: _CountHint(propertyId: propertyId, unitId: unitId),
-            ),
+            child: isBedspace
+                ? RefreshIndicator(
+                    color: LizmoColors.teal900,
+                    onRefresh: () => ref.refresh(bedsProvider(unitId).future),
+                    child: switch (beds) {
+                      AsyncError(:final error) => _Failed(
+                          failure: ApiFailure.from(error),
+                          onRetry: () => ref.invalidate(bedsProvider(unitId)),
+                        ),
+                      AsyncData(:final value) when value.isEmpty => const _Empty(),
+                      AsyncData(:final value) =>
+                        _BedList(beds: value, unitId: unitId),
+                      _ => const _Loading(),
+                    },
+                  )
+                : const _WholeUnit(),
           ),
         ],
       ),
     );
   }
 
+  /// "Not set" rather than ₱0, which would claim the unit is free.
+  static String _rentLabel(num? rent) {
+    if (rent == null) return '—';
+    final asDouble = rent.toDouble();
+    final whole = asDouble == asDouble.roundToDouble();
+    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+  }
 }
 
 class _BackButton extends StatelessWidget {
@@ -92,6 +115,51 @@ class _BackButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: 'Back',
+    );
+  }
+}
+
+/// Editing lives behind a control of its own, as it does on the property
+/// screen. Tapping the unit itself no longer opens its fields.
+class _EditButton extends StatelessWidget {
+  const _EditButton({required this.propertyId, required this.unitId});
+
+  final String propertyId;
+  final String unitId;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () => context.push(Routes.unitEdit(propertyId, unitId)),
+      icon: const Icon(Icons.edit_outlined),
+      color: LizmoColors.white,
+      iconSize: 20,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      tooltip: 'Edit unit',
+    );
+  }
+}
+
+/// A whole unit holds no beds, so there is nothing to list until it holds a
+/// tenancy. Said plainly rather than shown as an empty list, which would read
+/// as beds that failed to load.
+class _WholeUnit extends StatelessWidget {
+  const _WholeUnit();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: const [
+        SizedBox(height: 60),
+        LizmoMessageState(
+          icon: Icons.meeting_room_outlined,
+          title: 'Rented as a whole unit',
+          detail: 'One tenant takes the whole unit, so there are no beds to '
+              'set up here.',
+        ),
+      ],
     );
   }
 }
@@ -262,38 +330,6 @@ class _RenameBedDialogState extends State<_RenameBedDialog> {
     );
   }
 }
-
-/// Points at the one place the bed count can be changed.
-class _CountHint extends StatelessWidget {
-  const _CountHint({required this.propertyId, required this.unitId});
-
-  final String propertyId;
-  final String unitId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Flexible(
-          child: Text(
-            "Beds follow the unit's bed count.",
-            style: LizmoType.rowSub,
-            textAlign: TextAlign.center,
-          ),
-        ),
-        TextButton(
-          onPressed: () => context.push(Routes.unitEdit(propertyId, unitId)),
-          child: Text(
-            'Change it',
-            style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _Loading extends StatelessWidget {
   const _Loading();
 

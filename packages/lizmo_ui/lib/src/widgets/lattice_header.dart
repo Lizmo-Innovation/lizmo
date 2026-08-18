@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/lizmo_colors.dart';
 import '../theme/lizmo_type.dart';
+import 'lattice_background.dart';
 
 /// The signature element: a teal header textured with a faint square lattice —
 /// a nod to the shell-pane (capiz) windows of Philippine homes.
@@ -48,7 +49,7 @@ class LatticeHeader extends StatelessWidget {
       child: CustomPaint(
         // The painter lays down the teal fill *and* the lattice; an opaque
         // background on the child would paint straight over the grid.
-        painter: _LatticePainter(),
+        painter: const LatticePainter(),
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
@@ -147,29 +148,3 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Paints the 18px lattice grid behind the header content.
-class _LatticePainter extends CustomPainter {
-  static const _cell = 18.0;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = LizmoColors.teal900,
-    );
-
-    final paint = Paint()
-      ..color = LizmoColors.white.withValues(alpha: 0.08)
-      ..strokeWidth = 1;
-
-    for (var x = _cell; x < size.width; x += _cell) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = _cell; y < size.height; y += _cell) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LatticePainter oldDelegate) => false;
-}
