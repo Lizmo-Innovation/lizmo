@@ -10,11 +10,29 @@ import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
+import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
+
+/// Serves a fixed reachability, and becomes reachable when retried.
+class _FakeHealth extends BackendHealth {
+  _FakeHealth(this._initial);
+
+  final BackendReachability _initial;
+  int checks = 0;
+
+  @override
+  BackendReachability build() => _initial;
+
+  @override
+  Future<void> check() async {
+    checks++;
+    state = BackendReachability.reachable;
+  }
+}
 
 /// Drives routing directly, without touching secure storage or the network.
 class _FakeAuth extends AuthController {
@@ -1981,6 +1999,58 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Delete this property'), findsNothing);
+    });
+  });
+
+  group('the backend must be reachable before the app opens', () {
+    Widget appWith(_FakeHealth health) => ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            backendHealthProvider.overrideWith(() => health),
+            propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('an unreachable backend holds the splash', (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.unreachable)));
+      await tester.pump(const Duration(seconds: 4)); // past the splash hold
+
+      // Login would only fail, and a restored session would show a portfolio
+      // that looks empty rather than unreachable.
+      expect(find.byType(SplashScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.text("Can't reach Lizmo"), findsOneWidget);
+    });
+
+    testWidgets('retrying lets the app through', (tester) async {
+      final health = _FakeHealth(BackendReachability.unreachable);
+      await tester.pumpWidget(appWith(health));
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+
+      expect(health.checks, 1);
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('a reachable backend is not held up', (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.reachable)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+    });
+
+    testWidgets('the splash still waits out its hold when reachable',
+        (tester) async {
+      await tester.pumpWidget(appWith(_FakeHealth(BackendReachability.reachable)));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Reachable is not a licence to skip the splash.
+      expect(find.byType(SplashScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
     });
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +13,7 @@ import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_list_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/unit_detail_screen.dart';
 
@@ -38,13 +41,51 @@ abstract final class Routes {
   static const signedOutAllowed = {login, register};
 }
 
+
+/// Holds the splash for a moment at launch.
+///
+/// Restoring a session is often a single read of secure storage, so without
+/// this the splash appears for a couple of frames and reads as a flicker
+/// rather than a screen. The wait is the point: it is the only place the app
+/// introduces itself.
+class SplashGate extends ChangeNotifier {
+  SplashGate(Duration hold) {
+    _timer = Timer(hold, () {
+      _open = true;
+      notifyListeners();
+    });
+  }
+
+  static const duration = Duration(seconds: 3);
+
+  bool _open = false;
+  bool get isOpen => _open;
+
+  late final Timer _timer;
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+}
+
+final splashGateProvider = Provider<SplashGate>((ref) {
+  final gate = SplashGate(SplashGate.duration);
+  ref.onDispose(gate.dispose);
+  return gate;
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = AuthRefreshNotifier(ref);
   ref.onDispose(refresh.dispose);
 
+  final gate = ref.watch(splashGateProvider);
+  final reachable = ref.watch(backendHealthProvider);
+
   return GoRouter(
     initialLocation: Routes.splash,
-    refreshListenable: refresh,
+    refreshListenable: Listenable.merge([refresh, gate]),
     // The redirect is the only place that decides what a user may see. Screens
     // never push or pop themselves between signed-in and signed-out, so a
     // session ending anywhere lands the user on login without every screen
@@ -52,6 +93,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       final location = state.matchedLocation;
+
+      // Nothing is decided until the splash has had its moment, including for
+      // a signed-in user whose tokens restore instantly.
+      if (!gate.isOpen) {
+        return location == Routes.splash ? null : Routes.splash;
+      }
+
+      // Nor while the backend is out of contact. Every screen past this point
+      // is a view onto the API, so login would only fail and a restored
+      // session would show an empty portfolio that is not really empty.
+      if (reachable != BackendReachability.reachable) {
+        return location == Routes.splash ? null : Routes.splash;
+      }
 
       return switch (auth) {
         // Stored tokens are still being checked. Holding on the splash avoids
@@ -153,26 +207,6 @@ String? _signedInRedirect(Ref ref, Session session, String location) {
   return null;
 }
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: LizmoColors.canvas,
-      body: Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// Only reachable if the account holds no tenant or landlord profile.
 /// Registration always creates a tenant profile, so this guards against bad

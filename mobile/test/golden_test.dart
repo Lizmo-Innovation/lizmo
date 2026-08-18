@@ -8,6 +8,7 @@ import 'package:lizmo/main.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
+import 'package:lizmo/screens/splash_screen.dart';
 
 /// Renders each role's home screen for visual review.
 /// Regenerate with `flutter test test/golden_test.dart --update-goldens`.
@@ -15,6 +16,15 @@ import 'package:lizmo/property/property_providers.dart';
 /// Renders with real type now that the fonts are bundled in lizmo_ui, so a
 /// typography regression is visible here. Tagged `golden` and excluded from CI:
 /// they are generated on Windows and rasterise differently on Linux.
+class _PinnedHealth extends BackendHealth {
+  _PinnedHealth(this._state);
+
+  final BackendReachability _state;
+
+  @override
+  BackendReachability build() => _state;
+}
+
 class _FakeAuth extends AuthController {
   _FakeAuth(this._initial);
 
@@ -149,6 +159,51 @@ void main() {
     await expectLater(
       find.byType(LizmoApp),
       matchesGoldenFile('goldens/property_detail.png'),
+    );
+  });
+
+  testWidgets('splash', (tester) async {
+    _phone(tester);
+
+    // Rendered directly rather than through the router: the router holds the
+    // splash on a timer, and pumpAndSettle would run that timer out and land
+    // on login before anything could be captured.
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        // Pinned reachable: the golden is of the normal launch, not the
+        // offline state, and an unpinned probe would decide for itself.
+        backendHealthProvider.overrideWith(
+            () => _PinnedHealth(BackendReachability.reachable)),
+      ],
+      child: const MaterialApp(home: SplashScreen()),
+    ));
+    // Not pumpAndSettle: the progress indicator animates forever, so nothing
+    // ever settles. Two frames is enough to lay out and load the mark.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await expectLater(
+      find.byType(SplashScreen),
+      matchesGoldenFile('goldens/splash.png'),
+    );
+  });
+
+  testWidgets('splash offline', (tester) async {
+    _phone(tester);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        backendHealthProvider.overrideWith(
+            () => _PinnedHealth(BackendReachability.unreachable)),
+      ],
+      child: const MaterialApp(home: SplashScreen()),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await expectLater(
+      find.byType(SplashScreen),
+      matchesGoldenFile('goldens/splash_offline.png'),
     );
   });
 }

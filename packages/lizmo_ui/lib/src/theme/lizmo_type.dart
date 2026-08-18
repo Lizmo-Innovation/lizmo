@@ -42,6 +42,19 @@ abstract final class LizmoType {
     height: 1.2,
   );
 
+  /// The wordmark on the splash, 34/700. Larger than any screen title —
+  /// nothing else in the app is the app's own name.
+  static const TextStyle wordmark = TextStyle(
+    fontFamily: _display,
+    package: _package,
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    fontVariations: [FontVariation('wght', 700)],
+    color: LizmoColors.white,
+    height: 1.1,
+    letterSpacing: -0.5,
+  );
+
   /// List/section heading, 14/500.
   static const TextStyle sectionHeading = TextStyle(
     fontFamily: _display,
@@ -132,5 +145,17 @@ abstract final class LizmoType {
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: LizmoColors.ink,
+  );
+
+  /// The splash tagline, 14/500. Held back from white so it reads as
+  /// supporting the wordmark rather than competing with it.
+  static final TextStyle tagline = TextStyle(
+    fontFamily: _body,
+    package: _package,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    fontVariations: _wght(500),
+    color: LizmoColors.white.withValues(alpha: 0.72),
+    height: 1.4,
   );
 }
