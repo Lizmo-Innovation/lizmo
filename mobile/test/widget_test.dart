@@ -11,7 +11,7 @@ import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
-import 'package:lizmo/screens/unit_beds_screen.dart';
+import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
@@ -1075,9 +1075,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
+      // The unit card shows the unit; its fields are behind the pencil, as on
+      // the property screen.
+      await tester.tap(find.byTooltip('Edit unit'));
+      await tester.pumpAndSettle();
     }
 
-    testWidgets('tapping a unit opens it prefilled', (tester) async {
+    testWidgets('the edit pencil opens the unit prefilled', (tester) async {
       final api = _EditableUnitsApi(bedspace());
       await openEditForm(tester, api);
 
@@ -1207,6 +1211,8 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit unit'));
       await tester.pumpAndSettle();
       return api;
     }
@@ -1649,7 +1655,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('View beds'));
+      await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
 
       expectUpperLeft(tester, find.byTooltip('Back'));
@@ -1723,9 +1729,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
-      // The bed row on the unit card is its own tap target, separate from the
-      // card itself, which opens the unit's settings.
-      await tester.tap(find.text('View beds'));
+      // One target now: the card opens the unit, and its beds are already on
+      // the screen that opens.
+      await tester.tap(find.text('Unit 2B'));
       await tester.pumpAndSettle();
       return api;
     }
@@ -1733,10 +1739,11 @@ void main() {
     testWidgets('the bed row on a unit card opens its beds', (tester) async {
       await openBeds(tester);
 
-      expect(find.byType(UnitBedsScreen), findsOneWidget);
+      expect(find.byType(UnitDetailScreen), findsOneWidget);
       expect(find.text('Bed 1'), findsOneWidget);
       expect(find.text('Bed 2'), findsOneWidget);
-      // Not the edit form -- that is what the card itself opens.
+      // Tapping a unit shows it. It used to open the edit form, past a live
+      // delete button.
       expect(find.byType(CreateUnitScreen), findsNothing);
     });
 
@@ -1750,12 +1757,11 @@ void main() {
       expect(find.byTooltip('Remove Bed 2'), findsNothing);
     });
 
-    testWidgets('it points at where the count is changed', (tester) async {
+    testWidgets('editing is behind the pencil, not the whole screen',
+        (tester) async {
       await openBeds(tester);
 
-      expect(find.text("Beds follow the unit's bed count."), findsOneWidget);
-
-      await tester.tap(find.text('Change it'));
+      await tester.tap(find.byTooltip('Edit unit'));
       await tester.pumpAndSettle();
 
       expect(find.byType(CreateUnitScreen), findsOneWidget);
@@ -1853,7 +1859,7 @@ void main() {
 
       expect(find.text('A bed with that label already exists in this unit.'),
           findsOneWidget);
-      expect(find.byType(UnitBedsScreen), findsOneWidget);
+      expect(find.byType(UnitDetailScreen), findsOneWidget);
     });
 
     testWidgets('an occupied bed can still be renamed', (tester) async {
