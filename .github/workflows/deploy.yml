@@ -51,6 +51,12 @@ jobs:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
+      - name: Debug
+        run: |
+          echo "provider: ${{ vars.WIF_PROVIDER }}"
+          echo "sa: ${{ vars.WIF_SERVICE_ACCOUNT }}"
+          gcloud auth list
+
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
