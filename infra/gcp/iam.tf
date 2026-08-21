@@ -50,3 +50,28 @@ resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.scheduler.email}"
 }
+
+# Service account for GitHub Actions Workload Identity Federation
+resource "google_service_account" "github_deployer" {
+  account_id   = "github-deployer"
+  display_name = "GitHub Actions Deployer"
+}
+
+# Grant Artifact Registry write access
+resource "google_project_iam_member" "github_artifactregistry_writer" {
+  project = var.gcp_project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# Grant service account impersonation (if needed)
+resource "google_project_iam_member" "github_serviceaccount_user" {
+  project = var.gcp_project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# Output the service account email for GitHub Actions configuration
+output "github_deployer_email" {
+  value = google_service_account.github_deployer.email
+}
