@@ -44,8 +44,8 @@ resource "google_service_account" "deployer" {
   depends_on = [google_project_service.required]
 }
 
-# Scoped to the repository, not to a branch: any workflow in ariel823/lizmo can
-# impersonate this account. A fork cannot, because its assertion.repository is
+# Scoped to the repository, not to a branch: any workflow in Lizmo-Innovation/lizmo
+# can impersonate this account. A fork cannot, because its assertion.repository is
 # the fork's own name and fails the provider condition.
 #
 # To restrict deploys to main as well, map attribute.ref (already mapped above)
@@ -53,7 +53,7 @@ resource "google_service_account" "deployer" {
 resource "google_service_account_iam_member" "github_impersonation" {
   service_account_id = google_service_account.deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.ref/refs/heads/${var.deploy_branch}"
 }
 
 # Push images.

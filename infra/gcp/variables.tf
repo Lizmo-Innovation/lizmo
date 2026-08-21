@@ -24,7 +24,12 @@ variable "github_repository" {
     provider.
   EOT
   type        = string
-  default     = "ariel823/lizmo"
+  default     = "Lizmo-Innovation/lizmo"
+}
+
+variable "deploy_branch" {
+  type    = string
+  default = "production"
 }
 
 variable "service_name" {
