@@ -187,14 +187,14 @@ class ApiClient {
           return ApiError.fromJson(value);
         case 'AuthResponse':
           return AuthResponse.fromJson(value);
-        case 'BedMaintenanceRequest':
-          return BedMaintenanceRequest.fromJson(value);
         case 'BedRequest':
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
         case 'LoginRequest':
           return LoginRequest.fromJson(value);
+        case 'MaintenanceRequest':
+          return MaintenanceRequest.fromJson(value);
         case 'PropertyRequest':
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':

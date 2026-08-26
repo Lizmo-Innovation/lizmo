@@ -11,11 +11,11 @@
 import 'package:lizmo_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for BedMaintenanceRequest
+// tests for MaintenanceRequest
 void main() {
-  // final instance = BedMaintenanceRequest();
+  // final instance = MaintenanceRequest();
 
-  group('test BedMaintenanceRequest', () {
+  group('test MaintenanceRequest', () {
     // bool underMaintenance
     test('to test the property `underMaintenance`', () async {
       // TODO

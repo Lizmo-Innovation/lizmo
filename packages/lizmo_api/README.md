@@ -76,6 +76,7 @@ Class | Method | HTTP request | Description
 *UnitsApi* | [**getUnit**](doc//UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 *UnitsApi* | [**listBeds**](doc//UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
 *UnitsApi* | [**setBedMaintenance**](doc//UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
+*UnitsApi* | [**setUnitMaintenance**](doc//UnitsApi.md#setunitmaintenance) | **PUT** /api/v1/units/{id}/maintenance | Take a unit out of service, or put it back
 *UnitsApi* | [**updateBed**](doc//UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 *UnitsApi* | [**updateUnit**](doc//UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
@@ -84,10 +85,10 @@ Class | Method | HTTP request | Description
 
  - [ApiError](doc//ApiError.md)
  - [AuthResponse](doc//AuthResponse.md)
- - [BedMaintenanceRequest](doc//BedMaintenanceRequest.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
+ - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RefreshRequest](doc//RefreshRequest.md)

@@ -5,10 +5,10 @@ analysis_options.yaml
 doc/ApiError.md
 doc/AuthApi.md
 doc/AuthResponse.md
-doc/BedMaintenanceRequest.md
 doc/BedRequest.md
 doc/BedResponse.md
 doc/LoginRequest.md
+doc/MaintenanceRequest.md
 doc/PropertiesApi.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
@@ -32,10 +32,10 @@ lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
 lib/model/api_error.dart
 lib/model/auth_response.dart
-lib/model/bed_maintenance_request.dart
 lib/model/bed_request.dart
 lib/model/bed_response.dart
 lib/model/login_request.dart
+lib/model/maintenance_request.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/refresh_request.dart
@@ -43,3 +43,4 @@ lib/model/register_request.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
 pubspec.yaml
+test/maintenance_request_test.dart

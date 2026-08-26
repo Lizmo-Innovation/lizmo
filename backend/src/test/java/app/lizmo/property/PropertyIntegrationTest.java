@@ -1235,4 +1235,113 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(jsonPath("$[0].potentialMonthlyRent").value(5000.00));
     }
+
+    // ---------- Units out of service ----------
+
+    @Test
+    void a_unit_can_be_taken_out_of_service_and_put_back() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 4, "2500.00");
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MAINTENANCE"))
+                // Nothing here can be let, so there is nothing to total.
+                .andExpect(jsonPath("$.potentialMonthlyRent").doesNotExist());
+
+        // The beds are untouched: the room is shut, not dismantled.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.bedCount").value(4))
+                .andExpect(jsonPath("$.bedsUnderMaintenance").value(0));
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":false}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("VACANT"))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(10000.00));
+    }
+
+    @Test
+    void a_whole_unit_out_of_service_earns_nothing() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        String body = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","rentalMode":"WHOLE_UNIT","rent":7000.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String unitId = json.readTree(body).get("id").asText();
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.potentialMonthlyRent").doesNotExist())
+                // The asking rent survives; it is the earning that stops.
+                .andExpect(jsonPath("$.rent").value(7000.00));
+    }
+
+    @Test
+    void unit_maintenance_requires_a_value() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void another_landlord_cannot_close_a_unit() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + otherLandlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void a_unit_out_of_service_still_appears_in_the_list() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 2, "2500.00");
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk());
+
+        // Hidden from the earnings, not from the landlord: they still need to
+        // find it to put it back into service.
+        mvc.perform(get("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("MAINTENANCE"))
+                .andExpect(jsonPath("$[0].potentialMonthlyRent").doesNotExist());
+    }
 }

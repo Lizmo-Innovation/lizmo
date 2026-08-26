@@ -122,6 +122,59 @@
                 }
             }
         },
+        "/api/v1/units/{id}/maintenance": {
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Take a unit out of service, or put it back",
+                "description": "Refused while the unit is occupied.",
+                "operationId": "setUnitMaintenance",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MaintenanceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The unit",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnitResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The unit is occupied",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/{id}": {
             "get": {
                 "tags": [
@@ -328,7 +381,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/BedMaintenanceRequest"
+                                "$ref": "#/components/schemas/MaintenanceRequest"
                             }
                         }
                     },
@@ -855,6 +908,43 @@
                 },
                 "description": "A unit within a property"
             },
+            "MaintenanceRequest": {
+                "required": [
+                    "underMaintenance"
+                ],
+                "type": "object",
+                "properties": {
+                    "underMaintenance": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "description": "Whether a bed or unit is out of service"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "PropertyRequest": {
                 "required": [
                     "address",
@@ -970,30 +1060,6 @@
                 },
                 "description": "Bed details"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "BedResponse": {
                 "type": "object",
                 "properties": {
@@ -1021,19 +1087,6 @@
                     }
                 },
                 "description": "A bed within a bedspace unit"
-            },
-            "BedMaintenanceRequest": {
-                "required": [
-                    "underMaintenance"
-                ],
-                "type": "object",
-                "properties": {
-                    "underMaintenance": {
-                        "type": "boolean",
-                        "example": true
-                    }
-                },
-                "description": "Whether a bed is out of service"
             },
             "RegisterRequest": {
                 "required": [

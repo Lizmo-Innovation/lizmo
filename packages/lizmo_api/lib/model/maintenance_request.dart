@@ -10,16 +10,16 @@
 
 part of openapi.api;
 
-class BedMaintenanceRequest {
-  /// Returns a new [BedMaintenanceRequest] instance.
-  BedMaintenanceRequest({
+class MaintenanceRequest {
+  /// Returns a new [MaintenanceRequest] instance.
+  MaintenanceRequest({
     required this.underMaintenance,
   });
 
   bool underMaintenance;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is BedMaintenanceRequest &&
+  bool operator ==(Object other) => identical(this, other) || other is MaintenanceRequest &&
     other.underMaintenance == underMaintenance;
 
   @override
@@ -28,7 +28,7 @@ class BedMaintenanceRequest {
     (underMaintenance.hashCode);
 
   @override
-  String toString() => 'BedMaintenanceRequest[underMaintenance=$underMaintenance]';
+  String toString() => 'MaintenanceRequest[underMaintenance=$underMaintenance]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -36,10 +36,10 @@ class BedMaintenanceRequest {
     return json;
   }
 
-  /// Returns a new [BedMaintenanceRequest] instance and imports its values from
+  /// Returns a new [MaintenanceRequest] instance and imports its values from
   /// [value] if it's a [Map], null otherwise.
   // ignore: prefer_constructors_over_static_methods
-  static BedMaintenanceRequest? fromJson(dynamic value) {
+  static MaintenanceRequest? fromJson(dynamic value) {
     if (value is Map) {
       final json = value.cast<String, dynamic>();
 
@@ -47,23 +47,23 @@ class BedMaintenanceRequest {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
-        assert(json.containsKey(r'underMaintenance'), 'Required key "BedMaintenanceRequest[underMaintenance]" is missing from JSON.');
-        assert(json[r'underMaintenance'] != null, 'Required key "BedMaintenanceRequest[underMaintenance]" has a null value in JSON.');
+        assert(json.containsKey(r'underMaintenance'), 'Required key "MaintenanceRequest[underMaintenance]" is missing from JSON.');
+        assert(json[r'underMaintenance'] != null, 'Required key "MaintenanceRequest[underMaintenance]" has a null value in JSON.');
         return true;
       }());
 
-      return BedMaintenanceRequest(
+      return MaintenanceRequest(
         underMaintenance: mapValueOfType<bool>(json, r'underMaintenance')!,
       );
     }
     return null;
   }
 
-  static List<BedMaintenanceRequest> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <BedMaintenanceRequest>[];
+  static List<MaintenanceRequest> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <MaintenanceRequest>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = BedMaintenanceRequest.fromJson(row);
+        final value = MaintenanceRequest.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -72,12 +72,12 @@ class BedMaintenanceRequest {
     return result.toList(growable: growable);
   }
 
-  static Map<String, BedMaintenanceRequest> mapFromJson(dynamic json) {
-    final map = <String, BedMaintenanceRequest>{};
+  static Map<String, MaintenanceRequest> mapFromJson(dynamic json) {
+    final map = <String, MaintenanceRequest>{};
     if (json is Map && json.isNotEmpty) {
       json = json.cast<String, dynamic>(); // ignore: parameter_assignments
       for (final entry in json.entries) {
-        final value = BedMaintenanceRequest.fromJson(entry.value);
+        final value = MaintenanceRequest.fromJson(entry.value);
         if (value != null) {
           map[entry.key] = value;
         }
@@ -86,14 +86,14 @@ class BedMaintenanceRequest {
     return map;
   }
 
-  // maps a json object with a list of BedMaintenanceRequest-objects as value to a dart map
-  static Map<String, List<BedMaintenanceRequest>> mapListFromJson(dynamic json, {bool growable = false,}) {
-    final map = <String, List<BedMaintenanceRequest>>{};
+  // maps a json object with a list of MaintenanceRequest-objects as value to a dart map
+  static Map<String, List<MaintenanceRequest>> mapListFromJson(dynamic json, {bool growable = false,}) {
+    final map = <String, List<MaintenanceRequest>>{};
     if (json is Map && json.isNotEmpty) {
       // ignore: parameter_assignments
       json = json.cast<String, dynamic>();
       for (final entry in json.entries) {
-        map[entry.key] = BedMaintenanceRequest.listFromJson(entry.value, growable: growable,);
+        map[entry.key] = MaintenanceRequest.listFromJson(entry.value, growable: growable,);
       }
     }
     return map;

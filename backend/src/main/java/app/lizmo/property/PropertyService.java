@@ -3,6 +3,7 @@ package app.lizmo.property;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.property.dto.BedRequest;
+import app.lizmo.property.dto.MaintenanceRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
@@ -138,9 +139,13 @@ public class PropertyService {
      * loaded anyway to total their rents, so they now come from one.
      */
     private UnitResponse unitResponse(Unit unit) {
+        // Out of service: nothing here can be let, so there is nothing to
+        // total. Null rather than zero — the same distinction as an unset rent.
+        boolean closed = unit.getStatus() == UnitStatus.MAINTENANCE;
+
         if (!unit.isBedspace()) {
             // One tenancy, so the unit's own rent is the whole of it.
-            return UnitResponse.of(unit, 0, 0, unit.getRent());
+            return UnitResponse.of(unit, 0, 0, closed ? null : unit.getRent());
         }
 
         List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
@@ -162,7 +167,7 @@ public class PropertyService {
             potential = potential == null ? effective : potential.add(effective);
         }
 
-        return UnitResponse.of(unit, unitBeds.size(), maintenance, potential);
+        return UnitResponse.of(unit, unitBeds.size(), maintenance, closed ? null : potential);
     }
 
     @Transactional(readOnly = true)
@@ -247,6 +252,31 @@ public class PropertyService {
 
         unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
                 capacity, request.rent());
+        return unitResponse(units.save(unit));
+    }
+
+    /**
+     * Takes a whole unit out of service, or puts it back.
+     *
+     * <p>The unit-level counterpart of taking one bed out. A room being
+     * repainted is not rentable however many beds it holds, and marking each
+     * bed one at a time would be both tedious and easy to leave half done.
+     *
+     * <p>Refused while occupied, for the same reason a bed is: the tenant is
+     * still there and still paying, so hiding the space from the rentable
+     * count would make occupancy lie.
+     */
+    @Transactional
+    public UnitResponse setUnitMaintenance(UUID unitId, boolean underMaintenance, UUID userId) {
+        Unit unit = requireWritableUnit(unitId, userId);
+
+        if (unit.getStatus() == UnitStatus.OCCUPIED
+                || unit.getStatus() == UnitStatus.PARTIALLY_OCCUPIED) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "This unit is occupied. End its leases before taking it out of service.");
+        }
+
+        unit.markMaintenance(underMaintenance);
         return unitResponse(units.save(unit));
     }
 

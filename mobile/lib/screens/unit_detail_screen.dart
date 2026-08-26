@@ -52,7 +52,13 @@ class UnitDetailScreen extends ConsumerWidget {
             eyebrow: propertyName ?? 'Property',
             title: unit == null ? 'Unit' : 'Unit ${unit.unitNumber ?? ''}',
             leading: const _BackButton(),
-            trailing: _EditButton(propertyId: propertyId, unitId: unitId),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EditButton(propertyId: propertyId, unitId: unitId),
+                _MoreButton(unit: unit, propertyId: propertyId, unitId: unitId),
+              ],
+            ),
             stats: [
               if (isBedspace)
                 LatticeHeaderStat(
@@ -77,6 +83,8 @@ class UnitDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
+          if (unit?.status == UnitResponseStatusEnum.MAINTENANCE)
+            const _ClosedBanner(),
           Expanded(
             child: isBedspace
                 ? RefreshIndicator(
@@ -363,7 +371,7 @@ class _BedRow extends ConsumerWidget {
     try {
       await ref.read(unitsApiProvider).setBedMaintenance(
             bed.id!,
-            BedMaintenanceRequest(underMaintenance: underMaintenance),
+            MaintenanceRequest(underMaintenance: underMaintenance),
           );
       ref.invalidate(bedsProvider(unitId));
       // The rentable count on the property screen moves with it.
@@ -683,6 +691,150 @@ class _BedPriceDialogState extends State<_BedPriceDialog> {
               style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
         ),
       ],
+    );
+  }
+}
+
+/// Whether the unit is open for letting at all.
+///
+/// Separate from the pencil: editing changes what the unit *is*, this changes
+/// whether it can be let. Mirrors the sheet on a bed row.
+class _MoreButton extends ConsumerWidget {
+  const _MoreButton({
+    required this.unit,
+    required this.propertyId,
+    required this.unitId,
+  });
+
+  final UnitResponse? unit;
+  final String propertyId;
+  final String unitId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      onPressed: unit == null ? null : () => _open(context, ref),
+      icon: const Icon(Icons.more_horiz),
+      color: LizmoColors.white,
+      iconSize: 20,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      tooltip: 'More',
+    );
+  }
+
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
+    final closed = unit!.status == UnitResponseStatusEnum.MAINTENANCE;
+    final occupied = unit!.status == UnitResponseStatusEnum.OCCUPIED ||
+        unit!.status == UnitResponseStatusEnum.PARTIALLY_OCCUPIED;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: LizmoColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Unit ${unit!.unitNumber ?? ''}',
+                    style: LizmoType.rowName),
+              ),
+            ),
+            if (occupied)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                child: Text(
+                  'Occupied units cannot be taken out of service. End their '
+                  'leases first.',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                ),
+              )
+            else
+              ListTile(
+                leading: Icon(
+                  closed ? Icons.build_circle_outlined : Icons.build_outlined,
+                  color: LizmoColors.slate,
+                ),
+                title: Text(
+                  closed ? 'Return to service' : 'Take out of service',
+                  style: LizmoType.rowName,
+                ),
+                subtitle: Text(
+                  closed
+                      ? 'Counts towards the property again.'
+                      : 'Stops counting as rentable, beds and all.',
+                  style: LizmoType.rowSub,
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _set(context, ref, !closed);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _set(BuildContext context, WidgetRef ref, bool underMaintenance) async {
+    try {
+      await ref.read(unitsApiProvider).setUnitMaintenance(
+            unitId,
+            MaintenanceRequest(underMaintenance: underMaintenance),
+          );
+      ref.invalidate(unitProvider(unitId));
+      // The property's rentable count and monthly total both move.
+      ref.invalidate(unitsProvider(propertyId));
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: LizmoColors.red,
+            content: Text(ApiFailure.from(error).message,
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.white)),
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// States that the unit is shut, so an empty earnings figure is explained
+/// rather than looking like missing data.
+class _ClosedBanner extends StatelessWidget {
+  const _ClosedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: LizmoColors.amberBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.build_outlined, size: 18, color: LizmoColors.amberText),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Out of service. Nothing here counts as rentable.',
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
