@@ -3,11 +3,16 @@ package app.lizmo.property;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.property.dto.BedRequest;
+import app.lizmo.property.dto.MaintenanceRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import app.lizmo.property.dto.UtilityRequest;
+import app.lizmo.property.dto.UtilityResponse;
+import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -31,16 +36,19 @@ public class PropertyService {
     private final PropertyRepository properties;
     private final UnitRepository units;
     private final BedRepository beds;
+    private final UnitUtilityRepository utilities;
     private final PropertyAccess access;
 
     public PropertyService(
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
+            UnitUtilityRepository utilities,
             PropertyAccess access) {
         this.properties = properties;
         this.units = units;
         this.beds = beds;
+        this.utilities = utilities;
         this.access = access;
     }
 
@@ -130,12 +138,51 @@ public class PropertyService {
 
     // ---------- Units ----------
 
+    /**
+     * Builds a unit's response, deriving every bed-based figure from one read.
+     *
+     * <p>Three numbers came from three queries before; the beds have to be
+     * loaded anyway to total their rents, so they now come from one.
+     */
+    private UnitResponse unitResponse(Unit unit) {
+        // Out of service: nothing here can be let, so there is nothing to
+        // total. Null rather than zero — the same distinction as an unset rent.
+        boolean closed = unit.getStatus() == UnitStatus.MAINTENANCE;
+
+        if (!unit.isBedspace()) {
+            // One tenancy, so the unit's own rent is the whole of it.
+            return UnitResponse.of(unit, 0, 0, closed ? null : unit.getRent(),
+                    monthlyUtilities(unit.getId()));
+        }
+
+        List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
+        long maintenance = unitBeds.stream().filter(
+                bed -> bed.getStatus() == BedStatus.MAINTENANCE).count();
+
+        BigDecimal potential = null;
+        for (Bed bed : unitBeds) {
+            if (bed.getStatus() == BedStatus.MAINTENANCE) {
+                continue;
+            }
+            // A bed with no rent of its own is let at the unit's rate.
+            BigDecimal effective = bed.getRent() != null ? bed.getRent() : unit.getRent();
+            if (effective == null) {
+                // Nothing is known about this bed's price. It contributes
+                // nothing rather than zero, which would be a claim.
+                continue;
+            }
+            potential = potential == null ? effective : potential.add(effective);
+        }
+
+        return UnitResponse.of(unit, unitBeds.size(), maintenance,
+                closed ? null : potential, monthlyUtilities(unit.getId()));
+    }
+
     @Transactional(readOnly = true)
     public List<UnitResponse> listUnits(UUID propertyId, UUID userId) {
         access.readable(propertyId, userId);
         return units.findByPropertyIdOrderByUnitNumberAsc(propertyId).stream()
-                .map(unit -> UnitResponse.of(unit, beds.countByUnitId(unit.getId()),
-                        beds.countByUnitIdAndStatus(unit.getId(), BedStatus.MAINTENANCE)))
+                .map(this::unitResponse)
                 .toList();
     }
 
@@ -176,15 +223,13 @@ public class PropertyService {
         // landlord has to remember.
         int created = mode == RentalMode.BEDSPACE ? fillBedsTo(unit.getId(), capacity) : 0;
 
-        // Freshly created beds are all vacant.
-        return UnitResponse.of(unit, created, 0);
+        return unitResponse(unit);
     }
 
     @Transactional(readOnly = true)
     public UnitResponse getUnit(UUID unitId, UUID userId) {
         Unit unit = requireReadableUnit(unitId, userId);
-        return UnitResponse.of(unit, beds.countByUnitId(unitId),
-                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
+        return unitResponse(unit);
     }
 
     @Transactional
@@ -209,14 +254,38 @@ public class PropertyService {
         // Beds follow capacity rather than constraining it: the landlord sets
         // how many beds the room has, and the beds themselves are reconciled to
         // match. Lowering capacity therefore removes beds.
-        long bedCount = unit.isBedspace()
-                ? reconcileBeds(unitId, capacity)
-                : beds.countByUnitId(unitId);
+        if (unit.isBedspace()) {
+            reconcileBeds(unitId, capacity);
+        }
 
         unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
                 capacity, request.rent());
-        return UnitResponse.of(units.save(unit), bedCount,
-                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
+        return unitResponse(units.save(unit));
+    }
+
+    /**
+     * Takes a whole unit out of service, or puts it back.
+     *
+     * <p>The unit-level counterpart of taking one bed out. A room being
+     * repainted is not rentable however many beds it holds, and marking each
+     * bed one at a time would be both tedious and easy to leave half done.
+     *
+     * <p>Refused while occupied, for the same reason a bed is: the tenant is
+     * still there and still paying, so hiding the space from the rentable
+     * count would make occupancy lie.
+     */
+    @Transactional
+    public UnitResponse setUnitMaintenance(UUID unitId, boolean underMaintenance, UUID userId) {
+        Unit unit = requireWritableUnit(unitId, userId);
+
+        if (unit.getStatus() == UnitStatus.OCCUPIED
+                || unit.getStatus() == UnitStatus.PARTIALLY_OCCUPIED) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "This unit is occupied. End its leases before taking it out of service.");
+        }
+
+        unit.markMaintenance(underMaintenance);
+        return unitResponse(units.save(unit));
     }
 
     @Transactional
@@ -235,6 +304,72 @@ public class PropertyService {
         }
         beds.deleteAll(existing);
         units.delete(unit);
+    }
+
+    // ---------- Utilities ----------
+
+    /**
+     * Every utility a unit could charge, whether or not it has been set up.
+     *
+     * <p>All three kinds come back every time, unconfigured ones included.
+     * Returning only the rows that exist would leave the client to decide what
+     * absence means, and a screen with three switches wants three answers.
+     */
+    @Transactional(readOnly = true)
+    public List<UtilityResponse> listUtilities(UUID unitId, UUID userId) {
+        requireReadableUnit(unitId, userId);
+        return utilitiesFor(unitId);
+    }
+
+    /**
+     * Applies utility settings to a unit.
+     *
+     * <p>Only the kinds named are touched, so a client may send one switch
+     * without restating the others.
+     */
+    @Transactional
+    public List<UtilityResponse> setUtilities(
+            UUID unitId, List<UtilityRequest> requests, UUID userId) {
+        requireWritableUnit(unitId, userId);
+
+        for (UtilityRequest request : requests) {
+            UnitUtility utility = utilities.findByUnitIdAndKind(unitId, request.kind())
+                    .orElseGet(() -> new UnitUtility(unitId, request.kind()));
+
+            // Switching one on without ever saying what it costs would store a
+            // charge of nothing, which the database refuses anyway.
+            if (request.enabled() && request.amount() == null && utility.getAmount() == null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "Set an amount for %s before switching it on."
+                                .formatted(request.kind().name().toLowerCase(Locale.ROOT)));
+            }
+
+            utility.set(request.enabled(), request.amount());
+            utilities.save(utility);
+        }
+
+        return utilitiesFor(unitId);
+    }
+
+    private List<UtilityResponse> utilitiesFor(UUID unitId) {
+        List<UnitUtility> configured = utilities.findByUnitIdOrderByKindAsc(unitId);
+        return Arrays.stream(UtilityKind.values())
+                .map(kind -> configured.stream()
+                        .filter(utility -> utility.getKind() == kind)
+                        .findFirst()
+                        .map(UtilityResponse::of)
+                        .orElseGet(() -> UtilityResponse.unset(kind)))
+                .toList();
+    }
+
+    /** What a unit's switched-on utilities add to a month, or null if none are. */
+    private BigDecimal monthlyUtilities(UUID unitId) {
+        BigDecimal total = utilities.findByUnitIdOrderByKindAsc(unitId).stream()
+                .map(UnitUtility::monthlyAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Null rather than zero, as everywhere else money is reported: nothing
+        // switched on is not the same statement as a charge of nothing.
+        return total.signum() == 0 ? null : total;
     }
 
     // ---------- Beds ----------
@@ -262,7 +397,9 @@ public class PropertyService {
                     "A bed with that label already exists in this unit.");
         }
 
-        Bed created = beds.save(new Bed(unitId, label));
+        Bed bed = new Bed(unitId, label);
+        bed.update(label, request.rent());
+        Bed created = beds.save(bed);
 
         // Capacity is the bed count, so adding a bed raises it rather than being
         // refused for exceeding it. Without this the two could disagree, and
@@ -296,7 +433,10 @@ public class PropertyService {
                     "A bed with that label already exists in this unit.");
         }
 
-        bed.rename(label);
+        // Label and rent are the two things a landlord edits about a bed, so
+        // they move together: a PUT carries the whole bed, and omitting the
+        // rent means it is let at the unit's rate again.
+        bed.update(label, request.rent());
         return BedResponse.of(beds.save(bed));
     }
 

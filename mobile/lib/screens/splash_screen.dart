@@ -15,9 +15,8 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
-  /// What Lizmo is for, in one line. Bedspaces are the part other rental apps
-  /// leave out, so the wording names beds explicitly.
-  static const tagline = 'Every unit and bed, accounted for.';
+  /// What Lizmo is for, in one line.
+  static const tagline = 'Zero-hassle ang lease mo!'; //Lease mo, zero-hassle!
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

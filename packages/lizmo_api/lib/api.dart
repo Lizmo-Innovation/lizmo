@@ -34,16 +34,19 @@ part 'api/units_api.dart';
 
 part 'model/api_error.dart';
 part 'model/auth_response.dart';
-part 'model/bed_maintenance_request.dart';
 part 'model/bed_request.dart';
 part 'model/bed_response.dart';
 part 'model/login_request.dart';
+part 'model/maintenance_request.dart';
 part 'model/property_request.dart';
 part 'model/property_response.dart';
 part 'model/refresh_request.dart';
 part 'model/register_request.dart';
 part 'model/unit_request.dart';
 part 'model/unit_response.dart';
+part 'model/utilities_request.dart';
+part 'model/utility_request.dart';
+part 'model/utility_response.dart';
 
 
 /// An [ApiClient] instance that uses the default values obtained from

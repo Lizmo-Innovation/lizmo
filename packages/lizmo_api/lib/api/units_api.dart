@@ -289,6 +289,67 @@ class UnitsApi {
     return null;
   }
 
+  /// A unit's fixed monthly utilities
+  ///
+  /// Always returns every kind, including ones never set up.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> listUtilitiesWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/units/{id}/utilities'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// A unit's fixed monthly utilities
+  ///
+  /// Always returns every kind, including ones never set up.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<List<UtilityResponse>?> listUtilities(String id, { Future<void>? abortTrigger, }) async {
+    final response = await listUtilitiesWithHttpInfo(id, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<UtilityResponse>') as List)
+        .cast<UtilityResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
   /// Take a bed out of service, or put it back
   ///
   /// Refused while the bed is occupied.
@@ -299,14 +360,14 @@ class UnitsApi {
   ///
   /// * [String] id (required):
   ///
-  /// * [BedMaintenanceRequest] bedMaintenanceRequest (required):
-  Future<Response> setBedMaintenanceWithHttpInfo(String id, BedMaintenanceRequest bedMaintenanceRequest, { Future<void>? abortTrigger, }) async {
+  /// * [MaintenanceRequest] maintenanceRequest (required):
+  Future<Response> setBedMaintenanceWithHttpInfo(String id, MaintenanceRequest maintenanceRequest, { Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/api/v1/beds/{id}/maintenance'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
-    Object? postBody = bedMaintenanceRequest;
+    Object? postBody = maintenanceRequest;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
@@ -335,9 +396,9 @@ class UnitsApi {
   ///
   /// * [String] id (required):
   ///
-  /// * [BedMaintenanceRequest] bedMaintenanceRequest (required):
-  Future<BedResponse?> setBedMaintenance(String id, BedMaintenanceRequest bedMaintenanceRequest, { Future<void>? abortTrigger, }) async {
-    final response = await setBedMaintenanceWithHttpInfo(id, bedMaintenanceRequest, abortTrigger: abortTrigger,);
+  /// * [MaintenanceRequest] maintenanceRequest (required):
+  Future<BedResponse?> setBedMaintenance(String id, MaintenanceRequest maintenanceRequest, { Future<void>? abortTrigger, }) async {
+    final response = await setBedMaintenanceWithHttpInfo(id, maintenanceRequest, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -347,6 +408,133 @@ class UnitsApi {
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'BedResponse',) as BedResponse;
     
+    }
+    return null;
+  }
+
+  /// Take a unit out of service, or put it back
+  ///
+  /// Refused while the unit is occupied.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [MaintenanceRequest] maintenanceRequest (required):
+  Future<Response> setUnitMaintenanceWithHttpInfo(String id, MaintenanceRequest maintenanceRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/units/{id}/maintenance'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = maintenanceRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Take a unit out of service, or put it back
+  ///
+  /// Refused while the unit is occupied.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [MaintenanceRequest] maintenanceRequest (required):
+  Future<UnitResponse?> setUnitMaintenance(String id, MaintenanceRequest maintenanceRequest, { Future<void>? abortTrigger, }) async {
+    final response = await setUnitMaintenanceWithHttpInfo(id, maintenanceRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UnitResponse',) as UnitResponse;
+    
+    }
+    return null;
+  }
+
+  /// Set a unit's fixed monthly utilities
+  ///
+  /// Only the kinds sent are changed; the others are left alone.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UtilitiesRequest] utilitiesRequest (required):
+  Future<Response> setUtilitiesWithHttpInfo(String id, UtilitiesRequest utilitiesRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/units/{id}/utilities'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = utilitiesRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Set a unit's fixed monthly utilities
+  ///
+  /// Only the kinds sent are changed; the others are left alone.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UtilitiesRequest] utilitiesRequest (required):
+  Future<List<UtilityResponse>?> setUtilities(String id, UtilitiesRequest utilitiesRequest, { Future<void>? abortTrigger, }) async {
+    final response = await setUtilitiesWithHttpInfo(id, utilitiesRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<UtilityResponse>') as List)
+        .cast<UtilityResponse>()
+        .toList(growable: false);
+
     }
     return null;
   }

@@ -17,6 +17,7 @@ class BedResponse {
     this.unitId,
     this.bedLabel,
     this.status,
+    this.rent,
   });
 
   ///
@@ -45,12 +46,21 @@ class BedResponse {
 
   BedResponseStatusEnum? status;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? rent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is BedResponse &&
     other.id == id &&
     other.unitId == unitId &&
     other.bedLabel == bedLabel &&
-    other.status == status;
+    other.status == status &&
+    other.rent == rent;
 
   @override
   int get hashCode =>
@@ -58,10 +68,11 @@ class BedResponse {
     (id == null ? 0 : id!.hashCode) +
     (unitId == null ? 0 : unitId!.hashCode) +
     (bedLabel == null ? 0 : bedLabel!.hashCode) +
-    (status == null ? 0 : status!.hashCode);
+    (status == null ? 0 : status!.hashCode) +
+    (rent == null ? 0 : rent!.hashCode);
 
   @override
-  String toString() => 'BedResponse[id=$id, unitId=$unitId, bedLabel=$bedLabel, status=$status]';
+  String toString() => 'BedResponse[id=$id, unitId=$unitId, bedLabel=$bedLabel, status=$status, rent=$rent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -85,6 +96,11 @@ class BedResponse {
     } else {
       json[r'status'] = null;
     }
+    if (this.rent != null) {
+      json[r'rent'] = this.rent;
+    } else {
+      json[r'rent'] = null;
+    }
     return json;
   }
 
@@ -107,6 +123,9 @@ class BedResponse {
         unitId: mapValueOfType<String>(json, r'unitId'),
         bedLabel: mapValueOfType<String>(json, r'bedLabel'),
         status: BedResponseStatusEnum.fromJson(json[r'status']),
+        rent: json[r'rent'] == null
+            ? null
+            : num.parse('${json[r'rent']}'),
       );
     }
     return null;

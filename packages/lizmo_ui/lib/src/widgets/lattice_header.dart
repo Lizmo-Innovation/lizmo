@@ -139,7 +139,14 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(stat.value, style: LizmoType.dataLarge),
+          // Shrinks rather than clips: a stat holding a count is short, but one
+          // holding money grows with the portfolio, and a landlord with twenty
+          // units should not lose a digit off the left of the figure.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(stat.value, style: LizmoType.dataLarge, maxLines: 1),
+          ),
           const SizedBox(height: 2),
           Text(stat.label, style: LizmoType.statLabel),
         ],

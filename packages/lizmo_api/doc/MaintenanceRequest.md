@@ -1,4 +1,4 @@
-# lizmo_api.model.BedMaintenanceRequest
+# lizmo_api.model.MaintenanceRequest
 
 ## Load the model package
 ```dart

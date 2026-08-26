@@ -11,8 +11,18 @@ import java.util.UUID;
  * @param bedCount number of beds defined; always 0 for WHOLE_UNIT
  * @param bedsUnderMaintenance how many of those are out of service, and so not
  *                 rentable. Subtract from bedCount for the rentable figure.
- * @param rent     asking rent, per bed for BEDSPACE. Null when the landlord has
+ * @param rent     asking rent. For BEDSPACE this is the default each bed is
+ *                 let at unless it carries its own. Null when the landlord has
  *                 not set one — never 0, which would read as free.
+ * @param potentialMonthlyRent what the unit brings in per month when every
+ *                 rentable space is let: the unit's own rent for a whole unit,
+ *                 and the sum of its beds' effective rents for a bedspace.
+ *                 Beds out of service are left out — they cannot be let, so
+ *                 counting them would overstate what the unit can earn.
+ * @param monthlyUtilities what the unit's switched-on utilities add to a
+ *                 month. Null when none are on, which is not the same as a
+ *                 charge of nothing. Kept apart from rent: they are
+ *                 different lines on a bill and a landlord reads them apart.
  */
 @Schema(description = "A unit within a property")
 public record UnitResponse(
@@ -26,9 +36,16 @@ public record UnitResponse(
         UnitStatus status,
         long bedCount,
         long bedsUnderMaintenance,
-        BigDecimal rent) {
+        BigDecimal rent,
+        BigDecimal potentialMonthlyRent,
+        BigDecimal monthlyUtilities) {
 
-    public static UnitResponse of(Unit unit, long bedCount, long bedsUnderMaintenance) {
+    public static UnitResponse of(
+            Unit unit,
+            long bedCount,
+            long bedsUnderMaintenance,
+            BigDecimal potentialMonthlyRent,
+            BigDecimal monthlyUtilities) {
         return new UnitResponse(
                 unit.getId(),
                 unit.getPropertyId(),
@@ -40,6 +57,8 @@ public record UnitResponse(
                 unit.getStatus(),
                 bedCount,
                 bedsUnderMaintenance,
-                unit.getRent());
+                unit.getRent(),
+                potentialMonthlyRent,
+                monthlyUtilities);
     }
 }

@@ -14,25 +14,44 @@ class BedRequest {
   /// Returns a new [BedRequest] instance.
   BedRequest({
     required this.bedLabel,
+    this.rent,
   });
 
   String bedLabel;
 
+  /// Per-bed rent. Omit to charge whatever the unit asks.
+  ///
+  /// Minimum value: 0.0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? rent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is BedRequest &&
-    other.bedLabel == bedLabel;
+    other.bedLabel == bedLabel &&
+    other.rent == rent;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (bedLabel.hashCode);
+    (bedLabel.hashCode) +
+    (rent == null ? 0 : rent!.hashCode);
 
   @override
-  String toString() => 'BedRequest[bedLabel=$bedLabel]';
+  String toString() => 'BedRequest[bedLabel=$bedLabel, rent=$rent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'bedLabel'] = this.bedLabel;
+    if (this.rent != null) {
+      json[r'rent'] = this.rent;
+    } else {
+      json[r'rent'] = null;
+    }
     return json;
   }
 
@@ -54,6 +73,9 @@ class BedRequest {
 
       return BedRequest(
         bedLabel: mapValueOfType<String>(json, r'bedLabel')!,
+        rent: json[r'rent'] == null
+            ? null
+            : num.parse('${json[r'rent']}'),
       );
     }
     return null;

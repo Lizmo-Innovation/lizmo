@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
@@ -51,7 +52,13 @@ class UnitDetailScreen extends ConsumerWidget {
             eyebrow: propertyName ?? 'Property',
             title: unit == null ? 'Unit' : 'Unit ${unit.unitNumber ?? ''}',
             leading: const _BackButton(),
-            trailing: _EditButton(propertyId: propertyId, unitId: unitId),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EditButton(propertyId: propertyId, unitId: unitId),
+                _MoreButton(unit: unit, propertyId: propertyId, unitId: unitId),
+              ],
+            ),
             stats: [
               if (isBedspace)
                 LatticeHeaderStat(
@@ -71,9 +78,17 @@ class UnitDetailScreen extends ConsumerWidget {
                 ),
               LatticeHeaderStat(
                 value: _rentLabel(unit?.rent),
-                label: isBedspace ? 'Per bed' : 'Per month',
+                // The unit's figure is the default; a bed may ask its own.
+                label: isBedspace ? 'Default' : 'Per month',
               ),
             ],
+          ),
+          if (unit?.status == UnitResponseStatusEnum.MAINTENANCE)
+            const _ClosedBanner(),
+          _UtilitiesRow(
+            monthly: unit?.monthlyUtilities,
+            propertyId: propertyId,
+            unitId: unitId,
           ),
           Expanded(
             child: isBedspace
@@ -87,7 +102,11 @@ class UnitDetailScreen extends ConsumerWidget {
                         ),
                       AsyncData(:final value) when value.isEmpty => const _Empty(),
                       AsyncData(:final value) =>
-                        _BedList(beds: value, propertyId: propertyId, unitId: unitId),
+                        _BedList(
+                        beds: value,
+                        propertyId: propertyId,
+                        unitId: unitId,
+                        unitRent: unit?.rent),
                       _ => const _Loading(),
                     },
                   )
@@ -175,11 +194,15 @@ class _BedList extends StatelessWidget {
     required this.beds,
     required this.propertyId,
     required this.unitId,
+    required this.unitRent,
   });
 
   final List<BedResponse> beds;
   final String propertyId;
   final String unitId;
+
+  /// What the unit asks, which a bed without its own rent is let at.
+  final num? unitRent;
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +210,12 @@ class _BedList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
       itemCount: beds.length,
       itemBuilder: (context, index) =>
-          _BedRow(bed: beds[index], propertyId: propertyId, unitId: unitId),
+          _BedRow(
+        bed: beds[index],
+        propertyId: propertyId,
+        unitId: unitId,
+        unitRent: unitRent,
+      ),
     );
   }
 }
@@ -201,9 +229,11 @@ class _BedRow extends ConsumerWidget {
     required this.bed,
     required this.propertyId,
     required this.unitId,
+    required this.unitRent,
   });
 
   final BedResponse bed;
+  final num? unitRent;
 
   /// Needed to refresh the property screen's rentable count.
   final String propertyId;
@@ -230,7 +260,16 @@ class _BedRow extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(
               children: [
-                Expanded(child: Text(bed.bedLabel ?? '', style: LizmoType.rowName)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(bed.bedLabel ?? '', style: LizmoType.rowName),
+                      const SizedBox(height: 2),
+                      Text(_priceLabel(), style: LizmoType.rowSub),
+                    ],
+                  ),
+                ),
                 StatusChip(status: _status(), label: _statusLabel()),
                 const SizedBox(width: 8),
                 const Icon(Icons.more_horiz, size: 18, color: LizmoColors.slate),
@@ -274,6 +313,20 @@ class _BedRow extends ConsumerWidget {
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _rename(context, ref);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.payments_outlined, color: LizmoColors.slate),
+              title: Text('Set price', style: LizmoType.rowName),
+              subtitle: Text(
+                bed.rent != null
+                    ? 'Priced on its own.'
+                    : 'Currently let at the unit rate.',
+                style: LizmoType.rowSub,
+              ),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _setPrice(context, ref);
               },
             ),
             if (_isOccupied)
@@ -323,10 +376,33 @@ class _BedRow extends ConsumerWidget {
     try {
       await ref.read(unitsApiProvider).setBedMaintenance(
             bed.id!,
-            BedMaintenanceRequest(underMaintenance: underMaintenance),
+            MaintenanceRequest(underMaintenance: underMaintenance),
           );
       ref.invalidate(bedsProvider(unitId));
       // The rentable count on the property screen moves with it.
+      ref.invalidate(unitsProvider(propertyId));
+    } catch (error) {
+      if (context.mounted) _report(context, ApiFailure.from(error).message);
+    }
+  }
+
+  /// Sets what this bed asks, or clears it back to the unit's rate.
+  Future<void> _setPrice(BuildContext context, WidgetRef ref) async {
+    final result = await showDialog<_PriceResult>(
+      context: context,
+      builder: (_) => _BedPriceDialog(current: bed.rent, unitRent: unitRent),
+    );
+
+    if (result == null) return;
+
+    try {
+      await ref.read(unitsApiProvider).updateBed(
+            bed.id!,
+            // The label goes with it: a PUT carries the whole bed, so leaving
+            // it out would blank the name.
+            BedRequest(bedLabel: bed.bedLabel ?? '', rent: result.rent),
+          );
+      ref.invalidate(bedsProvider(unitId));
       ref.invalidate(unitsProvider(propertyId));
     } catch (error) {
       if (context.mounted) _report(context, ApiFailure.from(error).message);
@@ -348,7 +424,12 @@ class _BedRow extends ConsumerWidget {
     if (label == null || label == bed.bedLabel) return;
 
     try {
-      await ref.read(unitsApiProvider).updateBed(bed.id!, BedRequest(bedLabel: label));
+      await ref.read(unitsApiProvider).updateBed(
+            bed.id!,
+            // Rent travels with the label, or renaming a bed would quietly
+            // return it to the unit's rate.
+            BedRequest(bedLabel: label, rent: bed.rent),
+          );
       ref.invalidate(bedsProvider(unitId));
     } catch (error) {
       if (context.mounted) _report(context, ApiFailure.from(error).message);
@@ -363,6 +444,22 @@ class _BedRow extends ConsumerWidget {
             style: LizmoType.rowSub.copyWith(color: LizmoColors.white)),
       ),
     );
+  }
+
+  /// "₱2,000" for a bed with its own price, "₱2,500 · unit rate" for one on
+  /// the unit's. The distinction matters: the second figure moves when the
+  /// unit is repriced and the first does not.
+  String _priceLabel() {
+    if (bed.rent != null) return _money(bed.rent!);
+    if (unitRent != null) return '${_money(unitRent!)} · unit rate';
+    // Neither is set. "Not set" rather than ₱0, which would claim it is free.
+    return 'No rent set';
+  }
+
+  static String _money(num amount) {
+    final asDouble = amount.toDouble();
+    final whole = asDouble == asDouble.roundToDouble();
+    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
   }
 
   LizmoStatus _status() => switch (bed.status) {
@@ -498,6 +595,315 @@ class _Failed extends StatelessWidget {
           onAction: onRetry,
         ),
       ],
+    );
+  }
+}
+
+/// What the price dialog returns. A plain null result means cancelled, which
+/// is why clearing the price needs a wrapper rather than a bare null.
+class _PriceResult {
+  const _PriceResult(this.rent);
+
+  /// Null means "let at the unit's rate".
+  final num? rent;
+}
+
+/// Asks what one bed should cost.
+class _BedPriceDialog extends StatefulWidget {
+  const _BedPriceDialog({required this.current, required this.unitRent});
+
+  final num? current;
+  final num? unitRent;
+
+  @override
+  State<_BedPriceDialog> createState() => _BedPriceDialogState();
+}
+
+class _BedPriceDialogState extends State<_BedPriceDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.current?.toString() ?? '');
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final text = _controller.text.trim();
+    Navigator.of(context).pop(_PriceResult(text.isEmpty ? null : num.parse(text)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: LizmoColors.white,
+      title: Text('Price this bed', style: LizmoType.rowName.copyWith(fontSize: 16)),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: InputDecoration(
+                prefixText: '₱',
+                hintText: widget.unitRent?.toString() ?? '2500',
+                hintStyle: LizmoType.rowSub,
+                errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              ),
+              validator: (value) {
+                final text = (value ?? '').trim();
+                // Empty is allowed and meaningful: it hands the bed back to
+                // the unit's rate.
+                if (text.isEmpty) return null;
+                final parsed = num.tryParse(text);
+                if (parsed == null) return 'Enter an amount';
+                // Zero would read as free; the API refuses it too.
+                if (parsed <= 0) return 'Enter more than zero';
+                return null;
+              },
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.unitRent != null
+                  ? 'Leave empty to charge the unit rate of '
+                      '₱${widget.unitRent}.'
+                  : 'Leave empty to charge whatever the unit asks.',
+              style: LizmoType.rowSub,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text('Save',
+              style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Whether the unit is open for letting at all.
+///
+/// Separate from the pencil: editing changes what the unit *is*, this changes
+/// whether it can be let. Mirrors the sheet on a bed row.
+class _MoreButton extends ConsumerWidget {
+  const _MoreButton({
+    required this.unit,
+    required this.propertyId,
+    required this.unitId,
+  });
+
+  final UnitResponse? unit;
+  final String propertyId;
+  final String unitId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      onPressed: unit == null ? null : () => _open(context, ref),
+      icon: const Icon(Icons.more_horiz),
+      color: LizmoColors.white,
+      iconSize: 20,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      tooltip: 'More',
+    );
+  }
+
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
+    final closed = unit!.status == UnitResponseStatusEnum.MAINTENANCE;
+    final occupied = unit!.status == UnitResponseStatusEnum.OCCUPIED ||
+        unit!.status == UnitResponseStatusEnum.PARTIALLY_OCCUPIED;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: LizmoColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Unit ${unit!.unitNumber ?? ''}',
+                    style: LizmoType.rowName),
+              ),
+            ),
+            if (occupied)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                child: Text(
+                  'Occupied units cannot be taken out of service. End their '
+                  'leases first.',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                ),
+              )
+            else
+              ListTile(
+                leading: Icon(
+                  closed ? Icons.build_circle_outlined : Icons.build_outlined,
+                  color: LizmoColors.slate,
+                ),
+                title: Text(
+                  closed ? 'Return to service' : 'Take out of service',
+                  style: LizmoType.rowName,
+                ),
+                subtitle: Text(
+                  closed
+                      ? 'Counts towards the property again.'
+                      : 'Stops counting as rentable, beds and all.',
+                  style: LizmoType.rowSub,
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _set(context, ref, !closed);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _set(BuildContext context, WidgetRef ref, bool underMaintenance) async {
+    try {
+      await ref.read(unitsApiProvider).setUnitMaintenance(
+            unitId,
+            MaintenanceRequest(underMaintenance: underMaintenance),
+          );
+      ref.invalidate(unitProvider(unitId));
+      // The property's rentable count and monthly total both move.
+      ref.invalidate(unitsProvider(propertyId));
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: LizmoColors.red,
+            content: Text(ApiFailure.from(error).message,
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.white)),
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// States that the unit is shut, so an empty earnings figure is explained
+/// rather than looking like missing data.
+class _ClosedBanner extends StatelessWidget {
+  const _ClosedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: LizmoColors.amberBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.build_outlined, size: 18, color: LizmoColors.amberText),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Out of service. Nothing here counts as rentable.',
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the unit charges for utilities, and the way in to change it.
+///
+/// On the unit rather than the bed: a WiFi router serves the room, not one
+/// bunk. How the charge is divided between bedspacers is a billing question,
+/// and there is no billing yet.
+class _UtilitiesRow extends StatelessWidget {
+  const _UtilitiesRow({
+    required this.monthly,
+    required this.propertyId,
+    required this.unitId,
+  });
+
+  final num? monthly;
+  final String propertyId;
+  final String unitId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [LizmoColors.cardShadow],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () => context.push(Routes.unitUtilities(propertyId, unitId)),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt_outlined, size: 18, color: LizmoColors.slate),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Utilities', style: LizmoType.rowName),
+                      const SizedBox(height: 2),
+                      Text(
+                        monthly == null
+                            // Not "₱0": nothing is switched on, which is a
+                            // different statement from a charge of nothing.
+                            ? 'None charged'
+                            : 'A fixed ₱$monthly each month',
+                        style: LizmoType.rowSub,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 18, color: LizmoColors.slate),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

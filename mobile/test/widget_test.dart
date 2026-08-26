@@ -13,6 +13,7 @@ import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
+import 'package:lizmo/screens/unit_utilities_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
@@ -205,21 +206,56 @@ class _FakeBedsApi extends UnitsApi {
   BedRequest? lastRename;
   Object? renameFailure;
 
-  BedMaintenanceRequest? lastMaintenance;
+  MaintenanceRequest? lastMaintenance;
+  MaintenanceRequest? lastUnitMaintenance;
+
+  List<UtilityResponse> utilities = [
+    UtilityResponse(kind: UtilityResponseKindEnum.WIFI, enabled: false),
+    UtilityResponse(kind: UtilityResponseKindEnum.ELECTRICITY, enabled: false),
+    UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
+  ];
+
+  UtilitiesRequest? lastUtilities;
+
+  @override
+  Future<List<UtilityResponse>?> listUtilities(String id,
+          {Future<void>? abortTrigger}) async =>
+      List.of(utilities);
+
+  @override
+  Future<List<UtilityResponse>?> setUtilities(
+    String id,
+    UtilitiesRequest utilitiesRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastUtilities = utilitiesRequest;
+    return List.of(utilities);
+  }
+  UnitResponse? unitOverride;
+
+  @override
+  Future<UnitResponse?> setUnitMaintenance(
+    String id,
+    MaintenanceRequest maintenanceRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastUnitMaintenance = maintenanceRequest;
+    return unit;
+  }
 
   @override
   Future<BedResponse?> setBedMaintenance(
     String id,
-    BedMaintenanceRequest bedMaintenanceRequest, {
+    MaintenanceRequest maintenanceRequest, {
     Future<void>? abortTrigger,
   }) async {
-    lastMaintenance = bedMaintenanceRequest;
+    lastMaintenance = maintenanceRequest;
     final index = beds.indexWhere((b) => b.id == id);
     final updated = BedResponse(
       id: id,
       unitId: beds[index].unitId,
       bedLabel: beds[index].bedLabel,
-      status: bedMaintenanceRequest.underMaintenance
+      status: maintenanceRequest.underMaintenance
           ? BedResponseStatusEnum.MAINTENANCE
           : BedResponseStatusEnum.VACANT,
     );
@@ -850,6 +886,7 @@ void main() {
       int capacity = 1,
       int bedCount = 0,
       num? rent,
+      num? potentialMonthlyRent,
     }) =>
         UnitResponse(
           id: 'u-$number',
@@ -859,6 +896,7 @@ void main() {
           capacity: capacity,
           bedCount: bedCount,
           rent: rent,
+          potentialMonthlyRent: potentialMonthlyRent,
           status: UnitResponseStatusEnum.VACANT,
         );
 
@@ -890,8 +928,9 @@ void main() {
     testWidgets('bedspace and whole units read differently', (tester) async {
       await tester.pumpWidget(appWith([
         unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
-            capacity: 4, bedCount: 2, rent: 2500),
-        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT, rent: 7000),
+            capacity: 4, bedCount: 2, rent: 2500, potentialMonthlyRent: 5000),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+            rent: 7000, potentialMonthlyRent: 7000),
       ]));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
@@ -900,9 +939,59 @@ void main() {
       // The distinction the whole product turns on, visible at a glance.
       expect(find.textContaining('Bedspace'), findsOneWidget);
       expect(find.textContaining('Whole unit'), findsOneWidget);
-      expect(find.text('per bed'), findsOneWidget);
+      expect(find.text('per month, all beds'), findsOneWidget);
       expect(find.text('per month'), findsOneWidget);
       expect(find.text('2 beds'), findsOneWidget);
+
+      // Both figures are monthly, so they are comparable: two beds at 2500
+      // against a whole unit at 7000.
+      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('₱7000'), findsOneWidget);
+    });
+
+    testWidgets('the header totals what the property brings in', (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 4, rent: 2500, potentialMonthlyRent: 10000),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+            rent: 7000, potentialMonthlyRent: 7000),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Per month'), findsOneWidget);
+      expect(find.text('₱17000'), findsOneWidget);
+    });
+
+    testWidgets('a property with no rents set totals a dash, not zero',
+        (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 4),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // Nothing is known about the price, which is not the same as free.
+      expect(find.textContaining('₱0'), findsNothing);
+    });
+
+    testWidgets('a large total is not clipped', (tester) async {
+      await tester.pumpWidget(appWith([
+        for (var i = 0; i < 8; i++)
+          unit(number: 'U$i', mode: UnitResponseRentalModeEnum.BEDSPACE,
+              capacity: 6, bedCount: 6, rent: 2500, potentialMonthlyRent: 15000),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // ₱120000 is wider than the stat card, so the figure scales down rather
+      // than losing a digit -- a landlord with a real portfolio hits this.
+      expect(find.text('₱120000'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('a unit with no rent shows a dash, not zero', (tester) async {
@@ -914,7 +1003,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Zero would claim the unit is free; not-set is a different statement.
-      expect(find.text('—'), findsOneWidget);
+      // Two dashes: the unit card, and the property total in the header, which
+      // has nothing to add up either.
+      expect(find.text('—'), findsNWidgets(2));
       expect(find.textContaining('₱0'), findsNothing);
     });
 
@@ -954,7 +1045,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('How many beds?'), findsOneWidget);
-      expect(find.text('Rent per bed (optional)'), findsOneWidget);
+      expect(find.text('Default rent per bed (optional)'), findsOneWidget);
 
       await tester.tap(find.text('Whole unit'));
       await tester.pumpAndSettle();
@@ -1749,8 +1840,10 @@ void main() {
           status: UnitResponseStatusEnum.VACANT,
         );
 
-    BedResponse bed(String id, String label, BedResponseStatusEnum status) =>
-        BedResponse(id: id, unitId: 'u1', bedLabel: label, status: status);
+    BedResponse bed(String id, String label, BedResponseStatusEnum status,
+            {num? rent}) =>
+        BedResponse(
+            id: id, unitId: 'u1', bedLabel: label, status: status, rent: rent);
 
     Future<_FakeBedsApi> openBeds(WidgetTester tester,
         {List<BedResponse>? beds}) async {
@@ -1977,6 +2070,120 @@ void main() {
       expect(find.text('2'), findsOneWidget);
     });
 
+    testWidgets('a bed shows the unit rate until it has its own', (tester) async {
+      await openBeds(tester);
+
+      // The unit asks 2500 and neither bed overrides it.
+      expect(find.text('₱2500 · unit rate'), findsNWidgets(2));
+    });
+
+    testWidgets('a bed with its own price shows that instead', (tester) async {
+      await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+        bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+      ]);
+
+      // No "unit rate" suffix: this figure does not move when the unit is
+      // repriced, and the two cases have to be tellable apart.
+      expect(find.text('₱2000'), findsOneWidget);
+      expect(find.text('₱2500 · unit rate'), findsOneWidget);
+    });
+
+    testWidgets('a price can be set on one bed', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '2000',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename!.rent, 2000);
+      // The label rides along, or the PUT would blank it.
+      expect(api.lastRename!.bedLabel, 'Bed 1');
+    });
+
+    testWidgets('clearing the price hands the bed back to the unit rate',
+        (tester) async {
+      final api = await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+      ]);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename!.rent, isNull);
+    });
+
+    testWidgets('a price of zero is refused before calling the API',
+        (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '0',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Zero would read as free, which is not what an unset price means.
+      expect(find.text('Enter more than zero'), findsOneWidget);
+      expect(api.lastRename, isNull);
+    });
+
+    testWidgets('renaming keeps the price', (tester) async {
+      final api = await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+      ]);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Lower bunk',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // A PUT carries the whole bed, so the rent has to travel with the name.
+      expect(api.lastRename!.bedLabel, 'Lower bunk');
+      expect(api.lastRename!.rent, 2000);
+    });
+
     testWidgets('a unit with no beds says where they come from', (tester) async {
       await openBeds(tester, beds: []);
 
@@ -2077,6 +2284,461 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Delete this property'), findsNothing);
+    });
+  });
+
+  group('filtering units by floor', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 4,
+        );
+
+    UnitResponse whole(String number, String? floor, num rent) => UnitResponse(
+          id: 'u-$number',
+          propertyId: 'p1',
+          unitNumber: number,
+          floor: floor,
+          rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+          capacity: 1,
+          bedCount: 0,
+          bedsUnderMaintenance: 0,
+          rent: rent,
+          potentialMonthlyRent: rent,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Future<void> open(WidgetTester tester, List<UnitResponse> units) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => units),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('one floor offers no filter', (tester) async {
+      await open(tester, [whole('1A', '1', 7000), whole('1B', '1', 6000)]);
+
+      // A control that cannot narrow anything is furniture.
+      expect(find.text('All'), findsNothing);
+      expect(find.text('Floor 1'), findsNothing);
+    });
+
+    testWidgets('several floors offer a chip each', (tester) async {
+      await open(tester, [
+        whole('1A', '1', 7000),
+        whole('2A', '2', 8000),
+        whole('10A', '10', 9000),
+      ]);
+
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Floor 1'), findsOneWidget);
+      expect(find.text('Floor 2'), findsOneWidget);
+      expect(find.text('Floor 10'), findsOneWidget);
+    });
+
+    testWidgets('floors sort numerically, so 10 follows 9', (tester) async {
+      await open(tester, [
+        whole('10A', '10', 9000),
+        whole('2A', '2', 8000),
+        whole('9A', '9', 7000),
+      ]);
+
+      final xs = {
+        for (final f in ['Floor 2', 'Floor 9', 'Floor 10'])
+          f: tester.getCenter(find.text(f)).dx,
+      };
+
+      // Plain string sorting would put "10" before "2".
+      expect(xs['Floor 2']!, lessThan(xs['Floor 9']!));
+      expect(xs['Floor 9']!, lessThan(xs['Floor 10']!));
+    });
+
+    testWidgets('choosing a floor narrows the list and the figures',
+        (tester) async {
+      await open(tester, [
+        whole('1A', '1', 7000),
+        whole('2A', '2', 8000),
+        whole('2B', '2', 5000),
+      ]);
+
+      // Everything, before filtering.
+      expect(find.text('₱20000'), findsOneWidget);
+
+      await tester.tap(find.text('Floor 2'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unit 2A'), findsOneWidget);
+      expect(find.text('Unit 2B'), findsOneWidget);
+      expect(find.text('Unit 1A'), findsNothing);
+
+      // The figures describe the floor now, and the title says so, or the
+      // header would be a property total sitting over one floor's list.
+      expect(find.text('Floor 2'), findsWidgets);
+      expect(find.text('₱13000'), findsOneWidget);
+    });
+
+    testWidgets('units with no floor get a bucket of their own', (tester) async {
+      await open(tester, [
+        whole('1A', '1', 7000),
+        whole('X', null, 4000),
+      ]);
+
+      // Without one, filtering would quietly hide them.
+      expect(find.text('No floor'), findsOneWidget);
+
+      await tester.tap(find.text('No floor'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unit X'), findsOneWidget);
+      expect(find.text('Unit 1A'), findsNothing);
+      expect(find.text('No floor set'), findsOneWidget);
+    });
+
+    testWidgets('All puts everything back', (tester) async {
+      await open(tester, [whole('1A', '1', 7000), whole('2A', '2', 8000)]);
+
+      await tester.tap(find.text('Floor 2'));
+      await tester.pumpAndSettle();
+      expect(find.text('Unit 1A'), findsNothing);
+
+      await tester.tap(find.text('All'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unit 1A'), findsOneWidget);
+      expect(find.text('Unit 2A'), findsOneWidget);
+      expect(find.text('₱15000'), findsOneWidget);
+    });
+  });
+
+  group('a unit out of service', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 2,
+        );
+
+    UnitResponse closed() => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: 4,
+          bedCount: 4,
+          bedsUnderMaintenance: 0,
+          rent: 2500,
+          status: UnitResponseStatusEnum.MAINTENANCE,
+        );
+
+    UnitResponse open() => UnitResponse(
+          id: 'u2',
+          propertyId: 'p1',
+          unitNumber: '1A',
+          rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+          capacity: 1,
+          bedCount: 0,
+          bedsUnderMaintenance: 0,
+          rent: 7000,
+          potentialMonthlyRent: 7000,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Widget appWith(List<UnitResponse> units, {UnitsApi? api}) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            if (api != null) unitsApiProvider.overrideWithValue(api),
+            propertiesProvider.overrideWith((ref) async => [property()]),
+            unitsProvider('p1').overrideWith((ref) async => units),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('its beds stop counting towards the property', (tester) async {
+      await tester.pumpWidget(appWith([closed(), open()]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // The closed unit has four beds; none of them can be let, so the
+      // rentable count is zero and only the open unit's rent is totalled.
+      expect(find.text('0'), findsOneWidget);
+      expect(find.text('₱7000'), findsWidgets);
+    });
+
+    testWidgets('the card says so, rather than just showing a dash',
+        (tester) async {
+      await tester.pumpWidget(appWith([closed()]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Out of service'), findsOneWidget);
+    });
+
+    testWidgets('a whole unit out of service is marked too', (tester) async {
+      final shutWholeUnit = UnitResponse(
+        id: 'u2',
+        propertyId: 'p1',
+        unitNumber: '1A',
+        rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+        capacity: 1,
+        bedCount: 0,
+        bedsUnderMaintenance: 0,
+        rent: 7000,
+        status: UnitResponseStatusEnum.MAINTENANCE,
+      );
+
+      await tester.pumpWidget(appWith([shutWholeUnit]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // It has no beds, so it would otherwise carry no chip at all.
+      expect(find.text('Out of service'), findsOneWidget);
+    });
+
+    testWidgets('the unit screen offers to reopen it', (tester) async {
+      final api = _FakeBedsApi(closed(), []);
+      await tester.pumpWidget(appWith([closed()], api: api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Out of service'), findsWidgets);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Return to service'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUnitMaintenance!.underMaintenance, isFalse);
+    });
+
+    testWidgets('an open unit is offered the other direction', (tester) async {
+      final api = _FakeBedsApi(open(), []);
+      await tester.pumpWidget(appWith([open()], api: api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 1A'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take out of service'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUnitMaintenance!.underMaintenance, isTrue);
+    });
+  });
+
+  group('fixed monthly utilities', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+        );
+
+    UnitResponse unit({num? monthlyUtilities}) => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: 2,
+          bedCount: 2,
+          bedsUnderMaintenance: 0,
+          rent: 2500,
+          potentialMonthlyRent: 5000,
+          monthlyUtilities: monthlyUtilities,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Future<_FakeBedsApi> openUnit(WidgetTester tester,
+        {num? monthlyUtilities, List<UtilityResponse>? utilities}) async {
+      final u = unit(monthlyUtilities: monthlyUtilities);
+      final api = _FakeBedsApi(u, []);
+      if (utilities != null) api.utilities = utilities;
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [u]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('a unit charging nothing says so, not zero', (tester) async {
+      await openUnit(tester);
+
+      // Nothing switched on is a different statement from a charge of nothing.
+      expect(find.text('None charged'), findsOneWidget);
+    });
+
+    testWidgets('a unit charging something shows the monthly figure',
+        (tester) async {
+      await openUnit(tester, monthlyUtilities: 1700);
+
+      expect(find.text('A fixed ₱1700 each month'), findsOneWidget);
+    });
+
+    testWidgets('the row opens the utilities screen', (tester) async {
+      await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UnitUtilitiesScreen), findsOneWidget);
+      // All three, whether or not they have ever been set up.
+      expect(find.text('WiFi'), findsOneWidget);
+      expect(find.text('Electricity'), findsOneWidget);
+      expect(find.text('Water'), findsOneWidget);
+    });
+
+    testWidgets('each utility is switched independently', (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // WiFi on at 500, the other two left alone.
+      await tester.enterText(find.byType(TextFormField).at(0), '500');
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      final sent = api.lastUtilities!.utilities;
+      expect(sent.length, 3);
+      final wifi = sent.firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
+      expect(wifi.enabled, isTrue);
+      expect(wifi.amount, 500);
+      expect(
+        sent.where((u) => u.enabled).length,
+        1,
+        reason: 'switching WiFi on must not switch the others on',
+      );
+    });
+
+    testWidgets('switching one on with no amount is refused before saving',
+        (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      // A charge with no amount is not a charge; the API refuses it too.
+      expect(find.text('Set an amount, or switch WiFi off'), findsOneWidget);
+      expect(api.lastUtilities, isNull);
+    });
+
+    testWidgets('an amount survives being switched off', (tester) async {
+      final api = await openUnit(tester, utilities: [
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WIFI, enabled: true, amount: 500),
+        UtilityResponse(kind: UtilityResponseKindEnum.ELECTRICITY, enabled: false),
+        UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
+      ]);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // Switch WiFi off without clearing the field.
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      final wifi = api.lastUtilities!.utilities
+          .firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
+      expect(wifi.enabled, isFalse);
+      // Sent along, so turning it back on does not mean retyping the figure.
+      expect(wifi.amount, 500);
+    });
+
+    testWidgets('a zero amount is refused', (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), '0');
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      // Zero would read as free, which is what switching off means.
+      expect(find.text('Enter more than zero'), findsOneWidget);
+      expect(api.lastUtilities, isNull);
+    });
+
+    testWidgets('the running total follows the switches', (tester) async {
+      await openUnit(tester, utilities: [
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WIFI, enabled: true, amount: 500),
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.ELECTRICITY, enabled: true, amount: 1200),
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WATER, enabled: false, amount: 300),
+      ]);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // Water is set up but not charged, so it is not in the total.
+      expect(find.text('₱1700'), findsOneWidget);
+
+      await tester.tap(find.byType(Switch).at(2));
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱2000'), findsOneWidget);
     });
   });
 

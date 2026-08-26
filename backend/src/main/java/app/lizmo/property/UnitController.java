@@ -1,11 +1,13 @@
 package app.lizmo.property;
 
 import app.lizmo.common.ApiError;
-import app.lizmo.property.dto.BedMaintenanceRequest;
+import app.lizmo.property.dto.MaintenanceRequest;
 import app.lizmo.property.dto.BedRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import app.lizmo.property.dto.UtilitiesRequest;
+import app.lizmo.property.dto.UtilityResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -64,6 +66,19 @@ public class UnitController {
         return service.updateUnit(id, request, currentUser.requireId());
     }
 
+    @PutMapping("/units/{id}/maintenance")
+    @Operation(operationId = "setUnitMaintenance",
+            summary = "Take a unit out of service, or put it back",
+            description = "Refused while the unit is occupied.")
+    @ApiResponse(responseCode = "200", description = "The unit",
+            content = @Content(schema = @Schema(implementation = UnitResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The unit is occupied",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public UnitResponse setUnitMaintenance(
+            @PathVariable UUID id, @Valid @RequestBody MaintenanceRequest request) {
+        return service.setUnitMaintenance(id, request.underMaintenance(), currentUser.requireId());
+    }
+
     @DeleteMapping("/units/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(operationId = "deleteUnit", summary = "Delete a unit",
@@ -91,6 +106,27 @@ public class UnitController {
         return service.createBed(id, request, currentUser.requireId());
     }
 
+    @GetMapping("/units/{id}/utilities")
+    @Operation(operationId = "listUtilities", summary = "A unit's fixed monthly utilities",
+            description = "Always returns every kind, including ones never set up.")
+    @ApiResponse(responseCode = "200", description = "The unit's utilities",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = UtilityResponse.class))))
+    public List<UtilityResponse> listUtilities(@PathVariable UUID id) {
+        return service.listUtilities(id, currentUser.requireId());
+    }
+
+    @PutMapping("/units/{id}/utilities")
+    @Operation(operationId = "setUtilities", summary = "Set a unit's fixed monthly utilities",
+            description = "Only the kinds sent are changed; the others are left alone.")
+    @ApiResponse(responseCode = "200", description = "The unit's utilities",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = UtilityResponse.class))))
+    @ApiResponse(responseCode = "400", description = "A utility was switched on with no amount",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public List<UtilityResponse> setUtilities(
+            @PathVariable UUID id, @Valid @RequestBody UtilitiesRequest request) {
+        return service.setUtilities(id, request.utilities(), currentUser.requireId());
+    }
+
     @PutMapping("/beds/{id}")
     @Operation(operationId = "updateBed", summary = "Rename a bed",
             description = "Labels must be unique within the unit, case-insensitively.")
@@ -108,7 +144,7 @@ public class UnitController {
     @ApiResponse(responseCode = "400", description = "The bed is occupied",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public BedResponse setBedMaintenance(
-            @PathVariable UUID id, @Valid @RequestBody BedMaintenanceRequest request) {
+            @PathVariable UUID id, @Valid @RequestBody MaintenanceRequest request) {
         return service.setBedMaintenance(id, request.underMaintenance(), currentUser.requireId());
     }
 

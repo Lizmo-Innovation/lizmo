@@ -16,6 +16,7 @@ import 'screens/property_list_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/unit_detail_screen.dart';
+import 'screens/unit_utilities_screen.dart';
 
 /// Route paths, named so a typo is a compile error rather than a blank screen.
 abstract final class Routes {
@@ -35,6 +36,8 @@ abstract final class Routes {
       '/landlord/properties/$propertyId/units/$unitId/edit';
   static String unitDetail(String propertyId, String unitId) =>
       '/landlord/properties/$propertyId/units/$unitId';
+  static String unitUtilities(String propertyId, String unitId) =>
+      '/landlord/properties/$propertyId/units/$unitId/utilities';
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -161,8 +164,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
+                path: 'units/:unitId/utilities',
+                builder: (context, state) => UnitUtilitiesScreen(
+                  propertyId: state.pathParameters['id']!,
+                  unitId: state.pathParameters['unitId']!,
+                ),
+              ),
+              GoRoute(
                 // Last of the unit routes: 'units/:unitId' would otherwise
-                // swallow both 'units/new' and 'units/:unitId/edit'.
+                // swallow the more specific ones above it.
                 path: 'units/:unitId',
                 builder: (context, state) => UnitDetailScreen(
                   propertyId: state.pathParameters['id']!,

@@ -187,14 +187,14 @@ class ApiClient {
           return ApiError.fromJson(value);
         case 'AuthResponse':
           return AuthResponse.fromJson(value);
-        case 'BedMaintenanceRequest':
-          return BedMaintenanceRequest.fromJson(value);
         case 'BedRequest':
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
         case 'LoginRequest':
           return LoginRequest.fromJson(value);
+        case 'MaintenanceRequest':
+          return MaintenanceRequest.fromJson(value);
         case 'PropertyRequest':
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':
@@ -207,6 +207,12 @@ class ApiClient {
           return UnitRequest.fromJson(value);
         case 'UnitResponse':
           return UnitResponse.fromJson(value);
+        case 'UtilitiesRequest':
+          return UtilitiesRequest.fromJson(value);
+        case 'UtilityRequest':
+          return UtilityRequest.fromJson(value);
+        case 'UtilityResponse':
+          return UtilityResponse.fromJson(value);
         default:
           dynamic match;
           if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {

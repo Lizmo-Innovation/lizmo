@@ -103,6 +103,8 @@ Widget _detailApp() => ProviderScope(
                 capacity: 4,
                 bedCount: 4,
                 rent: 2500,
+                // Four beds at the unit rate.
+                potentialMonthlyRent: 10000,
                 status: UnitResponseStatusEnum.VACANT,
               ),
               UnitResponse(
@@ -114,6 +116,7 @@ Widget _detailApp() => ProviderScope(
                 capacity: 1,
                 bedCount: 0,
                 rent: 7000,
+                potentialMonthlyRent: 7000,
                 status: UnitResponseStatusEnum.VACANT,
               ),
             ]),
