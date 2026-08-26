@@ -1,6 +1,7 @@
 package app.lizmo.property;
 
 import app.lizmo.common.ApiError;
+import app.lizmo.property.dto.BedMaintenanceRequest;
 import app.lizmo.property.dto.BedRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.UnitRequest;
@@ -98,6 +99,17 @@ public class UnitController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public BedResponse updateBed(@PathVariable UUID id, @Valid @RequestBody BedRequest request) {
         return service.updateBed(id, request, currentUser.requireId());
+    }
+
+    @PutMapping("/beds/{id}/maintenance")
+    @Operation(operationId = "setBedMaintenance", summary = "Take a bed out of service, or put it back",
+            description = "Refused while the bed is occupied.")
+    @ApiResponse(responseCode = "200", description = "The bed")
+    @ApiResponse(responseCode = "400", description = "The bed is occupied",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public BedResponse setBedMaintenance(
+            @PathVariable UUID id, @Valid @RequestBody BedMaintenanceRequest request) {
+        return service.setBedMaintenance(id, request.underMaintenance(), currentUser.requireId());
     }
 
     @DeleteMapping("/beds/{id}")

@@ -872,4 +872,127 @@ class PropertyIntegrationTest {
                 .andExpect(jsonPath("$[0].bedLabel").value("Bed 1"))
                 .andExpect(jsonPath("$[1].bedLabel").value("Upper bunk"));
     }
+
+    // ---------- Beds out of service ----------
+
+    private String firstBedId(String unitId) throws Exception {
+        String body = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get(0).get("id").asText();
+    }
+
+    @Test
+    void a_bed_can_be_taken_out_of_service_and_put_back() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 4);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MAINTENANCE"));
+
+        // The bed still exists and still counts towards capacity -- it is out
+        // of service, not gone.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.bedCount").value(4))
+                .andExpect(jsonPath("$.capacity").value(4))
+                .andExpect(jsonPath("$.bedsUnderMaintenance").value(1));
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":false}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("VACANT"));
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.bedsUnderMaintenance").value(0));
+    }
+
+    @Test
+    void maintenance_is_reported_per_unit_in_the_list() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk());
+
+        // The list is what the property screen totals, so the figure has to be
+        // there too, not only on the single-unit response.
+        mvc.perform(get("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].bedCount").value(3))
+                .andExpect(jsonPath("$[0].bedsUnderMaintenance").value(1));
+    }
+
+    @Test
+    void maintenance_requires_a_value() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void another_landlord_cannot_change_maintenance() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + otherLandlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void a_bed_out_of_service_can_still_be_removed_by_lowering_the_count()
+            throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk());
+
+        // Only occupancy blocks shrinking. A bed out of service has no tenant
+        // behind it, so it is fair game.
+        mvc.perform(put("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":1}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedCount").value(1));
+    }
 }

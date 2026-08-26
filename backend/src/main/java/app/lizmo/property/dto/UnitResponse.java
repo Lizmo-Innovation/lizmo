@@ -9,6 +9,8 @@ import java.util.UUID;
 
 /**
  * @param bedCount number of beds defined; always 0 for WHOLE_UNIT
+ * @param bedsUnderMaintenance how many of those are out of service, and so not
+ *                 rentable. Subtract from bedCount for the rentable figure.
  * @param rent     asking rent, per bed for BEDSPACE. Null when the landlord has
  *                 not set one — never 0, which would read as free.
  */
@@ -23,9 +25,10 @@ public record UnitResponse(
         int capacity,
         UnitStatus status,
         long bedCount,
+        long bedsUnderMaintenance,
         BigDecimal rent) {
 
-    public static UnitResponse of(Unit unit, long bedCount) {
+    public static UnitResponse of(Unit unit, long bedCount, long bedsUnderMaintenance) {
         return new UnitResponse(
                 unit.getId(),
                 unit.getPropertyId(),
@@ -36,6 +39,7 @@ public record UnitResponse(
                 unit.getCapacity(),
                 unit.getStatus(),
                 bedCount,
+                bedsUnderMaintenance,
                 unit.getRent());
     }
 }

@@ -205,6 +205,28 @@ class _FakeBedsApi extends UnitsApi {
   BedRequest? lastRename;
   Object? renameFailure;
 
+  BedMaintenanceRequest? lastMaintenance;
+
+  @override
+  Future<BedResponse?> setBedMaintenance(
+    String id,
+    BedMaintenanceRequest bedMaintenanceRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastMaintenance = bedMaintenanceRequest;
+    final index = beds.indexWhere((b) => b.id == id);
+    final updated = BedResponse(
+      id: id,
+      unitId: beds[index].unitId,
+      bedLabel: beds[index].bedLabel,
+      status: bedMaintenanceRequest.underMaintenance
+          ? BedResponseStatusEnum.MAINTENANCE
+          : BedResponseStatusEnum.VACANT,
+    );
+    beds[index] = updated;
+    return updated;
+  }
+
   @override
   Future<BedResponse?> updateBed(
     String id,
@@ -1560,7 +1582,7 @@ void main() {
 
       // A bed count here is always zero, which reads as setup the landlord has
       // forgotten rather than something that cannot apply.
-      expect(find.text('Beds'), findsNothing);
+      expect(find.text('Rentable'), findsNothing);
       expect(find.text('Units'), findsWidgets);
     });
 
@@ -1590,7 +1612,7 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Beds'), findsOneWidget);
+      expect(find.text('Rentable'), findsOneWidget);
     });
 
     testWidgets('a residential property is still asked', (tester) async {
@@ -1809,6 +1831,8 @@ void main() {
 
       await tester.tap(find.text('Bed 1'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
+      await tester.pumpAndSettle();
 
       // Prefilled with the current name, so a small correction is a small edit.
       final field = tester.widget<EditableText>(find.descendant(
@@ -1836,6 +1860,8 @@ void main() {
 
       await tester.tap(find.text('Bed 1'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
           of: find.byType(AlertDialog),
@@ -1855,6 +1881,8 @@ void main() {
 
       await tester.tap(find.text('Bed 1'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
@@ -1871,6 +1899,8 @@ void main() {
       );
 
       await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(
@@ -1892,11 +1922,59 @@ void main() {
         bed('b1', 'Bed 1', BedResponseStatusEnum.OCCUPIED),
       ]);
 
-      // The name describes the bed, not the tenancy.
+      // The name describes the bed, not the tenancy, so renaming is offered
+      // even here -- unlike taking it out of service.
       await tester.tap(find.text('Bed 1'));
       await tester.pumpAndSettle();
 
       expect(find.text('Rename bed'), findsOneWidget);
+      expect(find.text('Take out of service'), findsNothing);
+      expect(
+        find.textContaining('Occupied beds cannot be taken out of service'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a vacant bed can be taken out of service', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take out of service'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastMaintenance!.underMaintenance, isTrue);
+      expect(find.text('Maintenance'), findsOneWidget);
+    });
+
+    testWidgets('a bed out of service can be returned to it', (tester) async {
+      final api = await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.MAINTENANCE),
+        bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+      ]);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+
+      // The action reads as the opposite when the bed is already out.
+      expect(find.text('Take out of service'), findsNothing);
+      await tester.tap(find.text('Return to service'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastMaintenance!.underMaintenance, isFalse);
+    });
+
+    testWidgets('a bed out of service does not count as rentable',
+        (tester) async {
+      await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.MAINTENANCE),
+        bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+        bed('b3', 'Bed 3', BedResponseStatusEnum.VACANT),
+      ]);
+
+      // Three beds exist; two can be let.
+      expect(find.text('Rentable'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
     });
 
     testWidgets('a unit with no beds says where they come from', (tester) async {

@@ -55,8 +55,14 @@ class UnitDetailScreen extends ConsumerWidget {
             stats: [
               if (isBedspace)
                 LatticeHeaderStat(
-                  value: beds.valueOrNull?.length.toString() ?? '—',
-                  label: 'Beds',
+                  // Rentable, not total: a bed out of service is still here,
+                  // but it is not one the landlord can let to anyone.
+                  value: beds.valueOrNull
+                          ?.where((b) => b.status != BedResponseStatusEnum.MAINTENANCE)
+                          .length
+                          .toString() ??
+                      '—',
+                  label: 'Rentable',
                 )
               else
                 LatticeHeaderStat(
@@ -81,7 +87,7 @@ class UnitDetailScreen extends ConsumerWidget {
                         ),
                       AsyncData(:final value) when value.isEmpty => const _Empty(),
                       AsyncData(:final value) =>
-                        _BedList(beds: value, unitId: unitId),
+                        _BedList(beds: value, propertyId: propertyId, unitId: unitId),
                       _ => const _Loading(),
                     },
                   )
@@ -165,9 +171,14 @@ class _WholeUnit extends StatelessWidget {
 }
 
 class _BedList extends StatelessWidget {
-  const _BedList({required this.beds, required this.unitId});
+  const _BedList({
+    required this.beds,
+    required this.propertyId,
+    required this.unitId,
+  });
 
   final List<BedResponse> beds;
+  final String propertyId;
   final String unitId;
 
   @override
@@ -176,7 +187,7 @@ class _BedList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
       itemCount: beds.length,
       itemBuilder: (context, index) =>
-          _BedRow(bed: beds[index], unitId: unitId),
+          _BedRow(bed: beds[index], propertyId: propertyId, unitId: unitId),
     );
   }
 }
@@ -186,10 +197,19 @@ class _BedList extends StatelessWidget {
 /// Tapping renames it. There is no remove control: beds are removed by lowering
 /// the unit's bed count, which is also the only thing that can add them.
 class _BedRow extends ConsumerWidget {
-  const _BedRow({required this.bed, required this.unitId});
+  const _BedRow({
+    required this.bed,
+    required this.propertyId,
+    required this.unitId,
+  });
 
   final BedResponse bed;
+
+  /// Needed to refresh the property screen's rentable count.
+  final String propertyId;
   final String unitId;
+
+  bool get _isOccupied => bed.status == BedResponseStatusEnum.OCCUPIED;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -204,7 +224,7 @@ class _BedRow extends ConsumerWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: bed.id == null ? null : () => _rename(context, ref),
+          onTap: bed.id == null ? null : () => _openActions(context, ref),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -213,13 +233,104 @@ class _BedRow extends ConsumerWidget {
                 Expanded(child: Text(bed.bedLabel ?? '', style: LizmoType.rowName)),
                 StatusChip(status: _status(), label: _statusLabel()),
                 const SizedBox(width: 8),
-                const Icon(Icons.edit_outlined, size: 16, color: LizmoColors.slate),
+                const Icon(Icons.more_horiz, size: 18, color: LizmoColors.slate),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// Offers what can be done to this bed.
+  ///
+  /// A sheet rather than a straight-to-rename tap: there are two actions now,
+  /// and guessing which one a tap meant would make the more destructive of
+  /// them the accident.
+  Future<void> _openActions(BuildContext context, WidgetRef ref) async {
+    final underMaintenance = bed.status == BedResponseStatusEnum.MAINTENANCE;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: LizmoColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(bed.bedLabel ?? '', style: LizmoType.rowName),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: LizmoColors.slate),
+              title: Text('Rename bed', style: LizmoType.rowName),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _rename(context, ref);
+              },
+            ),
+            if (_isOccupied)
+              // The API refuses this while someone is in the bed, and the
+              // reason is worth stating rather than leaving a dead row.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                child: Text(
+                  'Occupied beds cannot be taken out of service. End the lease '
+                  'first.',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                ),
+              )
+            else
+              ListTile(
+                leading: Icon(
+                  underMaintenance ? Icons.build_circle_outlined : Icons.build_outlined,
+                  color: LizmoColors.slate,
+                ),
+                title: Text(
+                  underMaintenance
+                      ? 'Return to service'
+                      : 'Take out of service',
+                  style: LizmoType.rowName,
+                ),
+                subtitle: Text(
+                  underMaintenance
+                      ? 'Counts as rentable again.'
+                      : 'Stops counting as rentable.',
+                  style: LizmoType.rowSub,
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _setMaintenance(context, ref, !underMaintenance);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Takes the bed out of service, or puts it back.
+  Future<void> _setMaintenance(
+      BuildContext context, WidgetRef ref, bool underMaintenance) async {
+    try {
+      await ref.read(unitsApiProvider).setBedMaintenance(
+            bed.id!,
+            BedMaintenanceRequest(underMaintenance: underMaintenance),
+          );
+      ref.invalidate(bedsProvider(unitId));
+      // The rentable count on the property screen moves with it.
+      ref.invalidate(unitsProvider(propertyId));
+    } catch (error) {
+      if (context.mounted) _report(context, ApiFailure.from(error).message);
+    }
   }
 
   /// Renames the bed.
@@ -240,16 +351,18 @@ class _BedRow extends ConsumerWidget {
       await ref.read(unitsApiProvider).updateBed(bed.id!, BedRequest(bedLabel: label));
       ref.invalidate(bedsProvider(unitId));
     } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: LizmoColors.red,
-            content: Text(ApiFailure.from(error).message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.white)),
-          ),
-        );
-      }
+      if (context.mounted) _report(context, ApiFailure.from(error).message);
     }
+  }
+
+  void _report(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: LizmoColors.red,
+        content: Text(message,
+            style: LizmoType.rowSub.copyWith(color: LizmoColors.white)),
+      ),
+    );
   }
 
   LizmoStatus _status() => switch (bed.status) {

@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**deleteUnit**](UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
 [**getUnit**](UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 [**listBeds**](UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+[**setBedMaintenance**](UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
 [**updateBed**](UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 [**updateUnit**](UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
@@ -225,6 +226,51 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **setBedMaintenance**
+> BedResponse setBedMaintenance(id, bedMaintenanceRequest)
+
+Take a bed out of service, or put it back
+
+Refused while the bed is occupied.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = UnitsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final bedMaintenanceRequest = BedMaintenanceRequest(); // BedMaintenanceRequest | 
+
+try {
+    final result = api_instance.setBedMaintenance(id, bedMaintenanceRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling UnitsApi->setBedMaintenance: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **bedMaintenanceRequest** | [**BedMaintenanceRequest**](BedMaintenanceRequest.md)|  | 
+
+### Return type
+
+[**BedResponse**](BedResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
