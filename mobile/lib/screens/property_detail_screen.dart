@@ -53,13 +53,19 @@ class PropertyDetailScreen extends ConsumerWidget {
               ),
               if (!isCommercial)
                 LatticeHeaderStat(
-                  // Beds across the property, which is what the platform bill is
-                  // ultimately counted from.
+                  // Rentable beds, not every bed: one out of service is still
+                  // there but cannot be let, and counting it here would tell
+                  // the landlord they have more to fill than they do. This is
+                  // also the figure the platform bill is ultimately drawn from.
                   value: units.valueOrNull
-                          ?.fold<int>(0, (sum, u) => sum + (u.bedCount ?? 0))
+                          ?.fold<int>(
+                            0,
+                            (sum, u) =>
+                                sum + (u.bedCount ?? 0) - (u.bedsUnderMaintenance ?? 0),
+                          )
                           .toString() ??
                       '—',
-                  label: 'Beds',
+                  label: 'Rentable',
                 ),
             ],
           ),
@@ -228,6 +234,13 @@ class _UnitCard extends StatelessWidget {
                       ? '1 bed'
                       : '${unit.bedCount ?? 0} beds',
                 ),
+                if ((unit.bedsUnderMaintenance ?? 0) > 0) ...[
+                  const SizedBox(width: 6),
+                  StatusChip(
+                    status: LizmoStatus.pending,
+                    label: '${unit.bedsUnderMaintenance} out of service',
+                  ),
+                ],
               ],
             ),
           ],

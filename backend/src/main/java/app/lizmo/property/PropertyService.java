@@ -134,7 +134,8 @@ public class PropertyService {
     public List<UnitResponse> listUnits(UUID propertyId, UUID userId) {
         access.readable(propertyId, userId);
         return units.findByPropertyIdOrderByUnitNumberAsc(propertyId).stream()
-                .map(unit -> UnitResponse.of(unit, beds.countByUnitId(unit.getId())))
+                .map(unit -> UnitResponse.of(unit, beds.countByUnitId(unit.getId()),
+                        beds.countByUnitIdAndStatus(unit.getId(), BedStatus.MAINTENANCE)))
                 .toList();
     }
 
@@ -175,13 +176,15 @@ public class PropertyService {
         // landlord has to remember.
         int created = mode == RentalMode.BEDSPACE ? fillBedsTo(unit.getId(), capacity) : 0;
 
-        return UnitResponse.of(unit, created);
+        // Freshly created beds are all vacant.
+        return UnitResponse.of(unit, created, 0);
     }
 
     @Transactional(readOnly = true)
     public UnitResponse getUnit(UUID unitId, UUID userId) {
         Unit unit = requireReadableUnit(unitId, userId);
-        return UnitResponse.of(unit, beds.countByUnitId(unitId));
+        return UnitResponse.of(unit, beds.countByUnitId(unitId),
+                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
     }
 
     @Transactional
@@ -212,7 +215,8 @@ public class PropertyService {
 
         unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
                 capacity, request.rent());
-        return UnitResponse.of(units.save(unit), bedCount);
+        return UnitResponse.of(units.save(unit), bedCount,
+                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
     }
 
     @Transactional
@@ -293,6 +297,31 @@ public class PropertyService {
         }
 
         bed.rename(label);
+        return BedResponse.of(beds.save(bed));
+    }
+
+    /**
+     * Takes a bed out of service, or puts it back.
+     *
+     * <p>Independent of tenancy: a landlord fixing a broken bunk has not ended
+     * anyone's lease. An occupied bed is refused all the same — the tenant is
+     * still there and still paying, and hiding the bed from the rentable count
+     * while that is true would make occupancy lie.
+     */
+    @Transactional
+    public BedResponse setBedMaintenance(UUID bedId, boolean underMaintenance, UUID userId) {
+        Bed bed = beds.findById(bedId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such bed."));
+        requireWritableUnit(bed.getUnitId(), userId);
+
+        // Checked here so the caller gets a message. Bed.markMaintenance guards
+        // the same rule, but as an IllegalStateException — a 500, not an answer.
+        if (bed.isOccupied()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "This bed is occupied. End the lease before taking it out of service.");
+        }
+
+        bed.markMaintenance(underMaintenance);
         return BedResponse.of(beds.save(bed));
     }
 

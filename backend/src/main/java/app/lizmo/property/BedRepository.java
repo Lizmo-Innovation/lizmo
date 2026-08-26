@@ -11,4 +11,6 @@ public interface BedRepository extends JpaRepository<Bed, UUID> {
     boolean existsByUnitIdAndBedLabelIgnoreCase(UUID unitId, String bedLabel);
 
     long countByUnitId(UUID unitId);
+
+    long countByUnitIdAndStatus(UUID unitId, BedStatus status);
 }
