@@ -19,6 +19,10 @@ import java.util.UUID;
  *                 and the sum of its beds' effective rents for a bedspace.
  *                 Beds out of service are left out — they cannot be let, so
  *                 counting them would overstate what the unit can earn.
+ * @param monthlyUtilities what the unit's switched-on utilities add to a
+ *                 month. Null when none are on, which is not the same as a
+ *                 charge of nothing. Kept apart from rent: they are
+ *                 different lines on a bill and a landlord reads them apart.
  */
 @Schema(description = "A unit within a property")
 public record UnitResponse(
@@ -33,10 +37,15 @@ public record UnitResponse(
         long bedCount,
         long bedsUnderMaintenance,
         BigDecimal rent,
-        BigDecimal potentialMonthlyRent) {
+        BigDecimal potentialMonthlyRent,
+        BigDecimal monthlyUtilities) {
 
     public static UnitResponse of(
-            Unit unit, long bedCount, long bedsUnderMaintenance, BigDecimal potentialMonthlyRent) {
+            Unit unit,
+            long bedCount,
+            long bedsUnderMaintenance,
+            BigDecimal potentialMonthlyRent,
+            BigDecimal monthlyUtilities) {
         return new UnitResponse(
                 unit.getId(),
                 unit.getPropertyId(),
@@ -49,6 +58,7 @@ public record UnitResponse(
                 bedCount,
                 bedsUnderMaintenance,
                 unit.getRent(),
-                potentialMonthlyRent);
+                potentialMonthlyRent,
+                monthlyUtilities);
     }
 }

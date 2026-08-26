@@ -207,6 +207,12 @@ class ApiClient {
           return UnitRequest.fromJson(value);
         case 'UnitResponse':
           return UnitResponse.fromJson(value);
+        case 'UtilitiesRequest':
+          return UtilitiesRequest.fromJson(value);
+        case 'UtilityRequest':
+          return UtilityRequest.fromJson(value);
+        case 'UtilityResponse':
+          return UtilityResponse.fromJson(value);
         default:
           dynamic match;
           if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {

@@ -82,3 +82,14 @@ final bedsProvider =
     throw ApiFailure.from(error);
   }
 });
+
+/// A unit's fixed monthly utilities. Always three entries, including ones the
+/// landlord has never set up.
+final utilitiesProvider =
+    FutureProvider.autoDispose.family<List<UtilityResponse>, String>((ref, unitId) async {
+  try {
+    return await ref.watch(unitsApiProvider).listUtilities(unitId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

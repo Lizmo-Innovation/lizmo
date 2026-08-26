@@ -25,6 +25,7 @@ class UnitResponse {
     this.bedsUnderMaintenance,
     this.rent,
     this.potentialMonthlyRent,
+    this.monthlyUtilities,
   });
 
   ///
@@ -111,6 +112,14 @@ class UnitResponse {
   ///
   num? potentialMonthlyRent;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? monthlyUtilities;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitResponse &&
     other.id == id &&
@@ -124,7 +133,8 @@ class UnitResponse {
     other.bedCount == bedCount &&
     other.bedsUnderMaintenance == bedsUnderMaintenance &&
     other.rent == rent &&
-    other.potentialMonthlyRent == potentialMonthlyRent;
+    other.potentialMonthlyRent == potentialMonthlyRent &&
+    other.monthlyUtilities == monthlyUtilities;
 
   @override
   int get hashCode =>
@@ -140,10 +150,11 @@ class UnitResponse {
     (bedCount == null ? 0 : bedCount!.hashCode) +
     (bedsUnderMaintenance == null ? 0 : bedsUnderMaintenance!.hashCode) +
     (rent == null ? 0 : rent!.hashCode) +
-    (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode);
+    (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode) +
+    (monthlyUtilities == null ? 0 : monthlyUtilities!.hashCode);
 
   @override
-  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent]';
+  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent, monthlyUtilities=$monthlyUtilities]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -207,6 +218,11 @@ class UnitResponse {
     } else {
       json[r'potentialMonthlyRent'] = null;
     }
+    if (this.monthlyUtilities != null) {
+      json[r'monthlyUtilities'] = this.monthlyUtilities;
+    } else {
+      json[r'monthlyUtilities'] = null;
+    }
     return json;
   }
 
@@ -243,6 +259,9 @@ class UnitResponse {
         potentialMonthlyRent: json[r'potentialMonthlyRent'] == null
             ? null
             : num.parse('${json[r'potentialMonthlyRent']}'),
+        monthlyUtilities: json[r'monthlyUtilities'] == null
+            ? null
+            : num.parse('${json[r'monthlyUtilities']}'),
       );
     }
     return null;

@@ -16,7 +16,7 @@ class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
   /// What Lizmo is for, in one line.
-  static const tagline = 'Zero-hassle and lease mo!'; //Lease mo, zero-hassle!
+  static const tagline = 'Zero-hassle ang lease mo!'; //Lease mo, zero-hassle!
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

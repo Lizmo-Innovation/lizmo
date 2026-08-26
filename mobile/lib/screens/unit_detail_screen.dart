@@ -85,6 +85,11 @@ class UnitDetailScreen extends ConsumerWidget {
           ),
           if (unit?.status == UnitResponseStatusEnum.MAINTENANCE)
             const _ClosedBanner(),
+          _UtilitiesRow(
+            monthly: unit?.monthlyUtilities,
+            propertyId: propertyId,
+            unitId: unitId,
+          ),
           Expanded(
             child: isBedspace
                 ? RefreshIndicator(
@@ -834,6 +839,70 @@ class _ClosedBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// What the unit charges for utilities, and the way in to change it.
+///
+/// On the unit rather than the bed: a WiFi router serves the room, not one
+/// bunk. How the charge is divided between bedspacers is a billing question,
+/// and there is no billing yet.
+class _UtilitiesRow extends StatelessWidget {
+  const _UtilitiesRow({
+    required this.monthly,
+    required this.propertyId,
+    required this.unitId,
+  });
+
+  final num? monthly;
+  final String propertyId;
+  final String unitId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [LizmoColors.cardShadow],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () => context.push(Routes.unitUtilities(propertyId, unitId)),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt_outlined, size: 18, color: LizmoColors.slate),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Utilities', style: LizmoType.rowName),
+                      const SizedBox(height: 2),
+                      Text(
+                        monthly == null
+                            // Not "₱0": nothing is switched on, which is a
+                            // different statement from a charge of nothing.
+                            ? 'None charged'
+                            : 'A fixed ₱$monthly each month',
+                        style: LizmoType.rowSub,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 18, color: LizmoColors.slate),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

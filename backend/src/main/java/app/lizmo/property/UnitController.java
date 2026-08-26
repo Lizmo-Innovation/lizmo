@@ -6,6 +6,8 @@ import app.lizmo.property.dto.BedRequest;
 import app.lizmo.property.dto.BedResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import app.lizmo.property.dto.UtilitiesRequest;
+import app.lizmo.property.dto.UtilityResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -102,6 +104,27 @@ public class UnitController {
             content = @Content(schema = @Schema(implementation = BedResponse.class)))
     public BedResponse createBed(@PathVariable UUID id, @Valid @RequestBody BedRequest request) {
         return service.createBed(id, request, currentUser.requireId());
+    }
+
+    @GetMapping("/units/{id}/utilities")
+    @Operation(operationId = "listUtilities", summary = "A unit's fixed monthly utilities",
+            description = "Always returns every kind, including ones never set up.")
+    @ApiResponse(responseCode = "200", description = "The unit's utilities",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = UtilityResponse.class))))
+    public List<UtilityResponse> listUtilities(@PathVariable UUID id) {
+        return service.listUtilities(id, currentUser.requireId());
+    }
+
+    @PutMapping("/units/{id}/utilities")
+    @Operation(operationId = "setUtilities", summary = "Set a unit's fixed monthly utilities",
+            description = "Only the kinds sent are changed; the others are left alone.")
+    @ApiResponse(responseCode = "200", description = "The unit's utilities",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = UtilityResponse.class))))
+    @ApiResponse(responseCode = "400", description = "A utility was switched on with no amount",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public List<UtilityResponse> setUtilities(
+            @PathVariable UUID id, @Valid @RequestBody UtilitiesRequest request) {
+        return service.setUtilities(id, request.utilities(), currentUser.requireId());
     }
 
     @PutMapping("/beds/{id}")

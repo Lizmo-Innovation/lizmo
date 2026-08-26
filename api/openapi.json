@@ -122,6 +122,96 @@
                 }
             }
         },
+        "/api/v1/units/{id}/utilities": {
+            "get": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "A unit's fixed monthly utilities",
+                "description": "Always returns every kind, including ones never set up.",
+                "operationId": "listUtilities",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The unit's utilities",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UtilityResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Units"
+                ],
+                "summary": "Set a unit's fixed monthly utilities",
+                "description": "Only the kinds sent are changed; the others are left alone.",
+                "operationId": "setUtilities",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UtilitiesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The unit's utilities",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UtilityResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A utility was switched on with no amount",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/units/{id}/maintenance": {
             "put": {
                 "tags": [
@@ -904,22 +994,76 @@
                     },
                     "potentialMonthlyRent": {
                         "type": "number"
+                    },
+                    "monthlyUtilities": {
+                        "type": "number"
                     }
                 },
                 "description": "A unit within a property"
             },
-            "MaintenanceRequest": {
+            "UtilitiesRequest": {
                 "required": [
-                    "underMaintenance"
+                    "utilities"
                 ],
                 "type": "object",
                 "properties": {
-                    "underMaintenance": {
-                        "type": "boolean",
-                        "example": true
+                    "utilities": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UtilityRequest"
+                        }
                     }
                 },
-                "description": "Whether a bed or unit is out of service"
+                "description": "Utility settings to apply to a unit"
+            },
+            "UtilityRequest": {
+                "required": [
+                    "enabled",
+                    "kind"
+                ],
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "example": "WIFI",
+                        "enum": [
+                            "WIFI",
+                            "ELECTRICITY",
+                            "WATER"
+                        ]
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "amount": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
+                        "type": "number",
+                        "example": 500.0
+                    }
+                },
+                "description": "A utility's fixed monthly charge on a unit"
+            },
+            "UtilityResponse": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "WIFI",
+                            "ELECTRICITY",
+                            "WATER"
+                        ]
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "amount": {
+                        "type": "number"
+                    }
+                },
+                "description": "A utility's fixed monthly charge on a unit"
             },
             "ApiError": {
                 "type": "object",
@@ -944,6 +1088,19 @@
                     }
                 },
                 "description": "Standard error response"
+            },
+            "MaintenanceRequest": {
+                "required": [
+                    "underMaintenance"
+                ],
+                "type": "object",
+                "properties": {
+                    "underMaintenance": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "description": "Whether a bed or unit is out of service"
             },
             "PropertyRequest": {
                 "required": [

@@ -9,7 +9,10 @@ import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import app.lizmo.property.dto.UtilityRequest;
+import app.lizmo.property.dto.UtilityResponse;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -33,16 +36,19 @@ public class PropertyService {
     private final PropertyRepository properties;
     private final UnitRepository units;
     private final BedRepository beds;
+    private final UnitUtilityRepository utilities;
     private final PropertyAccess access;
 
     public PropertyService(
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
+            UnitUtilityRepository utilities,
             PropertyAccess access) {
         this.properties = properties;
         this.units = units;
         this.beds = beds;
+        this.utilities = utilities;
         this.access = access;
     }
 
@@ -145,7 +151,8 @@ public class PropertyService {
 
         if (!unit.isBedspace()) {
             // One tenancy, so the unit's own rent is the whole of it.
-            return UnitResponse.of(unit, 0, 0, closed ? null : unit.getRent());
+            return UnitResponse.of(unit, 0, 0, closed ? null : unit.getRent(),
+                    monthlyUtilities(unit.getId()));
         }
 
         List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
@@ -167,7 +174,8 @@ public class PropertyService {
             potential = potential == null ? effective : potential.add(effective);
         }
 
-        return UnitResponse.of(unit, unitBeds.size(), maintenance, closed ? null : potential);
+        return UnitResponse.of(unit, unitBeds.size(), maintenance,
+                closed ? null : potential, monthlyUtilities(unit.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -296,6 +304,72 @@ public class PropertyService {
         }
         beds.deleteAll(existing);
         units.delete(unit);
+    }
+
+    // ---------- Utilities ----------
+
+    /**
+     * Every utility a unit could charge, whether or not it has been set up.
+     *
+     * <p>All three kinds come back every time, unconfigured ones included.
+     * Returning only the rows that exist would leave the client to decide what
+     * absence means, and a screen with three switches wants three answers.
+     */
+    @Transactional(readOnly = true)
+    public List<UtilityResponse> listUtilities(UUID unitId, UUID userId) {
+        requireReadableUnit(unitId, userId);
+        return utilitiesFor(unitId);
+    }
+
+    /**
+     * Applies utility settings to a unit.
+     *
+     * <p>Only the kinds named are touched, so a client may send one switch
+     * without restating the others.
+     */
+    @Transactional
+    public List<UtilityResponse> setUtilities(
+            UUID unitId, List<UtilityRequest> requests, UUID userId) {
+        requireWritableUnit(unitId, userId);
+
+        for (UtilityRequest request : requests) {
+            UnitUtility utility = utilities.findByUnitIdAndKind(unitId, request.kind())
+                    .orElseGet(() -> new UnitUtility(unitId, request.kind()));
+
+            // Switching one on without ever saying what it costs would store a
+            // charge of nothing, which the database refuses anyway.
+            if (request.enabled() && request.amount() == null && utility.getAmount() == null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "Set an amount for %s before switching it on."
+                                .formatted(request.kind().name().toLowerCase(Locale.ROOT)));
+            }
+
+            utility.set(request.enabled(), request.amount());
+            utilities.save(utility);
+        }
+
+        return utilitiesFor(unitId);
+    }
+
+    private List<UtilityResponse> utilitiesFor(UUID unitId) {
+        List<UnitUtility> configured = utilities.findByUnitIdOrderByKindAsc(unitId);
+        return Arrays.stream(UtilityKind.values())
+                .map(kind -> configured.stream()
+                        .filter(utility -> utility.getKind() == kind)
+                        .findFirst()
+                        .map(UtilityResponse::of)
+                        .orElseGet(() -> UtilityResponse.unset(kind)))
+                .toList();
+    }
+
+    /** What a unit's switched-on utilities add to a month, or null if none are. */
+    private BigDecimal monthlyUtilities(UUID unitId) {
+        BigDecimal total = utilities.findByUnitIdOrderByKindAsc(unitId).stream()
+                .map(UnitUtility::monthlyAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Null rather than zero, as everywhere else money is reported: nothing
+        // switched on is not the same statement as a charge of nothing.
+        return total.signum() == 0 ? null : total;
     }
 
     // ---------- Beds ----------

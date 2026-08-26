@@ -13,6 +13,7 @@ import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
+import 'package:lizmo/screens/unit_utilities_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
@@ -207,6 +208,29 @@ class _FakeBedsApi extends UnitsApi {
 
   MaintenanceRequest? lastMaintenance;
   MaintenanceRequest? lastUnitMaintenance;
+
+  List<UtilityResponse> utilities = [
+    UtilityResponse(kind: UtilityResponseKindEnum.WIFI, enabled: false),
+    UtilityResponse(kind: UtilityResponseKindEnum.ELECTRICITY, enabled: false),
+    UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
+  ];
+
+  UtilitiesRequest? lastUtilities;
+
+  @override
+  Future<List<UtilityResponse>?> listUtilities(String id,
+          {Future<void>? abortTrigger}) async =>
+      List.of(utilities);
+
+  @override
+  Future<List<UtilityResponse>?> setUtilities(
+    String id,
+    UtilitiesRequest utilitiesRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    lastUtilities = utilitiesRequest;
+    return List.of(utilities);
+  }
   UnitResponse? unitOverride;
 
   @override
@@ -2523,6 +2547,198 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.lastUnitMaintenance!.underMaintenance, isTrue);
+    });
+  });
+
+  group('fixed monthly utilities', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+        );
+
+    UnitResponse unit({num? monthlyUtilities}) => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: 2,
+          bedCount: 2,
+          bedsUnderMaintenance: 0,
+          rent: 2500,
+          potentialMonthlyRent: 5000,
+          monthlyUtilities: monthlyUtilities,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Future<_FakeBedsApi> openUnit(WidgetTester tester,
+        {num? monthlyUtilities, List<UtilityResponse>? utilities}) async {
+      final u = unit(monthlyUtilities: monthlyUtilities);
+      final api = _FakeBedsApi(u, []);
+      if (utilities != null) api.utilities = utilities;
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [u]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('a unit charging nothing says so, not zero', (tester) async {
+      await openUnit(tester);
+
+      // Nothing switched on is a different statement from a charge of nothing.
+      expect(find.text('None charged'), findsOneWidget);
+    });
+
+    testWidgets('a unit charging something shows the monthly figure',
+        (tester) async {
+      await openUnit(tester, monthlyUtilities: 1700);
+
+      expect(find.text('A fixed ₱1700 each month'), findsOneWidget);
+    });
+
+    testWidgets('the row opens the utilities screen', (tester) async {
+      await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UnitUtilitiesScreen), findsOneWidget);
+      // All three, whether or not they have ever been set up.
+      expect(find.text('WiFi'), findsOneWidget);
+      expect(find.text('Electricity'), findsOneWidget);
+      expect(find.text('Water'), findsOneWidget);
+    });
+
+    testWidgets('each utility is switched independently', (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // WiFi on at 500, the other two left alone.
+      await tester.enterText(find.byType(TextFormField).at(0), '500');
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      final sent = api.lastUtilities!.utilities;
+      expect(sent.length, 3);
+      final wifi = sent.firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
+      expect(wifi.enabled, isTrue);
+      expect(wifi.amount, 500);
+      expect(
+        sent.where((u) => u.enabled).length,
+        1,
+        reason: 'switching WiFi on must not switch the others on',
+      );
+    });
+
+    testWidgets('switching one on with no amount is refused before saving',
+        (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      // A charge with no amount is not a charge; the API refuses it too.
+      expect(find.text('Set an amount, or switch WiFi off'), findsOneWidget);
+      expect(api.lastUtilities, isNull);
+    });
+
+    testWidgets('an amount survives being switched off', (tester) async {
+      final api = await openUnit(tester, utilities: [
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WIFI, enabled: true, amount: 500),
+        UtilityResponse(kind: UtilityResponseKindEnum.ELECTRICITY, enabled: false),
+        UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
+      ]);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // Switch WiFi off without clearing the field.
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      final wifi = api.lastUtilities!.utilities
+          .firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
+      expect(wifi.enabled, isFalse);
+      // Sent along, so turning it back on does not mean retyping the figure.
+      expect(wifi.amount, 500);
+    });
+
+    testWidgets('a zero amount is refused', (tester) async {
+      final api = await openUnit(tester);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), '0');
+      await tester.tap(find.byType(Switch).at(0));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      // Zero would read as free, which is what switching off means.
+      expect(find.text('Enter more than zero'), findsOneWidget);
+      expect(api.lastUtilities, isNull);
+    });
+
+    testWidgets('the running total follows the switches', (tester) async {
+      await openUnit(tester, utilities: [
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WIFI, enabled: true, amount: 500),
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.ELECTRICITY, enabled: true, amount: 1200),
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WATER, enabled: false, amount: 300),
+      ]);
+
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+
+      // Water is set up but not charged, so it is not in the total.
+      expect(find.text('₱1700'), findsOneWidget);
+
+      await tester.tap(find.byType(Switch).at(2));
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱2000'), findsOneWidget);
     });
   });
 

@@ -1344,4 +1344,187 @@ class PropertyIntegrationTest {
                 .andExpect(jsonPath("$[0].status").value("MAINTENANCE"))
                 .andExpect(jsonPath("$[0].potentialMonthlyRent").doesNotExist());
     }
+
+    // ---------- Fixed monthly utilities ----------
+
+    private void setUtilities(String unitId, String body) throws Exception {
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void every_utility_is_listed_even_before_it_is_set_up() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        // Three switches on the screen means three answers from the API; the
+        // client should not have to read absence as "off".
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].kind").value("WIFI"))
+                .andExpect(jsonPath("$[0].enabled").value(false))
+                .andExpect(jsonPath("$[0].amount").doesNotExist());
+    }
+
+    @Test
+    void utilities_are_switched_on_independently() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00},
+                 {"kind":"WATER","enabled":true,"amount":300.00}]}
+                                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].kind").value("WIFI"))
+                .andExpect(jsonPath("$[0].enabled").value(true))
+                .andExpect(jsonPath("$[0].amount").value(500.00))
+                // Electricity was never mentioned, so it stays untouched.
+                .andExpect(jsonPath("$[1].kind").value("ELECTRICITY"))
+                .andExpect(jsonPath("$[1].enabled").value(false))
+                .andExpect(jsonPath("$[2].kind").value("WATER"))
+                .andExpect(jsonPath("$[2].enabled").value(true));
+    }
+
+    @Test
+    void the_unit_reports_what_its_utilities_add_to_a_month() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00},
+                 {"kind":"ELECTRICITY","enabled":true,"amount":1200.00},
+                 {"kind":"WATER","enabled":false,"amount":300.00}]}
+                                """);
+
+        // Only what is switched on: water is set up but not being charged.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.monthlyUtilities").value(1700.00));
+    }
+
+    @Test
+    void switching_a_utility_off_keeps_its_amount() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                                """);
+
+        // No amount sent: switching off should not make the landlord remember
+        // what they were charging when they switch it back on.
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":false}]}
+                                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].enabled").value(false))
+                .andExpect(jsonPath("$[0].amount").value(500.00));
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.monthlyUtilities").doesNotExist());
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true}]}
+                                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.monthlyUtilities").value(500.00));
+    }
+
+    @Test
+    void a_utility_cannot_be_switched_on_without_an_amount() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        // A charge with no amount is not a charge.
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"utilities":[{"kind":"WIFI","enabled":true}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("wifi")));
+    }
+
+    @Test
+    void a_utility_cannot_be_priced_at_zero() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":0}]}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void utilities_are_independent_of_rent() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 2, "2500.00");
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                                """);
+
+        // Different lines on a bill: the rent total does not absorb them.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(5000.00))
+                .andExpect(jsonPath("$.monthlyUtilities").value(500.00));
+    }
+
+    @Test
+    void another_landlord_cannot_read_or_set_utilities() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + otherLandlordToken))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + otherLandlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void utilities_go_with_the_unit_when_it_is_deleted() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "1A", "WHOLE_UNIT", 1);
+
+        setUtilities(unitId, """
+                                {"utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                                """);
+
+        // ON DELETE CASCADE, so a deleted unit leaves no utility rows behind to
+        // be adopted by a later unit with a recycled id.
+        mvc.perform(delete("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isNotFound());
+    }
 }

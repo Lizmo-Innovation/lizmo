@@ -75,8 +75,10 @@ Class | Method | HTTP request | Description
 *UnitsApi* | [**deleteUnit**](doc//UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
 *UnitsApi* | [**getUnit**](doc//UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 *UnitsApi* | [**listBeds**](doc//UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+*UnitsApi* | [**listUtilities**](doc//UnitsApi.md#listutilities) | **GET** /api/v1/units/{id}/utilities | A unit's fixed monthly utilities
 *UnitsApi* | [**setBedMaintenance**](doc//UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
 *UnitsApi* | [**setUnitMaintenance**](doc//UnitsApi.md#setunitmaintenance) | **PUT** /api/v1/units/{id}/maintenance | Take a unit out of service, or put it back
+*UnitsApi* | [**setUtilities**](doc//UnitsApi.md#setutilities) | **PUT** /api/v1/units/{id}/utilities | Set a unit's fixed monthly utilities
 *UnitsApi* | [**updateBed**](doc//UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 *UnitsApi* | [**updateUnit**](doc//UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
@@ -95,6 +97,9 @@ Class | Method | HTTP request | Description
  - [RegisterRequest](doc//RegisterRequest.md)
  - [UnitRequest](doc//UnitRequest.md)
  - [UnitResponse](doc//UnitResponse.md)
+ - [UtilitiesRequest](doc//UtilitiesRequest.md)
+ - [UtilityRequest](doc//UtilityRequest.md)
+ - [UtilityResponse](doc//UtilityResponse.md)
 
 
 ## Documentation For Authorization

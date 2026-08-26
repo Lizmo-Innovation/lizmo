@@ -14,8 +14,10 @@ Method | HTTP request | Description
 [**deleteUnit**](UnitsApi.md#deleteunit) | **DELETE** /api/v1/units/{id} | Delete a unit
 [**getUnit**](UnitsApi.md#getunit) | **GET** /api/v1/units/{id} | View one unit
 [**listBeds**](UnitsApi.md#listbeds) | **GET** /api/v1/units/{id}/beds | List a unit's beds
+[**listUtilities**](UnitsApi.md#listutilities) | **GET** /api/v1/units/{id}/utilities | A unit's fixed monthly utilities
 [**setBedMaintenance**](UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
 [**setUnitMaintenance**](UnitsApi.md#setunitmaintenance) | **PUT** /api/v1/units/{id}/maintenance | Take a unit out of service, or put it back
+[**setUtilities**](UnitsApi.md#setutilities) | **PUT** /api/v1/units/{id}/utilities | Set a unit's fixed monthly utilities
 [**updateBed**](UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 [**updateUnit**](UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
 
@@ -231,6 +233,49 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listUtilities**
+> List<UtilityResponse> listUtilities(id)
+
+A unit's fixed monthly utilities
+
+Always returns every kind, including ones never set up.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = UnitsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.listUtilities(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling UnitsApi->listUtilities: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**List<UtilityResponse>**](UtilityResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **setBedMaintenance**
 > BedResponse setBedMaintenance(id, maintenanceRequest)
 
@@ -309,6 +354,51 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**UnitResponse**](UnitResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **setUtilities**
+> List<UtilityResponse> setUtilities(id, utilitiesRequest)
+
+Set a unit's fixed monthly utilities
+
+Only the kinds sent are changed; the others are left alone.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = UnitsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final utilitiesRequest = UtilitiesRequest(); // UtilitiesRequest | 
+
+try {
+    final result = api_instance.setUtilities(id, utilitiesRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling UnitsApi->setUtilities: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **utilitiesRequest** | [**UtilitiesRequest**](UtilitiesRequest.md)|  | 
+
+### Return type
+
+[**List<UtilityResponse>**](UtilityResponse.md)
 
 ### Authorization
 
