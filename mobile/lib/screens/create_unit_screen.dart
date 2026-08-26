@@ -274,7 +274,13 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                   const SizedBox(height: 18),
                 ],
 
-                _Label(_isBedspace ? 'Rent per bed (optional)' : 'Rent (optional)'),
+                _Label(_isBedspace
+                    // "Default", because a bed priced on its own keeps that
+                    // price. Calling this "rent per bed" claimed to be the
+                    // price of every bed, which it stopped being once beds
+                    // could be priced individually.
+                    ? 'Default rent per bed (optional)'
+                    : 'Rent (optional)'),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _rent,
@@ -293,7 +299,9 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'What you ask for it. Each lease can still differ.',
+                  _isBedspace
+                      ? 'Each bed uses this unless you price it separately.'
+                      : 'What you ask for it. Each lease can still differ.',
                   style: LizmoType.rowSub,
                 ),
 

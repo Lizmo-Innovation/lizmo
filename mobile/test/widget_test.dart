@@ -850,6 +850,7 @@ void main() {
       int capacity = 1,
       int bedCount = 0,
       num? rent,
+      num? potentialMonthlyRent,
     }) =>
         UnitResponse(
           id: 'u-$number',
@@ -859,6 +860,7 @@ void main() {
           capacity: capacity,
           bedCount: bedCount,
           rent: rent,
+          potentialMonthlyRent: potentialMonthlyRent,
           status: UnitResponseStatusEnum.VACANT,
         );
 
@@ -890,8 +892,9 @@ void main() {
     testWidgets('bedspace and whole units read differently', (tester) async {
       await tester.pumpWidget(appWith([
         unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
-            capacity: 4, bedCount: 2, rent: 2500),
-        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT, rent: 7000),
+            capacity: 4, bedCount: 2, rent: 2500, potentialMonthlyRent: 5000),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+            rent: 7000, potentialMonthlyRent: 7000),
       ]));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sunrise Apartments'));
@@ -900,9 +903,59 @@ void main() {
       // The distinction the whole product turns on, visible at a glance.
       expect(find.textContaining('Bedspace'), findsOneWidget);
       expect(find.textContaining('Whole unit'), findsOneWidget);
-      expect(find.text('per bed'), findsOneWidget);
+      expect(find.text('per month, all beds'), findsOneWidget);
       expect(find.text('per month'), findsOneWidget);
       expect(find.text('2 beds'), findsOneWidget);
+
+      // Both figures are monthly, so they are comparable: two beds at 2500
+      // against a whole unit at 7000.
+      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('₱7000'), findsOneWidget);
+    });
+
+    testWidgets('the header totals what the property brings in', (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 4, rent: 2500, potentialMonthlyRent: 10000),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+            rent: 7000, potentialMonthlyRent: 7000),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Per month'), findsOneWidget);
+      expect(find.text('₱17000'), findsOneWidget);
+    });
+
+    testWidgets('a property with no rents set totals a dash, not zero',
+        (tester) async {
+      await tester.pumpWidget(appWith([
+        unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
+            capacity: 4, bedCount: 4),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // Nothing is known about the price, which is not the same as free.
+      expect(find.textContaining('₱0'), findsNothing);
+    });
+
+    testWidgets('a large total is not clipped', (tester) async {
+      await tester.pumpWidget(appWith([
+        for (var i = 0; i < 8; i++)
+          unit(number: 'U$i', mode: UnitResponseRentalModeEnum.BEDSPACE,
+              capacity: 6, bedCount: 6, rent: 2500, potentialMonthlyRent: 15000),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      // ₱120000 is wider than the stat card, so the figure scales down rather
+      // than losing a digit -- a landlord with a real portfolio hits this.
+      expect(find.text('₱120000'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('a unit with no rent shows a dash, not zero', (tester) async {
@@ -914,7 +967,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Zero would claim the unit is free; not-set is a different statement.
-      expect(find.text('—'), findsOneWidget);
+      // Two dashes: the unit card, and the property total in the header, which
+      // has nothing to add up either.
+      expect(find.text('—'), findsNWidgets(2));
       expect(find.textContaining('₱0'), findsNothing);
     });
 
@@ -954,7 +1009,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('How many beds?'), findsOneWidget);
-      expect(find.text('Rent per bed (optional)'), findsOneWidget);
+      expect(find.text('Default rent per bed (optional)'), findsOneWidget);
 
       await tester.tap(find.text('Whole unit'));
       await tester.pumpAndSettle();
@@ -1749,8 +1804,10 @@ void main() {
           status: UnitResponseStatusEnum.VACANT,
         );
 
-    BedResponse bed(String id, String label, BedResponseStatusEnum status) =>
-        BedResponse(id: id, unitId: 'u1', bedLabel: label, status: status);
+    BedResponse bed(String id, String label, BedResponseStatusEnum status,
+            {num? rent}) =>
+        BedResponse(
+            id: id, unitId: 'u1', bedLabel: label, status: status, rent: rent);
 
     Future<_FakeBedsApi> openBeds(WidgetTester tester,
         {List<BedResponse>? beds}) async {
@@ -1975,6 +2032,120 @@ void main() {
       // Three beds exist; two can be let.
       expect(find.text('Rentable'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
+    });
+
+    testWidgets('a bed shows the unit rate until it has its own', (tester) async {
+      await openBeds(tester);
+
+      // The unit asks 2500 and neither bed overrides it.
+      expect(find.text('₱2500 · unit rate'), findsNWidgets(2));
+    });
+
+    testWidgets('a bed with its own price shows that instead', (tester) async {
+      await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+        bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
+      ]);
+
+      // No "unit rate" suffix: this figure does not move when the unit is
+      // repriced, and the two cases have to be tellable apart.
+      expect(find.text('₱2000'), findsOneWidget);
+      expect(find.text('₱2500 · unit rate'), findsOneWidget);
+    });
+
+    testWidgets('a price can be set on one bed', (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '2000',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename!.rent, 2000);
+      // The label rides along, or the PUT would blank it.
+      expect(api.lastRename!.bedLabel, 'Bed 1');
+    });
+
+    testWidgets('clearing the price hands the bed back to the unit rate',
+        (tester) async {
+      final api = await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+      ]);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRename!.rent, isNull);
+    });
+
+    testWidgets('a price of zero is refused before calling the API',
+        (tester) async {
+      final api = await openBeds(tester);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Set price'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        '0',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Zero would read as free, which is not what an unset price means.
+      expect(find.text('Enter more than zero'), findsOneWidget);
+      expect(api.lastRename, isNull);
+    });
+
+    testWidgets('renaming keeps the price', (tester) async {
+      final api = await openBeds(tester, beds: [
+        bed('b1', 'Bed 1', BedResponseStatusEnum.VACANT, rent: 2000),
+      ]);
+
+      await tester.tap(find.text('Bed 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename bed'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextFormField),
+        ),
+        'Lower bunk',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // A PUT carries the whole bed, so the rent has to travel with the name.
+      expect(api.lastRename!.bedLabel, 'Lower bunk');
+      expect(api.lastRename!.rent, 2000);
     });
 
     testWidgets('a unit with no beds says where they come from', (tester) async {

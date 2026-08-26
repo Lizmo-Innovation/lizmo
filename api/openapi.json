@@ -848,6 +848,9 @@
                     },
                     "rent": {
                         "type": "number"
+                    },
+                    "potentialMonthlyRent": {
+                        "type": "number"
                     }
                 },
                 "description": "A unit within a property"
@@ -956,6 +959,13 @@
                         "minLength": 0,
                         "type": "string",
                         "example": "Bed 1"
+                    },
+                    "rent": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
+                        "type": "number",
+                        "description": "Per-bed rent. Omit to charge whatever the unit asks.",
+                        "example": 2500.0
                     }
                 },
                 "description": "Bed details"
@@ -1005,6 +1015,9 @@
                             "OCCUPIED",
                             "MAINTENANCE"
                         ]
+                    },
+                    "rent": {
+                        "type": "number"
                     }
                 },
                 "description": "A bed within a bedspace unit"

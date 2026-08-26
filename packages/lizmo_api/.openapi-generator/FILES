@@ -43,4 +43,3 @@ lib/model/register_request.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
 pubspec.yaml
-test/bed_maintenance_request_test.dart

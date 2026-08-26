@@ -8,6 +8,7 @@ import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -130,12 +131,45 @@ public class PropertyService {
 
     // ---------- Units ----------
 
+    /**
+     * Builds a unit's response, deriving every bed-based figure from one read.
+     *
+     * <p>Three numbers came from three queries before; the beds have to be
+     * loaded anyway to total their rents, so they now come from one.
+     */
+    private UnitResponse unitResponse(Unit unit) {
+        if (!unit.isBedspace()) {
+            // One tenancy, so the unit's own rent is the whole of it.
+            return UnitResponse.of(unit, 0, 0, unit.getRent());
+        }
+
+        List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
+        long maintenance = unitBeds.stream().filter(
+                bed -> bed.getStatus() == BedStatus.MAINTENANCE).count();
+
+        BigDecimal potential = null;
+        for (Bed bed : unitBeds) {
+            if (bed.getStatus() == BedStatus.MAINTENANCE) {
+                continue;
+            }
+            // A bed with no rent of its own is let at the unit's rate.
+            BigDecimal effective = bed.getRent() != null ? bed.getRent() : unit.getRent();
+            if (effective == null) {
+                // Nothing is known about this bed's price. It contributes
+                // nothing rather than zero, which would be a claim.
+                continue;
+            }
+            potential = potential == null ? effective : potential.add(effective);
+        }
+
+        return UnitResponse.of(unit, unitBeds.size(), maintenance, potential);
+    }
+
     @Transactional(readOnly = true)
     public List<UnitResponse> listUnits(UUID propertyId, UUID userId) {
         access.readable(propertyId, userId);
         return units.findByPropertyIdOrderByUnitNumberAsc(propertyId).stream()
-                .map(unit -> UnitResponse.of(unit, beds.countByUnitId(unit.getId()),
-                        beds.countByUnitIdAndStatus(unit.getId(), BedStatus.MAINTENANCE)))
+                .map(this::unitResponse)
                 .toList();
     }
 
@@ -176,15 +210,13 @@ public class PropertyService {
         // landlord has to remember.
         int created = mode == RentalMode.BEDSPACE ? fillBedsTo(unit.getId(), capacity) : 0;
 
-        // Freshly created beds are all vacant.
-        return UnitResponse.of(unit, created, 0);
+        return unitResponse(unit);
     }
 
     @Transactional(readOnly = true)
     public UnitResponse getUnit(UUID unitId, UUID userId) {
         Unit unit = requireReadableUnit(unitId, userId);
-        return UnitResponse.of(unit, beds.countByUnitId(unitId),
-                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
+        return unitResponse(unit);
     }
 
     @Transactional
@@ -209,14 +241,13 @@ public class PropertyService {
         // Beds follow capacity rather than constraining it: the landlord sets
         // how many beds the room has, and the beds themselves are reconciled to
         // match. Lowering capacity therefore removes beds.
-        long bedCount = unit.isBedspace()
-                ? reconcileBeds(unitId, capacity)
-                : beds.countByUnitId(unitId);
+        if (unit.isBedspace()) {
+            reconcileBeds(unitId, capacity);
+        }
 
         unit.update(unitNumber, trimToNull(request.floor()), request.sizeSqm(),
                 capacity, request.rent());
-        return UnitResponse.of(units.save(unit), bedCount,
-                beds.countByUnitIdAndStatus(unitId, BedStatus.MAINTENANCE));
+        return unitResponse(units.save(unit));
     }
 
     @Transactional
@@ -262,7 +293,9 @@ public class PropertyService {
                     "A bed with that label already exists in this unit.");
         }
 
-        Bed created = beds.save(new Bed(unitId, label));
+        Bed bed = new Bed(unitId, label);
+        bed.update(label, request.rent());
+        Bed created = beds.save(bed);
 
         // Capacity is the bed count, so adding a bed raises it rather than being
         // refused for exceeding it. Without this the two could disagree, and
@@ -296,7 +329,10 @@ public class PropertyService {
                     "A bed with that label already exists in this unit.");
         }
 
-        bed.rename(label);
+        // Label and rent are the two things a landlord edits about a bed, so
+        // they move together: a PUT carries the whole bed, and omitting the
+        // rent means it is let at the unit's rate again.
+        bed.update(label, request.rent());
         return BedResponse.of(beds.save(bed));
     }
 

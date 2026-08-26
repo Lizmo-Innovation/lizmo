@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -35,6 +36,14 @@ public class Bed {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BedStatus status = BedStatus.VACANT;
+
+    /**
+     * What this bed asks, when it differs from its unit's rent.
+     *
+     * <p>Null means "whatever the unit asks" — never free. Reading it in
+     * isolation is a mistake; the unit's rent is the fallback.
+     */
+    private BigDecimal rent;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -69,6 +78,12 @@ public class Bed {
         this.bedLabel = bedLabel;
     }
 
+    /** Both details a landlord can edit, applied together. */
+    public void update(String bedLabel, BigDecimal rent) {
+        this.bedLabel = bedLabel;
+        this.rent = rent;
+    }
+
     /**
      * Takes the bed in or out of service.
      *
@@ -101,6 +116,10 @@ public class Bed {
 
     public BedStatus getStatus() {
         return status;
+    }
+
+    public BigDecimal getRent() {
+        return rent;
     }
 
     public Instant getCreatedAt() {

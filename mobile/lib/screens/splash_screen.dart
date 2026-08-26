@@ -17,7 +17,7 @@ class SplashScreen extends ConsumerWidget {
 
   /// What Lizmo is for, in one line. Bedspaces are the part other rental apps
   /// leave out, so the wording names beds explicitly.
-  static const tagline = 'Every unit and bed, accounted for.';
+  static const tagline = 'Every unit and bed, accounted for.'; //Lease mo, zero-hassle!
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

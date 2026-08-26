@@ -995,4 +995,244 @@ class PropertyIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bedCount").value(1));
     }
+
+    // ---------- Per-bed rent ----------
+
+    @Test
+    void a_bed_starts_on_the_units_rate() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        String body = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"BEDSPACE","capacity":2,"rent":2500.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String unitId = json.readTree(body).get("id").asText();
+
+        // Null, not zero: the beds are let at whatever the unit asks, and a
+        // figure here would be a claim the landlord never made.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rent").doesNotExist())
+                .andExpect(jsonPath("$[1].rent").doesNotExist());
+    }
+
+    @Test
+    void one_bed_can_be_priced_differently_from_the_rest() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1 lower bunk","rent":2000.00}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rent").value(2000.00))
+                .andExpect(jsonPath("$.bedLabel").value("Bed 1 lower bunk"));
+
+        // Its neighbours are untouched.
+        mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[1].rent").doesNotExist())
+                .andExpect(jsonPath("$[2].rent").doesNotExist());
+    }
+
+    @Test
+    void omitting_the_rent_returns_a_bed_to_the_units_rate() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1","rent":2000.00}
+                                """))
+                .andExpect(status().isOk());
+
+        // A PUT carries the whole bed, so leaving the rent out clears it. That
+        // is how a landlord undoes a per-bed price.
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rent").doesNotExist());
+    }
+
+    @Test
+    void a_bed_cannot_be_priced_at_zero() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String bedId = firstBedId(unitId);
+
+        // Zero would read as free rather than unset, which is what null means.
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1","rent":0}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void a_bed_added_by_hand_can_carry_its_own_rent() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 1);
+
+        mvc.perform(post("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Upper bunk","rent":1800.50}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rent").value(1800.50));
+    }
+
+    @Test
+    void a_bed_keeps_its_rent_through_maintenance() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1","rent":2000.00}
+                                """))
+                .andExpect(status().isOk());
+
+        // Out of service is a state, not an edit. The price survives it, or
+        // taking a bed out for repairs would quietly reprice it on return.
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rent").value(2000.00));
+    }
+
+    // ---------- What a unit can bring in ----------
+
+    private String createBedspaceWithRent(String propertyId, String number, int beds, String rent)
+            throws Exception {
+        String body = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"%s","rentalMode":"BEDSPACE","capacity":%d,"rent":%s}
+                                """.formatted(number, beds, rent)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("id").asText();
+    }
+
+    @Test
+    void a_bedspace_totals_what_all_its_beds_would_bring_in() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 4, "2500.00");
+
+        // Four beds at the unit's rate.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(10000.00));
+    }
+
+    @Test
+    void a_whole_unit_reports_its_own_rent() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        String body = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","rentalMode":"WHOLE_UNIT","rent":7000.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String unitId = json.readTree(body).get("id").asText();
+
+        // One tenancy, so there is nothing to sum.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(7000.00));
+    }
+
+    @Test
+    void a_bed_priced_on_its_own_changes_the_total() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 3, "2500.00");
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1","rent":2000.00}
+                                """))
+                .andExpect(status().isOk());
+
+        // 2000 + 2500 + 2500.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(7000.00));
+    }
+
+    @Test
+    void a_bed_out_of_service_is_left_out_of_the_total() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 4, "2500.00");
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk());
+
+        // It cannot be let, so counting it would overstate what the unit earns.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(7500.00));
+    }
+
+    @Test
+    void a_unit_with_no_rent_set_totals_nothing_rather_than_zero() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 3);
+
+        // Null, not 0: the landlord has not said what these beds cost, and 0
+        // would claim they are free.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").doesNotExist());
+    }
+
+    @Test
+    void the_total_appears_in_the_unit_list_too() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        createBedspaceWithRent(propertyId, "2B", 2, "2500.00");
+
+        // The property screen reads the list, not the single-unit response.
+        mvc.perform(get("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].potentialMonthlyRent").value(5000.00));
+    }
 }

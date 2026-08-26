@@ -51,6 +51,14 @@ class PropertyDetailScreen extends ConsumerWidget {
                 value: units.valueOrNull?.length.toString() ?? '—',
                 label: 'Units',
               ),
+              LatticeHeaderStat(
+                // The one figure a landlord opens this screen to see: what the
+                // property brings in with everything let. Summed here rather
+                // than fetched — every unit on this screen already carries its
+                // own total.
+                value: _portfolioRent(units.valueOrNull),
+                label: 'Per month',
+              ),
               if (!isCommercial)
                 LatticeHeaderStat(
                   // Rentable beds, not every bed: one out of service is still
@@ -98,6 +106,27 @@ class PropertyDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// What the whole property brings in per month with everything let.
+  ///
+  /// Units with no rent set contribute nothing rather than zero — the same
+  /// distinction the unit cards make. If none of them has a rent, the total is
+  /// unknown rather than free, and reads as a dash.
+  static String _portfolioRent(List<UnitResponse>? units) {
+    if (units == null) return '—';
+
+    num? total;
+    for (final unit in units) {
+      final rent = unit.potentialMonthlyRent;
+      if (rent == null) continue;
+      total = (total ?? 0) + rent;
+    }
+
+    if (total == null) return '—';
+    final asDouble = total.toDouble();
+    final whole = asDouble == asDouble.roundToDouble();
+    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
   }
 }
 
@@ -212,7 +241,11 @@ class _UnitCard extends StatelessWidget {
                   Text(_rentLabel(), style: LizmoType.dataMedium),
                   const SizedBox(height: 2),
                   Text(
-                    _isBedspace ? 'per bed' : 'per month',
+                    // Both figures are monthly. A bedspace used to show its
+                    // per-bed rate, which was not comparable with the whole
+                    // unit beside it — one was a room's income, the other a
+                    // single bed's.
+                    _isBedspace ? 'per month, all beds' : 'per month',
                     style: LizmoType.rowSub,
                   ),
                 ],
@@ -252,9 +285,12 @@ class _UnitCard extends StatelessWidget {
     );
   }
 
+  /// What the unit brings in per month with everything let: its own rent for a
+  /// whole unit, the sum of its beds for a bedspace.
+  ///
   /// "Not set" rather than ₱0, which would claim the unit is free.
   String _rentLabel() {
-    final rent = unit.rent;
+    final rent = unit.potentialMonthlyRent;
     if (rent == null) return '—';
     final asDouble = rent.toDouble();
     final whole = asDouble == asDouble.roundToDouble();

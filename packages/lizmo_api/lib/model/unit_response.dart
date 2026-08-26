@@ -24,6 +24,7 @@ class UnitResponse {
     this.bedCount,
     this.bedsUnderMaintenance,
     this.rent,
+    this.potentialMonthlyRent,
   });
 
   ///
@@ -102,6 +103,14 @@ class UnitResponse {
   ///
   num? rent;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? potentialMonthlyRent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitResponse &&
     other.id == id &&
@@ -114,7 +123,8 @@ class UnitResponse {
     other.status == status &&
     other.bedCount == bedCount &&
     other.bedsUnderMaintenance == bedsUnderMaintenance &&
-    other.rent == rent;
+    other.rent == rent &&
+    other.potentialMonthlyRent == potentialMonthlyRent;
 
   @override
   int get hashCode =>
@@ -129,10 +139,11 @@ class UnitResponse {
     (status == null ? 0 : status!.hashCode) +
     (bedCount == null ? 0 : bedCount!.hashCode) +
     (bedsUnderMaintenance == null ? 0 : bedsUnderMaintenance!.hashCode) +
-    (rent == null ? 0 : rent!.hashCode);
+    (rent == null ? 0 : rent!.hashCode) +
+    (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode);
 
   @override
-  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent]';
+  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -191,6 +202,11 @@ class UnitResponse {
     } else {
       json[r'rent'] = null;
     }
+    if (this.potentialMonthlyRent != null) {
+      json[r'potentialMonthlyRent'] = this.potentialMonthlyRent;
+    } else {
+      json[r'potentialMonthlyRent'] = null;
+    }
     return json;
   }
 
@@ -224,6 +240,9 @@ class UnitResponse {
         rent: json[r'rent'] == null
             ? null
             : num.parse('${json[r'rent']}'),
+        potentialMonthlyRent: json[r'potentialMonthlyRent'] == null
+            ? null
+            : num.parse('${json[r'potentialMonthlyRent']}'),
       );
     }
     return null;
