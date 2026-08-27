@@ -215,21 +215,23 @@ class _FakeBedsApi extends UnitsApi {
     UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
   ];
 
+  UtilitiesResponseBillingEnum billing = UtilitiesResponseBillingEnum.COMBINED;
+
   UtilitiesRequest? lastUtilities;
 
   @override
-  Future<List<UtilityResponse>?> listUtilities(String id,
+  Future<UtilitiesResponse?> listUtilities(String id,
           {Future<void>? abortTrigger}) async =>
-      List.of(utilities);
+      UtilitiesResponse(billing: billing, utilities: List.of(utilities));
 
   @override
-  Future<List<UtilityResponse>?> setUtilities(
+  Future<UtilitiesResponse?> setUtilities(
     String id,
     UtilitiesRequest utilitiesRequest, {
     Future<void>? abortTrigger,
   }) async {
     lastUtilities = utilitiesRequest;
-    return List.of(utilities);
+    return UtilitiesResponse(billing: billing, utilities: List.of(utilities));
   }
   UnitResponse? unitOverride;
 
@@ -2575,10 +2577,13 @@ void main() {
         );
 
     Future<_FakeBedsApi> openUnit(WidgetTester tester,
-        {num? monthlyUtilities, List<UtilityResponse>? utilities}) async {
+        {num? monthlyUtilities,
+        List<UtilityResponse>? utilities,
+        UtilitiesResponseBillingEnum? billing}) async {
       final u = unit(monthlyUtilities: monthlyUtilities);
       final api = _FakeBedsApi(u, []);
       if (utilities != null) api.utilities = utilities;
+      if (billing != null) api.billing = billing;
 
       await tester.pumpWidget(ProviderScope(
         overrides: [
@@ -2739,6 +2744,136 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('₱2000'), findsOneWidget);
+    });
+  });
+
+  group('how utilities are billed', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+        );
+
+    UnitResponse unit() => UnitResponse(
+          id: 'u1',
+          propertyId: 'p1',
+          unitNumber: '2B',
+          rentalMode: UnitResponseRentalModeEnum.BEDSPACE,
+          capacity: 2,
+          bedCount: 2,
+          bedsUnderMaintenance: 0,
+          rent: 2500,
+          potentialMonthlyRent: 5000,
+          monthlyUtilities: 500,
+          status: UnitResponseStatusEnum.VACANT,
+        );
+
+    Future<_FakeBedsApi> openUtilities(WidgetTester tester,
+        {UtilitiesResponseBillingEnum? billing}) async {
+      final u = unit();
+      final api = _FakeBedsApi(u, []);
+      api.utilities = [
+        UtilityResponse(
+            kind: UtilityResponseKindEnum.WIFI, enabled: true, amount: 500),
+        UtilityResponse(kind: UtilityResponseKindEnum.ELECTRICITY, enabled: false),
+        UtilityResponse(kind: UtilityResponseKindEnum.WATER, enabled: false),
+      ];
+      if (billing != null) api.billing = billing;
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          unitsProvider('p1').overrideWith((ref) async => [u]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 2B'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Utilities'));
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('both ways of billing are offered', (tester) async {
+      await openUtilities(tester);
+
+      expect(find.text('How is it billed?'), findsOneWidget);
+      expect(find.text('Added to the rent'), findsOneWidget);
+      expect(find.text('Billed separately'), findsOneWidget);
+    });
+
+    testWidgets('it opens on whatever the unit already does', (tester) async {
+      await openUtilities(tester, billing: UtilitiesResponseBillingEnum.SEPARATE);
+
+      // Seeded from the API, not defaulted, or saving would silently switch a
+      // unit back to combined.
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('choosing separate is sent on save', (tester) async {
+      final api = await openUtilities(tester);
+
+      // The form is long enough that the choice sits below the fold.
+      await tester.ensureVisible(find.text('Billed separately'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Billed separately'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUtilities!.billing, UtilitiesRequestBillingEnum.SEPARATE);
+    });
+
+    testWidgets('a unit already billing separately keeps doing so',
+        (tester) async {
+      final api =
+          await openUtilities(tester, billing: UtilitiesResponseBillingEnum.SEPARATE);
+
+      // Saving without touching the choice must not quietly reset it.
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastUtilities!.billing, UtilitiesRequestBillingEnum.SEPARATE);
+    });
+
+    testWidgets('the choice does not change the amounts', (tester) async {
+      final api = await openUtilities(tester);
+
+      expect(find.text('₱500'), findsOneWidget);
+
+      // The form is long enough that the choice sits below the fold.
+      await tester.ensureVisible(find.text('Billed separately'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Billed separately'));
+      await tester.pumpAndSettle();
+
+      // Presentation, not arithmetic.
+      expect(find.text('₱500'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save utilities'));
+      await tester.pumpAndSettle();
+
+      final wifi = api.lastUtilities!.utilities
+          .firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
+      expect(wifi.amount, 500);
     });
   });
 

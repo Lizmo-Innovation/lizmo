@@ -98,6 +98,7 @@ Class | Method | HTTP request | Description
  - [UnitRequest](doc//UnitRequest.md)
  - [UnitResponse](doc//UnitResponse.md)
  - [UtilitiesRequest](doc//UtilitiesRequest.md)
+ - [UtilitiesResponse](doc//UtilitiesResponse.md)
  - [UtilityRequest](doc//UtilityRequest.md)
  - [UtilityResponse](doc//UtilityResponse.md)
 

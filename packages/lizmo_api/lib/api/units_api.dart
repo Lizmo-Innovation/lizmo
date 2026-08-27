@@ -332,7 +332,7 @@ class UnitsApi {
   /// Parameters:
   ///
   /// * [String] id (required):
-  Future<List<UtilityResponse>?> listUtilities(String id, { Future<void>? abortTrigger, }) async {
+  Future<UtilitiesResponse?> listUtilities(String id, { Future<void>? abortTrigger, }) async {
     final response = await listUtilitiesWithHttpInfo(id, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
@@ -341,11 +341,8 @@ class UnitsApi {
     // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
-      final responseBody = await _decodeBodyBytes(response);
-      return (await apiClient.deserializeAsync(responseBody, 'List<UtilityResponse>') as List)
-        .cast<UtilityResponse>()
-        .toList(growable: false);
-
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UtilitiesResponse',) as UtilitiesResponse;
+    
     }
     return null;
   }
@@ -521,7 +518,7 @@ class UnitsApi {
   /// * [String] id (required):
   ///
   /// * [UtilitiesRequest] utilitiesRequest (required):
-  Future<List<UtilityResponse>?> setUtilities(String id, UtilitiesRequest utilitiesRequest, { Future<void>? abortTrigger, }) async {
+  Future<UtilitiesResponse?> setUtilities(String id, UtilitiesRequest utilitiesRequest, { Future<void>? abortTrigger, }) async {
     final response = await setUtilitiesWithHttpInfo(id, utilitiesRequest, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
@@ -530,11 +527,8 @@ class UnitsApi {
     // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
-      final responseBody = await _decodeBodyBytes(response);
-      return (await apiClient.deserializeAsync(responseBody, 'List<UtilityResponse>') as List)
-        .cast<UtilityResponse>()
-        .toList(growable: false);
-
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UtilitiesResponse',) as UtilitiesResponse;
+    
     }
     return null;
   }

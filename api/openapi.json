@@ -147,10 +147,7 @@
                         "content": {
                             "*/*": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/UtilityResponse"
-                                    }
+                                    "$ref": "#/components/schemas/UtilitiesResponse"
                                 }
                             }
                         }
@@ -191,10 +188,7 @@
                         "content": {
                             "*/*": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/UtilityResponse"
-                                    }
+                                    "$ref": "#/components/schemas/UtilitiesResponse"
                                 }
                             }
                         }
@@ -997,6 +991,13 @@
                     },
                     "monthlyUtilities": {
                         "type": "number"
+                    },
+                    "utilityBilling": {
+                        "type": "string",
+                        "enum": [
+                            "COMBINED",
+                            "SEPARATE"
+                        ]
                     }
                 },
                 "description": "A unit within a property"
@@ -1007,6 +1008,14 @@
                 ],
                 "type": "object",
                 "properties": {
+                    "billing": {
+                        "type": "string",
+                        "example": "COMBINED",
+                        "enum": [
+                            "COMBINED",
+                            "SEPARATE"
+                        ]
+                    },
                     "utilities": {
                         "type": "array",
                         "items": {
@@ -1045,26 +1054,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "UtilityResponse": {
-                "type": "object",
-                "properties": {
-                    "kind": {
-                        "type": "string",
-                        "enum": [
-                            "WIFI",
-                            "ELECTRICITY",
-                            "WATER"
-                        ]
-                    },
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "amount": {
-                        "type": "number"
-                    }
-                },
-                "description": "A utility's fixed monthly charge on a unit"
-            },
             "ApiError": {
                 "type": "object",
                 "properties": {
@@ -1088,6 +1077,45 @@
                     }
                 },
                 "description": "Standard error response"
+            },
+            "UtilitiesResponse": {
+                "type": "object",
+                "properties": {
+                    "billing": {
+                        "type": "string",
+                        "enum": [
+                            "COMBINED",
+                            "SEPARATE"
+                        ]
+                    },
+                    "utilities": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UtilityResponse"
+                        }
+                    }
+                },
+                "description": "A unit's utility settings"
+            },
+            "UtilityResponse": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "WIFI",
+                            "ELECTRICITY",
+                            "WATER"
+                        ]
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "amount": {
+                        "type": "number"
+                    }
+                },
+                "description": "A utility's fixed monthly charge on a unit"
             },
             "MaintenanceRequest": {
                 "required": [

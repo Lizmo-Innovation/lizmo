@@ -64,6 +64,16 @@ public class Unit {
     @Column(nullable = false)
     private UnitStatus status = UnitStatus.VACANT;
 
+    /**
+     * How this unit's utility charges reach the tenant.
+     *
+     * <p>Kept on the unit rather than on each utility: a landlord decides how
+     * they bill, not how they bill the water as against the WiFi.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "utility_billing", nullable = false)
+    private UtilityBilling utilityBilling = UtilityBilling.COMBINED;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -115,8 +125,16 @@ public class Unit {
         this.rent = rent;
     }
 
+    public void billUtilities(UtilityBilling billing) {
+        this.utilityBilling = billing;
+    }
+
     public void markMaintenance(boolean underMaintenance) {
         this.status = underMaintenance ? UnitStatus.MAINTENANCE : UnitStatus.VACANT;
+    }
+
+    public UtilityBilling getUtilityBilling() {
+        return utilityBilling;
     }
 
     public boolean isBedspace() {

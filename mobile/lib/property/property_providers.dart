@@ -83,12 +83,16 @@ final bedsProvider =
   }
 });
 
-/// A unit's fixed monthly utilities. Always three entries, including ones the
-/// landlord has never set up.
+/// A unit's utility settings: how they are billed, and every kind's amount —
+/// including kinds the landlord has never set up.
 final utilitiesProvider =
-    FutureProvider.autoDispose.family<List<UtilityResponse>, String>((ref, unitId) async {
+    FutureProvider.autoDispose.family<UtilitiesResponse, String>((ref, unitId) async {
   try {
-    return await ref.watch(unitsApiProvider).listUtilities(unitId) ?? const [];
+    final response = await ref.watch(unitsApiProvider).listUtilities(unitId);
+    if (response == null) {
+      throw const ApiFailure(code: 'NOT_FOUND', message: 'No such unit.');
+    }
+    return response;
   } catch (error) {
     throw ApiFailure.from(error);
   }

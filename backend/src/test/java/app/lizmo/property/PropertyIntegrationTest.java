@@ -1365,10 +1365,12 @@ class PropertyIntegrationTest {
         mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].kind").value("WIFI"))
-                .andExpect(jsonPath("$[0].enabled").value(false))
-                .andExpect(jsonPath("$[0].amount").doesNotExist());
+                .andExpect(jsonPath("$.utilities.length()").value(3))
+                .andExpect(jsonPath("$.utilities[0].kind").value("WIFI"))
+                .andExpect(jsonPath("$.utilities[0].enabled").value(false))
+                .andExpect(jsonPath("$.utilities[0].amount").doesNotExist())
+                // Combined until a landlord says otherwise.
+                .andExpect(jsonPath("$.billing").value("COMBINED"));
     }
 
     @Test
@@ -1383,14 +1385,14 @@ class PropertyIntegrationTest {
 
         mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
                         .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(jsonPath("$[0].kind").value("WIFI"))
-                .andExpect(jsonPath("$[0].enabled").value(true))
-                .andExpect(jsonPath("$[0].amount").value(500.00))
+                .andExpect(jsonPath("$.utilities[0].kind").value("WIFI"))
+                .andExpect(jsonPath("$.utilities[0].enabled").value(true))
+                .andExpect(jsonPath("$.utilities[0].amount").value(500.00))
                 // Electricity was never mentioned, so it stays untouched.
-                .andExpect(jsonPath("$[1].kind").value("ELECTRICITY"))
-                .andExpect(jsonPath("$[1].enabled").value(false))
-                .andExpect(jsonPath("$[2].kind").value("WATER"))
-                .andExpect(jsonPath("$[2].enabled").value(true));
+                .andExpect(jsonPath("$.utilities[1].kind").value("ELECTRICITY"))
+                .andExpect(jsonPath("$.utilities[1].enabled").value(false))
+                .andExpect(jsonPath("$.utilities[2].kind").value("WATER"))
+                .andExpect(jsonPath("$.utilities[2].enabled").value(true));
     }
 
     @Test
@@ -1427,8 +1429,8 @@ class PropertyIntegrationTest {
 
         mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
                         .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(jsonPath("$[0].enabled").value(false))
-                .andExpect(jsonPath("$[0].amount").value(500.00));
+                .andExpect(jsonPath("$.utilities[0].enabled").value(false))
+                .andExpect(jsonPath("$.utilities[0].amount").value(500.00));
 
         mvc.perform(get("/api/v1/units/" + unitId)
                         .header("Authorization", "Bearer " + landlordToken))
@@ -1526,5 +1528,137 @@ class PropertyIntegrationTest {
         mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isNotFound());
+    }
+
+    // ---------- How utilities are billed ----------
+
+    @Test
+    void utilities_are_combined_with_rent_until_told_otherwise() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        // The simpler of the two for everyone, and what every unit created
+        // before the choice existed was implicitly doing.
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.utilityBilling").value("COMBINED"));
+    }
+
+    @Test
+    void utilities_can_be_billed_separately() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                {"billing":"SEPARATE",
+                 "utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.billing").value("SEPARATE"));
+
+        mvc.perform(get("/api/v1/units/" + unitId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.utilityBilling").value("SEPARATE"))
+                // The choice is about presentation, not arithmetic: the amount
+                // is the same either way.
+                .andExpect(jsonPath("$.monthlyUtilities").value(500.00));
+    }
+
+    @Test
+    void changing_an_amount_leaves_the_billing_choice_alone() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                {"billing":"SEPARATE",
+                 "utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                """);
+
+        // No billing sent: a client changing an amount should not have to
+        // restate how it is billed.
+        setUtilities(unitId, """
+                {"utilities":[{"kind":"WIFI","enabled":true,"amount":600.00}]}
+                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.billing").value("SEPARATE"))
+                .andExpect(jsonPath("$.utilities[0].amount").value(600.00));
+    }
+
+    @Test
+    void the_billing_choice_can_be_changed_back() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        setUtilities(unitId, """
+                {"billing":"SEPARATE",
+                 "utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                """);
+        setUtilities(unitId, """
+                {"billing":"COMBINED",
+                 "utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                """);
+
+        mvc.perform(get("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.billing").value("COMBINED"));
+    }
+
+    @Test
+    void the_billing_choice_is_per_unit() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String separate = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+        String combined = createUnit(landlordToken, propertyId, "1A", "WHOLE_UNIT", 1);
+
+        setUtilities(separate, """
+                {"billing":"SEPARATE",
+                 "utilities":[{"kind":"WIFI","enabled":true,"amount":500.00}]}
+                """);
+
+        // One unit's choice does not reach its neighbours: a landlord may bill
+        // the bedspacers separately and fold it into the family's rent.
+        mvc.perform(get("/api/v1/units/" + combined)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.utilityBilling").value("COMBINED"));
+    }
+
+    @Test
+    void an_unknown_billing_choice_is_refused() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createUnit(landlordToken, propertyId, "2B", "BEDSPACE", 2);
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"billing":"QUARTERLY",
+                                 "utilities":[{"kind":"WIFI","enabled":false}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                // Naming the accepted values is the difference between a usable
+                // error and a shrug.
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("COMBINED, SEPARATE")));
+    }
+
+    @Test
+    void an_unknown_enum_anywhere_is_a_400_not_a_500() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        // Jackson fails before bean validation runs, so without a handler for
+        // an unreadable body every typo in an enum became a 500.
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"2B","rentalMode":"HOTEL","capacity":2}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("WHOLE_UNIT")));
     }
 }

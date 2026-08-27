@@ -13,25 +13,35 @@ part of openapi.api;
 class UtilitiesRequest {
   /// Returns a new [UtilitiesRequest] instance.
   UtilitiesRequest({
+    this.billing,
     this.utilities = const [],
   });
+
+  UtilitiesRequestBillingEnum? billing;
 
   List<UtilityRequest> utilities;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is UtilitiesRequest &&
+    other.billing == billing &&
     _deepEquality.equals(other.utilities, utilities);
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
+    (billing == null ? 0 : billing!.hashCode) +
     (utilities.hashCode);
 
   @override
-  String toString() => 'UtilitiesRequest[utilities=$utilities]';
+  String toString() => 'UtilitiesRequest[billing=$billing, utilities=$utilities]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.billing != null) {
+      json[r'billing'] = this.billing;
+    } else {
+      json[r'billing'] = null;
+    }
       json[r'utilities'] = this.utilities;
     return json;
   }
@@ -53,6 +63,7 @@ class UtilitiesRequest {
       }());
 
       return UtilitiesRequest(
+        billing: UtilitiesRequestBillingEnum.fromJson(json[r'billing']),
         utilities: UtilityRequest.listFromJson(json[r'utilities']),
       );
     }
@@ -104,4 +115,82 @@ class UtilitiesRequest {
     'utilities',
   };
 }
+
+
+enum UtilitiesRequestBillingEnum {
+  COMBINED._(r'COMBINED'),
+  SEPARATE._(r'SEPARATE'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const UtilitiesRequestBillingEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [UtilitiesRequestBillingEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static UtilitiesRequestBillingEnum? fromJson(dynamic value) => UtilitiesRequestBillingEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [UtilitiesRequestBillingEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<UtilitiesRequestBillingEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <UtilitiesRequestBillingEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = UtilitiesRequestBillingEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [UtilitiesRequestBillingEnum] to String,
+/// and [decode] dynamic data back to [UtilitiesRequestBillingEnum].
+class UtilitiesRequestBillingEnumTypeTransformer {
+  factory UtilitiesRequestBillingEnumTypeTransformer() => _instance ??= const UtilitiesRequestBillingEnumTypeTransformer._();
+
+  const UtilitiesRequestBillingEnumTypeTransformer._();
+
+  String encode(UtilitiesRequestBillingEnum data) => data._value;
+
+  /// Returns the instance of [UtilitiesRequestBillingEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  UtilitiesRequestBillingEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is UtilitiesRequestBillingEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'COMBINED': return UtilitiesRequestBillingEnum.COMBINED;
+        case r'SEPARATE': return UtilitiesRequestBillingEnum.SEPARATE;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static UtilitiesRequestBillingEnumTypeTransformer? _instance;
+}
+
 

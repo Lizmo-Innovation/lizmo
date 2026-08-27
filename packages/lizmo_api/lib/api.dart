@@ -45,6 +45,7 @@ part 'model/register_request.dart';
 part 'model/unit_request.dart';
 part 'model/unit_response.dart';
 part 'model/utilities_request.dart';
+part 'model/utilities_response.dart';
 part 'model/utility_request.dart';
 part 'model/utility_response.dart';
 
