@@ -39,6 +39,10 @@ class _UnitUtilitiesScreenState extends ConsumerState<UnitUtilitiesScreen> {
   final Map<UtilityResponseKindEnum, bool> _enabled = {};
   final Map<UtilityResponseKindEnum, TextEditingController> _amounts = {};
 
+  /// How the charges reach the tenant. Not per utility: a landlord decides how
+  /// they bill, not how they bill the water as against the WiFi.
+  UtilitiesRequestBillingEnum _billing = UtilitiesRequestBillingEnum.COMBINED;
+
   bool _seeded = false;
   bool _saving = false;
   String? _error;
@@ -51,8 +55,9 @@ class _UnitUtilitiesScreenState extends ConsumerState<UnitUtilitiesScreen> {
     super.dispose();
   }
 
-  void _seed(List<UtilityResponse> utilities) {
-    for (final utility in utilities) {
+  void _seed(UtilitiesResponse settings) {
+    _billing = UtilitiesRequestBillingEnum.fromJson(settings.billing?.toJson()) ?? _billing;
+    for (final utility in settings.utilities) {
       final kind = utility.kind;
       if (kind == null) continue;
       _enabled[kind] = utility.enabled ?? false;
@@ -73,6 +78,7 @@ class _UnitUtilitiesScreenState extends ConsumerState<UnitUtilitiesScreen> {
       await ref.read(unitsApiProvider).setUtilities(
             widget.unitId,
             UtilitiesRequest(
+              billing: _billing,
               utilities: [
                 for (final entry in _enabled.entries)
                   UtilityRequest(
@@ -155,6 +161,14 @@ class _UnitUtilitiesScreenState extends ConsumerState<UnitUtilitiesScreen> {
 
                 const SizedBox(height: 4),
                 _Total(enabled: _enabled, amounts: _amounts),
+
+                const SizedBox(height: 22),
+                _Label('How is it billed?'),
+                const SizedBox(height: 8),
+                _BillingPicker(
+                  value: _billing,
+                  onChanged: (next) => setState(() => _billing = next),
+                ),
 
                 if (_error != null) ...[
                   const SizedBox(height: 18),
@@ -364,6 +378,109 @@ class _LoadFailed extends StatelessWidget {
           detail: failure.message,
           actionLabel: 'Go back',
           onAction: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: LizmoType.rowName.copyWith(fontSize: 13));
+}
+
+/// Combined with rent, or a charge of its own.
+///
+/// Presentation, not arithmetic: the amounts above are the same either way.
+/// What changes is whether the tenant sees one figure or two, and whether they
+/// can settle them apart.
+class _BillingPicker extends StatelessWidget {
+  const _BillingPicker({required this.value, required this.onChanged});
+
+  final UtilitiesRequestBillingEnum value;
+  final ValueChanged<UtilitiesRequestBillingEnum> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _Option(
+          label: 'Added to the rent',
+          detail: 'One amount on one billing period. Simplest to collect.',
+          selected: value == UtilitiesRequestBillingEnum.COMBINED,
+          onTap: () => onChanged(UtilitiesRequestBillingEnum.COMBINED),
+        ),
+        const SizedBox(height: 8),
+        _Option(
+          label: 'Billed separately',
+          detail: 'Its own charge, so rent and utilities can be paid apart.',
+          selected: value == UtilitiesRequestBillingEnum.SEPARATE,
+          onTap: () => onChanged(UtilitiesRequestBillingEnum.SEPARATE),
+        ),
+      ],
+    );
+  }
+}
+
+class _Option extends StatelessWidget {
+  const _Option({
+    required this.label,
+    required this.detail,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String detail;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? LizmoColors.tealBg : LizmoColors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? LizmoColors.teal900 : const Color(0xFFE3E8E6),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 18,
+                color: selected ? LizmoColors.teal900 : LizmoColors.slate,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: LizmoType.rowName.copyWith(
+                        color: selected ? LizmoColors.teal900 : LizmoColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(detail, style: LizmoType.rowSub),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

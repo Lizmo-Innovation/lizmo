@@ -26,6 +26,7 @@ class UnitResponse {
     this.rent,
     this.potentialMonthlyRent,
     this.monthlyUtilities,
+    this.utilityBilling,
   });
 
   ///
@@ -120,6 +121,8 @@ class UnitResponse {
   ///
   num? monthlyUtilities;
 
+  UnitResponseUtilityBillingEnum? utilityBilling;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitResponse &&
     other.id == id &&
@@ -134,7 +137,8 @@ class UnitResponse {
     other.bedsUnderMaintenance == bedsUnderMaintenance &&
     other.rent == rent &&
     other.potentialMonthlyRent == potentialMonthlyRent &&
-    other.monthlyUtilities == monthlyUtilities;
+    other.monthlyUtilities == monthlyUtilities &&
+    other.utilityBilling == utilityBilling;
 
   @override
   int get hashCode =>
@@ -151,10 +155,11 @@ class UnitResponse {
     (bedsUnderMaintenance == null ? 0 : bedsUnderMaintenance!.hashCode) +
     (rent == null ? 0 : rent!.hashCode) +
     (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode) +
-    (monthlyUtilities == null ? 0 : monthlyUtilities!.hashCode);
+    (monthlyUtilities == null ? 0 : monthlyUtilities!.hashCode) +
+    (utilityBilling == null ? 0 : utilityBilling!.hashCode);
 
   @override
-  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent, monthlyUtilities=$monthlyUtilities]';
+  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent, monthlyUtilities=$monthlyUtilities, utilityBilling=$utilityBilling]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -223,6 +228,11 @@ class UnitResponse {
     } else {
       json[r'monthlyUtilities'] = null;
     }
+    if (this.utilityBilling != null) {
+      json[r'utilityBilling'] = this.utilityBilling;
+    } else {
+      json[r'utilityBilling'] = null;
+    }
     return json;
   }
 
@@ -262,6 +272,7 @@ class UnitResponse {
         monthlyUtilities: json[r'monthlyUtilities'] == null
             ? null
             : num.parse('${json[r'monthlyUtilities']}'),
+        utilityBilling: UnitResponseUtilityBillingEnum.fromJson(json[r'utilityBilling']),
       );
     }
     return null;
@@ -469,6 +480,84 @@ class UnitResponseStatusEnumTypeTransformer {
 
   /// The singleton instance of this transformer.
   static UnitResponseStatusEnumTypeTransformer? _instance;
+}
+
+
+
+enum UnitResponseUtilityBillingEnum {
+  COMBINED._(r'COMBINED'),
+  SEPARATE._(r'SEPARATE'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const UnitResponseUtilityBillingEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [UnitResponseUtilityBillingEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static UnitResponseUtilityBillingEnum? fromJson(dynamic value) => UnitResponseUtilityBillingEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [UnitResponseUtilityBillingEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<UnitResponseUtilityBillingEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <UnitResponseUtilityBillingEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = UnitResponseUtilityBillingEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [UnitResponseUtilityBillingEnum] to String,
+/// and [decode] dynamic data back to [UnitResponseUtilityBillingEnum].
+class UnitResponseUtilityBillingEnumTypeTransformer {
+  factory UnitResponseUtilityBillingEnumTypeTransformer() => _instance ??= const UnitResponseUtilityBillingEnumTypeTransformer._();
+
+  const UnitResponseUtilityBillingEnumTypeTransformer._();
+
+  String encode(UnitResponseUtilityBillingEnum data) => data._value;
+
+  /// Returns the instance of [UnitResponseUtilityBillingEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  UnitResponseUtilityBillingEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is UnitResponseUtilityBillingEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'COMBINED': return UnitResponseUtilityBillingEnum.COMBINED;
+        case r'SEPARATE': return UnitResponseUtilityBillingEnum.SEPARATE;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static UnitResponseUtilityBillingEnumTypeTransformer? _instance;
 }
 
 

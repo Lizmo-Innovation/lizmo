@@ -209,6 +209,8 @@ class ApiClient {
           return UnitResponse.fromJson(value);
         case 'UtilitiesRequest':
           return UtilitiesRequest.fromJson(value);
+        case 'UtilitiesResponse':
+          return UtilitiesResponse.fromJson(value);
         case 'UtilityRequest':
           return UtilityRequest.fromJson(value);
         case 'UtilityResponse':

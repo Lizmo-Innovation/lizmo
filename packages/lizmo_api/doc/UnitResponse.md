@@ -21,6 +21,7 @@ Name | Type | Description | Notes
 **rent** | **num** |  | [optional] 
 **potentialMonthlyRent** | **num** |  | [optional] 
 **monthlyUtilities** | **num** |  | [optional] 
+**utilityBilling** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

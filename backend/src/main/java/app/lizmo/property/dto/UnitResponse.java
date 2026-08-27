@@ -3,6 +3,7 @@ package app.lizmo.property.dto;
 import app.lizmo.property.RentalMode;
 import app.lizmo.property.Unit;
 import app.lizmo.property.UnitStatus;
+import app.lizmo.property.UtilityBilling;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -23,6 +24,8 @@ import java.util.UUID;
  *                 month. Null when none are on, which is not the same as a
  *                 charge of nothing. Kept apart from rent: they are
  *                 different lines on a bill and a landlord reads them apart.
+ * @param utilityBilling whether those charges are folded into the rent
+ *                 billing period or issued separately.
  */
 @Schema(description = "A unit within a property")
 public record UnitResponse(
@@ -38,7 +41,8 @@ public record UnitResponse(
         long bedsUnderMaintenance,
         BigDecimal rent,
         BigDecimal potentialMonthlyRent,
-        BigDecimal monthlyUtilities) {
+        BigDecimal monthlyUtilities,
+        UtilityBilling utilityBilling) {
 
     public static UnitResponse of(
             Unit unit,
@@ -59,6 +63,7 @@ public record UnitResponse(
                 bedsUnderMaintenance,
                 unit.getRent(),
                 potentialMonthlyRent,
-                monthlyUtilities);
+                monthlyUtilities,
+                unit.getUtilityBilling());
     }
 }

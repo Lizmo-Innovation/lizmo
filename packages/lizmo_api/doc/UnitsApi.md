@@ -234,7 +234,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **listUtilities**
-> List<UtilityResponse> listUtilities(id)
+> UtilitiesResponse listUtilities(id)
 
 A unit's fixed monthly utilities
 
@@ -263,7 +263,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<UtilityResponse>**](UtilityResponse.md)
+[**UtilitiesResponse**](UtilitiesResponse.md)
 
 ### Authorization
 
@@ -367,7 +367,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **setUtilities**
-> List<UtilityResponse> setUtilities(id, utilitiesRequest)
+> UtilitiesResponse setUtilities(id, utilitiesRequest)
 
 Set a unit's fixed monthly utilities
 
@@ -398,7 +398,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<UtilityResponse>**](UtilityResponse.md)
+[**UtilitiesResponse**](UtilitiesResponse.md)
 
 ### Authorization
 

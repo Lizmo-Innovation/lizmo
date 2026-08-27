@@ -9,6 +9,7 @@ import app.lizmo.property.dto.PropertyRequest;
 import app.lizmo.property.dto.PropertyResponse;
 import app.lizmo.property.dto.UnitRequest;
 import app.lizmo.property.dto.UnitResponse;
+import app.lizmo.property.dto.UtilitiesResponse;
 import app.lizmo.property.dto.UtilityRequest;
 import app.lizmo.property.dto.UtilityResponse;
 import java.math.BigDecimal;
@@ -316,9 +317,9 @@ public class PropertyService {
      * absence means, and a screen with three switches wants three answers.
      */
     @Transactional(readOnly = true)
-    public List<UtilityResponse> listUtilities(UUID unitId, UUID userId) {
-        requireReadableUnit(unitId, userId);
-        return utilitiesFor(unitId);
+    public UtilitiesResponse listUtilities(UUID unitId, UUID userId) {
+        Unit unit = requireReadableUnit(unitId, userId);
+        return new UtilitiesResponse(unit.getUtilityBilling(), utilitiesFor(unitId));
     }
 
     /**
@@ -328,9 +329,16 @@ public class PropertyService {
      * without restating the others.
      */
     @Transactional
-    public List<UtilityResponse> setUtilities(
-            UUID unitId, List<UtilityRequest> requests, UUID userId) {
-        requireWritableUnit(unitId, userId);
+    public UtilitiesResponse setUtilities(
+            UUID unitId, UtilityBilling billing, List<UtilityRequest> requests, UUID userId) {
+        Unit unit = requireWritableUnit(unitId, userId);
+
+        // Omitted means "leave it", so a client changing an amount does not
+        // have to restate how it is billed.
+        if (billing != null) {
+            unit.billUtilities(billing);
+            units.save(unit);
+        }
 
         for (UtilityRequest request : requests) {
             UnitUtility utility = utilities.findByUnitIdAndKind(unitId, request.kind())
@@ -348,7 +356,7 @@ public class PropertyService {
             utilities.save(utility);
         }
 
-        return utilitiesFor(unitId);
+        return new UtilitiesResponse(unit.getUtilityBilling(), utilitiesFor(unitId));
     }
 
     private List<UtilityResponse> utilitiesFor(UUID unitId) {

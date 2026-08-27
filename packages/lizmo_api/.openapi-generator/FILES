@@ -18,6 +18,7 @@ doc/UnitRequest.md
 doc/UnitResponse.md
 doc/UnitsApi.md
 doc/UtilitiesRequest.md
+doc/UtilitiesResponse.md
 doc/UtilityRequest.md
 doc/UtilityResponse.md
 git_push.sh
@@ -46,9 +47,8 @@ lib/model/register_request.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
 lib/model/utilities_request.dart
+lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
 pubspec.yaml
-test/utilities_request_test.dart
-test/utility_request_test.dart
-test/utility_response_test.dart
+test/utilities_response_test.dart
