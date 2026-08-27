@@ -12,7 +12,10 @@ import 'screens/register_screen.dart';
 import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
+import 'screens/landlord_home_screen.dart';
+import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
+import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/unit_detail_screen.dart';
@@ -24,7 +27,15 @@ abstract final class Routes {
   static const login = '/login';
   static const register = '/register';
   static const tenant = '/tenant';
+
+  /// The landlord section as a whole. Redirects to [landlordHome]; every
+  /// guard still matches on this prefix, so the tabs changed nothing about
+  /// who may see what.
   static const landlord = '/landlord';
+
+  static const landlordHome = '/landlord/home';
+  static const properties = '/landlord/properties';
+  static const tenants = '/landlord/tenants';
   static const propertyNew = '/landlord/properties/new';
 
   /// Detail and unit routes take the property id, so they are functions
@@ -43,7 +54,6 @@ abstract final class Routes {
   /// Reachable without a session. Anything else redirects to login.
   static const signedOutAllowed = {login, register};
 }
-
 
 /// Holds the splash for a moment at launch.
 ///
@@ -103,6 +113,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return location == Routes.splash ? null : Routes.splash;
       }
 
+      // /landlord is the section, not a screen. Without this it matches
+      // nothing and a signed-in landlord lands on the not-found page.
+      if (location == Routes.landlord) {
+        return Routes.landlordHome;
+      }
+
       // Nor while the backend is out of contact. Every screen past this point
       // is a view onto the API, so login would only fail and a restored
       // session would show an empty portfolio that is not really empty.
@@ -120,70 +136,117 @@ final routerProvider = Provider<GoRouter>((ref) {
         AuthSignedOut() =>
           Routes.signedOutAllowed.contains(location) ? null : Routes.login,
 
-        AuthSignedIn(:final session) => _signedInRedirect(ref, session, location),
+        AuthSignedIn(:final session) => _signedInRedirect(
+          ref,
+          session,
+          location,
+        ),
       };
     },
     routes: [
-      GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
-      GoRoute(path: Routes.login, builder: (context, state) => const LoginScreen()),
-      GoRoute(path: Routes.register, builder: (context, state) => const RegisterScreen()),
-      GoRoute(path: Routes.tenant, builder: (context, state) => const TenantHomeScreen()),
       GoRoute(
-        path: Routes.landlord,
-        builder: (context, state) => const PropertyListScreen(),
-        routes: [
-          // Nested, so the back arrow returns to the property list rather than
-          // leaving the app.
-          GoRoute(
-            path: 'properties/new',
-            builder: (context, state) => const CreatePropertyScreen(),
-          ),
-          GoRoute(
-            path: 'properties/:id',
-            builder: (context, state) =>
-                PropertyDetailScreen(propertyId: state.pathParameters['id']!),
+        path: Routes.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: Routes.login,
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: Routes.register,
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: Routes.tenant,
+        builder: (context, state) => const TenantHomeScreen(),
+      ),
+      // Three sections, each with its own navigation stack. Pushing a
+      // property, a unit and a bed, switching to Tenants and coming back
+      // returns to the bed — which is what a tab bar is for.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => LandlordShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: 'units/new',
-                builder: (context, state) =>
-                    CreateUnitScreen(propertyId: state.pathParameters['id']!),
+                path: Routes.landlordHome,
+                builder: (context, state) => const LandlordHomeScreen(),
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
               GoRoute(
-                path: 'edit',
-                builder: (context, state) => CreatePropertyScreen(
-                  propertyId: state.pathParameters['id'],
-                ),
+                path: Routes.properties,
+                builder: (context, state) => const PropertyListScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const CreatePropertyScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => PropertyDetailScreen(
+                      propertyId: state.pathParameters['id']!,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'units/new',
+                        builder: (context, state) => CreateUnitScreen(
+                          propertyId: state.pathParameters['id']!,
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) => CreatePropertyScreen(
+                          propertyId: state.pathParameters['id'],
+                        ),
+                      ),
+                      GoRoute(
+                        // Declared after units/new, which would otherwise match with
+                        // unitId = "new".
+                        path: 'units/:unitId/edit',
+                        builder: (context, state) => CreateUnitScreen(
+                          propertyId: state.pathParameters['id']!,
+                          unitId: state.pathParameters['unitId'],
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'units/:unitId/utilities',
+                        builder: (context, state) => UnitUtilitiesScreen(
+                          propertyId: state.pathParameters['id']!,
+                          unitId: state.pathParameters['unitId']!,
+                        ),
+                      ),
+                      GoRoute(
+                        // Last of the unit routes: 'units/:unitId' would otherwise
+                        // swallow the more specific ones above it.
+                        path: 'units/:unitId',
+                        builder: (context, state) => UnitDetailScreen(
+                          propertyId: state.pathParameters['id']!,
+                          unitId: state.pathParameters['unitId']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
               GoRoute(
-                // Declared after units/new, which would otherwise match with
-                // unitId = "new".
-                path: 'units/:unitId/edit',
-                builder: (context, state) => CreateUnitScreen(
-                  propertyId: state.pathParameters['id']!,
-                  unitId: state.pathParameters['unitId'],
-                ),
-              ),
-              GoRoute(
-                path: 'units/:unitId/utilities',
-                builder: (context, state) => UnitUtilitiesScreen(
-                  propertyId: state.pathParameters['id']!,
-                  unitId: state.pathParameters['unitId']!,
-                ),
-              ),
-              GoRoute(
-                // Last of the unit routes: 'units/:unitId' would otherwise
-                // swallow the more specific ones above it.
-                path: 'units/:unitId',
-                builder: (context, state) => UnitDetailScreen(
-                  propertyId: state.pathParameters['id']!,
-                  unitId: state.pathParameters['unitId']!,
-                ),
+                path: Routes.tenants,
+                builder: (context, state) => const TenantsScreen(),
               ),
             ],
           ),
         ],
       ),
-      GoRoute(path: Routes.noProfile, builder: (context, state) => const NoProfileScreen()),
+      GoRoute(
+        path: Routes.noProfile,
+        builder: (context, state) => const NoProfileScreen(),
+      ),
     ],
     errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
   );
@@ -196,7 +259,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// every tenant in the property.
 String? _signedInRedirect(Ref ref, Session session, String location) {
   final home = switch (ref.read(activeRoleProvider)) {
-    LizmoProfile.landlord => Routes.landlord,
+    LizmoProfile.landlord => Routes.landlordHome,
     LizmoProfile.tenant => Routes.tenant,
     // ADMIN is not a role this app serves; platform admins use the web console.
     LizmoProfile.admin || null => Routes.noProfile,
@@ -216,7 +279,6 @@ String? _signedInRedirect(Ref ref, Session session, String location) {
 
   return null;
 }
-
 
 /// Only reachable if the account holds no tenant or landlord profile.
 /// Registration always creates a tenant profile, so this guards against bad
@@ -248,10 +310,13 @@ class NoProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+                  onPressed: () =>
+                      ref.read(authControllerProvider.notifier).logout(),
                   child: Text(
                     'Sign out',
-                    style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
+                    style: LizmoType.rowName.copyWith(
+                      color: LizmoColors.teal900,
+                    ),
                   ),
                 ),
               ],
@@ -280,16 +345,26 @@ class NotFoundScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("That page doesn't exist.",
-                    textAlign: TextAlign.center, style: LizmoType.rowName),
+                Text(
+                  "That page doesn't exist.",
+                  textAlign: TextAlign.center,
+                  style: LizmoType.rowName,
+                ),
                 const SizedBox(height: 8),
-                Text(location,
-                    textAlign: TextAlign.center, style: LizmoType.rowSub),
+                Text(
+                  location,
+                  textAlign: TextAlign.center,
+                  style: LizmoType.rowSub,
+                ),
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: () => context.go(Routes.splash),
-                  child: Text('Go back',
-                      style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
+                  child: Text(
+                    'Go back',
+                    style: LizmoType.rowName.copyWith(
+                      color: LizmoColors.teal900,
+                    ),
+                  ),
                 ),
               ],
             ),

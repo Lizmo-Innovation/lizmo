@@ -1661,4 +1661,77 @@ class PropertyIntegrationTest {
                 .andExpect(jsonPath("$.message").value(
                         org.hamcrest.Matchers.containsString("WHOLE_UNIT")));
     }
+
+    // ---------- What a property brings in ----------
+
+    @Test
+    void a_property_totals_what_its_units_bring_in() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        createBedspaceWithRent(propertyId, "2B", 4, "2500.00");
+
+        mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","rentalMode":"WHOLE_UNIT","rent":7000.00}
+                                """))
+                .andExpect(status().isCreated());
+
+        // Four beds at 2500, plus a whole unit at 7000. The same figure the
+        // unit screens show, added up.
+        mvc.perform(get("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].potentialMonthlyRent").value(17000.00));
+    }
+
+    @Test
+    void an_empty_property_totals_nothing_rather_than_zero() throws Exception {
+        createProperty(landlordToken, "Sunrise Apartments");
+
+        // Nothing in it is priced, which is not the same as free.
+        mvc.perform(get("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].potentialMonthlyRent").doesNotExist());
+    }
+
+    @Test
+    void a_unit_out_of_service_leaves_the_property_total() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String closed = createBedspaceWithRent(propertyId, "2B", 4, "2500.00");
+        createBedspaceWithRent(propertyId, "3B", 2, "2000.00");
+
+        mvc.perform(put("/api/v1/units/" + closed + "/maintenance")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"underMaintenance":true}
+                                """))
+                .andExpect(status().isOk());
+
+        // Only 3B counts: 2 x 2000.
+        mvc.perform(get("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].potentialMonthlyRent").value(4000.00));
+    }
+
+    @Test
+    void the_property_total_follows_a_bed_priced_on_its_own() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+        String unitId = createBedspaceWithRent(propertyId, "2B", 3, "2500.00");
+        String bedId = firstBedId(unitId);
+
+        mvc.perform(put("/api/v1/beds/" + bedId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bedLabel":"Bed 1","rent":2000.00}
+                                """))
+                .andExpect(status().isOk());
+
+        // 2000 + 2500 + 2500. The property figure is derived the same way as
+        // the unit's, so the two can never disagree.
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.potentialMonthlyRent").value(7000.00));
+    }
 }

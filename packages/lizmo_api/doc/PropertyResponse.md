@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **type** | **String** |  | [optional] 
 **usage** | **String** |  | [optional] 
 **unitCount** | **int** |  | [optional] 
+**potentialMonthlyRent** | **num** |  | [optional] 
 **createdAt** | [**DateTime**](DateTime.md) |  | [optional] 
 **updatedAt** | [**DateTime**](DateTime.md) |  | [optional] 
 

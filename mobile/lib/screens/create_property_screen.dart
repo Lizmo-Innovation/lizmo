@@ -137,7 +137,10 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
       await ref.read(propertiesApiProvider).deleteProperty(widget.propertyId!);
       ref.invalidate(propertiesProvider);
 
-      if (mounted) context.go(Routes.landlord);
+      // The properties tab, not the section root: /landlord now lands on
+      // Today, and deleting a property should leave you looking at the list it
+      // came from rather than the dashboard.
+      if (mounted) context.go(Routes.properties);
     } catch (error) {
       final failure = ApiFailure.from(error);
       if (mounted) setState(() => _error = failure.message);

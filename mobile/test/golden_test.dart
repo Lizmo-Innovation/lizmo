@@ -53,6 +53,7 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
                 address: '12 Mabini St, Quezon City',
                 type: PropertyResponseTypeEnum.BOARDING_HOUSE,
                 unitCount: 2,
+                potentialMonthlyRent: 17000,
               ),
               PropertyResponse(
                 id: 'p2',
@@ -60,6 +61,7 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
                 address: '48 Rizal Ave, Caloocan',
                 type: PropertyResponseTypeEnum.APARTMENT,
                 unitCount: 1,
+                potentialMonthlyRent: 9500,
               ),
             ]),
       ],
@@ -146,6 +148,15 @@ void main() {
 
     await expectLater(
       find.byType(LizmoApp),
+      matchesGoldenFile('goldens/landlord_home.png'),
+    );
+
+    // And the properties tab behind it.
+    await tester.tap(find.byKey(const ValueKey('tab-properties')));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(LizmoApp),
       matchesGoldenFile('goldens/rent_roll_switcher.png'),
     );
   });
@@ -156,6 +167,8 @@ void main() {
     await tester.pumpWidget(_detailApp());
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('tab-properties')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sunrise Apartments'));
     await tester.pumpAndSettle();
 

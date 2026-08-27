@@ -19,6 +19,7 @@ class PropertyResponse {
     this.type,
     this.usage,
     this.unitCount,
+    this.potentialMonthlyRent,
     this.createdAt,
     this.updatedAt,
   });
@@ -65,6 +66,14 @@ class PropertyResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
+  num? potentialMonthlyRent;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
   DateTime? createdAt;
 
   ///
@@ -83,6 +92,7 @@ class PropertyResponse {
     other.type == type &&
     other.usage == usage &&
     other.unitCount == unitCount &&
+    other.potentialMonthlyRent == potentialMonthlyRent &&
     other.createdAt == createdAt &&
     other.updatedAt == updatedAt;
 
@@ -95,11 +105,12 @@ class PropertyResponse {
     (type == null ? 0 : type!.hashCode) +
     (usage == null ? 0 : usage!.hashCode) +
     (unitCount == null ? 0 : unitCount!.hashCode) +
+    (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode) +
     (createdAt == null ? 0 : createdAt!.hashCode) +
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, type=$type, usage=$usage, unitCount=$unitCount, createdAt=$createdAt, updatedAt=$updatedAt]';
+  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, type=$type, usage=$usage, unitCount=$unitCount, potentialMonthlyRent=$potentialMonthlyRent, createdAt=$createdAt, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -132,6 +143,11 @@ class PropertyResponse {
       json[r'unitCount'] = this.unitCount;
     } else {
       json[r'unitCount'] = null;
+    }
+    if (this.potentialMonthlyRent != null) {
+      json[r'potentialMonthlyRent'] = this.potentialMonthlyRent;
+    } else {
+      json[r'potentialMonthlyRent'] = null;
     }
     if (this.createdAt != null) {
       json[r'createdAt'] = this.createdAt!.toUtc().toIso8601String();
@@ -167,6 +183,9 @@ class PropertyResponse {
         type: PropertyResponseTypeEnum.fromJson(json[r'type']),
         usage: PropertyResponseUsageEnum.fromJson(json[r'usage']),
         unitCount: mapValueOfType<int>(json, r'unitCount'),
+        potentialMonthlyRent: json[r'potentialMonthlyRent'] == null
+            ? null
+            : num.parse('${json[r'potentialMonthlyRent']}'),
         createdAt: mapDateTime(json, r'createdAt', r''),
         updatedAt: mapDateTime(json, r'updatedAt', r''),
       );

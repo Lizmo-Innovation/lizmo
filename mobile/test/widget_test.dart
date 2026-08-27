@@ -9,9 +9,11 @@ import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
+import 'package:lizmo/screens/landlord_home_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo/screens/tenants_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo/screens/unit_utilities_screen.dart';
 import 'package:lizmo_api/api.dart';
@@ -285,11 +287,25 @@ class _FakeBedsApi extends UnitsApi {
   }
 }
 
+
+/// Opens the Properties tab.
+///
+/// A landlord now lands on Today, so every test that starts by tapping a
+/// property has to get to the list first. Keyed rather than found by label,
+/// because "Properties" is also a stat on the home screen.
+Future<void> _openProperties(WidgetTester tester) async {
+  final tab = find.byKey(const ValueKey('tab-properties'));
+  if (tab.evaluate().isEmpty) return;
+  await tester.tap(tab);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('routing follows auth state', () {
     testWidgets('signed out lands on login', (tester) async {
       await tester.pumpWidget(_app(const AuthSignedOut()));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byType(PropertyListScreen), findsNothing);
@@ -310,16 +326,20 @@ void main() {
     testWidgets('a tenant lands on their own screen', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.byType(TenantHomeScreen), findsOneWidget);
-      expect(find.byType(PropertyListScreen), findsNothing);
+      expect(find.byType(LandlordHomeScreen), findsNothing);
     });
 
-    testWidgets('a landlord lands on their properties', (tester) async {
+    testWidgets('a landlord lands on Today, not the property list',
+        (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
 
-      expect(find.byType(PropertyListScreen), findsOneWidget);
+      // Properties moved to a tab; the section's front door is the dashboard.
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
+      expect(find.byType(PropertyListScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsNothing);
     });
   });
@@ -340,6 +360,7 @@ void main() {
         UncontrolledProviderScope(container: container, child: const LizmoApp()),
       );
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       // Navigate straight at the landlord route, as a typed URL or stale deep
       // link would. It exposes another landlord's portfolio, so a tenant must
@@ -391,7 +412,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
       expect(find.text('Tenant'), findsOneWidget);
       expect(find.text('Landlord'), findsOneWidget);
     });
@@ -405,11 +426,11 @@ void main() {
       await tester.tap(find.text('Tenant'));
       await tester.pumpAndSettle();
       expect(find.byType(TenantHomeScreen), findsOneWidget);
-      expect(find.byType(PropertyListScreen), findsNothing);
+      expect(find.byType(LandlordHomeScreen), findsNothing);
 
       await tester.tap(find.text('Landlord'));
       await tester.pumpAndSettle();
-      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
     });
 
     test('default role prefers landlord when both are held', () {
@@ -478,7 +499,7 @@ void main() {
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
-    testWidgets('signing up as a landlord lands on the rent roll', (tester) async {
+    testWidgets('signing up as a landlord lands on Today', (tester) async {
       final container = ProviderContainer(
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
@@ -499,7 +520,7 @@ void main() {
           _signedIn({LizmoProfile.tenant, LizmoProfile.landlord});
       await tester.pumpAndSettle();
 
-      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
     });
 
     testWidgets('rejects empty fields before calling the API', (tester) async {
@@ -616,12 +637,13 @@ void main() {
             ]),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.text('Sunrise Apartments'), findsOneWidget);
       expect(find.text('Sunset Residences'), findsOneWidget);
       // Singular and plural, because "1 units" reads as a bug to a user.
-      expect(find.text('units'), findsOneWidget);
-      expect(find.text('unit'), findsOneWidget);
+      expect(find.text('2 units'), findsOneWidget);
+      expect(find.text('1 unit'), findsOneWidget);
     });
 
     testWidgets('header totals are derived from the loaded rows', (tester) async {
@@ -632,6 +654,7 @@ void main() {
             ]),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       // Two properties, five units — counts cannot disagree with the list.
       expect(find.text('2'), findsWidgets);
@@ -643,6 +666,7 @@ void main() {
         propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.text('No properties yet'), findsOneWidget);
       // Never a bare spinner or blank screen.
@@ -655,6 +679,7 @@ void main() {
             throw const ApiFailure(code: 'NETWORK_UNAVAILABLE', message: 'no signal')),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       // A landlord with no signal and one locked for an unpaid invoice need
       // different messages; ApiFailure.isNetwork is what separates them.
@@ -670,6 +695,7 @@ void main() {
             )),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.text('Something went wrong'), findsOneWidget);
       expect(find.text('Your Lizmo invoice is unpaid.'), findsOneWidget);
@@ -680,6 +706,7 @@ void main() {
     testWidgets('a tenant can sign out from the account sheet', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       expect(find.byType(TenantHomeScreen), findsOneWidget);
 
       await tester.tap(find.byTooltip('Account'));
@@ -694,6 +721,7 @@ void main() {
     testWidgets('a landlord can reach the account sheet too', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       expect(find.byType(PropertyListScreen), findsOneWidget);
 
       await tester.tap(find.byTooltip('Account'));
@@ -729,6 +757,7 @@ void main() {
         UncontrolledProviderScope(container: container, child: const LizmoApp()),
       );
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       await tester.tap(find.byTooltip('Account'));
       await tester.pumpAndSettle();
@@ -747,6 +776,7 @@ void main() {
     testWidgets('the add button opens the form', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
@@ -758,6 +788,7 @@ void main() {
     testWidgets('empty fields are caught before calling the API', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
@@ -771,12 +802,13 @@ void main() {
     testWidgets('type defaults to boarding house and can be changed', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
       // All four are visible rather than hidden behind a dropdown, so the
       // default is a visible choice rather than an unnoticed one.
-      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding house'), findsOneWidget);
       expect(find.text('Apartment'), findsOneWidget);
       expect(find.text('Condo'), findsOneWidget);
       expect(find.text('Single house'), findsOneWidget);
@@ -788,6 +820,7 @@ void main() {
     testWidgets('the back arrow returns to the property list', (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.landlord})));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
@@ -815,6 +848,7 @@ void main() {
         UncontrolledProviderScope(container: container, child: const LizmoApp()),
       );
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       // The guard matched exact paths before this, so every sub-route under
       // /landlord was reachable by anyone signed in.
@@ -845,6 +879,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       expect(find.text('No properties yet'), findsOneWidget);
 
@@ -920,6 +955,8 @@ void main() {
       ]));
       await tester.pumpAndSettle();
 
+      await _openProperties(tester);
+
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -935,6 +972,7 @@ void main() {
             rent: 7000, potentialMonthlyRent: 7000),
       ]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -959,6 +997,7 @@ void main() {
             rent: 7000, potentialMonthlyRent: 7000),
       ]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -973,6 +1012,7 @@ void main() {
             capacity: 4, bedCount: 4),
       ]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -987,6 +1027,7 @@ void main() {
               capacity: 6, bedCount: 6, rent: 2500, potentialMonthlyRent: 15000),
       ]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1001,6 +1042,7 @@ void main() {
         unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT),
       ]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1014,6 +1056,7 @@ void main() {
     testWidgets('a property with no units explains what to add', (tester) async {
       await tester.pumpWidget(appWith(const []));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1024,6 +1067,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(appWith(const []));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1041,6 +1085,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(appWith(const []));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('+ Add a unit'));
@@ -1073,6 +1118,7 @@ void main() {
         UncontrolledProviderScope(container: container, child: const LizmoApp()),
       );
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
       // /properties/new and /properties/:id both match the same shape; order
       // decides, and getting it wrong would open a property called "new".
@@ -1110,6 +1156,8 @@ void main() {
       await tester.pumpWidget(appWith(api));
       await tester.pumpAndSettle();
 
+      await _openProperties(tester);
+
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit property'));
@@ -1137,6 +1185,8 @@ void main() {
       await tester.pumpWidget(appWith(api));
       await tester.pumpAndSettle();
 
+      await _openProperties(tester);
+
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit property'));
@@ -1159,6 +1209,8 @@ void main() {
       final api = _EditablePropertiesApi(existing());
       await tester.pumpWidget(appWith(api));
       await tester.pumpAndSettle();
+
+      await _openProperties(tester);
 
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
@@ -1211,6 +1263,7 @@ void main() {
     Future<void> openEditForm(WidgetTester tester, _EditableUnitsApi api) async {
       await tester.pumpWidget(appWith(api));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -1348,6 +1401,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -1415,6 +1469,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('+ Add a unit'));
@@ -1442,6 +1497,7 @@ void main() {
       final api = _FakePropertiesApi(store);
       await tester.pumpWidget(appWith(api, store));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
       return api;
@@ -1455,7 +1511,7 @@ void main() {
       expect(find.text('Commercial'), findsOneWidget);
 
       // Residential types on offer, commercial ones not.
-      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding house'), findsOneWidget);
       expect(find.text('Office'), findsNothing);
       expect(find.text('Warehouse'), findsNothing);
     });
@@ -1549,10 +1605,12 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
 
-      expect(find.text('Commercial \u00b7 Office'), findsOneWidget);
+      // Kind and address share a line now.
+      expect(find.textContaining('Commercial \u00b7 Office'), findsOneWidget);
       // Residential is the norm; labelling it on every card would be noise.
-      expect(find.text('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding house'), findsOneWidget);
       expect(find.textContaining('Residential'), findsNothing);
     });
 
@@ -1577,6 +1635,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Mabini Arcade'));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.edit_outlined));
@@ -1621,6 +1680,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text(property.name!));
       await tester.pumpAndSettle();
       await tester.tap(find.text('+ Add a unit'));
@@ -1670,6 +1730,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Mabini Arcade'));
       await tester.pumpAndSettle();
 
@@ -1702,6 +1763,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1759,6 +1821,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -1793,6 +1856,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -1812,6 +1876,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
@@ -1869,6 +1934,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       // One target now: the card opens the unit, and its beds are already on
@@ -2072,11 +2138,14 @@ void main() {
       expect(find.text('2'), findsOneWidget);
     });
 
-    testWidgets('a bed shows the unit rate until it has its own', (tester) async {
+    testWidgets('a bed on the unit rate says nothing about price', (tester) async {
       await openBeds(tester);
 
-      // The unit asks 2500 and neither bed overrides it.
-      expect(find.text('₱2500 · unit rate'), findsNWidgets(2));
+      // The unit's rate is in the header. Repeating it under every bed spent a
+      // line per row to report that nothing was unusual.
+      expect(find.text('Bed 1'), findsOneWidget);
+      expect(find.text('Bed 2'), findsOneWidget);
+      expect(find.textContaining('unit rate'), findsNothing);
     });
 
     testWidgets('a bed with its own price shows that instead', (tester) async {
@@ -2085,10 +2154,10 @@ void main() {
         bed('b2', 'Bed 2', BedResponseStatusEnum.VACANT),
       ]);
 
-      // No "unit rate" suffix: this figure does not move when the unit is
-      // repriced, and the two cases have to be tellable apart.
+      // Only the exception is printed: a bed priced on its own. The other is
+      // silent, so the one line that carries information stands out.
       expect(find.text('₱2000'), findsOneWidget);
-      expect(find.text('₱2500 · unit rate'), findsOneWidget);
+      expect(find.textContaining('unit rate'), findsNothing);
     });
 
     testWidgets('a price can be set on one bed', (tester) async {
@@ -2217,6 +2286,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit property'));
@@ -2282,6 +2352,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
@@ -2325,6 +2396,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
     }
@@ -2474,6 +2546,7 @@ void main() {
     testWidgets('its beds stop counting towards the property', (tester) async {
       await tester.pumpWidget(appWith([closed(), open()]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -2487,6 +2560,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(appWith([closed()]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -2508,6 +2582,7 @@ void main() {
 
       await tester.pumpWidget(appWith([shutWholeUnit]));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
@@ -2519,6 +2594,7 @@ void main() {
       final api = _FakeBedsApi(closed(), []);
       await tester.pumpWidget(appWith([closed()], api: api));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -2538,6 +2614,7 @@ void main() {
       final api = _FakeBedsApi(open(), []);
       await tester.pumpWidget(appWith([open()], api: api));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 1A'));
@@ -2597,6 +2674,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -2795,6 +2873,7 @@ void main() {
         child: const LizmoApp(),
       ));
       await tester.pumpAndSettle();
+      await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Unit 2B'));
@@ -2874,6 +2953,158 @@ void main() {
       final wifi = api.lastUtilities!.utilities
           .firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
       expect(wifi.amount, 500);
+    });
+  });
+
+  group('the landlord tab bar', () {
+    Widget app() => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesProvider.overrideWith((ref) async => [
+                  PropertyResponse(
+                    id: 'p1',
+                    name: 'Sunrise Apartments',
+                    address: '12 Mabini St',
+                    type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+                    usage: PropertyResponseUsageEnum.RESIDENTIAL,
+                    unitCount: 1,
+                    potentialMonthlyRent: 10000,
+                  )
+                ]),
+            unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    testWidgets('three sections, opening on Today', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('tab-today')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-properties')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-tenants')), findsOneWidget);
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the dashboard says which parts are not built', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      // Real figures where they exist, and named dependencies where they do
+      // not. Fake numbers would be a lie about the state of the product.
+      expect(find.text('₱10000'), findsOneWidget);
+      expect(find.text('Needs leases and billing'), findsOneWidget);
+      expect(find.text('Needs leases'), findsNWidgets(2));
+    });
+
+    testWidgets('tenants is empty for a reason it explains', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantsScreen), findsOneWidget);
+      // "No tenants" and "not built" are different statements.
+      expect(find.textContaining('Leases are not built yet'), findsOneWidget);
+    });
+
+    testWidgets('each tab keeps its own stack', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-properties')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PropertyDetailScreen), findsOneWidget);
+
+      // Away and back: the property is still open, not reset to the list.
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-properties')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PropertyDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('tapping the tab you are on returns it to its root',
+        (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-properties')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-properties')));
+      await tester.pumpAndSettle();
+
+      // Which is what a second tap means everywhere else.
+      expect(find.byType(PropertyListScreen), findsOneWidget);
+      expect(find.byType(PropertyDetailScreen), findsNothing);
+    });
+  });
+
+  group('a whole unit shows itself', () {
+    testWidgets('its facts replace the old apology', (tester) async {
+      final unit = UnitResponse(
+        id: 'u1',
+        propertyId: 'p1',
+        unitNumber: '1A',
+        floor: '1',
+        sizeSqm: 24.5,
+        rentalMode: UnitResponseRentalModeEnum.WHOLE_UNIT,
+        capacity: 1,
+        bedCount: 0,
+        bedsUnderMaintenance: 0,
+        rent: 7000,
+        potentialMonthlyRent: 7000,
+        status: UnitResponseStatusEnum.VACANT,
+      );
+      final api = _FakeBedsApi(unit, []);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          unitsApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => [
+                PropertyResponse(
+                  id: 'p1',
+                  name: 'Sunrise Apartments',
+                  address: '12 Mabini St',
+                  type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+                  usage: PropertyResponseUsageEnum.RESIDENTIAL,
+                  unitCount: 1,
+                )
+              ]),
+          unitsProvider('p1').overrideWith((ref) async => [unit]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Unit 1A'));
+      await tester.pumpAndSettle();
+
+      // It used to apologise for having nothing inside it. These are the
+      // unit's own facts, which were otherwise only in the edit form.
+      expect(find.text('One whole unit, one tenant'), findsOneWidget);
+      expect(find.text('24.5 sqm'), findsOneWidget);
+      expect(find.text('Vacant'), findsOneWidget);
+      expect(find.textContaining('no beds to set up'), findsNothing);
+
+      // And everything it could already do, it still does.
+      expect(find.text('Utilities'), findsOneWidget);
+      expect(find.byTooltip('Edit unit'), findsOneWidget);
+      expect(find.byTooltip('More'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
     });
   });
 
