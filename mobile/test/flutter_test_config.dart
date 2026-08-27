@@ -12,9 +12,23 @@ import 'package:flutter_test/flutter_test.dart';
 /// box. Without this, goldens verify layout and colour but say nothing about
 /// typography — which was the whole reason for bundling the fonts.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
   await _loadBundledFonts();
+  _useAPhoneSizedSurface(binding);
   return testMain();
+}
+
+/// Renders tests at phone size rather than the 800x600 default.
+///
+/// That default is wider than it is tall — a shape no phone has — and it made
+/// forms fail for a reason the app does not have: a button sitting below 600px
+/// that no amount of scrolling could reveal, because the viewport itself was
+/// the wrong shape. Testing a phone app on a phone-shaped surface means a test
+/// that passes here says something about the device.
+void _useAPhoneSizedSurface(TestWidgetsFlutterBinding binding) {
+  binding.platformDispatcher.views.first
+    ..physicalSize = const Size(390 * 3, 844 * 3)
+    ..devicePixelRatio = 3.0;
 }
 
 Future<void> _loadBundledFonts() async {

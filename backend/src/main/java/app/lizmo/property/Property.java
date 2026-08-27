@@ -38,6 +38,14 @@ public class Property {
     @Column(nullable = false)
     private String address;
 
+    /**
+     * What the landlord says about the place, in their own words.
+     *
+     * <p>Null when they have not written one. Capped at 2000 characters by
+     * chk_properties_description_length as well as by the request.
+     */
+    private String description;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PropertyType type;
@@ -62,11 +70,17 @@ public class Property {
     }
 
     public Property(
-            UUID landlordId, String name, String address, PropertyType type, PropertyUsage usage) {
+            UUID landlordId,
+            String name,
+            String address,
+            String description,
+            PropertyType type,
+            PropertyUsage usage) {
         this.id = UUID.randomUUID();
         this.landlordId = landlordId;
         this.name = name;
         this.address = address;
+        this.description = description;
         this.type = type;
         this.usage = usage;
     }
@@ -83,9 +97,15 @@ public class Property {
         this.updatedAt = Instant.now();
     }
 
-    public void update(String name, String address, PropertyType type, PropertyUsage usage) {
+    public void update(
+            String name,
+            String address,
+            String description,
+            PropertyType type,
+            PropertyUsage usage) {
         this.name = name;
         this.address = address;
+        this.description = description;
         this.type = type;
         this.usage = usage;
     }
@@ -108,6 +128,10 @@ public class Property {
 
     public String getAddress() {
         return address;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public PropertyType getType() {

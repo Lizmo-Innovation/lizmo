@@ -792,6 +792,12 @@ void main() {
       await tester.tap(find.text('+ Add a property'));
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Save property'));
+
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save property'));
       await tester.pump();
 
@@ -891,6 +897,12 @@ void main() {
       await tester.tap(find.text('Condo'));
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Save property'));
+
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save property'));
       await tester.pumpAndSettle();
 
@@ -1195,6 +1207,8 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(0), 'Sunrise Residences');
       await tester.tap(find.text('Apartment'));
       await tester.pump();
+      await tester.ensureVisible(find.text('Save changes'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save changes'));
       await tester.pumpAndSettle();
 
@@ -1218,6 +1232,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), '');
+      await tester.ensureVisible(find.text('Save changes'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Save changes'));
       await tester.pump();
 
@@ -2953,6 +2969,139 @@ void main() {
       final wifi = api.lastUtilities!.utilities
           .firstWhere((u) => u.kind == UtilityRequestKindEnum.WIFI);
       expect(wifi.amount, 500);
+    });
+  });
+
+  group('a property description', () {
+    PropertyResponse property({String? description}) => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          description: description,
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+          potentialMonthlyRent: 10000,
+        );
+
+    Future<void> open(WidgetTester tester, {String? description}) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider
+              .overrideWith((ref) async => [property(description: description)]),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows on the property screen when there is one',
+        (tester) async {
+      await open(tester, description: 'Quiet street, five minutes from the LRT.');
+
+      expect(find.text('Quiet street, five minutes from the LRT.'),
+          findsOneWidget);
+    });
+
+    testWidgets('takes no room when there is none', (tester) async {
+      await open(tester);
+
+      // No empty card: a property without a description should look like a
+      // property without a description, not like one that failed to load.
+      expect(find.text('More'), findsNothing);
+    });
+
+    testWidgets('a short one is not offered a More control', (tester) async {
+      await open(tester, description: 'Newly repainted.');
+
+      // The control is noise on a one-line description.
+      expect(find.text('Newly repainted.'), findsOneWidget);
+      expect(find.text('More'), findsNothing);
+    });
+
+    testWidgets('a long one is clamped and can be expanded', (tester) async {
+      final long = List.filled(80, 'Quiet street near the LRT.').join(' ');
+      await open(tester, description: long);
+
+      // Clamped, or three hundred words would push the units off the phone.
+      expect(find.text('More'), findsOneWidget);
+
+      await tester.tap(find.text('More'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Less'), findsOneWidget);
+      expect(find.text('More'), findsNothing);
+    });
+
+    testWidgets('the form sends what was typed', (tester) async {
+      final store = <PropertyResponse>[];
+      final api = _FakePropertiesApi(store);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => List.of(store)),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Mabuhay Bedspace');
+      await tester.enterText(find.byType(TextFormField).at(1), '7 Katipunan Ave');
+      await tester.enterText(
+          find.byType(TextFormField).at(2), 'Curfew at 11pm.');
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save property'));
+      await tester.pumpAndSettle();
+
+      expect(api.lastRequest!.description, 'Curfew at 11pm.');
+    });
+
+    testWidgets('leaving it blank sends nothing, not an empty string',
+        (tester) async {
+      final store = <PropertyResponse>[];
+      final api = _FakePropertiesApi(store);
+
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesApiProvider.overrideWithValue(api),
+          propertiesProvider.overrideWith((ref) async => List.of(store)),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('+ Add a property'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Mabuhay Bedspace');
+      await tester.enterText(find.byType(TextFormField).at(1), '7 Katipunan Ave');
+
+      await tester.ensureVisible(find.text('Save property'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save property'));
+      await tester.pumpAndSettle();
+
+      // No description and an empty one are different statements.
+      expect(api.lastRequest!.description, isNull);
     });
   });
 

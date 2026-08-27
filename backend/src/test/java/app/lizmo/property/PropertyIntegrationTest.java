@@ -1734,4 +1734,135 @@ class PropertyIntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(jsonPath("$.potentialMonthlyRent").value(7000.00));
     }
+
+    // ---------- Property description ----------
+
+    @Test
+    void a_property_can_carry_a_description() throws Exception {
+        String body = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"Quiet street, five minutes from the LRT.",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description")
+                        .value("Quiet street, five minutes from the LRT."))
+                .andReturn().getResponse().getContentAsString();
+
+        String propertyId = json.readTree(body).get("id").asText();
+
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.description")
+                        .value("Quiet street, five minutes from the LRT."));
+    }
+
+    @Test
+    void a_property_without_one_reports_nothing_rather_than_empty() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        // Null, not "": no description and an empty description are different
+        // statements, and every other optional field here draws that line.
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.description").doesNotExist());
+    }
+
+    @Test
+    void a_blank_description_is_stored_as_none() throws Exception {
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"   ",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                // Clearing the field means having no description, not having
+                // one made of spaces.
+                .andExpect(jsonPath("$.description").doesNotExist());
+    }
+
+    @Test
+    void a_description_can_be_edited_and_cleared() throws Exception {
+        String propertyId = createProperty(landlordToken, "Sunrise Apartments");
+
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"Newly repainted.",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("Newly repainted."));
+
+        // A PUT carries the whole property, so leaving it out clears it.
+        mvc.perform(put("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").doesNotExist());
+    }
+
+    @Test
+    void a_description_longer_than_the_cap_is_refused() throws Exception {
+        // 2001 characters. Without a cap a paste from a word processor lands in
+        // the database and then in every property list response.
+        String tooLong = "x".repeat(2001);
+
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"%s",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """.formatted(tooLong)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.description").exists());
+    }
+
+    @Test
+    void a_description_at_the_cap_is_accepted() throws Exception {
+        String atLimit = "x".repeat(2000);
+
+        mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"%s",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """.formatted(atLimit)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void another_landlord_cannot_read_a_description() throws Exception {
+        String body = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunrise Apartments","address":"12 Mabini St",
+                                 "description":"Private notes about the place.",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String propertyId = json.readTree(body).get("id").asText();
+
+        mvc.perform(get("/api/v1/properties/" + propertyId)
+                        .header("Authorization", "Bearer " + otherLandlordToken))
+                .andExpect(status().isNotFound());
+    }
 }

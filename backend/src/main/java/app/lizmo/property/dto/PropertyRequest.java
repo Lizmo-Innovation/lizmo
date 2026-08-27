@@ -15,6 +15,12 @@ public record PropertyRequest(
         @NotBlank
         @Schema(example = "12 Mabini St, Quezon City") String address,
 
+        @Size(max = 2000)
+        @Schema(
+                example = "Quiet street, five minutes from the LRT. Curfew at 11pm.",
+                description = "Optional. Blank is stored as no description at all.")
+        String description,
+
         @NotNull
         @Schema(example = "BOARDING_HOUSE") PropertyType type,
 

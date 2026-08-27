@@ -15,6 +15,7 @@ class PropertyRequest {
   PropertyRequest({
     required this.name,
     required this.address,
+    this.description,
     required this.type,
     required this.usage,
   });
@@ -22,6 +23,15 @@ class PropertyRequest {
   String name;
 
   String address;
+
+  /// Optional. Blank is stored as no description at all.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? description;
 
   PropertyRequestTypeEnum type;
 
@@ -32,6 +42,7 @@ class PropertyRequest {
   bool operator ==(Object other) => identical(this, other) || other is PropertyRequest &&
     other.name == name &&
     other.address == address &&
+    other.description == description &&
     other.type == type &&
     other.usage == usage;
 
@@ -40,16 +51,22 @@ class PropertyRequest {
     // ignore: unnecessary_parenthesis
     (name.hashCode) +
     (address.hashCode) +
+    (description == null ? 0 : description!.hashCode) +
     (type.hashCode) +
     (usage.hashCode);
 
   @override
-  String toString() => 'PropertyRequest[name=$name, address=$address, type=$type, usage=$usage]';
+  String toString() => 'PropertyRequest[name=$name, address=$address, description=$description, type=$type, usage=$usage]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'name'] = this.name;
       json[r'address'] = this.address;
+    if (this.description != null) {
+      json[r'description'] = this.description;
+    } else {
+      json[r'description'] = null;
+    }
       json[r'type'] = this.type;
       json[r'usage'] = this.usage;
     return json;
@@ -80,6 +97,7 @@ class PropertyRequest {
       return PropertyRequest(
         name: mapValueOfType<String>(json, r'name')!,
         address: mapValueOfType<String>(json, r'address')!,
+        description: mapValueOfType<String>(json, r'description'),
         type: PropertyRequestTypeEnum.fromJson(json[r'type'])!,
         usage: PropertyRequestUsageEnum.fromJson(json[r'usage'])!,
       );

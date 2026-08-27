@@ -32,6 +32,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _address = TextEditingController();
+  final _description = TextEditingController();
 
   PropertyRequestUsageEnum _usage = PropertyRequestUsageEnum.RESIDENTIAL;
   PropertyRequestTypeEnum _type = PropertyRequestTypeEnum.BOARDING_HOUSE;
@@ -52,6 +53,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
   void dispose() {
     _name.dispose();
     _address.dispose();
+    _description.dispose();
     super.dispose();
   }
 
@@ -68,6 +70,10 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
       final request = PropertyRequest(
         name: _name.text.trim(),
         address: _address.text.trim(),
+        // Blank means no description, not an empty one — the API stores null
+        // either way, and sending null says what is meant.
+        description:
+            _description.text.trim().isEmpty ? null : _description.text.trim(),
         type: _type,
         usage: _usage,
       );
@@ -159,6 +165,7 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
         case AsyncData(:final value):
           _name.text = value.name ?? '';
           _address.text = value.address ?? '';
+          _description.text = value.description ?? '';
           _type = PropertyRequestTypeEnum.fromJson(value.type?.toJson()) ?? _type;
           _usage = PropertyRequestUsageEnum.fromJson(value.usage?.toJson()) ?? _usage;
           _units = value.unitCount ?? 0;
@@ -214,6 +221,22 @@ class _CreatePropertyScreenState extends ConsumerState<CreatePropertyScreen> {
                       : _fieldErrors['address'],
                 ),
                 const SizedBox(height: 18),
+
+                _Label('Description (optional)'),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _description,
+                  textCapitalization: TextCapitalization.sentences,
+                  // Room to write a few sentences without becoming a page.
+                  maxLines: 4,
+                  minLines: 4,
+                  maxLength: 2000,
+                  decoration: _decoration(
+                    'Quiet street, five minutes from the LRT. Curfew at 11pm.',
+                  ),
+                  validator: (value) => _fieldErrors['description'],
+                ),
+                const SizedBox(height: 6),
 
                 _Label('Used for'),
                 const SizedBox(height: 6),

@@ -1054,6 +1054,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -1093,30 +1117,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "MaintenanceRequest": {
                 "required": [
                     "underMaintenance"
@@ -1148,6 +1148,13 @@
                     "address": {
                         "type": "string",
                         "example": "12 Mabini St, Quezon City"
+                    },
+                    "description": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string",
+                        "description": "Optional. Blank is stored as no description at all.",
+                        "example": "Quiet street, five minutes from the LRT. Curfew at 11pm."
                     },
                     "type": {
                         "type": "string",
@@ -1186,6 +1193,9 @@
                         "type": "string"
                     },
                     "address": {
+                        "type": "string"
+                    },
+                    "description": {
                         "type": "string"
                     },
                     "type": {
