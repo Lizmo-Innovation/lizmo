@@ -51,4 +51,3 @@ lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
 pubspec.yaml
-test/utilities_response_test.dart

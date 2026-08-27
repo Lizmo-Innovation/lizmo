@@ -77,9 +77,11 @@ class UnitDetailScreen extends ConsumerWidget {
                   label: 'Floor',
                 ),
               LatticeHeaderStat(
-                value: _rentLabel(unit?.rent),
-                // The unit's figure is the default; a bed may ask its own.
-                label: isBedspace ? 'Default' : 'Per month',
+                // What the unit brings in, not what one bed costs. "Default"
+                // meant nothing out of context, and the figure a landlord
+                // actually wants is the one its parent screen already shows.
+                value: _rentLabel(unit?.potentialMonthlyRent),
+                label: 'Per month',
               ),
             ],
           ),
@@ -110,7 +112,7 @@ class UnitDetailScreen extends ConsumerWidget {
                       _ => const _Loading(),
                     },
                   )
-                : const _WholeUnit(),
+                : _WholeUnit(unit: unit),
           ),
         ],
       ),
@@ -170,21 +172,68 @@ class _EditButton extends StatelessWidget {
 /// A whole unit holds no beds, so there is nothing to list until it holds a
 /// tenancy. Said plainly rather than shown as an empty list, which would read
 /// as beds that failed to load.
+/// A whole unit has nothing inside it to list, so it shows itself.
+///
+/// It used to apologise for being empty. These are the unit's own facts, which
+/// were otherwise only visible by opening the edit form — and this is the
+/// surface a tenancy will sit on once leases exist.
 class _WholeUnit extends StatelessWidget {
-  const _WholeUnit();
+  const _WholeUnit({required this.unit});
+
+  final UnitResponse? unit;
 
   @override
   Widget build(BuildContext context) {
+    final size = unit?.sizeSqm;
+
     return ListView(
-      children: const [
-        SizedBox(height: 60),
-        LizmoMessageState(
-          icon: Icons.meeting_room_outlined,
-          title: 'Rented as a whole unit',
-          detail: 'One tenant takes the whole unit, so there are no beds to '
-              'set up here.',
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: LizmoColors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [LizmoColors.cardShadow],
+          ),
+          child: Column(
+            children: [
+              _Fact(label: 'Rented as', value: 'One whole unit, one tenant'),
+              if ((unit?.floor ?? '').isNotEmpty)
+                _Fact(label: 'Floor', value: unit!.floor!),
+              if (size != null) _Fact(label: 'Size', value: '$size sqm'),
+              _Fact(
+                label: 'Status',
+                value: unit?.status == UnitResponseStatusEnum.MAINTENANCE
+                    ? 'Out of service'
+                    : 'Vacant',
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// One label-and-value line inside a facts card.
+class _Fact extends StatelessWidget {
+  const _Fact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 96, child: Text(label, style: LizmoType.rowSub)),
+          Expanded(child: Text(value, style: LizmoType.rowName)),
+        ],
+      ),
     );
   }
 }
@@ -265,14 +314,17 @@ class _BedRow extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(bed.bedLabel ?? '', style: LizmoType.rowName),
-                      const SizedBox(height: 2),
-                      Text(_priceLabel(), style: LizmoType.rowSub),
+                      // Only when there is something to say. A bed on the unit
+                      // rate repeated the header's own figure on every row,
+                      // spending a line to report that nothing is unusual.
+                      if (_priceLabel() != null) ...[
+                        const SizedBox(height: 2),
+                        Text(_priceLabel()!, style: LizmoType.rowSub),
+                      ],
                     ],
                   ),
                 ),
                 StatusChip(status: _status(), label: _statusLabel()),
-                const SizedBox(width: 8),
-                const Icon(Icons.more_horiz, size: 18, color: LizmoColors.slate),
               ],
             ),
           ),
@@ -446,12 +498,14 @@ class _BedRow extends ConsumerWidget {
     );
   }
 
-  /// "₱2,000" for a bed with its own price, "₱2,500 · unit rate" for one on
-  /// the unit's. The distinction matters: the second figure moves when the
-  /// unit is repriced and the first does not.
-  String _priceLabel() {
+  /// The exceptions only: a bed priced on its own, or one with no price at all.
+  ///
+  /// A bed let at the unit's rate says nothing, because the unit's rate is in
+  /// the header above it. Printing it on every row made the one line that
+  /// carried information look exactly like the three that did not.
+  String? _priceLabel() {
     if (bed.rent != null) return _money(bed.rent!);
-    if (unitRent != null) return '${_money(unitRent!)} · unit rate';
+    if (unitRent != null) return null;
     // Neither is set. "Not set" rather than ₱0, which would claim it is free.
     return 'No rent set';
   }
@@ -862,24 +916,26 @@ class _UtilitiesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Deliberately not a white card: it sat directly above four white cards
+    // that were beds, at the same weight, and read as one of them. A tinted
+    // strip with no shadow says "this is about the unit, not its contents".
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       decoration: BoxDecoration(
-        color: LizmoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [LizmoColors.cardShadow],
+        color: LizmoColors.tealBg,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: () => context.push(Routes.unitUtilities(propertyId, unitId)),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.bolt_outlined, size: 18, color: LizmoColors.slate),
+                const Icon(Icons.bolt_outlined, size: 18, color: LizmoColors.teal900),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -898,7 +954,7 @@ class _UtilitiesRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, size: 18, color: LizmoColors.slate),
+                const Icon(Icons.chevron_right, size: 18, color: LizmoColors.teal900),
               ],
             ),
           ),

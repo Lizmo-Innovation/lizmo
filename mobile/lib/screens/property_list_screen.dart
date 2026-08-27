@@ -51,6 +51,12 @@ class PropertyListScreen extends ConsumerWidget {
                     '—',
                 label: 'Units',
               ),
+              LatticeHeaderStat(
+                // The first screen a landlord opens was the only one without a
+                // figure on it, while every screen below it had one.
+                value: _portfolioRent(properties.valueOrNull),
+                label: 'Per month',
+              ),
             ],
           ),
           Expanded(
@@ -199,14 +205,17 @@ class _PropertyCard extends StatelessWidget {
                     children: [
                       Text(property.name ?? '', style: LizmoType.rowName),
                       const SizedBox(height: 2),
+                      // Kind and address on one line. The type had a line of
+                      // its own to carry two words, on the screen with the
+                      // least room to spare.
                       Text(
-                        property.address ?? '',
+                        [_kindLabel(property), property.address ?? '']
+                            .where((part) => part.isNotEmpty)
+                            .join(' · '),
                         style: LizmoType.rowSub,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
-                      Text(_kindLabel(property), style: LizmoType.rowSub),
                     ],
                   ),
                 ),
@@ -214,11 +223,15 @@ class _PropertyCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Mono, because it is a figure a landlord reads as a value.
-                    Text('${property.unitCount}', style: LizmoType.dataMedium),
+                    // Money, not the unit count. The count had the card's
+                    // biggest visual weight while being the least interesting
+                    // thing on it; it moves to the line below.
+                    Text(_rentLabel(property.potentialMonthlyRent),
+                        style: LizmoType.dataMedium),
                     const SizedBox(height: 2),
                     Text(
-                      (property.unitCount ?? 0) == 1 ? 'unit' : 'units',
+                      '${property.unitCount} '
+                      '${(property.unitCount ?? 0) == 1 ? 'unit' : 'units'}',
                       style: LizmoType.rowSub,
                     ),
                   ],
@@ -229,6 +242,15 @@ class _PropertyCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+
+  /// "Not set" rather than ₱0, which would claim the property is free.
+  static String _rentLabel(num? rent) {
+    if (rent == null) return '—';
+    final asDouble = rent.toDouble();
+    final whole = asDouble == asDouble.roundToDouble();
+    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
   }
 
   /// "Boarding house", or "Commercial · Office".
@@ -250,4 +272,24 @@ class _PropertyCard extends StatelessWidget {
     final words = raw.toLowerCase().replaceAll('_', ' ');
     return words[0].toUpperCase() + words.substring(1);
   }
+}
+
+/// What the whole portfolio brings in per month with everything let.
+///
+/// Properties with nothing priced contribute nothing rather than zero, the
+/// same distinction the property and unit screens make.
+String _portfolioRent(List<PropertyResponse>? properties) {
+  if (properties == null) return '—';
+
+  num? total;
+  for (final property in properties) {
+    final rent = property.potentialMonthlyRent;
+    if (rent == null) continue;
+    total = (total ?? 0) + rent;
+  }
+
+  if (total == null) return '—';
+  final asDouble = total.toDouble();
+  final whole = asDouble == asDouble.roundToDouble();
+  return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
 }

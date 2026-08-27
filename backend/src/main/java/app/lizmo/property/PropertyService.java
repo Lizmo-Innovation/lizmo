@@ -58,14 +58,17 @@ public class PropertyService {
     @Transactional(readOnly = true)
     public List<PropertyResponse> listProperties(UUID userId) {
         return properties.findByLandlordIdOrderByNameAsc(userId).stream()
-                .map(property -> PropertyResponse.of(property, units.countByPropertyId(property.getId())))
+                .map(property -> PropertyResponse.of(property,
+                        units.countByPropertyId(property.getId()),
+                        potentialForProperty(property.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public PropertyResponse getProperty(UUID propertyId, UUID userId) {
         Property property = access.readable(propertyId, userId);
-        return PropertyResponse.of(property, units.countByPropertyId(propertyId));
+        return PropertyResponse.of(property, units.countByPropertyId(propertyId),
+                potentialForProperty(propertyId));
     }
 
     @Transactional
@@ -78,7 +81,8 @@ public class PropertyService {
                 userId, request.name().trim(), request.address().trim(),
                 request.type(), request.usage()));
 
-        return PropertyResponse.of(property, 0);
+        // Nothing in it yet, so nothing to earn.
+        return PropertyResponse.of(property, 0, null);
     }
 
     @Transactional
@@ -103,7 +107,8 @@ public class PropertyService {
 
         property.update(request.name().trim(), request.address().trim(),
                 request.type(), request.usage());
-        return PropertyResponse.of(properties.save(property), units.countByPropertyId(propertyId));
+        return PropertyResponse.of(properties.save(property),
+                units.countByPropertyId(propertyId), potentialForProperty(propertyId));
     }
 
     /**
@@ -146,19 +151,37 @@ public class PropertyService {
      * loaded anyway to total their rents, so they now come from one.
      */
     private UnitResponse unitResponse(Unit unit) {
-        // Out of service: nothing here can be let, so there is nothing to
-        // total. Null rather than zero — the same distinction as an unset rent.
-        boolean closed = unit.getStatus() == UnitStatus.MAINTENANCE;
-
         if (!unit.isBedspace()) {
-            // One tenancy, so the unit's own rent is the whole of it.
-            return UnitResponse.of(unit, 0, 0, closed ? null : unit.getRent(),
+            return UnitResponse.of(unit, 0, 0, potentialFor(unit, List.of()),
                     monthlyUtilities(unit.getId()));
         }
 
         List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
         long maintenance = unitBeds.stream().filter(
                 bed -> bed.getStatus() == BedStatus.MAINTENANCE).count();
+
+        return UnitResponse.of(unit, unitBeds.size(), maintenance,
+                potentialFor(unit, unitBeds), monthlyUtilities(unit.getId()));
+    }
+
+    /**
+     * What one unit brings in per month with everything let.
+     *
+     * <p>Shared by the unit itself and by its property's total, so the figure a
+     * landlord reads on the property list is arrived at the same way as the one
+     * on the unit — including every rule about what does not count.
+     */
+    private BigDecimal potentialFor(Unit unit, List<Bed> unitBeds) {
+        // Out of service: nothing here can be let, so there is nothing to
+        // total. Null rather than zero — the same distinction as an unset rent.
+        if (unit.getStatus() == UnitStatus.MAINTENANCE) {
+            return null;
+        }
+
+        if (!unit.isBedspace()) {
+            // One tenancy, so the unit's own rent is the whole of it.
+            return unit.getRent();
+        }
 
         BigDecimal potential = null;
         for (Bed bed : unitBeds) {
@@ -174,9 +197,31 @@ public class PropertyService {
             }
             potential = potential == null ? effective : potential.add(effective);
         }
+        return potential;
+    }
 
-        return UnitResponse.of(unit, unitBeds.size(), maintenance,
-                closed ? null : potential, monthlyUtilities(unit.getId()));
+    /**
+     * What a whole property brings in per month.
+     *
+     * <p>Loads each unit's beds, which is a query per unit. A landlord's
+     * portfolio is tens of units, not thousands, and the alternative — one
+     * aggregate query — gets the empty-bedspace case wrong by counting a unit
+     * with no beds as though it had one.
+     */
+    private BigDecimal potentialForProperty(UUID propertyId) {
+        BigDecimal total = null;
+        for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(propertyId)) {
+            BigDecimal unitTotal = potentialFor(
+                    unit,
+                    unit.isBedspace()
+                            ? beds.findByUnitIdOrderByBedLabelAsc(unit.getId())
+                            : List.of());
+            if (unitTotal == null) {
+                continue;
+            }
+            total = total == null ? unitTotal : total.add(unitTotal);
+        }
+        return total;
     }
 
     @Transactional(readOnly = true)
