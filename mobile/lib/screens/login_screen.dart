@@ -78,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     )),
                     const SizedBox(height: 6),
                     Text(
-                      'Rentals, kept straight.',
+                      'Zero-hassle ang lease mo!',
                       style: LizmoType.rowSub.copyWith(fontSize: 14),
                     ),
                     const SizedBox(height: 32),

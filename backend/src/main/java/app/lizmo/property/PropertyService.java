@@ -78,8 +78,14 @@ public class PropertyService {
         requireTypeMatchesUsage(request);
 
         Property property = properties.save(new Property(
-                userId, request.name().trim(), request.address().trim(),
-                request.type(), request.usage()));
+                userId,
+                request.name().trim(),
+                request.address().trim(),
+                // Blank becomes null: a landlord clearing the field means they
+                // have no description, not that they have an empty one.
+                trimToNull(request.description()),
+                request.type(),
+                request.usage()));
 
         // Nothing in it yet, so nothing to earn.
         return PropertyResponse.of(property, 0, null);
@@ -105,8 +111,12 @@ public class PropertyService {
                             + "cannot hold. Delete them before converting it.");
         }
 
-        property.update(request.name().trim(), request.address().trim(),
-                request.type(), request.usage());
+        property.update(
+                request.name().trim(),
+                request.address().trim(),
+                trimToNull(request.description()),
+                request.type(),
+                request.usage());
         return PropertyResponse.of(properties.save(property),
                 units.countByPropertyId(propertyId), potentialForProperty(propertyId));
     }

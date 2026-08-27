@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **String** |  | 
 **address** | **String** |  | 
+**description** | **String** | Optional. Blank is stored as no description at all. | [optional] 
 **type** | **String** |  | 
 **usage** | **String** | Constrains type: residential properties take APARTMENT, BOARDING_HOUSE, CONDO or SINGLE_HOUSE; commercial ones take OFFICE, RETAIL_SPACE, WAREHOUSE or STALL. | 
 

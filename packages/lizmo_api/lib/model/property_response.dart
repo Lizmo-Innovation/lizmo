@@ -16,6 +16,7 @@ class PropertyResponse {
     this.id,
     this.name,
     this.address,
+    this.description,
     this.type,
     this.usage,
     this.unitCount,
@@ -47,6 +48,14 @@ class PropertyResponse {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? address;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? description;
 
   PropertyResponseTypeEnum? type;
 
@@ -89,6 +98,7 @@ class PropertyResponse {
     other.id == id &&
     other.name == name &&
     other.address == address &&
+    other.description == description &&
     other.type == type &&
     other.usage == usage &&
     other.unitCount == unitCount &&
@@ -102,6 +112,7 @@ class PropertyResponse {
     (id == null ? 0 : id!.hashCode) +
     (name == null ? 0 : name!.hashCode) +
     (address == null ? 0 : address!.hashCode) +
+    (description == null ? 0 : description!.hashCode) +
     (type == null ? 0 : type!.hashCode) +
     (usage == null ? 0 : usage!.hashCode) +
     (unitCount == null ? 0 : unitCount!.hashCode) +
@@ -110,7 +121,7 @@ class PropertyResponse {
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, type=$type, usage=$usage, unitCount=$unitCount, potentialMonthlyRent=$potentialMonthlyRent, createdAt=$createdAt, updatedAt=$updatedAt]';
+  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, description=$description, type=$type, usage=$usage, unitCount=$unitCount, potentialMonthlyRent=$potentialMonthlyRent, createdAt=$createdAt, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -128,6 +139,11 @@ class PropertyResponse {
       json[r'address'] = this.address;
     } else {
       json[r'address'] = null;
+    }
+    if (this.description != null) {
+      json[r'description'] = this.description;
+    } else {
+      json[r'description'] = null;
     }
     if (this.type != null) {
       json[r'type'] = this.type;
@@ -180,6 +196,7 @@ class PropertyResponse {
         id: mapValueOfType<String>(json, r'id'),
         name: mapValueOfType<String>(json, r'name'),
         address: mapValueOfType<String>(json, r'address'),
+        description: mapValueOfType<String>(json, r'description'),
         type: PropertyResponseTypeEnum.fromJson(json[r'type']),
         usage: PropertyResponseUsageEnum.fromJson(json[r'usage']),
         unitCount: mapValueOfType<int>(json, r'unitCount'),
