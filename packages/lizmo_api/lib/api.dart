@@ -30,6 +30,7 @@ part 'auth/http_bearer_auth.dart';
 
 part 'api/auth_api.dart';
 part 'api/properties_api.dart';
+part 'api/tenant_profile_api.dart';
 part 'api/units_api.dart';
 
 part 'model/api_error.dart';
@@ -42,6 +43,8 @@ part 'model/property_request.dart';
 part 'model/property_response.dart';
 part 'model/refresh_request.dart';
 part 'model/register_request.dart';
+part 'model/tenant_profile_request.dart';
+part 'model/tenant_profile_response.dart';
 part 'model/unit_request.dart';
 part 'model/unit_response.dart';
 part 'model/utilities_request.dart';

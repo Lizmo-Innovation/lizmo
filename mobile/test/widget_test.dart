@@ -19,6 +19,7 @@ import 'package:lizmo/screens/unit_utilities_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
+import 'package:lizmo/tenant/tenant_providers.dart';
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -53,6 +54,10 @@ Widget _app(AuthState initial) => ProviderScope(
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         // Routing tests care where you land, not what loads there.
         propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        // A tenant screen reads this on build. Left to the real provider it
+        // would reach for the network from every routing test.
+        myTenantProfileProvider
+            .overrideWith((ref) async => TenantProfileResponse(readyForALease: true)),
       ],
       child: const LizmoApp(),
     );
@@ -609,6 +614,8 @@ void main() {
       expect(paths.length, 5, reason: 'a duplicated path would shadow a route');
     });
   });
+
+  _tenantProfileTests();
 
   group('property list states', () {
     Widget appWith(Override propertiesOverride) => ProviderScope(
@@ -3306,6 +3313,218 @@ void main() {
       // Reachable is not a licence to skip the splash.
       expect(find.byType(SplashScreen), findsOneWidget);
       expect(find.byType(LoginScreen), findsNothing);
+    });
+  });
+}
+
+/// Captures what the profile form sends, and hands back what it would have
+/// stored, so a test can assert on the request rather than on the screen only.
+class _RecordingTenantProfileApi extends TenantProfileApi {
+  _RecordingTenantProfileApi(this._profile);
+
+  final TenantProfileResponse _profile;
+  TenantProfileRequest? saved;
+
+  @override
+  Future<TenantProfileResponse?> getMyTenantProfile({Future<void>? abortTrigger}) async =>
+      _profile;
+
+  @override
+  Future<TenantProfileResponse?> updateMyTenantProfile(
+    TenantProfileRequest request, {
+    Future<void>? abortTrigger,
+  }) async {
+    saved = request;
+    return _profile;
+  }
+}
+
+void _tenantProfileTests() {
+  group('tenant profile', () {
+    Widget appWith(TenantProfileResponse profile, {_RecordingTenantProfileApi? api}) =>
+        ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            myTenantProfileProvider.overrideWith((ref) async => profile),
+            if (api != null) tenantProfileApiProvider.overrideWithValue(api),
+          ],
+          child: const LizmoApp(),
+        );
+
+    /// Everything a lease needs.
+    TenantProfileResponse complete() => TenantProfileResponse(
+          birthdate: DateTime.utc(1998, 4, 12),
+          permanentAddress: 'Brgy. San Isidro, Naga City',
+          occupation: 'Nurse at Bicol Medical Center',
+          emergencyContactName: 'Rosa Dela Cruz',
+          emergencyContactRelationship: 'Mother',
+          emergencyContactPhone: '09171234567',
+          idType: TenantProfileResponseIdTypeEnum.PHILSYS,
+          idNumber: '1234-5678-9012',
+          readyForALease: true,
+        );
+
+    /// What a field actually holds, as against the hint sitting behind it.
+    /// find.text sees both, so seeded values have to be read off the
+    /// controllers.
+    List<String> fieldValues(WidgetTester tester) => tester
+        .widgetList<EditableText>(find.byType(EditableText))
+        .map((field) => field.controller.text)
+        .toList();
+
+    /// The form is longer than a phone, so Save sits past the fold. The first
+    /// Scrollable is the form itself — the others are the ID dropdown and the
+    /// single-line fields, which do not scroll anywhere.
+    Future<void> saveProfile(WidgetTester tester) async {
+      // A focused field scrolls itself back into view on every relayout, so
+      // it has to let go before the form can be scrolled to the end — the same
+      // reason a real keyboard has to come down to reach the button.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      // Dragged rather than ensureVisible: the drag clamps at the scroll
+      // extent, so it always lands at the bottom of the form.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save profile'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openProfile(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('My profile'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the home screen asks an unfinished profile to be finished',
+        (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Finish your profile'), findsOneWidget);
+    });
+
+    testWidgets('a finished profile is not nagged', (tester) async {
+      await tester.pumpWidget(appWith(complete()));
+      await tester.pumpAndSettle();
+
+      // A banner that never goes away is one a tenant stops reading.
+      expect(find.text('Finish your profile'), findsNothing);
+    });
+
+    testWidgets('the prompt opens the profile', (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finish your profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('My profile'), findsOneWidget);
+    });
+
+    testWidgets('stored details are shown for editing', (tester) async {
+      await tester.pumpWidget(appWith(complete()));
+      await openProfile(tester);
+
+      expect(
+        fieldValues(tester),
+        containsAll(['Rosa Dela Cruz', 'Nurse at Bicol Medical Center',
+            'Mother', '09171234567', '1234-5678-9012']),
+      );
+      expect(find.text('April 12, 1998'), findsOneWidget);
+      expect(find.text('PhilSys (National ID)'), findsWidgets);
+    });
+
+    testWidgets('an unset birthdate reads as a dash, never as a date',
+        (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      // Null is not a date, and certainly not today.
+      expect(find.text('—'), findsOneWidget);
+    });
+
+    testWidgets('the banner says what a lease still needs', (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      expect(
+        find.textContaining('Add an emergency contact and an ID'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the banner clears as the last field is filled in',
+        (tester) async {
+      // Everything but the ID number.
+      await tester.pumpWidget(appWith(TenantProfileResponse(
+        emergencyContactName: 'Rosa Dela Cruz',
+        emergencyContactPhone: '09171234567',
+        idType: TenantProfileResponseIdTypeEnum.UMID,
+        readyForALease: false,
+      )));
+      await openProfile(tester);
+
+      expect(find.textContaining('Add an emergency contact'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, '1234-5678-9012'),
+        '0111-2222222-3',
+      );
+      await tester.pumpAndSettle();
+
+      // Without waiting for a save: the tenant can see they are done.
+      expect(find.text('Your profile is ready for a lease.'), findsOneWidget);
+    });
+
+    testWidgets('a half-finished profile still saves', (tester) async {
+      final api = _RecordingTenantProfileApi(TenantProfileResponse(readyForALease: false));
+      await tester.pumpWidget(
+        appWith(TenantProfileResponse(readyForALease: false), api: api),
+      );
+      await openProfile(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nurse at Bicol Medical Center'),
+        'Student',
+      );
+      await saveProfile(tester);
+
+      // Refusing the lot over the missing ID would leave nothing saved at all.
+      expect(api.saved?.occupation, 'Student');
+      expect(api.saved?.emergencyContactName, isNull);
+    });
+
+    testWidgets('clearing a field sends null rather than spaces', (tester) async {
+      final api = _RecordingTenantProfileApi(complete());
+      await tester.pumpWidget(appWith(complete(), api: api));
+      await openProfile(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nurse at Bicol Medical Center'),
+        '   ',
+      );
+      await saveProfile(tester);
+
+      // Null, not "   ": "never said" has to stay tellable from a real answer.
+      expect(api.saved?.occupation, isNull);
+    });
+
+    testWidgets('the birthdate survives a timezone east of UTC', (tester) async {
+      final api = _RecordingTenantProfileApi(complete());
+      await tester.pumpWidget(appWith(complete(), api: api));
+      await openProfile(tester);
+
+      await saveProfile(tester);
+
+      // The client formats birthdate through toUtc(). Held as local midnight,
+      // a Manila birthdate would go over the wire as the day before.
+      final sent = api.saved!.birthdate!;
+      expect(sent.isUtc, isTrue);
+      expect(sent.toUtc().day, 12);
+      expect(sent.toUtc().month, 4);
     });
   });
 }

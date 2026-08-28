@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
+
+import '../router.dart';
 
 /// The account menu, opened from the header.
 ///
@@ -55,6 +58,22 @@ class AccountSheet extends ConsumerWidget {
             const SizedBox(height: 20),
             const Divider(height: 1, color: Color(0xFFE3E8E6)),
             const SizedBox(height: 8),
+
+            // Only tenants have a tenant profile to edit. A landlord-only
+            // account has one in the database, but nothing that would ever be
+            // read from it.
+            if (session?.isTenant ?? false)
+              _SheetAction(
+                icon: Icons.badge_outlined,
+                label: 'My profile',
+                colour: LizmoColors.ink,
+                onTap: () {
+                  // Close first: pushing under an open sheet leaves it
+                  // floating over the profile form.
+                  Navigator.of(context).pop();
+                  context.push(Routes.tenantProfile);
+                },
+              ),
 
             _SheetAction(
               icon: Icons.logout,

@@ -2,16 +2,30 @@ package app.lizmo.user;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Marks a user as rentable-to. Deliberately thin — a tenant's substance lives
- * in their leases, and the profile persists across tenancies so re-renting
- * attaches a new lease rather than creating a duplicate person.
+ * What a tenant tells a landlord before signing a lease.
+ *
+ * <p>Identity — name, phone, email — stays on the user; a landlord account has
+ * those too. What lives here is what a landlord asks a *tenant*: who to call in
+ * an emergency, what ID they carry, where they are from.
+ *
+ * <p>The profile persists across tenancies, so re-renting attaches a new lease
+ * rather than creating a duplicate person.
+ *
+ * <p>Every field is optional. A tenant fills this in on a phone at move-in and
+ * skips whatever they can; a half-finished profile is worth more than an
+ * abandoned one. Whether a *lease* may be signed against it is a separate
+ * question, asked where leases are created.
  */
 @Entity
 @Table(name = "tenant_profiles")
@@ -20,6 +34,29 @@ public class TenantProfile {
     @Id
     @Column(name = "user_id")
     private UUID userId;
+
+    private LocalDate birthdate;
+
+    @Column(name = "permanent_address")
+    private String permanentAddress;
+
+    private String occupation;
+
+    @Column(name = "emergency_contact_name")
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_relationship")
+    private String emergencyContactRelationship;
+
+    @Column(name = "emergency_contact_phone")
+    private String emergencyContactPhone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "id_type")
+    private IdType idType;
+
+    @Column(name = "id_number")
+    private String idNumber;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -37,8 +74,81 @@ public class TenantProfile {
         this.createdAt = Instant.now();
     }
 
+    /** Applies everything a tenant can edit about themselves, in one go. */
+    public void update(
+            LocalDate birthdate,
+            String permanentAddress,
+            String occupation,
+            String emergencyContactName,
+            String emergencyContactRelationship,
+            String emergencyContactPhone,
+            IdType idType,
+            String idNumber) {
+        this.birthdate = birthdate;
+        this.permanentAddress = permanentAddress;
+        this.occupation = occupation;
+        this.emergencyContactName = emergencyContactName;
+        this.emergencyContactRelationship = emergencyContactRelationship;
+        this.emergencyContactPhone = emergencyContactPhone;
+        this.idType = idType;
+        this.idNumber = idNumber;
+    }
+
+    /**
+     * Whether this profile carries what a lease needs.
+     *
+     * <p>An emergency contact and an identity document: the two things a
+     * landlord genuinely cannot sign without. Birthdate, address and occupation
+     * are useful and not load-bearing, so they are left out of the test — a
+     * lease should not be blocked on a blank occupation.
+     *
+     * <p>The ID *photographs* are a separate check, made where documents live.
+     */
+    public boolean isReadyForALease() {
+        return isPresent(emergencyContactName)
+                && isPresent(emergencyContactPhone)
+                && idType != null
+                && isPresent(idNumber);
+    }
+
+    private static boolean isPresent(String value) {
+        return value != null && !value.isBlank();
+    }
+
     public UUID getUserId() {
         return userId;
+    }
+
+    public LocalDate getBirthdate() {
+        return birthdate;
+    }
+
+    public String getPermanentAddress() {
+        return permanentAddress;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public String getEmergencyContactName() {
+        return emergencyContactName;
+    }
+
+    public String getEmergencyContactRelationship() {
+        return emergencyContactRelationship;
+    }
+
+    public String getEmergencyContactPhone() {
+        return emergencyContactPhone;
+    }
+
+    public IdType getIdType() {
+        return idType;
+    }
+
+    public String getIdNumber() {
+        return idNumber;
     }
 
     public Instant getCreatedAt() {
