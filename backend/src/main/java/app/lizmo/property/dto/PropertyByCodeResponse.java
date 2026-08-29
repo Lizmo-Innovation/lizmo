@@ -4,6 +4,7 @@ import app.lizmo.property.Property;
 import app.lizmo.property.PropertyType;
 import app.lizmo.property.PropertyUsage;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,6 +18,12 @@ import java.util.UUID;
  *
  * <p>Prices belong on the vacancy list, where they are the asking rent for one
  * bed or unit, not a total.
+ *
+ * @param floors what is free, grouped by floor — the whole point of scanning
+ *               the code. Empty when the place is full, which is a real answer
+ *               and not an error.
+ * @param vacantWholeUnits totals across every floor, so a screen can lead with
+ *               "2 rooms free" without adding up the lists itself.
  */
 @Schema(description = "A property found by its code, as a prospective tenant sees it")
 public record PropertyByCodeResponse(
@@ -26,9 +33,15 @@ public record PropertyByCodeResponse(
         String address,
         String description,
         PropertyType type,
-        PropertyUsage usage) {
+        PropertyUsage usage,
+        int vacantWholeUnits,
+        int vacantBeds,
+        List<VacancyFloor> floors) {
 
-    public static PropertyByCodeResponse of(Property property) {
+    public static PropertyByCodeResponse of(
+            Property property, List<VacancyFloor> floors) {
+        int wholeUnits = floors.stream().mapToInt(floor -> floor.wholeUnits().size()).sum();
+        int beds = floors.stream().mapToInt(floor -> floor.bedspaces().size()).sum();
         return new PropertyByCodeResponse(
                 property.getId(),
                 property.getCode(),
@@ -36,6 +49,9 @@ public record PropertyByCodeResponse(
                 property.getAddress(),
                 property.getDescription(),
                 property.getType(),
-                property.getUsage());
+                property.getUsage(),
+                wholeUnits,
+                beds,
+                floors);
     }
 }

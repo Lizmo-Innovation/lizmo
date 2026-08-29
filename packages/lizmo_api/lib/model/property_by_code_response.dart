@@ -20,6 +20,9 @@ class PropertyByCodeResponse {
     this.description,
     this.type,
     this.usage,
+    this.vacantWholeUnits,
+    this.vacantBeds,
+    this.floors = const [],
   });
 
   ///
@@ -66,6 +69,24 @@ class PropertyByCodeResponse {
 
   PropertyByCodeResponseUsageEnum? usage;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? vacantWholeUnits;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? vacantBeds;
+
+  List<VacancyFloor> floors;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PropertyByCodeResponse &&
     other.id == id &&
@@ -74,7 +95,10 @@ class PropertyByCodeResponse {
     other.address == address &&
     other.description == description &&
     other.type == type &&
-    other.usage == usage;
+    other.usage == usage &&
+    other.vacantWholeUnits == vacantWholeUnits &&
+    other.vacantBeds == vacantBeds &&
+    _deepEquality.equals(other.floors, floors);
 
   @override
   int get hashCode =>
@@ -85,10 +109,13 @@ class PropertyByCodeResponse {
     (address == null ? 0 : address!.hashCode) +
     (description == null ? 0 : description!.hashCode) +
     (type == null ? 0 : type!.hashCode) +
-    (usage == null ? 0 : usage!.hashCode);
+    (usage == null ? 0 : usage!.hashCode) +
+    (vacantWholeUnits == null ? 0 : vacantWholeUnits!.hashCode) +
+    (vacantBeds == null ? 0 : vacantBeds!.hashCode) +
+    (floors.hashCode);
 
   @override
-  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage]';
+  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage, vacantWholeUnits=$vacantWholeUnits, vacantBeds=$vacantBeds, floors=$floors]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -127,6 +154,17 @@ class PropertyByCodeResponse {
     } else {
       json[r'usage'] = null;
     }
+    if (this.vacantWholeUnits != null) {
+      json[r'vacantWholeUnits'] = this.vacantWholeUnits;
+    } else {
+      json[r'vacantWholeUnits'] = null;
+    }
+    if (this.vacantBeds != null) {
+      json[r'vacantBeds'] = this.vacantBeds;
+    } else {
+      json[r'vacantBeds'] = null;
+    }
+      json[r'floors'] = this.floors;
     return json;
   }
 
@@ -152,6 +190,9 @@ class PropertyByCodeResponse {
         description: mapValueOfType<String>(json, r'description'),
         type: PropertyByCodeResponseTypeEnum.fromJson(json[r'type']),
         usage: PropertyByCodeResponseUsageEnum.fromJson(json[r'usage']),
+        vacantWholeUnits: mapValueOfType<int>(json, r'vacantWholeUnits'),
+        vacantBeds: mapValueOfType<int>(json, r'vacantBeds'),
+        floors: VacancyFloor.listFromJson(json[r'floors']),
       );
     }
     return null;
