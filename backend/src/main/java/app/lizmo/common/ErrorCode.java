@@ -36,6 +36,15 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /**
+     * A lease was asked for against a tenant whose profile is not complete.
+     *
+     * <p>409 rather than 400: nothing is wrong with the request, and the same
+     * request will succeed once the tenant finishes their profile. The message
+     * names what is missing so the landlord can tell them.
+     */
+    TENANT_PROFILE_INCOMPLETE(HttpStatus.CONFLICT),
+
+    /**
      * The landlord's platform invoice is unpaid past the grace period. The
      * client routes to the outstanding billing cycle so they can pay and
      * unlock — see product spec §3.

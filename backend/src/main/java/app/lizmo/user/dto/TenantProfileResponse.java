@@ -24,12 +24,13 @@ public record TenantProfileResponse(
         boolean readyForALease) {
 
     /**
-     * @param hasBothPhotographs whether the ID and the 1x1 are both uploaded.
-     *                           Passed in rather than read here, because a
-     *                           record is not the place to reach into another
-     *                           table.
+     * @param readyForALease from LeaseReadiness, which is the one place that
+     *                       decides it. Passed in rather than worked out here:
+     *                       a record is not the place to reach into another
+     *                       table, and a second copy of the rule would drift
+     *                       from the one that refuses leases.
      */
-    public static TenantProfileResponse of(TenantProfile profile, boolean hasBothPhotographs) {
+    public static TenantProfileResponse of(TenantProfile profile, boolean readyForALease) {
         return new TenantProfileResponse(
                 profile.getBirthdate(),
                 profile.getPermanentAddress(),
@@ -39,6 +40,6 @@ public record TenantProfileResponse(
                 profile.getEmergencyContactPhone(),
                 profile.getIdType(),
                 profile.getIdNumber(),
-                profile.hasDetailsForALease() && hasBothPhotographs);
+                readyForALease);
     }
 }

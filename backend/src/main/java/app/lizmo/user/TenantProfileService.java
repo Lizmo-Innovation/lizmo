@@ -2,7 +2,6 @@ package app.lizmo.user;
 
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
-import app.lizmo.document.TenantDocumentService;
 import app.lizmo.user.dto.TenantProfileRequest;
 import app.lizmo.user.dto.TenantProfileResponse;
 import java.util.UUID;
@@ -20,17 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class TenantProfileService {
 
     private final TenantProfileRepository profiles;
-    private final TenantDocumentService documents;
+    private final LeaseReadiness readiness;
 
-    public TenantProfileService(
-            TenantProfileRepository profiles, TenantDocumentService documents) {
+    public TenantProfileService(TenantProfileRepository profiles, LeaseReadiness readiness) {
         this.profiles = profiles;
-        this.documents = documents;
+        this.readiness = readiness;
     }
 
     @Transactional(readOnly = true)
     public TenantProfileResponse get(UUID userId) {
-        return TenantProfileResponse.of(require(userId), documents.hasBothPhotographs(userId));
+        return TenantProfileResponse.of(require(userId), readiness.isReady(userId));
     }
 
     @Transactional
@@ -49,8 +47,10 @@ public class TenantProfileService {
                 request.idType(),
                 trimToNull(request.idNumber()));
 
-        return TenantProfileResponse.of(
-                profiles.save(profile), documents.hasBothPhotographs(userId));
+        // Saved first: readiness is asked of what is now stored, not of what
+        // was there when the request arrived.
+        TenantProfile saved = profiles.save(profile);
+        return TenantProfileResponse.of(saved, readiness.isReady(userId));
     }
 
     /**

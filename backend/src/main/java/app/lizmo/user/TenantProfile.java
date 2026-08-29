@@ -94,28 +94,6 @@ public class TenantProfile {
         this.idNumber = idNumber;
     }
 
-    /**
-     * Whether the *typed* part of this profile carries what a lease needs.
-     *
-     * <p>An emergency contact and an identity document: the two things a
-     * landlord genuinely cannot sign without. Birthdate, address and occupation
-     * are useful and not load-bearing, so they are left out of the test — a
-     * lease should not be blocked on a blank occupation.
-     *
-     * <p>Only half the answer. The photographs are the other half, and they
-     * live in another table; readyForALease on the response combines the two.
-     */
-    public boolean hasDetailsForALease() {
-        return isPresent(emergencyContactName)
-                && isPresent(emergencyContactPhone)
-                && idType != null
-                && isPresent(idNumber);
-    }
-
-    private static boolean isPresent(String value) {
-        return value != null && !value.isBlank();
-    }
-
     public UUID getUserId() {
         return userId;
     }

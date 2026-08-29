@@ -128,10 +128,18 @@ public class TenantDocumentService {
     /** Whether both photographs a lease needs are uploaded. */
     @Transactional(readOnly = true)
     public boolean hasBothPhotographs(UUID userId) {
+        return has(userId, DocumentType.VALID_ID) && has(userId, DocumentType.TENANT_PHOTO);
+    }
+
+    /**
+     * Whether one particular photograph is uploaded. Asked per kind so that
+     * whatever refuses a lease can say which one is missing: "not ready" sends
+     * a landlord back to the tenant with nothing useful to pass on.
+     */
+    @Transactional(readOnly = true)
+    public boolean has(UUID userId, DocumentType kind) {
         return documents.findByOwnerTypeAndOwnerIdAndDocType(
-                        DocumentOwnerType.TENANT, userId, DocumentType.VALID_ID).isPresent()
-                && documents.findByOwnerTypeAndOwnerIdAndDocType(
-                        DocumentOwnerType.TENANT, userId, DocumentType.TENANT_PHOTO).isPresent();
+                DocumentOwnerType.TENANT, userId, kind).isPresent();
     }
 
     private TenantDocumentResponse describe(StoredDocument document) {
