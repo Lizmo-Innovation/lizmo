@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../router.dart';
+import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/role_switcher.dart';
 
@@ -63,6 +66,15 @@ class TenantHomeScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
               children: [
+                // Only while something is missing. A finished profile is not
+                // news, and a permanent banner is one a tenant stops seeing.
+                if (ref.watch(myTenantProfileProvider).valueOrNull
+                        ?.readyForALease ==
+                    false) ...[
+                  const _FinishYourProfile(),
+                  const SizedBox(height: 18),
+                ],
+
                 Text('Billing periods', style: LizmoType.sectionHeading),
                 const SizedBox(height: 10),
                 for (final period in _periods)
@@ -88,6 +100,57 @@ class TenantHomeScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown until the profile carries what a lease needs.
+///
+/// A tenant has no reason to go looking for a profile screen, so the app asks
+/// on the one screen they do open — and says why, rather than nagging.
+class _FinishYourProfile extends StatelessWidget {
+  const _FinishYourProfile();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: LizmoColors.amberBg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => context.push(Routes.tenantProfile),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          child: Row(
+            children: [
+              const Icon(Icons.badge_outlined,
+                  size: 20, color: LizmoColors.amberText),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Finish your profile',
+                      style: LizmoType.rowName
+                          .copyWith(color: LizmoColors.amberText),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your landlord needs an emergency contact and an ID '
+                      'before you can sign a lease.',
+                      style: LizmoType.rowSub
+                          .copyWith(color: LizmoColors.amberText),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  size: 20, color: LizmoColors.amberText),
+            ],
+          ),
+        ),
       ),
     );
   }

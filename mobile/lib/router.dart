@@ -18,6 +18,7 @@ import 'screens/property_list_screen.dart';
 import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/tenant_home_screen.dart';
+import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
 import 'screens/unit_utilities_screen.dart';
 
@@ -27,6 +28,10 @@ abstract final class Routes {
   static const login = '/login';
   static const register = '/register';
   static const tenant = '/tenant';
+
+  /// The tenant's own profile. Under /tenant, so the role guard already
+  /// covers it.
+  static const tenantProfile = '/tenant/profile';
 
   /// The landlord section as a whole. Redirects to [landlordHome]; every
   /// guard still matches on this prefix, so the tabs changed nothing about
@@ -159,6 +164,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.tenant,
         builder: (context, state) => const TenantHomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const TenantProfileScreen(),
+          ),
+        ],
       ),
       // Three sections, each with its own navigation stack. Pushing a
       // property, a unit and a bed, switching to Tenants and coming back

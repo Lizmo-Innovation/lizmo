@@ -14,6 +14,11 @@ doc/PropertyRequest.md
 doc/PropertyResponse.md
 doc/RefreshRequest.md
 doc/RegisterRequest.md
+doc/TenantDocumentResponse.md
+doc/TenantDocumentsApi.md
+doc/TenantProfileApi.md
+doc/TenantProfileRequest.md
+doc/TenantProfileResponse.md
 doc/UnitRequest.md
 doc/UnitResponse.md
 doc/UnitsApi.md
@@ -25,6 +30,8 @@ git_push.sh
 lib/api.dart
 lib/api/auth_api.dart
 lib/api/properties_api.dart
+lib/api/tenant_documents_api.dart
+lib/api/tenant_profile_api.dart
 lib/api/units_api.dart
 lib/api_client.dart
 lib/api_exception.dart
@@ -44,6 +51,9 @@ lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/refresh_request.dart
 lib/model/register_request.dart
+lib/model/tenant_document_response.dart
+lib/model/tenant_profile_request.dart
+lib/model/tenant_profile_response.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
 lib/model/utilities_request.dart
@@ -51,3 +61,5 @@ lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
 pubspec.yaml
+test/tenant_document_response_test.dart
+test/tenant_documents_api_test.dart
