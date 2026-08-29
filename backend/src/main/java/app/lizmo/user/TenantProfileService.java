@@ -2,6 +2,7 @@ package app.lizmo.user;
 
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
+import app.lizmo.document.TenantDocumentService;
 import app.lizmo.user.dto.TenantProfileRequest;
 import app.lizmo.user.dto.TenantProfileResponse;
 import java.util.UUID;
@@ -19,14 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class TenantProfileService {
 
     private final TenantProfileRepository profiles;
+    private final TenantDocumentService documents;
 
-    public TenantProfileService(TenantProfileRepository profiles) {
+    public TenantProfileService(
+            TenantProfileRepository profiles, TenantDocumentService documents) {
         this.profiles = profiles;
+        this.documents = documents;
     }
 
     @Transactional(readOnly = true)
     public TenantProfileResponse get(UUID userId) {
-        return TenantProfileResponse.of(require(userId));
+        return TenantProfileResponse.of(require(userId), documents.hasBothPhotographs(userId));
     }
 
     @Transactional
@@ -45,7 +49,8 @@ public class TenantProfileService {
                 request.idType(),
                 trimToNull(request.idNumber()));
 
-        return TenantProfileResponse.of(profiles.save(profile));
+        return TenantProfileResponse.of(
+                profiles.save(profile), documents.hasBothPhotographs(userId));
     }
 
     /**

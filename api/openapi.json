@@ -24,6 +24,10 @@
             "description": "Units and the beds within them"
         },
         {
+            "name": "Tenant documents",
+            "description": "A tenant's own photographs"
+        },
+        {
             "name": "Properties",
             "description": "A landlord's properties and their units"
         }
@@ -776,6 +780,96 @@
                 }
             }
         },
+        "/api/v1/me/tenant-profile/documents": {
+            "get": {
+                "tags": [
+                    "Tenant documents"
+                ],
+                "summary": "My photographs",
+                "description": "Each carries a presigned URL valid for a few minutes. Do not cache it; ask again instead.",
+                "operationId": "listMyTenantDocuments",
+                "responses": {
+                    "200": {
+                        "description": "What has been uploaded so far",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TenantDocumentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Tenant documents"
+                ],
+                "summary": "Upload a photograph",
+                "description": "Re-encoded on arrival, so no EXIF or location data is kept. Uploading again replaces what is there.",
+                "operationId": "uploadMyTenantDocument",
+                "parameters": [
+                    {
+                        "name": "docType",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "LEASE_CONTRACT",
+                                "VALID_ID",
+                                "RECEIPT",
+                                "TENANT_PHOTO",
+                                "OTHER"
+                            ]
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The stored photograph",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TenantDocumentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Not an image, too large, or a type a tenant may not upload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -1463,6 +1557,38 @@
                     }
                 },
                 "description": "A bed within a bedspace unit"
+            },
+            "TenantDocumentResponse": {
+                "type": "object",
+                "properties": {
+                    "docType": {
+                        "type": "string",
+                        "example": "VALID_ID",
+                        "enum": [
+                            "LEASE_CONTRACT",
+                            "VALID_ID",
+                            "RECEIPT",
+                            "TENANT_PHOTO",
+                            "OTHER"
+                        ]
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "urlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "byteSize": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uploadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A photograph a tenant has uploaded about themselves"
             },
             "RegisterRequest": {
                 "required": [

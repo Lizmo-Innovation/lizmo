@@ -29,3 +29,23 @@ final myTenantProfileProvider =
     throw ApiFailure.from(error);
   }
 });
+
+final tenantDocumentsApiProvider = Provider<TenantDocumentsApi>((ref) {
+  return TenantDocumentsApi(ref.watch(apiClientProvider));
+});
+
+/// The signed-in tenant's own photographs.
+///
+/// Each carries a presigned URL good for minutes, so this is deliberately
+/// autoDispose and never cached beyond the screen: a URL kept past its life
+/// shows a broken image, and one kept in a longer-lived provider would be
+/// handed to a widget that outlived it.
+final myTenantDocumentsProvider =
+    FutureProvider.autoDispose<List<TenantDocumentResponse>>((ref) async {
+  try {
+    return await ref.watch(tenantDocumentsApiProvider).listMyTenantDocuments() ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

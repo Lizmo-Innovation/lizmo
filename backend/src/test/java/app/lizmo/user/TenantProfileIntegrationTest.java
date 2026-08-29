@@ -89,7 +89,9 @@ class TenantProfileIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.occupation").value("Nurse at Bicol Medical Center"))
                 .andExpect(jsonPath("$.emergencyContactRelationship").value("Mother"))
                 .andExpect(jsonPath("$.idType").value("PHILSYS"))
-                .andExpect(jsonPath("$.readyForALease").value(true));
+                // Not ready: the photographs are the other half, and they are
+                // asserted where documents live.
+                .andExpect(jsonPath("$.readyForALease").value(false));
     }
 
     @Test
@@ -107,7 +109,7 @@ class TenantProfileIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void a_lease_needs_an_emergency_contact_and_an_id() throws Exception {
+    void the_details_a_lease_needs_are_an_emergency_contact_and_an_id() throws Exception {
         // Everything but the ID.
         save(tenantToken, """
                 {"emergencyContactName":"Rosa Dela Cruz",
@@ -126,9 +128,12 @@ class TenantProfileIntegrationTest extends IntegrationTest {
                  "idType":"UMID","idNumber":"0111-2222222-3"}
                 """);
 
+        // Still false, and correctly so: every detail is filled in, but an ID
+        // number typed into a form is not an ID anybody has seen. The
+        // photographs complete it, in TenantDocumentIntegrationTest.
         mvc.perform(get("/api/v1/me/tenant-profile")
                         .header("Authorization", "Bearer " + tenantToken))
-                .andExpect(jsonPath("$.readyForALease").value(true));
+                .andExpect(jsonPath("$.readyForALease").value(false));
     }
 
     @Test

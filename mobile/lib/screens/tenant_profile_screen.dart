@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -133,17 +135,33 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// Mirrors TenantProfile.isReadyForALease, so the banner moves as the form is
-  /// filled in rather than only after a save.
-  bool get _readyForALease =>
-      _emergencyName.text.trim().isNotEmpty &&
-      _emergencyPhone.text.trim().isNotEmpty &&
-      _idType != null &&
-      _idNumber.text.trim().isNotEmpty;
+  /// What the banner still needs, in the order the form asks for it. Named
+  /// rather than counted: "2 things missing" makes a tenant hunt for them.
+  List<String> _whatIsMissing(List<TenantDocumentResponse> documents) {
+    bool uploaded(TenantDocumentResponseDocTypeEnum kind) =>
+        documents.any((document) => document.docType == kind);
+
+    return [
+      if (_emergencyName.text.trim().isEmpty ||
+          _emergencyPhone.text.trim().isEmpty)
+        'an emergency contact',
+      if (_idType == null || _idNumber.text.trim().isEmpty) 'your ID details',
+      if (!uploaded(TenantDocumentResponseDocTypeEnum.VALID_ID))
+        'a photo of your ID',
+      if (!uploaded(TenantDocumentResponseDocTypeEnum.TENANT_PHOTO))
+        'a 1x1 or selfie',
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(myTenantProfileProvider);
+    // Loading counts as nothing uploaded rather than as ready: the banner may
+    // say "add a photo" for a moment, but it must never say "you are done" to
+    // someone who is not.
+    final documents = ref.watch(myTenantDocumentsProvider).valueOrNull ??
+        const <TenantDocumentResponse>[];
+    final missing = _whatIsMissing(documents);
 
     if (!_seeded) {
       switch (profile) {
@@ -177,7 +195,7 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ReadinessBanner(ready: _readyForALease),
+                _ReadinessBanner(missing: missing),
                 const SizedBox(height: 20),
 
                 const _SectionHeading('About you'),
@@ -251,6 +269,27 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
                   hint: '1234-5678-9012',
                 ),
 
+                const SizedBox(height: 24),
+                const _SectionHeading('Photographs'),
+                const SizedBox(height: 4),
+                Text(
+                  'Location and camera details are removed before anything is '
+                  'stored.',
+                  style: LizmoType.rowSub,
+                ),
+                const SizedBox(height: 10),
+                const _PhotographTile(
+                  kind: TenantDocumentResponseDocTypeEnum.VALID_ID,
+                  label: 'Photo of your ID',
+                  hint: 'The ID you named above',
+                ),
+                const SizedBox(height: 12),
+                const _PhotographTile(
+                  kind: TenantDocumentResponseDocTypeEnum.TENANT_PHOTO,
+                  label: '1x1 or selfie',
+                  hint: 'So your landlord knows who to expect',
+                ),
+
                 if (_error != null) ...[
                   const SizedBox(height: 18),
                   _ErrorBanner(message: _error!),
@@ -275,14 +314,22 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
 /// What is still missing before a lease can be signed.
 ///
 /// Not a validation error — nothing here blocks saving. It answers the question
-/// the tenant actually has, which is whether they are done.
+/// the tenant actually has, which is whether they are done, and names the gaps
+/// rather than counting them: "2 things missing" only makes someone hunt.
+///
+/// The typed half moves as the form is typed in; the photographs move as they
+/// are uploaded. Both mirror what the server decides, so the screen and the
+/// API cannot disagree about whether a lease may be signed.
 class _ReadinessBanner extends StatelessWidget {
-  const _ReadinessBanner({required this.ready});
+  const _ReadinessBanner({required this.missing});
 
-  final bool ready;
+  final List<String> missing;
 
   @override
   Widget build(BuildContext context) {
+    final ready = missing.isEmpty;
+    final colour = ready ? LizmoColors.teal900 : LizmoColors.amberText;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -295,23 +342,28 @@ class _ReadinessBanner extends StatelessWidget {
           Icon(
             ready ? Icons.check_circle_outline : Icons.info_outline,
             size: 18,
-            color: ready ? LizmoColors.teal900 : LizmoColors.amberText,
+            color: colour,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               ready
                   ? 'Your profile is ready for a lease.'
-                  : 'Add an emergency contact and an ID before signing a lease. '
-                        'Everything else can wait.',
-              style: LizmoType.rowSub.copyWith(
-                color: ready ? LizmoColors.teal900 : LizmoColors.amberText,
-              ),
+                  : 'Before signing a lease you still need '
+                        '${_asAList(missing)}.',
+              style: LizmoType.rowSub.copyWith(color: colour),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// "a and b", "a, b and c" — a comma before "and" reads as a fourth item to
+  /// somebody skimming.
+  static String _asAList(List<String> items) {
+    if (items.length == 1) return items.single;
+    return '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';
   }
 }
 
@@ -599,6 +651,226 @@ class _LoadFailed extends StatelessWidget {
           actionLabel: 'Go back',
           onAction: () => Navigator.of(context).pop(),
         ),
+      ),
+    );
+  }
+}
+
+/// One photograph: what is there, or an invitation to add it.
+///
+/// Its own ConsumerStatefulWidget rather than more state on the form, so an
+/// upload in progress rebuilds one tile instead of the whole screen — and a
+/// tenant who backs out mid-upload does not take the form's unsaved text with
+/// them.
+class _PhotographTile extends ConsumerStatefulWidget {
+  const _PhotographTile({
+    required this.kind,
+    required this.label,
+    required this.hint,
+  });
+
+  final TenantDocumentResponseDocTypeEnum kind;
+  final String label;
+  final String hint;
+
+  @override
+  ConsumerState<_PhotographTile> createState() => _PhotographTileState();
+}
+
+class _PhotographTileState extends ConsumerState<_PhotographTile> {
+  bool _uploading = false;
+  String? _error;
+
+  Future<void> _choose() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: LizmoColors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined,
+                  color: LizmoColors.teal900),
+              title: Text('Take a photo', style: LizmoType.rowName),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: LizmoColors.teal900),
+              // Gallery as well as camera: a 1x1 is something people already
+              // have photographed, and an ID is usually shot once and kept.
+              title: Text('Choose from photos', style: LizmoType.rowName),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+    await _upload(source);
+  }
+
+  Future<void> _upload(ImageSource source) async {
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        // A first pass at the size, so a 12MP photo is not pushed over mobile
+        // data only for the server to shrink it. The server still normalises:
+        // this is a courtesy to the connection, not the rule.
+        maxWidth: 2000,
+        maxHeight: 2000,
+        imageQuality: 90,
+      );
+      // Cancelling the camera is not an error.
+      if (picked == null) {
+        if (mounted) setState(() => _uploading = false);
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+      await ref.read(tenantDocumentsApiProvider).uploadMyTenantDocument(
+            widget.kind.toJson(),
+            http.MultipartFile.fromBytes('file', bytes, filename: picked.name),
+          );
+
+      ref.invalidate(myTenantDocumentsProvider);
+      // Readiness moves with the upload, and it lives on the profile.
+      ref.invalidate(myTenantProfileProvider);
+    } catch (error) {
+      final failure = ApiFailure.from(error);
+      if (mounted) setState(() => _error = failure.message);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final documents = ref.watch(myTenantDocumentsProvider);
+    final existing = documents.valueOrNull
+        ?.where((document) => document.docType == widget.kind)
+        .firstOrNull;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [LizmoColors.cardShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _Thumbnail(url: existing?.url, uploading: _uploading),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(widget.label, style: LizmoType.rowName),
+                    const SizedBox(height: 2),
+                    Text(
+                      existing == null ? widget.hint : 'Uploaded',
+                      style: LizmoType.rowSub.copyWith(
+                        color: existing == null
+                            ? LizmoColors.slate
+                            : LizmoColors.teal900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: _uploading ? null : _choose,
+                child: Text(
+                  // "Replace" rather than "Upload" once there is one: the
+                  // second upload supersedes the first rather than adding to it,
+                  // and the button should say so.
+                  existing == null ? 'Add' : 'Replace',
+                  style: LizmoType.rowName.copyWith(
+                    color: _uploading ? LizmoColors.slate : LizmoColors.teal900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The photograph itself, or a placeholder in its shape.
+///
+/// A fixed box either way, so a tile does not jump in height when an upload
+/// lands.
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({required this.url, required this.uploading});
+
+  final String? url;
+  final bool uploading;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 56,
+        height: 56,
+        color: LizmoColors.tealTint,
+        child: _content(),
+      ),
+    );
+  }
+
+  Widget _content() {
+    if (uploading) {
+      return const Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+          ),
+        ),
+      );
+    }
+    if (url == null) {
+      return const Icon(Icons.add_a_photo_outlined,
+          size: 20, color: LizmoColors.teal900);
+    }
+    return Image.network(
+      url!,
+      fit: BoxFit.cover,
+      // The URL expires, so a failure here is expected eventually rather than
+      // exceptional. A broken-image glyph would read as "your upload is gone".
+      errorBuilder: (_, _, _) => const Icon(
+        Icons.image_outlined,
+        size: 20,
+        color: LizmoColors.teal900,
       ),
     );
   }

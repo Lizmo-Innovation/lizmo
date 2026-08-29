@@ -58,6 +58,8 @@ Widget _app(AuthState initial) => ProviderScope(
         // would reach for the network from every routing test.
         myTenantProfileProvider
             .overrideWith((ref) async => TenantProfileResponse(readyForALease: true)),
+        myTenantDocumentsProvider
+            .overrideWith((ref) async => const <TenantDocumentResponse>[]),
       ],
       child: const LizmoApp(),
     );
@@ -3341,17 +3343,38 @@ class _RecordingTenantProfileApi extends TenantProfileApi {
 
 void _tenantProfileTests() {
   group('tenant profile', () {
-    Widget appWith(TenantProfileResponse profile, {_RecordingTenantProfileApi? api}) =>
+    Widget appWith(
+      TenantProfileResponse profile, {
+      _RecordingTenantProfileApi? api,
+      List<TenantDocumentResponse> documents = const [],
+    }) =>
         ProviderScope(
           overrides: [
             authControllerProvider
                 .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
             myTenantProfileProvider.overrideWith((ref) async => profile),
+            myTenantDocumentsProvider.overrideWith((ref) async => documents),
             if (api != null) tenantProfileApiProvider.overrideWithValue(api),
           ],
           child: const LizmoApp(),
         );
+
+    /// A photograph the server says is stored.
+    TenantDocumentResponse photograph(TenantDocumentResponseDocTypeEnum kind) =>
+        TenantDocumentResponse(
+          docType: kind,
+          // Presigned and short-lived, as the real one is.
+          url: 'https://example-bucket.test/tenants/u1/x.jpg?X-Amz-Expires=600',
+          urlExpiresInSeconds: 600,
+          byteSize: 40000,
+          uploadedAt: DateTime.utc(2026, 8, 1),
+        );
+
+    List<TenantDocumentResponse> bothPhotographs() => [
+          photograph(TenantDocumentResponseDocTypeEnum.VALID_ID),
+          photograph(TenantDocumentResponseDocTypeEnum.TENANT_PHOTO),
+        ];
 
     /// Everything a lease needs.
     TenantProfileResponse complete() => TenantProfileResponse(
@@ -3408,7 +3431,7 @@ void _tenantProfileTests() {
     });
 
     testWidgets('a finished profile is not nagged', (tester) async {
-      await tester.pumpWidget(appWith(complete()));
+      await tester.pumpWidget(appWith(complete(), documents: bothPhotographs()));
       await tester.pumpAndSettle();
 
       // A banner that never goes away is one a tenant stops reading.
@@ -3450,24 +3473,29 @@ void _tenantProfileTests() {
       await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
       await openProfile(tester);
 
+      // Named rather than counted, and in the order the form asks for them.
       expect(
-        find.textContaining('Add an emergency contact and an ID'),
+        find.textContaining('an emergency contact, your ID details, '
+            'a photo of your ID and a 1x1 or selfie'),
         findsOneWidget,
       );
     });
 
     testWidgets('the banner clears as the last field is filled in',
         (tester) async {
-      // Everything but the ID number.
-      await tester.pumpWidget(appWith(TenantProfileResponse(
-        emergencyContactName: 'Rosa Dela Cruz',
-        emergencyContactPhone: '09171234567',
-        idType: TenantProfileResponseIdTypeEnum.UMID,
-        readyForALease: false,
-      )));
+      // Everything, both photographs included, but the ID number.
+      await tester.pumpWidget(appWith(
+        TenantProfileResponse(
+          emergencyContactName: 'Rosa Dela Cruz',
+          emergencyContactPhone: '09171234567',
+          idType: TenantProfileResponseIdTypeEnum.UMID,
+          readyForALease: false,
+        ),
+        documents: bothPhotographs(),
+      ));
       await openProfile(tester);
 
-      expect(find.textContaining('Add an emergency contact'), findsOneWidget);
+      expect(find.textContaining('your ID details'), findsOneWidget);
 
       await tester.enterText(
         find.widgetWithText(TextFormField, '1234-5678-9012'),
@@ -3477,6 +3505,68 @@ void _tenantProfileTests() {
 
       // Without waiting for a save: the tenant can see they are done.
       expect(find.text('Your profile is ready for a lease.'), findsOneWidget);
+    });
+
+    testWidgets('both photographs are asked for by name', (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      // A 1x1 is not a second ID, and a tenant should not have to guess which
+      // of the two a tile means.
+      expect(find.text('Photo of your ID'), findsOneWidget);
+      expect(find.text('1x1 or selfie'), findsOneWidget);
+      expect(find.text('Add'), findsNWidgets(2));
+    });
+
+    testWidgets('an uploaded photograph says so and offers to replace it',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        TenantProfileResponse(readyForALease: false),
+        documents: [photograph(TenantDocumentResponseDocTypeEnum.VALID_ID)],
+      ));
+      await openProfile(tester);
+
+      expect(find.text('Uploaded'), findsOneWidget);
+      // "Replace", because a second upload supersedes the first rather than
+      // adding to it.
+      expect(find.text('Replace'), findsOneWidget);
+      // The other tile is still waiting.
+      expect(find.text('Add'), findsOneWidget);
+    });
+
+    testWidgets('the banner counts a missing photograph, not just fields',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        complete(),
+        documents: [photograph(TenantDocumentResponseDocTypeEnum.VALID_ID)],
+      ));
+      await openProfile(tester);
+
+      // Every detail typed in and an ID photographed, and still not ready: a
+      // landlord asked for a face as well as a document.
+      expect(find.textContaining('a 1x1 or selfie'), findsOneWidget);
+      expect(find.text('Your profile is ready for a lease.'), findsNothing);
+    });
+
+    testWidgets('details and both photographs together are what ready means',
+        (tester) async {
+      await tester.pumpWidget(appWith(complete(), documents: bothPhotographs()));
+      await openProfile(tester);
+
+      expect(find.text('Your profile is ready for a lease.'), findsOneWidget);
+    });
+
+    testWidgets('the tenant is told what happens to their photo metadata',
+        (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      // An ID photographed at home carries the home's coordinates. Stripping it
+      // silently is right; saying so is what earns the upload.
+      expect(
+        find.textContaining('Location and camera details are removed'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a half-finished profile still saves', (tester) async {

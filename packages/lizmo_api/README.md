@@ -70,6 +70,8 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
+*TenantDocumentsApi* | [**listMyTenantDocuments**](doc//TenantDocumentsApi.md#listmytenantdocuments) | **GET** /api/v1/me/tenant-profile/documents | My photographs
+*TenantDocumentsApi* | [**uploadMyTenantDocument**](doc//TenantDocumentsApi.md#uploadmytenantdocument) | **POST** /api/v1/me/tenant-profile/documents | Upload a photograph
 *TenantProfileApi* | [**getMyTenantProfile**](doc//TenantProfileApi.md#getmytenantprofile) | **GET** /api/v1/me/tenant-profile | My tenant profile
 *TenantProfileApi* | [**updateMyTenantProfile**](doc//TenantProfileApi.md#updatemytenantprofile) | **PUT** /api/v1/me/tenant-profile | Update my tenant profile
 *UnitsApi* | [**createBed**](doc//UnitsApi.md#createbed) | **POST** /api/v1/units/{id}/beds | Add a bed
@@ -97,6 +99,7 @@ Class | Method | HTTP request | Description
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RegisterRequest](doc//RegisterRequest.md)
+ - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)
  - [UnitRequest](doc//UnitRequest.md)

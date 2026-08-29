@@ -6,7 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 
 /**
- * @param readyForALease whether the profile carries what a lease needs. The
+ * @param readyForALease whether the profile carries what a lease needs: the
+ *                       details below, *and* both photographs. The
  *                       client shows what is missing rather than making the
  *                       tenant guess which blank field is the blocking one.
  */
@@ -22,7 +23,13 @@ public record TenantProfileResponse(
         String idNumber,
         boolean readyForALease) {
 
-    public static TenantProfileResponse of(TenantProfile profile) {
+    /**
+     * @param hasBothPhotographs whether the ID and the 1x1 are both uploaded.
+     *                           Passed in rather than read here, because a
+     *                           record is not the place to reach into another
+     *                           table.
+     */
+    public static TenantProfileResponse of(TenantProfile profile, boolean hasBothPhotographs) {
         return new TenantProfileResponse(
                 profile.getBirthdate(),
                 profile.getPermanentAddress(),
@@ -32,6 +39,6 @@ public record TenantProfileResponse(
                 profile.getEmergencyContactPhone(),
                 profile.getIdType(),
                 profile.getIdNumber(),
-                profile.isReadyForALease());
+                profile.hasDetailsForALease() && hasBothPhotographs);
     }
 }

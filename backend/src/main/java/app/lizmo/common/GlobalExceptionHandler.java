@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -95,6 +97,40 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> handleNotFound(Exception ex) {
         return ResponseEntity.status(ErrorCode.NOT_FOUND.status())
                 .body(ApiError.of(ErrorCode.NOT_FOUND, "No such endpoint."));
+    }
+
+    /**
+     * A file larger than the container will accept.
+     *
+     * <p>Without this the upload dies inside the multipart parser and the
+     * catch-all turns "your photo is too big" into "something went wrong on our
+     * end" — the one message that tells a tenant nothing they can act on.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> handleTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
+                .body(ApiError.of(ErrorCode.VALIDATION_FAILED,
+                        "That file is larger than 10MB. Please upload a smaller photo."));
+    }
+
+    /**
+     * A query parameter that will not convert — most often an enum spelled
+     * wrong, which would otherwise be a 500 for the same reason an unreadable
+     * body was: nothing maps it.
+     *
+     * <p>Names what is accepted, and deliberately not Spring's own message,
+     * which carries Java type names.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> handleBadParameter(MethodArgumentTypeMismatchException ex) {
+        Class<?> required = ex.getRequiredType();
+        String message = required != null && required.isEnum()
+                ? "%s must be one of: %s.".formatted(ex.getName(), String.join(", ",
+                        java.util.Arrays.stream(required.getEnumConstants())
+                                .map(Object::toString).toList()))
+                : "%s is not valid.".formatted(ex.getName());
+        return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
+                .body(ApiError.of(ErrorCode.VALIDATION_FAILED, message));
     }
 
     /**

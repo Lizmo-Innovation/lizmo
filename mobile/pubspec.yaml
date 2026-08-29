@@ -47,6 +47,15 @@ dependencies:
   lizmo_core:
     path: ../packages/lizmo_core
 
+  # Camera and gallery, for the ID and 1x1 a tenant uploads. It hands back a
+  # JPEG on iOS rather than the HEIC the camera shoots, which the backend
+  # cannot decode.
+  image_picker: ^1.1.2
+
+  # For MultipartFile, which the generated upload method takes. The generated
+  # client imports http without re-exporting it, so this has to be direct.
+  http: ^1.2.2
+
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
 
