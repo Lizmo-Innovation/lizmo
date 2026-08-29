@@ -16,6 +16,7 @@ class PropertyResponse {
     this.id,
     this.name,
     this.address,
+    this.code,
     this.description,
     this.type,
     this.usage,
@@ -48,6 +49,14 @@ class PropertyResponse {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? address;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? code;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -98,6 +107,7 @@ class PropertyResponse {
     other.id == id &&
     other.name == name &&
     other.address == address &&
+    other.code == code &&
     other.description == description &&
     other.type == type &&
     other.usage == usage &&
@@ -112,6 +122,7 @@ class PropertyResponse {
     (id == null ? 0 : id!.hashCode) +
     (name == null ? 0 : name!.hashCode) +
     (address == null ? 0 : address!.hashCode) +
+    (code == null ? 0 : code!.hashCode) +
     (description == null ? 0 : description!.hashCode) +
     (type == null ? 0 : type!.hashCode) +
     (usage == null ? 0 : usage!.hashCode) +
@@ -121,7 +132,7 @@ class PropertyResponse {
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, description=$description, type=$type, usage=$usage, unitCount=$unitCount, potentialMonthlyRent=$potentialMonthlyRent, createdAt=$createdAt, updatedAt=$updatedAt]';
+  String toString() => 'PropertyResponse[id=$id, name=$name, address=$address, code=$code, description=$description, type=$type, usage=$usage, unitCount=$unitCount, potentialMonthlyRent=$potentialMonthlyRent, createdAt=$createdAt, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -139,6 +150,11 @@ class PropertyResponse {
       json[r'address'] = this.address;
     } else {
       json[r'address'] = null;
+    }
+    if (this.code != null) {
+      json[r'code'] = this.code;
+    } else {
+      json[r'code'] = null;
     }
     if (this.description != null) {
       json[r'description'] = this.description;
@@ -196,6 +212,7 @@ class PropertyResponse {
         id: mapValueOfType<String>(json, r'id'),
         name: mapValueOfType<String>(json, r'name'),
         address: mapValueOfType<String>(json, r'address'),
+        code: mapValueOfType<String>(json, r'code'),
         description: mapValueOfType<String>(json, r'description'),
         type: PropertyResponseTypeEnum.fromJson(json[r'type']),
         usage: PropertyResponseUsageEnum.fromJson(json[r'usage']),

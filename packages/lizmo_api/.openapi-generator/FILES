@@ -7,9 +7,11 @@ doc/AuthApi.md
 doc/AuthResponse.md
 doc/BedRequest.md
 doc/BedResponse.md
+doc/FindingAPlaceApi.md
 doc/LoginRequest.md
 doc/MaintenanceRequest.md
 doc/PropertiesApi.md
+doc/PropertyByCodeResponse.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
 doc/RefreshRequest.md
@@ -29,6 +31,7 @@ doc/UtilityResponse.md
 git_push.sh
 lib/api.dart
 lib/api/auth_api.dart
+lib/api/finding_a_place_api.dart
 lib/api/properties_api.dart
 lib/api/tenant_documents_api.dart
 lib/api/tenant_profile_api.dart
@@ -47,6 +50,7 @@ lib/model/bed_request.dart
 lib/model/bed_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
+lib/model/property_by_code_response.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/refresh_request.dart
@@ -61,5 +65,5 @@ lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
 pubspec.yaml
-test/tenant_document_response_test.dart
-test/tenant_documents_api_test.dart
+test/finding_a_place_api_test.dart
+test/property_by_code_response_test.dart

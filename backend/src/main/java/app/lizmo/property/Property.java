@@ -46,6 +46,16 @@ public class Property {
      */
     private String description;
 
+    /**
+     * The short code a tenant types or scans to find this place.
+     *
+     * <p>Set once when the property is created and never changed: it gets
+     * written on a whiteboard by the gate and passed around a group chat, so a
+     * code that rotates would strand everyone holding the old one.
+     */
+    @Column(nullable = false, updatable = false)
+    private String code;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PropertyType type;
@@ -75,7 +85,8 @@ public class Property {
             String address,
             String description,
             PropertyType type,
-            PropertyUsage usage) {
+            PropertyUsage usage,
+            String code) {
         this.id = UUID.randomUUID();
         this.landlordId = landlordId;
         this.name = name;
@@ -83,6 +94,7 @@ public class Property {
         this.description = description;
         this.type = type;
         this.usage = usage;
+        this.code = code;
     }
 
     @PrePersist
@@ -116,6 +128,10 @@ public class Property {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getCode() {
+        return code;
     }
 
     public UUID getLandlordId() {

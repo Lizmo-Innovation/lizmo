@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **id** | **String** |  | [optional] 
 **name** | **String** |  | [optional] 
 **address** | **String** |  | [optional] 
+**code** | **String** |  | [optional] 
 **description** | **String** |  | [optional] 
 **type** | **String** |  | [optional] 
 **usage** | **String** |  | [optional] 

@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
+ * @param code the short code a tenant types or scans to find this property and
+ *             see what is vacant. Fixed for the property's lifetime.
  * @param unitCount how many units the property holds, so a list screen can show
  *                  it without a request per row
  * @param potentialMonthlyRent what the whole property brings in per month with
@@ -21,6 +23,7 @@ public record PropertyResponse(
         UUID id,
         String name,
         String address,
+        String code,
         String description,
         PropertyType type,
         PropertyUsage usage,
@@ -35,6 +38,7 @@ public record PropertyResponse(
                 property.getId(),
                 property.getName(),
                 property.getAddress(),
+                property.getCode(),
                 property.getDescription(),
                 property.getType(),
                 property.getUsage(),
