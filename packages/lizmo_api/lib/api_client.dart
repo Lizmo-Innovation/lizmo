@@ -195,6 +195,8 @@ class ApiClient {
           return LoginRequest.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'PropertyByCodeResponse':
+          return PropertyByCodeResponse.fromJson(value);
         case 'PropertyRequest':
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':

@@ -39,18 +39,21 @@ public class PropertyService {
     private final BedRepository beds;
     private final UnitUtilityRepository utilities;
     private final PropertyAccess access;
+    private final PropertyCodes codes;
 
     public PropertyService(
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
             UnitUtilityRepository utilities,
-            PropertyAccess access) {
+            PropertyAccess access,
+            PropertyCodes codes) {
         this.properties = properties;
         this.units = units;
         this.beds = beds;
         this.utilities = utilities;
         this.access = access;
+        this.codes = codes;
     }
 
     // ---------- Properties ----------
@@ -85,7 +88,8 @@ public class PropertyService {
                 // have no description, not that they have an empty one.
                 trimToNull(request.description()),
                 request.type(),
-                request.usage()));
+                request.usage(),
+                codes.mint()));
 
         // Nothing in it yet, so nothing to earn.
         return PropertyResponse.of(property, 0, null);
