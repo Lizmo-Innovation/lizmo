@@ -9,6 +9,7 @@ import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
+import 'package:lizmo/screens/property_share_screen.dart';
 import 'package:lizmo/screens/landlord_home_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
@@ -16,7 +17,10 @@ import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo/screens/unit_utilities_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:lizmo_api/api.dart';
+import 'package:lizmo_ui/lizmo_ui.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
@@ -618,6 +622,7 @@ void main() {
   });
 
   _tenantProfileTests();
+  _propertyShareTests();
 
   group('property list states', () {
     Widget appWith(Override propertiesOverride) => ProviderScope(
@@ -3615,6 +3620,118 @@ void _tenantProfileTests() {
       expect(sent.isUtc, isTrue);
       expect(sent.toUtc().day, 12);
       expect(sent.toUtc().month, 4);
+    });
+  });
+}
+
+void _propertyShareTests() {
+  group('sharing a property', () {
+    PropertyResponse property({String? code = 'PHLZ7K4M'}) => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          code: code,
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 1,
+          potentialMonthlyRent: 10000,
+        );
+
+    Future<void> openProperty(WidgetTester tester, {String? code = 'PHLZ7K4M'}) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property(code: code)]),
+          propertyProvider('p1').overrideWith((ref) async => property(code: code)),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openShare(WidgetTester tester, {String? code = 'PHLZ7K4M'}) async {
+      await openProperty(tester, code: code);
+      await tester.tap(find.byTooltip('Share this place'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the property screen offers it in one tap', (tester) async {
+      await openProperty(tester);
+
+      // In the header, not down with the units: it is about the property as a
+      // whole, and a landlord showing it to somebody should not have to scroll.
+      expect(find.byTooltip('Share this place'), findsOneWidget);
+    });
+
+    testWidgets('the code is shown large enough to read out', (tester) async {
+      await openShare(tester);
+
+      expect(find.text('PHLZ7K4M'), findsOneWidget);
+      expect(find.text('Property code'), findsOneWidget);
+    });
+
+    testWidgets('a QR is drawn for the code', (tester) async {
+      await openShare(tester);
+
+      expect(find.byType(QrImageView), findsOneWidget);
+    });
+
+    test('the QR encodes a link, not a bare code', () {
+      // Asserted on the function rather than by reading it back off the widget:
+      // QrImageView keeps its data private, and this is the actual decision —
+      // a bare string does nothing when scanned with the phone's own camera,
+      // and that is how most people will try it first.
+      expect(
+        PropertyShareScreen.linkFor('PHLZ7K4M'),
+        'https://lizmo.app/p/PHLZ7K4M',
+      );
+    });
+
+    testWidgets('the QR stays dark on white in either theme', (tester) async {
+      await openShare(tester);
+
+      // A QR that followed the app's dark mode would invert, and an inverted
+      // QR does not scan.
+      final qr = tester.widget<QrImageView>(find.byType(QrImageView));
+      expect(qr.backgroundColor, Colors.white);
+      expect(qr.dataModuleStyle.color, LizmoColors.ink);
+    });
+
+    testWidgets('copying puts the code on the clipboard', (tester) async {
+      await openShare(tester);
+
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+
+      await tester.tap(find.byTooltip('Copy code'));
+      await tester.pumpAndSettle();
+
+      // The code alone, not the URL: this gets pasted into a message to a
+      // tenant, who types it into the app.
+      expect(copied, 'PHLZ7K4M');
+      expect(find.text('Code copied'), findsOneWidget);
+    });
+
+    testWidgets('the landlord is told the code is permanent', (tester) async {
+      await openShare(tester);
+
+      // It is the reason a printed sign stays good, and the reason they should
+      // not expect to rotate it.
+      expect(find.textContaining('never changes'), findsOneWidget);
     });
   });
 }

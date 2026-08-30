@@ -52,6 +52,10 @@ dependencies:
   # cannot decode.
   image_picker: ^1.1.2
 
+  # Draws the property's QR entirely on the device — no service, no network,
+  # nothing about a landlord's property leaves the phone to become an image.
+  qr_flutter: ^4.1.0
+
   # For MultipartFile, which the generated upload method takes. The generated
   # client imports http without re-exporting it, so this has to be direct.
   http: ^1.2.2
