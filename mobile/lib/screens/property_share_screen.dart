@@ -18,18 +18,17 @@ class PropertyShareScreen extends ConsumerWidget {
 
   final String propertyId;
 
-  /// What the QR actually encodes.
+  /// What the QR actually encodes: the code, and nothing else.
   ///
-  /// A URL rather than the bare code, because a bare string does nothing when
-  /// scanned with the phone's own camera — and that is how most people will try
-  /// it first. Lizmo's own scanner accepts either.
+  /// It was briefly a https://lizmo.app/p/<code> URL, on the reasoning that a
+  /// phone's own camera can act on a link and cannot act on a bare string.
+  /// True, but there is no such domain — so the link resolved nowhere and the
+  /// QR promised something it could not do. A code that a camera app merely
+  /// displays is at least honest, and the tenant can type it.
   ///
-  /// The domain has to be one we control before any of these are printed: until
-  /// it resolves, a camera-app scan opens nothing. Deliberately in one place so
-  /// it is a single edit rather than a hunt.
-  static const _linkBase = 'https://lizmo.app/p/';
-
-  static String linkFor(String code) => '$_linkBase$code';
+  /// One function so that the day there is a domain, this is a single edit and
+  /// old printed codes keep working — Lizmo's own scanner will accept both.
+  static String qrPayloadFor(String code) => code;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -128,7 +127,7 @@ class _QrCard extends StatelessWidget {
           boxShadow: const [LizmoColors.cardShadow],
         ),
         child: QrImageView(
-          data: PropertyShareScreen.linkFor(code),
+          data: PropertyShareScreen.qrPayloadFor(code),
           version: QrVersions.auto,
           size: 220,
           backgroundColor: Colors.white,

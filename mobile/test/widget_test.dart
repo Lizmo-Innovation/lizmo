@@ -3682,15 +3682,13 @@ void _propertyShareTests() {
       expect(find.byType(QrImageView), findsOneWidget);
     });
 
-    test('the QR encodes a link, not a bare code', () {
-      // Asserted on the function rather than by reading it back off the widget:
-      // QrImageView keeps its data private, and this is the actual decision —
-      // a bare string does nothing when scanned with the phone's own camera,
-      // and that is how most people will try it first.
-      expect(
-        PropertyShareScreen.linkFor('PHLZ7K4M'),
-        'https://lizmo.app/p/PHLZ7K4M',
-      );
+    test('the QR encodes the code and nothing else', () {
+      // Asserted on the function rather than read back off the widget:
+      // QrImageView keeps its data private, and this is where the decision
+      // lives. It was a URL until we admitted there is no domain behind it —
+      // a QR that resolves nowhere is worse than one a camera app simply
+      // shows as text.
+      expect(PropertyShareScreen.qrPayloadFor('PHLZ7K4M'), 'PHLZ7K4M');
     });
 
     testWidgets('the QR stays dark on white in either theme', (tester) async {
