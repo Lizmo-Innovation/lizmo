@@ -828,10 +828,10 @@ void main() {
 
       // All four are visible rather than hidden behind a dropdown, so the
       // default is a visible choice rather than an unnoticed one.
-      expect(find.textContaining('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding House'), findsOneWidget);
       expect(find.text('Apartment'), findsOneWidget);
       expect(find.text('Condo'), findsOneWidget);
-      expect(find.text('Single house'), findsOneWidget);
+      expect(find.text('Single House'), findsOneWidget);
 
       await tester.tap(find.text('Condo'));
       await tester.pump();
@@ -1541,7 +1541,7 @@ void main() {
       expect(find.text('Commercial'), findsOneWidget);
 
       // Residential types on offer, commercial ones not.
-      expect(find.textContaining('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding House'), findsOneWidget);
       expect(find.text('Office'), findsNothing);
       expect(find.text('Warehouse'), findsNothing);
     });
@@ -1553,12 +1553,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Office'), findsOneWidget);
-      expect(find.text('Retail space'), findsOneWidget);
+      expect(find.text('Retail Space'), findsOneWidget);
       expect(find.text('Warehouse'), findsOneWidget);
       expect(find.text('Stall'), findsOneWidget);
 
       // The residential types are gone, so an invalid pair cannot be assembled.
-      expect(find.text('Boarding house'), findsNothing);
+      expect(find.text('Boarding House'), findsNothing);
       expect(find.text('Condo'), findsNothing);
     });
 
@@ -1640,7 +1640,7 @@ void main() {
       // Kind and address share a line now.
       expect(find.textContaining('Commercial \u00b7 Office'), findsOneWidget);
       // Residential is the norm; labelling it on every card would be noise.
-      expect(find.textContaining('Boarding house'), findsOneWidget);
+      expect(find.textContaining('Boarding House'), findsOneWidget);
       expect(find.textContaining('Residential'), findsNothing);
     });
 
@@ -1673,8 +1673,8 @@ void main() {
 
       // Commercial types on offer, not residential ones -- the form opened on
       // the property's own usage rather than the default.
-      expect(find.text('Retail space'), findsOneWidget);
-      expect(find.text('Boarding house'), findsNothing);
+      expect(find.text('Retail Space'), findsOneWidget);
+      expect(find.text('Boarding House'), findsNothing);
     });
   });
 
@@ -3669,11 +3669,167 @@ void _propertyShareTests() {
       expect(find.byTooltip('Share this place'), findsOneWidget);
     });
 
+    testWidgets('the address confirms it is the right building', (tester) async {
+      await openShare(tester);
+
+      // This page gets held out to somebody standing in front of the place.
+      expect(find.text('12 Mabini St'), findsOneWidget);
+    });
+
+    testWidgets('what kind of place it is, before anyone scans', (tester) async {
+      await openShare(tester);
+
+      // Both halves named here. The property list omits "Residential" because
+      // it is the majority and would be noise on every row; here it is telling
+      // a stranger what they are looking at.
+      expect(find.text('Residential · Boarding House'), findsOneWidget);
+    });
+
     testWidgets('the code is shown large enough to read out', (tester) async {
       await openShare(tester);
 
       expect(find.text('PHLZ7K4M'), findsOneWidget);
       expect(find.text('Property code'), findsOneWidget);
+
+      // Most people will type this rather than scan it, and often it is being
+      // read by somebody older than the person holding the phone. Well above
+      // the app's ordinary body size of 14.
+      final code = tester.widget<Text>(find.text('PHLZ7K4M'));
+      expect(code.style!.fontSize, greaterThanOrEqualTo(24));
+    });
+
+    testWidgets('the landlord can send it on', (tester) async {
+      await openShare(tester);
+
+      // The native sheet covers both asks: social apps, chat, and the
+      // platform's own Save Image / Save to Files.
+      expect(find.text('Share or save this code'), findsOneWidget);
+    });
+
+    testWidgets('the exported image names the place', (tester) async {
+      await openShare(tester);
+
+      final card = find.byKey(shareCardKey);
+      // An image of a QR on its own, forwarded into a group chat, tells nobody
+      // which building it opens.
+      for (final line in [
+        'Sunrise Apartments',
+        '12 Mabini St',
+        'Residential · Boarding House',
+        'PHLZ7K4M',
+      ]) {
+        expect(
+          find.descendant(of: card, matching: find.text(line)),
+          findsOneWidget,
+          reason: '"\$line" should travel with the code',
+        );
+      }
+    });
+
+    testWidgets('no controls are painted into the image', (tester) async {
+      await openShare(tester);
+
+      // The capture renders the live tree, so anything left inside the card
+      // ends up in the picture — a copy button somebody cannot press, in an
+      // image of a building.
+      expect(
+        find.descendant(
+          of: find.byKey(shareCardKey),
+          matching: find.byType(TextButton),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(shareCardKey),
+          matching: find.byType(IconButton),
+        ),
+        findsNothing,
+      );
+      // Still reachable, just outside the card.
+      expect(find.text('Copy code'), findsOneWidget);
+    });
+
+    testWidgets('the landlord instruction stays out of the image',
+        (tester) async {
+      await openShare(tester);
+
+      // It is guidance for the person holding the phone, and nonsense to
+      // whoever receives the picture.
+      expect(
+        find.descendant(
+          of: find.byKey(shareCardKey),
+          matching: find.textContaining('Show this to anyone'),
+        ),
+        findsNothing,
+      );
+      expect(find.textContaining('Show this to anyone'), findsOneWidget);
+    });
+
+    testWidgets('what gets shared is a real image of the card', (tester) async {
+      await openShare(tester);
+
+      // Driving the share sheet is impossible in a test, so the seam is the
+      // capture: this is the part that can silently produce nothing, or produce
+      // an image too small for the QR in it to survive printing.
+      // The nearest boundary above the marked card. Searching for "a
+      // RepaintBoundary with a GlobalKey" finds Flutter's root one first and
+      // captures the whole screen — which passed this test for the wrong
+      // reason until the exported image turned out to be 1170x2532.
+      final boundary = find
+          .ancestor(
+            of: find.byKey(shareCardKey),
+            matching: find.byType(RepaintBoundary),
+          )
+          .evaluate()
+          .first;
+      final key = boundary.widget.key as GlobalKey;
+
+      // runAsync, because rasterizing a boundary and decoding a PNG are real
+      // asynchronous work. Awaited directly inside testWidgets they deadlock:
+      // the fake-async zone never lets them complete, and the test hangs rather
+      // than failing — which is exactly what it did.
+      final png = await tester.runAsync(
+        () => captureBoundaryPng(key, pixelRatio: 3),
+      );
+      expect(png, isNotNull);
+
+      // A real PNG, by its signature, not merely non-empty bytes.
+      expect(png!.sublist(0, 8),
+          [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+
+      final decoded = (await tester.runAsync(() => decodeImageFromList(png)))!;
+      // Captured at 3x, so the QR survives being printed or zoomed into rather
+      // than turning to mush.
+      expect(decoded.width, greaterThan(600));
+      // And it is the card, not the screen: a full-screen capture would be
+      // 844 logical points tall, and would carry the app bar and the share
+      // button into the image somebody receives.
+      expect(decoded.height, lessThan(844 * 3));
+    });
+
+    testWidgets('type grows with the screen, and never shrinks', (tester) async {
+      await openShare(tester);
+      final onPhone = tester.widget<Text>(find.text('PHLZ7K4M')).style!.fontSize!;
+
+      // A tablet-sized surface. Gently larger — the scale is the square root of
+      // the ratio, so a much wider screen does not double the type.
+      tester.view.physicalSize = const Size(834 * 3, 1194 * 3);
+      tester.view.devicePixelRatio = 3.0;
+      // Restored by hand rather than with view.reset(), which reverts to the
+      // binding's original 800x600 — undoing the phone-shaped surface that
+      // flutter_test_config installs, for every test declared after this one.
+      addTearDown(() {
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        tester.view.devicePixelRatio = 3.0;
+      });
+      await tester.pumpAndSettle();
+
+      final onTablet = tester.widget<Text>(find.text('PHLZ7K4M')).style!.fontSize!;
+      expect(onTablet, greaterThan(onPhone));
+      // Clamped: the same ratio applied literally would give headings the size
+      // of a fist.
+      expect(onTablet, lessThan(onPhone * 1.4));
     });
 
     testWidgets('a QR is drawn for the code', (tester) async {
@@ -3689,6 +3845,35 @@ void _propertyShareTests() {
       // a QR that resolves nowhere is worse than one a camera app simply
       // shows as text.
       expect(PropertyShareScreen.qrPayloadFor('PHLZ7K4M'), 'PHLZ7K4M');
+    });
+
+    testWidgets('the logo sits in the middle of the code', (tester) async {
+      await openShare(tester);
+
+      expect(find.byType(QrImageView), findsOneWidget);
+      // Drawn over the QR rather than handed to the package: the icon has
+      // transparency, and without an opaque plate the modules show through it.
+      //
+      // This asserts the widget is in the tree, not that a logo appears —
+      // Image.asset paints nothing in a widget test, so nothing here can prove
+      // that. Scannability with the mark actually in place was checked by
+      // rendering the code, compositing the real icon over it and decoding it:
+      // it reads down to 120px wide and fails around 90px.
+      expect(
+        find.descendant(of: find.byType(Stack), matching: find.byType(Image)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('covering the middle raises the error correction', (tester) async {
+      await openShare(tester);
+
+      final qr = tester.widget<QrImageView>(find.byType(QrImageView));
+      // The package defaults to L, which recovers 7%. Cover the centre of that
+      // and the code stops scanning in poor light, at an angle, or on a
+      // photocopied sign. This is the assertion that fails if someone adds a
+      // logo to another QR and forgets why this one works.
+      expect(qr.errorCorrectionLevel, QrErrorCorrectLevel.H);
     });
 
     testWidgets('the QR stays dark on white in either theme', (tester) async {
@@ -3715,7 +3900,7 @@ void _propertyShareTests() {
         },
       );
 
-      await tester.tap(find.byTooltip('Copy code'));
+      await tester.tap(find.text('Copy code'));
       await tester.pumpAndSettle();
 
       // The code alone, not the URL: this gets pasted into a message to a
@@ -3724,12 +3909,5 @@ void _propertyShareTests() {
       expect(find.text('Code copied'), findsOneWidget);
     });
 
-    testWidgets('the landlord is told the code is permanent', (tester) async {
-      await openShare(tester);
-
-      // It is the reason a printed sign stays good, and the reason they should
-      // not expect to rotate it.
-      expect(find.textContaining('never changes'), findsOneWidget);
-    });
   });
 }

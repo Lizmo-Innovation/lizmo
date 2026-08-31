@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../property/property_labels.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../widgets/account_sheet.dart';
@@ -253,25 +254,8 @@ class _PropertyCard extends StatelessWidget {
     return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
   }
 
-  /// "Boarding house", or "Commercial · Office".
-  ///
-  /// Residential is the overwhelming majority, so naming it on every card would
-  /// be noise. Commercial is the exception, and worth marking.
-  static String _kindLabel(PropertyResponse property) {
-    final type = _typeLabel(property.type);
-    return property.usage == PropertyResponseUsageEnum.COMMERCIAL
-        ? 'Commercial · $type'
-        : type;
-  }
-
-  /// Turns BOARDING_HOUSE into "Boarding house". The enum is the API's
-  /// vocabulary, not something to show a landlord.
-  static String _typeLabel(PropertyResponseTypeEnum? type) {
-    final raw = type?.toString() ?? '';
-    if (raw.isEmpty) return '';
-    final words = raw.toLowerCase().replaceAll('_', ' ');
-    return words[0].toUpperCase() + words.substring(1);
-  }
+  static String _kindLabel(PropertyResponse property) =>
+      propertyKindLabel(property);
 }
 
 /// What the whole portfolio brings in per month with everything let.
