@@ -1,0 +1,17 @@
+package app.lizmo.lease;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface LeaseRepository extends JpaRepository<Lease, UUID> {
+
+    List<Lease> findByTenantIdOrderByStartDateDesc(UUID tenantId);
+
+    List<Lease> findByUnitIdAndStatus(UUID unitId, LeaseStatus status);
+
+    Optional<Lease> findByBedIdAndStatus(UUID bedId, LeaseStatus status);
+
+    Optional<Lease> findByRentalRequestId(UUID rentalRequestId);
+}
