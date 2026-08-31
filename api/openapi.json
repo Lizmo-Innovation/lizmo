@@ -1259,30 +1259,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -1321,6 +1297,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -1786,9 +1786,98 @@
                             "RESIDENTIAL",
                             "COMMERCIAL"
                         ]
+                    },
+                    "vacantWholeUnits": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "vacantBeds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "floors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/VacancyFloor"
+                        }
                     }
                 },
                 "description": "A property found by its code, as a prospective tenant sees it"
+            },
+            "VacancyFloor": {
+                "type": "object",
+                "properties": {
+                    "floor": {
+                        "type": "string"
+                    },
+                    "wholeUnits": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/VacantUnit"
+                        }
+                    },
+                    "bedspaces": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/VacantBed"
+                        }
+                    }
+                },
+                "description": "What is free on one floor"
+            },
+            "VacantBed": {
+                "type": "object",
+                "properties": {
+                    "unitId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "rent": {
+                        "type": "number"
+                    },
+                    "monthlyUtilities": {
+                        "type": "number"
+                    },
+                    "utilitiesIncluded": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "A bed that is free"
+            },
+            "VacantUnit": {
+                "type": "object",
+                "properties": {
+                    "unitId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "rent": {
+                        "type": "number"
+                    },
+                    "sizeSqm": {
+                        "type": "number"
+                    },
+                    "monthlyUtilities": {
+                        "type": "number"
+                    },
+                    "utilitiesIncluded": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "A whole unit that is free"
             }
         }
     }

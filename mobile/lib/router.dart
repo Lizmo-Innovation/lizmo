@@ -12,6 +12,7 @@ import 'screens/register_screen.dart';
 import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
+import 'screens/property_share_screen.dart';
 import 'screens/landlord_home_screen.dart';
 import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
@@ -48,6 +49,7 @@ abstract final class Routes {
   static String propertyDetail(String id) => '/landlord/properties/$id';
   static String unitNew(String id) => '/landlord/properties/$id/units/new';
   static String propertyEdit(String id) => '/landlord/properties/$id/edit';
+  static String propertyShare(String id) => '/landlord/properties/$id/share';
   static String unitEdit(String propertyId, String unitId) =>
       '/landlord/properties/$propertyId/units/$unitId/edit';
   static String unitDetail(String propertyId, String unitId) =>
@@ -211,6 +213,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: 'edit',
                         builder: (context, state) => CreatePropertyScreen(
                           propertyId: state.pathParameters['id'],
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'share',
+                        builder: (context, state) => PropertyShareScreen(
+                          propertyId: state.pathParameters['id']!,
                         ),
                       ),
                       GoRoute(

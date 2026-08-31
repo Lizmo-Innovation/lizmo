@@ -5,6 +5,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../property/property_labels.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
@@ -380,17 +381,6 @@ class _TypePicker extends StatelessWidget {
   final PropertyRequestTypeEnum value;
   final ValueChanged<PropertyRequestTypeEnum> onChanged;
 
-  static const _labels = {
-    PropertyRequestTypeEnum.BOARDING_HOUSE: 'Boarding house',
-    PropertyRequestTypeEnum.APARTMENT: 'Apartment',
-    PropertyRequestTypeEnum.CONDO: 'Condo',
-    PropertyRequestTypeEnum.SINGLE_HOUSE: 'Single house',
-    PropertyRequestTypeEnum.OFFICE: 'Office',
-    PropertyRequestTypeEnum.RETAIL_SPACE: 'Retail space',
-    PropertyRequestTypeEnum.WAREHOUSE: 'Warehouse',
-    PropertyRequestTypeEnum.STALL: 'Stall',
-  };
-
   @override
   Widget build(BuildContext context) {
     return Wrap(
@@ -399,7 +389,7 @@ class _TypePicker extends StatelessWidget {
       children: [
         for (final type in types)
           _TypeChip(
-            label: _labels[type] ?? '',
+            label: propertyRequestTypeLabel(type),
             selected: type == value,
             onTap: () => onChanged(type),
           ),

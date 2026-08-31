@@ -110,6 +110,9 @@ Class | Method | HTTP request | Description
  - [UtilitiesResponse](doc//UtilitiesResponse.md)
  - [UtilityRequest](doc//UtilityRequest.md)
  - [UtilityResponse](doc//UtilityResponse.md)
+ - [VacancyFloor](doc//VacancyFloor.md)
+ - [VacantBed](doc//VacantBed.md)
+ - [VacantUnit](doc//VacantUnit.md)
 
 
 ## Documentation For Authorization

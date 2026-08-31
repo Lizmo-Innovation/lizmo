@@ -7,6 +7,7 @@
 library;
 
 export 'src/theme/lizmo_colors.dart';
+export 'src/theme/lizmo_scale.dart';
 export 'src/theme/lizmo_type.dart';
 export 'src/widgets/lattice_background.dart';
 export 'src/widgets/lattice_header.dart';

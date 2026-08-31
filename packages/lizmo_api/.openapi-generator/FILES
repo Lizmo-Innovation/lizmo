@@ -28,6 +28,9 @@ doc/UtilitiesRequest.md
 doc/UtilitiesResponse.md
 doc/UtilityRequest.md
 doc/UtilityResponse.md
+doc/VacancyFloor.md
+doc/VacantBed.md
+doc/VacantUnit.md
 git_push.sh
 lib/api.dart
 lib/api/auth_api.dart
@@ -64,6 +67,10 @@ lib/model/utilities_request.dart
 lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
+lib/model/vacancy_floor.dart
+lib/model/vacant_bed.dart
+lib/model/vacant_unit.dart
 pubspec.yaml
-test/finding_a_place_api_test.dart
-test/property_by_code_response_test.dart
+test/vacancy_floor_test.dart
+test/vacant_bed_test.dart
+test/vacant_unit_test.dart

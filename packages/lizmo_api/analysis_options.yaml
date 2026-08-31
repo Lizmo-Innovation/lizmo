@@ -1,0 +1,13 @@
+# Analysis rules for the generated client.
+#
+# Everything under lib/ is written by openapi-generator and carries an
+# "AUTO-GENERATED FILE, DO NOT MODIFY" header, so a lint here can only be fixed
+# by changing the generator's templates or by hand-editing a file that the next
+# regeneration overwrites. What is silenced below is chosen one rule at a time
+# rather than by excluding the package: a real error in this client -- a bad
+# generation, a broken model -- still has to fail analysis.
+analyzer:
+  errors:
+    # The multipart template guards a parameter that its own signature declares
+    # non-nullable. Harmless, and not ours to correct.
+    unnecessary_null_comparison: ignore

@@ -55,6 +55,9 @@ part 'model/utilities_request.dart';
 part 'model/utilities_response.dart';
 part 'model/utility_request.dart';
 part 'model/utility_response.dart';
+part 'model/vacancy_floor.dart';
+part 'model/vacant_bed.dart';
+part 'model/vacant_unit.dart';
 
 
 /// An [ApiClient] instance that uses the default values obtained from

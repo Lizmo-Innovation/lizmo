@@ -223,6 +223,12 @@ class ApiClient {
           return UtilityRequest.fromJson(value);
         case 'UtilityResponse':
           return UtilityResponse.fromJson(value);
+        case 'VacancyFloor':
+          return VacancyFloor.fromJson(value);
+        case 'VacantBed':
+          return VacantBed.fromJson(value);
+        case 'VacantUnit':
+          return VacantUnit.fromJson(value);
         default:
           dynamic match;
           if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {
