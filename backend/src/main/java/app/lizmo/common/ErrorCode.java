@@ -45,6 +45,19 @@ public enum ErrorCode {
     TENANT_PROFILE_INCOMPLETE(HttpStatus.CONFLICT),
 
     /**
+     * The bed or unit asked for is not on offer — already let, out of service,
+     * or not let that way.
+     *
+     * <p>409 rather than 400 or 404: the request is well formed and the slot
+     * exists, it is simply no longer available. A tenant who saw it a minute
+     * ago on the vacancy list did nothing wrong.
+     */
+    SLOT_UNAVAILABLE(HttpStatus.CONFLICT),
+
+    /** The same tenant already has a request waiting on this exact slot. */
+    ALREADY_REQUESTED(HttpStatus.CONFLICT),
+
+    /**
      * The landlord's platform invoice is unpaid past the grace period. The
      * client routes to the outstanding billing cycle so they can pay and
      * unlock — see product spec §3.

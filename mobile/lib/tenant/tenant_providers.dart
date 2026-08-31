@@ -49,3 +49,46 @@ final myTenantDocumentsProvider =
     throw ApiFailure.from(error);
   }
 });
+
+final findingAPlaceApiProvider = Provider<FindingAPlaceApi>((ref) {
+  return FindingAPlaceApi(ref.watch(apiClientProvider));
+});
+
+final askingForARoomApiProvider = Provider<AskingForARoomApi>((ref) {
+  return AskingForARoomApi(ref.watch(apiClientProvider));
+});
+
+/// A property found by the code on its gate, with what is free inside it.
+///
+/// Keyed by the code rather than an id, because the code is all a tenant has:
+/// they are standing in front of a building they have no relationship to.
+///
+/// autoDispose so that reopening a place asks again — a bed listed as free two
+/// minutes ago may not be, and this screen is the one somebody acts on.
+final propertyByCodeProvider = FutureProvider.autoDispose
+    .family<PropertyByCodeResponse, String>((ref, code) async {
+  try {
+    final property =
+        await ref.watch(findingAPlaceApiProvider).findPropertyByCode(code);
+    if (property == null) {
+      throw const ApiFailure(
+        code: 'NOT_FOUND',
+        message: 'No property uses that code.',
+      );
+    }
+    return property;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// What this tenant has asked for, newest first.
+final myRentalRequestsProvider =
+    FutureProvider.autoDispose<List<RentalRequestResponse>>((ref) async {
+  try {
+    return await ref.watch(askingForARoomApiProvider).listMyRentalRequests() ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

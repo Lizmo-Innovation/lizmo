@@ -623,6 +623,7 @@ void main() {
 
   _tenantProfileTests();
   _propertyShareTests();
+  _findingAPlaceTests();
 
   group('property list states', () {
     Widget appWith(Override propertiesOverride) => ProviderScope(
@@ -3909,5 +3910,282 @@ void _propertyShareTests() {
       expect(find.text('Code copied'), findsOneWidget);
     });
 
+  });
+}
+
+/// Records what a tenant asked for, and can refuse the way the API does.
+class _FakeAskingApi extends AskingForARoomApi {
+  _FakeAskingApi({this.failWith});
+
+  final ApiFailure? failWith;
+  RentalRequestCreate? sent;
+
+  @override
+  Future<RentalRequestResponse?> sendRentalRequest(
+    RentalRequestCreate request, {
+    Future<void>? abortTrigger,
+  }) async {
+    if (failWith != null) throw failWith!;
+    sent = request;
+    return RentalRequestResponse(
+      id: 'r1',
+      unitId: request.unitId,
+      bedId: request.bedId,
+      status: RentalRequestResponseStatusEnum.PENDING,
+    );
+  }
+
+  @override
+  Future<List<RentalRequestResponse>?> listMyRentalRequests({
+    Future<void>? abortTrigger,
+  }) async => const [];
+}
+
+void _findingAPlaceTests() {
+  group('finding a place', () {
+    PropertyByCodeResponse place({
+      List<VacantBed> beds = const [],
+      List<VacantUnit> units = const [],
+    }) => PropertyByCodeResponse(
+      id: 'p1',
+      code: 'PHLZ7K4M',
+      name: 'Sunrise Apartments',
+      address: '12 Mabini St',
+      type: PropertyByCodeResponseTypeEnum.BOARDING_HOUSE,
+      usage: PropertyByCodeResponseUsageEnum.RESIDENTIAL,
+      vacantWholeUnits: units.length,
+      vacantBeds: beds.length,
+      floors: [
+        if (beds.isNotEmpty || units.isNotEmpty)
+          VacancyFloor(floor: '2', wholeUnits: units, bedspaces: beds),
+      ],
+    );
+
+    VacantBed bed({num? rent = 2500, num? utilities, bool included = false}) =>
+        VacantBed(
+          unitId: 'u1',
+          unitNumber: '2B',
+          bedId: 'b1',
+          bedLabel: 'Bed 1',
+          rent: rent,
+          monthlyUtilities: utilities,
+          utilitiesIncluded: included,
+        );
+
+    Widget appWith({
+      PropertyByCodeResponse? found,
+      ApiFailure? lookupFails,
+      _FakeAskingApi? asking,
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        propertyByCodeProvider('PHLZ7K4M').overrideWith((ref) async {
+          if (lookupFails != null) throw lookupFails;
+          return found ?? place();
+        }),
+        if (asking != null) askingForARoomApiProvider.overrideWithValue(asking),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openFind(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Looking for a room?'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> enterCode(WidgetTester tester, String code) async {
+      await tester.enterText(find.byType(TextField), code);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('See what is free'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the home screen offers the way in', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      // A tenant with no lease has exactly one thing to do in this app.
+      expect(find.text('Looking for a room?'), findsOneWidget);
+    });
+
+    testWidgets('the code is upper-cased as it is typed', (tester) async {
+      await tester.pumpWidget(appWith());
+      await openFind(tester);
+
+      await tester.enterText(find.byType(TextField), 'phlz7k4m');
+      await tester.pumpAndSettle();
+
+      // Read off the field rather than found by text: the hint is the same
+      // string, so find.text would match whether the formatter ran or not.
+      final field = tester.widget<EditableText>(find.byType(EditableText));
+      expect(field.controller.text, 'PHLZ7K4M');
+    });
+
+    testWidgets('a half-typed code cannot be submitted', (tester) async {
+      await tester.pumpWidget(appWith());
+      await openFind(tester);
+
+      await tester.enterText(find.byType(TextField), 'PHLZ');
+      await tester.pumpAndSettle();
+
+      // Visibly disabled, not merely inert: a button that looks tappable and
+      // does nothing reads as the app being broken.
+      final button = tester.widget<PrimaryActionButton>(
+        find.byType(PrimaryActionButton),
+      );
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('a code finds the place and what is free', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: [bed()])));
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      expect(find.text('Sunrise Apartments'), findsWidgets);
+      expect(find.text('12 Mabini St'), findsOneWidget);
+      expect(find.text('1 space free'), findsOneWidget);
+      expect(find.text('Bed 1'), findsOneWidget);
+      expect(find.text('Floor 2'), findsOneWidget);
+    });
+
+    testWidgets('a full house says so rather than showing nothing', (
+      tester,
+    ) async {
+      await tester.pumpWidget(appWith(found: place()));
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      // Nothing free is a real answer, not an empty screen.
+      expect(find.text('Nothing free here at the moment'), findsOneWidget);
+    });
+
+    testWidgets('the price is what the tenant would actually hand over', (
+      tester,
+    ) async {
+      await tester.pumpWidget(appWith(found: place(beds: [bed(utilities: 800)])));
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      // Rent alone is not the comparison a tenant is making.
+      expect(find.text('P2500 a month, plus P800 utilities'), findsNothing);
+      expect(
+        find.textContaining('a month, plus'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('utilities folded into the rent are said so', (tester) async {
+      await tester.pumpWidget(
+        appWith(found: place(beds: [bed(utilities: 800, included: true)])),
+      );
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      expect(find.textContaining('utilities included'), findsOneWidget);
+    });
+
+    testWidgets('an unpriced bed says so rather than reading as free', (
+      tester,
+    ) async {
+      await tester.pumpWidget(appWith(found: place(beds: [bed(rent: null)])));
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      expect(find.text('Price not set'), findsOneWidget);
+    });
+
+    testWidgets('asking sends the unit and the bed', (tester) async {
+      final asking = _FakeAskingApi();
+      await tester.pumpWidget(
+        appWith(found: place(beds: [bed()]), asking: asking),
+      );
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      await tester.tap(find.text('Ask for this'));
+      await tester.pumpAndSettle();
+
+      expect(asking.sent?.unitId, 'u1');
+      expect(asking.sent?.bedId, 'b1');
+      // The row stops offering it again once asked.
+      expect(find.text('Asked'), findsOneWidget);
+      expect(find.text('Ask for this'), findsNothing);
+    });
+
+    testWidgets('an unfinished profile is explained in the second person', (
+      tester,
+    ) async {
+      final asking = _FakeAskingApi(
+        failWith: const ApiFailure(
+          code: 'TENANT_PROFILE_INCOMPLETE',
+          // What the server actually says: written for a landlord reading
+          // about somebody else.
+          message: 'This tenant cannot sign a lease yet. They still need an ID.',
+        ),
+      );
+      await tester.pumpWidget(
+        appWith(found: place(beds: [bed()]), asking: asking),
+      );
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      await tester.tap(find.text('Ask for this'));
+      await tester.pumpAndSettle();
+
+      // Said to the tenant about themselves, with the way to fix it.
+      expect(find.text('Finish your profile first'), findsOneWidget);
+      expect(find.textContaining('This tenant cannot'), findsNothing);
+      expect(find.text('Open my profile'), findsOneWidget);
+    });
+
+    testWidgets('a slot taken while reading is shown as it happened', (
+      tester,
+    ) async {
+      final asking = _FakeAskingApi(
+        failWith: const ApiFailure(
+          code: 'SLOT_UNAVAILABLE',
+          message: 'That bed has been taken.',
+        ),
+      );
+      await tester.pumpWidget(
+        appWith(found: place(beds: [bed()]), asking: asking),
+      );
+      await openFind(tester);
+      await enterCode(tester, 'PHLZ7K4M');
+
+      await tester.tap(find.text('Ask for this'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('That bed has been taken.'), findsOneWidget);
+      // And it is not marked as asked, because it was not.
+      expect(find.text('Asked'), findsNothing);
+    });
+
+    testWidgets('a wrong code explains the alphabet', (tester) async {
+      await tester.pumpWidget(
+        appWith(
+          lookupFails: const ApiFailure(
+            code: 'NOT_FOUND',
+            message: 'No property uses that code.',
+          ),
+        ),
+      );
+      await openFind(tester);
+      await enterCode(tester, 'PHZZZZZZ');
+
+      expect(find.text('No place with that code'), findsOneWidget);
+      // The commonest typo, given the alphabet deliberately omits them.
+      expect(find.textContaining('no O or I'), findsOneWidget);
+    });
   });
 }

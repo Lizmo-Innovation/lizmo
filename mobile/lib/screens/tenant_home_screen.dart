@@ -75,6 +75,9 @@ class TenantHomeScreen extends ConsumerWidget {
                   const SizedBox(height: 18),
                 ],
 
+                const _FindAPlace(),
+                const SizedBox(height: 18),
+
                 Text('Billing periods', style: LizmoType.sectionHeading),
                 const SizedBox(height: 10),
                 for (final period in _periods)
@@ -148,6 +151,57 @@ class _FinishYourProfile extends StatelessWidget {
               ),
               const Icon(Icons.chevron_right,
                   size: 20, color: LizmoColors.amberText),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The way in to finding somewhere to live.
+///
+/// On the home screen rather than behind a menu: a tenant with no lease yet has
+/// exactly one thing to do in this app, and until leases exist that is true of
+/// every tenant.
+class _FindAPlace extends StatelessWidget {
+  const _FindAPlace();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: LizmoColors.tealBg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => context.push(Routes.findProperty),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          child: Row(
+            children: [
+              const Icon(Icons.qr_code_scanner,
+                  size: 20, color: LizmoColors.teal900),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Looking for a room?',
+                      style: LizmoType.rowName
+                          .copyWith(color: LizmoColors.teal900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Enter the code from the gate to see what is free.',
+                      style: LizmoType.rowSub
+                          .copyWith(color: LizmoColors.teal900),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  size: 20, color: LizmoColors.teal900),
             ],
           ),
         ),
