@@ -114,6 +114,20 @@ public class TenantDocumentService {
         return describe(saved);
     }
 
+    /**
+     * One tenant's documents, for a caller who has already earned the right to
+     * see them.
+     *
+     * <p>Takes no view on who is asking, which is why it is package-visible in
+     * spirit and named for what it does rather than for the caller. The
+     * permission lives in TenantDocumentAccess, in one place, where it can be
+     * read and tested on its own.
+     */
+    @Transactional(readOnly = true)
+    public List<TenantDocumentResponse> listFor(UUID userId) {
+        return listMine(userId);
+    }
+
     /** The caller's own documents, each with a URL that expires. */
     @Transactional(readOnly = true)
     public List<TenantDocumentResponse> listMine(UUID userId) {
