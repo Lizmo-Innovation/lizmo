@@ -173,7 +173,7 @@ class _FindAPlace extends StatelessWidget {
       color: LizmoColors.tealBg,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: () => context.push(Routes.findProperty),
+        onTap: () => context.push(Routes.scanCode),
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
@@ -193,7 +193,7 @@ class _FindAPlace extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Enter the code from the gate to see what is free.',
+                      'Scan the code on the gate, or type it, to see what is free.',
                       style: LizmoType.rowSub
                           .copyWith(color: LizmoColors.teal900),
                     ),

@@ -15,7 +15,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Lizmo uses the camera so you can photograph your ID and take a 1x1 for your tenant profile.</string>
+		<string>Lizmo uses the camera to scan a property code, and so you can photograph your ID and take a 1x1 for your tenant profile.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Lizmo needs your photo library so you can choose an existing photo of your ID or a 1x1 for your tenant profile.</string>
 		<key>CFBundleName</key>
