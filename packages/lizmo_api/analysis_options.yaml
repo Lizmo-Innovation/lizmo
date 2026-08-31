@@ -6,6 +6,10 @@
 # regeneration overwrites. What is silenced below is chosen one rule at a time
 # rather than by excluding the package: a real error in this client -- a bad
 # generation, a broken model -- still has to fail analysis.
+#
+# This file is listed in .openapi-generator-ignore. It has to be: the generator
+# writes its own empty analysis_options.yaml otherwise, and the silenced lint
+# comes back on the next regeneration.
 analyzer:
   errors:
     # The multipart template guards a parameter that its own signature declares

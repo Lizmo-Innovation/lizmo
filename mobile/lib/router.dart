@@ -18,6 +18,8 @@ import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
 import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/find_property_screen.dart';
+import 'screens/property_by_code_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
@@ -33,6 +35,13 @@ abstract final class Routes {
   /// The tenant's own profile. Under /tenant, so the role guard already
   /// covers it.
   static const tenantProfile = '/tenant/profile';
+
+  /// Where a tenant starts looking for somewhere to live.
+  static const findProperty = '/tenant/find';
+
+  /// A property reached by the code on its gate. The code is in the path
+  /// rather than a query, because it identifies the thing being looked at.
+  static String propertyByCode(String code) => '/tenant/find/$code';
 
   /// The landlord section as a whole. Redirects to [landlordHome]; every
   /// guard still matches on this prefix, so the tabs changed nothing about
@@ -170,6 +179,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'profile',
             builder: (context, state) => const TenantProfileScreen(),
+          ),
+          GoRoute(
+            path: 'find',
+            builder: (context, state) => const FindPropertyScreen(),
+            routes: [
+              GoRoute(
+                path: ':code',
+                builder: (context, state) => PropertyByCodeScreen(
+                  code: state.pathParameters['code']!,
+                ),
+              ),
+            ],
           ),
         ],
       ),

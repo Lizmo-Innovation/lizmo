@@ -205,6 +205,10 @@ class ApiClient {
           return RefreshRequest.fromJson(value);
         case 'RegisterRequest':
           return RegisterRequest.fromJson(value);
+        case 'RentalRequestCreate':
+          return RentalRequestCreate.fromJson(value);
+        case 'RentalRequestResponse':
+          return RentalRequestResponse.fromJson(value);
         case 'TenantDocumentResponse':
           return TenantDocumentResponse.fromJson(value);
         case 'TenantProfileRequest':

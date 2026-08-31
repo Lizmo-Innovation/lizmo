@@ -41,14 +41,13 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:lizmo_api/api.dart';
 
 
-final api_instance = AuthApi();
-final loginRequest = LoginRequest(); // LoginRequest | 
+final api_instance = AskingForARoomApi();
 
 try {
-    final result = api_instance.login(loginRequest);
+    final result = api_instance.listMyRentalRequests();
     print(result);
 } catch (e) {
-    print('Exception when calling AuthApi->login: $e\n');
+    print('Exception when calling AskingForARoomApi->listMyRentalRequests: $e\n');
 }
 
 ```
@@ -59,6 +58,9 @@ All URIs are relative to *http://localhost:8082*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
+*AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
+*AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
 *AuthApi* | [**login**](doc//AuthApi.md#login) | **POST** /api/v1/auth/login | Sign in with email or phone plus password
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
@@ -101,6 +103,8 @@ Class | Method | HTTP request | Description
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RegisterRequest](doc//RegisterRequest.md)
+ - [RentalRequestCreate](doc//RentalRequestCreate.md)
+ - [RentalRequestResponse](doc//RentalRequestResponse.md)
  - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)

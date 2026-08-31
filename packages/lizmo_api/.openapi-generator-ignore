@@ -21,3 +21,8 @@
 #docs/*.md
 # Then explicitly reverse the ignore rule for a single file:
 #!docs/README.md
+
+# Ours, not the generator's. Without this line, regenerating the client
+# overwrites it with an empty file and the lint we silence comes back — which
+# is exactly what happened once.
+analysis_options.yaml

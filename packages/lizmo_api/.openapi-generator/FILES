@@ -3,6 +3,7 @@
 README.md
 analysis_options.yaml
 doc/ApiError.md
+doc/AskingForARoomApi.md
 doc/AuthApi.md
 doc/AuthResponse.md
 doc/BedRequest.md
@@ -16,6 +17,8 @@ doc/PropertyRequest.md
 doc/PropertyResponse.md
 doc/RefreshRequest.md
 doc/RegisterRequest.md
+doc/RentalRequestCreate.md
+doc/RentalRequestResponse.md
 doc/TenantDocumentResponse.md
 doc/TenantDocumentsApi.md
 doc/TenantProfileApi.md
@@ -33,6 +36,7 @@ doc/VacantBed.md
 doc/VacantUnit.md
 git_push.sh
 lib/api.dart
+lib/api/asking_for_a_room_api.dart
 lib/api/auth_api.dart
 lib/api/finding_a_place_api.dart
 lib/api/properties_api.dart
@@ -58,6 +62,8 @@ lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/refresh_request.dart
 lib/model/register_request.dart
+lib/model/rental_request_create.dart
+lib/model/rental_request_response.dart
 lib/model/tenant_document_response.dart
 lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
@@ -71,6 +77,6 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/vacancy_floor_test.dart
-test/vacant_bed_test.dart
-test/vacant_unit_test.dart
+test/asking_for_a_room_api_test.dart
+test/rental_request_create_test.dart
+test/rental_request_response_test.dart
