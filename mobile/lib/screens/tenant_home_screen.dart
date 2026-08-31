@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../router.dart';
@@ -75,7 +76,13 @@ class TenantHomeScreen extends ConsumerWidget {
                   const SizedBox(height: 18),
                 ],
 
-                const _FindAPlace(),
+                // A tenant with a lease has somewhere to live and does not
+                // need to be asked whether they are looking. One or the other,
+                // never both.
+                if (ref.watch(myLeasesProvider).valueOrNull?.isNotEmpty ?? false)
+                  _MyLease(lease: ref.watch(myLeasesProvider).value!.first)
+                else
+                  const _FindAPlace(),
                 const SizedBox(height: 18),
 
                 Text('Billing periods', style: LizmoType.sectionHeading),
@@ -207,5 +214,65 @@ class _FindAPlace extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Where the tenant lives, once a landlord has said yes.
+///
+/// The first thing on the screen, because it is the answer to the only
+/// question somebody opens this app with before any rent is due.
+class _MyLease extends StatelessWidget {
+  const _MyLease({required this.lease});
+
+  final LeaseResponse lease;
+
+  @override
+  Widget build(BuildContext context) {
+    final where = lease.bedLabel == null
+        ? 'Unit ${lease.unitNumber}'
+        : '${lease.bedLabel}, ${lease.unitNumber}';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: LizmoColors.tealBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline,
+              size: 20, color: LizmoColors.teal900),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  where,
+                  style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${lease.propertyName ?? 'Your place'} · rent due on the '
+                  '${_ordinal(lease.dueDateDay ?? 1)}',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "the 1st", "the 22nd". A due date read as "the 1" looks like a bug.
+  static String _ordinal(int day) {
+    if (day >= 11 && day <= 13) return '${day}th';
+    return switch (day % 10) {
+      1 => '${day}st',
+      2 => '${day}nd',
+      3 => '${day}rd',
+      _ => '${day}th',
+    };
   }
 }

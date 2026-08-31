@@ -119,6 +119,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ),
             ],
           ),
+          _WaitingRequests(propertyId: propertyId),
           if ((property?.description ?? '').isNotEmpty)
             _Description(text: property!.description!),
           if (showFilter)
@@ -225,6 +226,59 @@ class _BackButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       tooltip: 'Back',
+    );
+  }
+}
+
+/// People waiting for an answer about this property.
+///
+/// Only when somebody is. A row that permanently reads "0 requests" is one a
+/// landlord learns to stop seeing, and the whole point of this strip is that it
+/// is unusual enough to notice.
+class _WaitingRequests extends ConsumerWidget {
+  const _WaitingRequests({required this.propertyId});
+
+  final String propertyId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final waiting = ref.watch(pendingRequestsProvider(propertyId)).valueOrNull;
+    if (waiting == null || waiting.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final count = waiting.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Material(
+        color: LizmoColors.amberBg,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () => context.push(Routes.propertyRequests(propertyId)),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                const Icon(Icons.mark_email_unread_outlined,
+                    size: 20, color: LizmoColors.amberText),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    count == 1
+                        ? 'Somebody is asking about a room'
+                        : '$count people are asking about rooms',
+                    style: LizmoType.rowName
+                        .copyWith(color: LizmoColors.amberText),
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    size: 20, color: LizmoColors.amberText),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

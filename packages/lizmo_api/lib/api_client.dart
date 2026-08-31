@@ -183,6 +183,8 @@ class ApiClient {
           return valueString == 'true' || valueString == '1';
         case 'DateTime':
           return value is DateTime ? value : DateTime.tryParse(value);
+        case 'AcceptRequest':
+          return AcceptRequest.fromJson(value);
         case 'ApiError':
           return ApiError.fromJson(value);
         case 'AuthResponse':
@@ -191,6 +193,10 @@ class ApiClient {
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
+        case 'EndLeaseRequest':
+          return EndLeaseRequest.fromJson(value);
+        case 'LeaseResponse':
+          return LeaseResponse.fromJson(value);
         case 'LoginRequest':
           return LoginRequest.fromJson(value);
         case 'MaintenanceRequest':
@@ -207,6 +213,8 @@ class ApiClient {
           return RegisterRequest.fromJson(value);
         case 'RentalRequestCreate':
           return RentalRequestCreate.fromJson(value);
+        case 'RentalRequestForLandlord':
+          return RentalRequestForLandlord.fromJson(value);
         case 'RentalRequestResponse':
           return RentalRequestResponse.fromJson(value);
         case 'TenantDocumentResponse':
