@@ -9,6 +9,7 @@ import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
+import 'package:lizmo/screens/scan_code_screen.dart';
 import 'package:lizmo/screens/property_share_screen.dart';
 import 'package:lizmo/screens/landlord_home_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
@@ -624,6 +625,7 @@ void main() {
   _tenantProfileTests();
   _propertyShareTests();
   _findingAPlaceTests();
+  _scanningTests();
 
   group('property list states', () {
     Widget appWith(Override propertiesOverride) => ProviderScope(
@@ -3627,7 +3629,7 @@ void _tenantProfileTests() {
 
 void _propertyShareTests() {
   group('sharing a property', () {
-    PropertyResponse property({String? code = 'PHLZ7K4M'}) => PropertyResponse(
+    PropertyResponse property({String? code = 'PHK7M4Q2'}) => PropertyResponse(
           id: 'p1',
           name: 'Sunrise Apartments',
           address: '12 Mabini St',
@@ -3638,7 +3640,7 @@ void _propertyShareTests() {
           potentialMonthlyRent: 10000,
         );
 
-    Future<void> openProperty(WidgetTester tester, {String? code = 'PHLZ7K4M'}) async {
+    Future<void> openProperty(WidgetTester tester, {String? code = 'PHK7M4Q2'}) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [
           authControllerProvider
@@ -3656,7 +3658,7 @@ void _propertyShareTests() {
       await tester.pumpAndSettle();
     }
 
-    Future<void> openShare(WidgetTester tester, {String? code = 'PHLZ7K4M'}) async {
+    Future<void> openShare(WidgetTester tester, {String? code = 'PHK7M4Q2'}) async {
       await openProperty(tester, code: code);
       await tester.tap(find.byTooltip('Share this place'));
       await tester.pumpAndSettle();
@@ -3689,13 +3691,13 @@ void _propertyShareTests() {
     testWidgets('the code is shown large enough to read out', (tester) async {
       await openShare(tester);
 
-      expect(find.text('PHLZ7K4M'), findsOneWidget);
+      expect(find.text('PHK7M4Q2'), findsOneWidget);
       expect(find.text('Property code'), findsOneWidget);
 
       // Most people will type this rather than scan it, and often it is being
       // read by somebody older than the person holding the phone. Well above
       // the app's ordinary body size of 14.
-      final code = tester.widget<Text>(find.text('PHLZ7K4M'));
+      final code = tester.widget<Text>(find.text('PHK7M4Q2'));
       expect(code.style!.fontSize, greaterThanOrEqualTo(24));
     });
 
@@ -3717,7 +3719,7 @@ void _propertyShareTests() {
         'Sunrise Apartments',
         '12 Mabini St',
         'Residential · Boarding House',
-        'PHLZ7K4M',
+        'PHK7M4Q2',
       ]) {
         expect(
           find.descendant(of: card, matching: find.text(line)),
@@ -3811,7 +3813,7 @@ void _propertyShareTests() {
 
     testWidgets('type grows with the screen, and never shrinks', (tester) async {
       await openShare(tester);
-      final onPhone = tester.widget<Text>(find.text('PHLZ7K4M')).style!.fontSize!;
+      final onPhone = tester.widget<Text>(find.text('PHK7M4Q2')).style!.fontSize!;
 
       // A tablet-sized surface. Gently larger — the scale is the square root of
       // the ratio, so a much wider screen does not double the type.
@@ -3826,7 +3828,7 @@ void _propertyShareTests() {
       });
       await tester.pumpAndSettle();
 
-      final onTablet = tester.widget<Text>(find.text('PHLZ7K4M')).style!.fontSize!;
+      final onTablet = tester.widget<Text>(find.text('PHK7M4Q2')).style!.fontSize!;
       expect(onTablet, greaterThan(onPhone));
       // Clamped: the same ratio applied literally would give headings the size
       // of a fist.
@@ -3845,7 +3847,7 @@ void _propertyShareTests() {
       // lives. It was a URL until we admitted there is no domain behind it —
       // a QR that resolves nowhere is worse than one a camera app simply
       // shows as text.
-      expect(PropertyShareScreen.qrPayloadFor('PHLZ7K4M'), 'PHLZ7K4M');
+      expect(PropertyShareScreen.qrPayloadFor('PHK7M4Q2'), 'PHK7M4Q2');
     });
 
     testWidgets('the logo sits in the middle of the code', (tester) async {
@@ -3906,7 +3908,7 @@ void _propertyShareTests() {
 
       // The code alone, not the URL: this gets pasted into a message to a
       // tenant, who types it into the app.
-      expect(copied, 'PHLZ7K4M');
+      expect(copied, 'PHK7M4Q2');
       expect(find.text('Code copied'), findsOneWidget);
     });
 
@@ -3948,7 +3950,7 @@ void _findingAPlaceTests() {
       List<VacantUnit> units = const [],
     }) => PropertyByCodeResponse(
       id: 'p1',
-      code: 'PHLZ7K4M',
+      code: 'PHK7M4Q2',
       name: 'Sunrise Apartments',
       address: '12 Mabini St',
       type: PropertyByCodeResponseTypeEnum.BOARDING_HOUSE,
@@ -3988,7 +3990,7 @@ void _findingAPlaceTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        propertyByCodeProvider('PHLZ7K4M').overrideWith((ref) async {
+        propertyByCodeProvider('PHK7M4Q2').overrideWith((ref) async {
           if (lookupFails != null) throw lookupFails;
           return found ?? place();
         }),
@@ -3997,9 +3999,17 @@ void _findingAPlaceTests() {
       child: const LizmoApp(),
     );
 
+    /// Home card, then the scanner's own way out to typing.
+    ///
+    /// The card opens the camera now, which is what most tenants will use and
+    /// what no widget test can drive. Going through "Type it instead" is both
+    /// the way to reach the field and a check that the fallback is reachable
+    /// at all — a camera-only path would strand anyone who refuses permission.
     Future<void> openFind(WidgetTester tester) async {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Looking for a room?'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Type it instead'));
       await tester.pumpAndSettle();
     }
 
@@ -4022,20 +4032,20 @@ void _findingAPlaceTests() {
       await tester.pumpWidget(appWith());
       await openFind(tester);
 
-      await tester.enterText(find.byType(TextField), 'phlz7k4m');
+      await tester.enterText(find.byType(TextField), 'phk7m4q2');
       await tester.pumpAndSettle();
 
       // Read off the field rather than found by text: the hint is the same
       // string, so find.text would match whether the formatter ran or not.
       final field = tester.widget<EditableText>(find.byType(EditableText));
-      expect(field.controller.text, 'PHLZ7K4M');
+      expect(field.controller.text, 'PHK7M4Q2');
     });
 
     testWidgets('a half-typed code cannot be submitted', (tester) async {
       await tester.pumpWidget(appWith());
       await openFind(tester);
 
-      await tester.enterText(find.byType(TextField), 'PHLZ');
+      await tester.enterText(find.byType(TextField), 'PHK7');
       await tester.pumpAndSettle();
 
       // Visibly disabled, not merely inert: a button that looks tappable and
@@ -4049,7 +4059,7 @@ void _findingAPlaceTests() {
     testWidgets('a code finds the place and what is free', (tester) async {
       await tester.pumpWidget(appWith(found: place(beds: [bed()])));
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Sunrise Apartments'), findsWidgets);
       expect(find.text('12 Mabini St'), findsOneWidget);
@@ -4063,7 +4073,7 @@ void _findingAPlaceTests() {
     ) async {
       await tester.pumpWidget(appWith(found: place()));
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       // Nothing free is a real answer, not an empty screen.
       expect(find.text('Nothing free here at the moment'), findsOneWidget);
@@ -4074,7 +4084,7 @@ void _findingAPlaceTests() {
     ) async {
       await tester.pumpWidget(appWith(found: place(beds: [bed(utilities: 800)])));
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       // Rent alone is not the comparison a tenant is making.
       expect(find.text('P2500 a month, plus P800 utilities'), findsNothing);
@@ -4089,7 +4099,7 @@ void _findingAPlaceTests() {
         appWith(found: place(beds: [bed(utilities: 800, included: true)])),
       );
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.textContaining('utilities included'), findsOneWidget);
     });
@@ -4099,7 +4109,7 @@ void _findingAPlaceTests() {
     ) async {
       await tester.pumpWidget(appWith(found: place(beds: [bed(rent: null)])));
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Price not set'), findsOneWidget);
     });
@@ -4110,7 +4120,7 @@ void _findingAPlaceTests() {
         appWith(found: place(beds: [bed()]), asking: asking),
       );
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       await tester.tap(find.text('Ask for this'));
       await tester.pumpAndSettle();
@@ -4137,7 +4147,7 @@ void _findingAPlaceTests() {
         appWith(found: place(beds: [bed()]), asking: asking),
       );
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       await tester.tap(find.text('Ask for this'));
       await tester.pumpAndSettle();
@@ -4161,7 +4171,7 @@ void _findingAPlaceTests() {
         appWith(found: place(beds: [bed()]), asking: asking),
       );
       await openFind(tester);
-      await enterCode(tester, 'PHLZ7K4M');
+      await enterCode(tester, 'PHK7M4Q2');
 
       await tester.tap(find.text('Ask for this'));
       await tester.pumpAndSettle();
@@ -4186,6 +4196,71 @@ void _findingAPlaceTests() {
       expect(find.text('No place with that code'), findsOneWidget);
       // The commonest typo, given the alphabet deliberately omits them.
       expect(find.textContaining('no O or I'), findsOneWidget);
+    });
+  });
+}
+
+void _scanningTests() {
+  group('scanning a code', () {
+    // No camera in a widget test, so the assertions sit on the function that
+    // decides what a scan meant. That is where the decisions are: which
+    // formats to accept, and what to do with everything else pointed at it.
+
+    test('a bare code is taken as it is', () {
+      expect(codeFromScan('PHK7M4Q2'), 'PHK7M4Q2');
+    });
+
+    test('a URL gives up its last path segment', () {
+      // The QR carries a bare code today. It was briefly a link and may be
+      // again once there is a domain, and signs printed under either scheme
+      // have to keep working.
+      expect(codeFromScan('https://lizmo.app/p/PHK7M4Q2'), 'PHK7M4Q2');
+      expect(codeFromScan('https://lizmo.app/p/PHK7M4Q2/'), 'PHK7M4Q2');
+    });
+
+    test('a tracking query does not become part of the code', () {
+      expect(
+        codeFromScan('https://lizmo.app/p/PHK7M4Q2?utm_source=poster'),
+        'PHK7M4Q2',
+      );
+      expect(codeFromScan('https://lizmo.app/p/PHK7M4Q2#top'), 'PHK7M4Q2');
+    });
+
+    test('case and separators survive a sign that was retyped', () {
+      expect(codeFromScan('phk7m4q2'), 'PHK7M4Q2');
+      expect(codeFromScan('  PHK7-M4Q2  '), 'PHK7M4Q2');
+    });
+
+    test('somebody else QR code is refused rather than looked up', () {
+      // A tenant sweeping a camera across a wall will hit a Wi-Fi code, a
+      // payment code, a shop receipt. Rejecting them here keeps the camera
+      // looking instead of navigating to a certain 404.
+      for (final other in [
+        'WIFI:S:CoffeeShop;T:WPA;P:hunter2;;',
+        'https://example.com/promo',
+        '00020101021228',
+        'Just some text',
+        '',
+      ]) {
+        expect(codeFromScan(other), isNull, reason: other);
+      }
+    });
+
+    test('a code with the letters the alphabet avoids is not ours', () {
+      // O and I are excluded from the alphabet precisely because they are
+      // misread as zero and one. Something containing them was misread.
+      expect(codeFromScan('PHOOOOOO'), isNull);
+      expect(codeFromScan('PHIIIIII'), isNull);
+    });
+
+    test('a code of the wrong length is refused', () {
+      expect(codeFromScan('PHK7M4'), isNull);
+      expect(codeFromScan('PHK7M4Q2M'), isNull);
+      expect(codeFromScan('LZ7K4M2A'), isNull);
+    });
+
+    test('nothing scanned is nothing', () {
+      expect(codeFromScan(null), isNull);
     });
   });
 }

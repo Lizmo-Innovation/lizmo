@@ -20,6 +20,7 @@ import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/find_property_screen.dart';
 import 'screens/property_by_code_screen.dart';
+import 'screens/scan_code_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
@@ -38,6 +39,10 @@ abstract final class Routes {
 
   /// Where a tenant starts looking for somewhere to live.
   static const findProperty = '/tenant/find';
+
+  /// The camera. Its own route rather than a mode of the find screen, so
+  /// backing out of it lands where the tenant started.
+  static const scanCode = '/tenant/scan';
 
   /// A property reached by the code on its gate. The code is in the path
   /// rather than a query, because it identifies the thing being looked at.
@@ -179,6 +184,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'profile',
             builder: (context, state) => const TenantProfileScreen(),
+          ),
+          GoRoute(
+            path: 'scan',
+            builder: (context, state) => const ScanCodeScreen(),
           ),
           GoRoute(
             path: 'find',

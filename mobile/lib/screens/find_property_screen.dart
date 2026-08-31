@@ -6,11 +6,12 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../router.dart';
 
-/// Where a tenant starts: the code off the gate.
+/// The code off the gate, typed.
 ///
-/// Typed rather than scanned, for now. Scanning is an input method for this
-/// same lookup and comes later; a tenant who cannot type a code cannot use the
-/// app at all, so this is the one that has to exist.
+/// The scanner is the way most people will arrive, but this is the one that
+/// always works: a refused camera permission, a cracked lens, a code read out
+/// over the phone, or a photograph of a sign somebody sent in a group chat.
+/// Both routes end at the same lookup.
 class FindPropertyScreen extends ConsumerStatefulWidget {
   const FindPropertyScreen({super.key});
 
@@ -67,7 +68,7 @@ class _FindPropertyScreenState extends ConsumerState<FindPropertyScreen> {
               const SizedBox(height: 6),
               Text(
                 'It is on the sign by the gate, or the landlord can send it to '
-                'you. It looks like PHLZ7K4M.',
+                'you. It looks like PHK7M4Q2.',
                 style: LizmoType.rowSub.copyWith(fontSize: 15 * scale),
                 textAlign: TextAlign.center,
               ),
@@ -103,7 +104,7 @@ class _FindPropertyScreenState extends ConsumerState<FindPropertyScreen> {
                   ),
                   decoration: InputDecoration(
                     border: InputBorder.none,
-                    hintText: 'PHLZ7K4M',
+                    hintText: 'PHK7M4Q2',
                     hintStyle: LizmoType.dataMedium.copyWith(
                       fontSize: 26 * scale,
                       letterSpacing: 3,
@@ -114,7 +115,23 @@ class _FindPropertyScreenState extends ConsumerState<FindPropertyScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => context.pushReplacement(Routes.scanCode),
+                  icon: const Icon(Icons.qr_code_scanner,
+                      size: 18, color: LizmoColors.teal900),
+                  label: Text(
+                    'Scan it instead',
+                    style: LizmoType.rowName.copyWith(
+                      color: LizmoColors.teal900,
+                      fontSize: 15 * scale,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
               PrimaryActionButton(
                 label: 'See what is free',
                 // Disabled rather than hidden: the button is where the eye
