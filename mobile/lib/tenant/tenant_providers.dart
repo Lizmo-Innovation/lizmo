@@ -92,3 +92,14 @@ final myRentalRequestsProvider =
     throw ApiFailure.from(error);
   }
 });
+
+/// The signed-in tenant's own leases, newest first.
+final myLeasesProvider =
+    FutureProvider.autoDispose<List<LeaseResponse>>((ref) async {
+  try {
+    return await LeasesApi(ref.watch(apiClientProvider)).listMyLeases() ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

@@ -97,3 +97,38 @@ final utilitiesProvider =
     throw ApiFailure.from(error);
   }
 });
+
+final requestsToAnswerApiProvider = Provider<RequestsToAnswerApi>((ref) {
+  return RequestsToAnswerApi(ref.watch(apiClientProvider));
+});
+
+final leasesApiProvider = Provider<LeasesApi>((ref) {
+  return LeasesApi(ref.watch(apiClientProvider));
+});
+
+/// Who has asked about one property and is still waiting.
+///
+/// autoDispose: a landlord coming back to this screen wants the queue as it is
+/// now, not as it was when they last opened it — somebody may have withdrawn.
+final pendingRequestsProvider = FutureProvider.autoDispose
+    .family<List<RentalRequestForLandlord>, String>((ref, propertyId) async {
+  try {
+    return await ref
+            .watch(requestsToAnswerApiProvider)
+            .listRentalRequestsForProperty(propertyId, pendingOnly: true) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// Who is currently living in one property.
+final propertyLeasesProvider = FutureProvider.autoDispose
+    .family<List<LeaseResponse>, String>((ref, propertyId) async {
+  try {
+    return await ref.watch(leasesApiProvider).listLeasesForProperty(propertyId) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

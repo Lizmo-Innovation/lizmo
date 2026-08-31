@@ -20,6 +20,10 @@
             "description": "A tenant's own details"
         },
         {
+            "name": "Requests to answer",
+            "description": "What is waiting for a landlord"
+        },
+        {
             "name": "Units",
             "description": "Units and the beds within them"
         },
@@ -34,6 +38,10 @@
         {
             "name": "Properties",
             "description": "A landlord's properties and their units"
+        },
+        {
+            "name": "Leases",
+            "description": "Who is living where"
         },
         {
             "name": "Asking for a room",
@@ -648,6 +656,101 @@
                 }
             }
         },
+        "/api/v1/rental-requests/{id}/decline": {
+            "post": {
+                "tags": [
+                    "Requests to answer"
+                ],
+                "summary": "Say no",
+                "description": "Frees nothing, because a request never held anything.",
+                "operationId": "declineRentalRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The declined request",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RentalRequestForLandlord"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rental-requests/{id}/accept": {
+            "post": {
+                "tags": [
+                    "Requests to answer"
+                ],
+                "summary": "Say yes, and create the lease",
+                "description": "Terms are optional and default to the asking rent, today, and the day of the month the tenant moves in. Everyone else still waiting on the same bed or unit is superseded.",
+                "operationId": "acceptRentalRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The new lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The bed or unit has gone",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties": {
             "get": {
                 "tags": [
@@ -975,6 +1078,48 @@
                 }
             }
         },
+        "/api/v1/leases/{id}/end": {
+            "post": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "End a tenancy",
+                "description": "Frees the bed or unit back to the vacancy list. Defaults to ended today; pass terminated for a tenancy stopped early.",
+                "operationId": "endLease",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EndLeaseRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The ended lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -1146,6 +1291,148 @@
                 }
             }
         },
+        "/api/v1/rental-requests/{id}": {
+            "get": {
+                "tags": [
+                    "Requests to answer"
+                ],
+                "summary": "One request in full",
+                "operationId": "getRentalRequest",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The request",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RentalRequestForLandlord"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not yours, or no such request",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/properties/{propertyId}/rental-requests": {
+            "get": {
+                "tags": [
+                    "Requests to answer"
+                ],
+                "summary": "Who has asked about this property",
+                "description": "Pending only by default, oldest first: a queue is answered in the order people joined it.",
+                "operationId": "listRentalRequestsForProperty",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "pendingOnly",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requests",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RentalRequestForLandlord"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/properties/{propertyId}/leases": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Who is living here",
+                "operationId": "listLeasesForProperty",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The active leases",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LeaseResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/lookup": {
             "get": {
                 "tags": [
@@ -1177,6 +1464,76 @@
                     },
                     "404": {
                         "description": "No property uses that code",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/leases": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "My leases",
+                "operationId": "listMyLeases",
+                "responses": {
+                    "200": {
+                        "description": "Newest first",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LeaseResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/tenant-documents": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "The ID of the tenant living here",
+                "description": "Only while the lease is active. Each carries a presigned URL valid for a few minutes.",
+                "operationId": "listTenantDocumentsForLease",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The photographs",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TenantDocumentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease, or the tenancy has ended",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1708,6 +2065,186 @@
                 },
                 "description": "A bed within a bedspace unit"
             },
+            "RentalRequestForLandlord": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING",
+                            "ACCEPTED",
+                            "DECLINED",
+                            "WITHDRAWN",
+                            "SUPERSEDED"
+                        ]
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "decidedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "tenantId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "tenantPhone": {
+                        "type": "string"
+                    },
+                    "birthdate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "occupation": {
+                        "type": "string"
+                    },
+                    "permanentAddress": {
+                        "type": "string"
+                    },
+                    "emergencyContactName": {
+                        "type": "string"
+                    },
+                    "emergencyContactRelationship": {
+                        "type": "string"
+                    },
+                    "emergencyContactPhone": {
+                        "type": "string"
+                    },
+                    "idType": {
+                        "type": "string",
+                        "enum": [
+                            "PHILSYS",
+                            "UMID",
+                            "SSS",
+                            "GSIS",
+                            "DRIVERS_LICENSE",
+                            "PASSPORT",
+                            "PHILHEALTH",
+                            "POSTAL",
+                            "VOTERS",
+                            "TIN",
+                            "PRC",
+                            "OTHER"
+                        ]
+                    }
+                },
+                "description": "A request waiting on the landlord"
+            },
+            "AcceptRequest": {
+                "type": "object",
+                "properties": {
+                    "rentAmount": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": true,
+                        "type": "number",
+                        "description": "Defaults to the asking rent",
+                        "example": 2500.0
+                    },
+                    "dueDateDay": {
+                        "maximum": 31,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Defaults to the start date's day",
+                        "format": "int32",
+                        "example": 5
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "description": "Defaults to today",
+                        "format": "date",
+                        "example": "2026-09-01"
+                    }
+                },
+                "description": "Terms for the lease being created"
+            },
+            "LeaseResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "rentAmount": {
+                        "type": "number"
+                    },
+                    "dueDateDay": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ACTIVE",
+                            "ENDED",
+                            "TERMINATED"
+                        ]
+                    }
+                },
+                "description": "A tenant attached to a bed or a unit"
+            },
             "TenantDocumentResponse": {
                 "type": "object",
                 "properties": {
@@ -1806,6 +2343,21 @@
                     }
                 },
                 "description": "A request a tenant has sent"
+            },
+            "EndLeaseRequest": {
+                "type": "object",
+                "properties": {
+                    "terminated": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-09-30"
+                    }
+                },
+                "description": "Ending a lease"
             },
             "RegisterRequest": {
                 "required": [
