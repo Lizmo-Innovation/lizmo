@@ -96,6 +96,20 @@ public class Lease {
         this.rentalRequestId = rentalRequestId;
     }
 
+    /**
+     * Ends the tenancy and gives the slot back.
+     *
+     * <p>The status is what frees it: both unique indexes are partial on
+     * ACTIVE, so the bed becomes lettable again the moment this commits.
+     */
+    public void close(LeaseStatus outcome, LocalDate on) {
+        if (status != LeaseStatus.ACTIVE) {
+            throw new IllegalStateException("Already " + status);
+        }
+        this.status = outcome;
+        this.endDate = on;
+    }
+
     public boolean isActive() {
         return status == LeaseStatus.ACTIVE;
     }
