@@ -129,6 +129,31 @@ public class Unit {
         this.utilityBilling = billing;
     }
 
+    /** Let entire, to one tenant. */
+    public void markLetEntire() {
+        this.status = UnitStatus.OCCUPIED;
+    }
+
+    /**
+     * Recomputed from the beds inside it, after one is taken or freed.
+     *
+     * <p>Never touches a unit that is out of service: a room shut for repairs
+     * stays shut whatever its beds say, and the landlord is the only one who
+     * reopens it.
+     */
+    public void reflectBedOccupancy(boolean anyVacant, boolean anyOccupied) {
+        if (status == UnitStatus.MAINTENANCE) {
+            return;
+        }
+        if (!anyOccupied) {
+            this.status = UnitStatus.VACANT;
+        } else if (anyVacant) {
+            this.status = UnitStatus.PARTIALLY_OCCUPIED;
+        } else {
+            this.status = UnitStatus.OCCUPIED;
+        }
+    }
+
     public void markMaintenance(boolean underMaintenance) {
         this.status = underMaintenance ? UnitStatus.MAINTENANCE : UnitStatus.VACANT;
     }

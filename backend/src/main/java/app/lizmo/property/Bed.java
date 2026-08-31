@@ -91,6 +91,23 @@ public class Bed {
      * flipped, and doing so would hide a tenant from occupancy counts while
      * they are still paying rent.
      */
+    /** Taken, by a tenant under an active lease. */
+    public void markOccupied() {
+        this.status = BedStatus.OCCUPIED;
+    }
+
+    /**
+     * Freed when a lease ends.
+     *
+     * <p>Only from OCCUPIED. A bed out of service must not quietly come back
+     * into the vacancy list because a lease elsewhere ended.
+     */
+    public void markVacated() {
+        if (status == BedStatus.OCCUPIED) {
+            this.status = BedStatus.VACANT;
+        }
+    }
+
     public void markMaintenance(boolean underMaintenance) {
         if (status == BedStatus.OCCUPIED) {
             throw new IllegalStateException("Cannot change maintenance state of an occupied bed");
