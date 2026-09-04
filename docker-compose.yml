@@ -35,6 +35,29 @@ services:
       timeout: 5s
       retries: 20
 
+  # Catches every email the API sends and shows it in a browser, instead of
+  # letting any of it reach a real inbox. Nothing about registration can be
+  # tested by hand until the code is readable somewhere, and a real provider
+  # needs a domain, DNS records and a reputation before it delivers at all.
+  #
+  # Swapping to a real relay later is configuration, not code: the API talks
+  # plain SMTP either way.
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      # 8025 is Mailpit's own web UI -- open http://localhost:8026 to read what
+      # the API sent. 1025 is the SMTP port the API delivers to.
+      - "8026:8025"
+      - "1026:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   api:
     build:
       context: ./backend
@@ -50,10 +73,15 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       JWT_SECRET: dev-only-secret-change-me-dev-only-secret-change-me
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM: Lizmo <hello@lizmo.local>
     depends_on:
       postgres:
         condition: service_healthy
       localstack:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     ports:
       # 8080/8081 on the host are taken by the admissions-ph stack; container port is unchanged
