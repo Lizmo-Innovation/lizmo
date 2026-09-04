@@ -7,7 +7,10 @@ on:
     # written, on a merge, when the person who wrote it has moved on -- and in
     # practice it meant they had never run in CI at all, because everything is
     # written on feature.
-    branches: [main, development, feature]
+    #
+    # test-deploy is included because deploys run from it: a branch nobody
+    # tests is a poor thing to deploy from.
+    branches: [main, development, feature, test-deploy]
   pull_request:
 
 # A newer push makes an in-flight run obsolete; cancelling keeps the queue short.
