@@ -1,40 +1,10 @@
-# Replaces the tech spec's S3 uploads bucket: payment proofs, documents, notice
-# attachments, maintenance photos.
+# Uploads do not live in Cloud Storage.
 #
-# Cost note: the 5 GB always-free allowance applies to US regions only. Keeping
-# the bucket in asia-southeast1 costs roughly a few cents per month at this
-# scale, which is worth paying to avoid cross-region latency on every upload.
-resource "google_storage_bucket" "uploads" {
-  name     = "${var.project_id}-lizmo-uploads"
-  location = var.region
-  project  = var.project_id
-
-  # Objects are served through signed URLs, never public reads.
-  uniform_bucket_level_access = true
-  public_access_prevention    = "enforced"
-
-  versioning {
-    enabled = true
-  }
-
-  # Payment proofs are evidence in a dispute — keep superseded versions for a
-  # year rather than letting a re-upload destroy the original.
-  lifecycle_rule {
-    condition {
-      num_newer_versions         = 3
-      days_since_noncurrent_time = 365
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
-  cors {
-    origin          = ["*"]
-    method          = ["GET", "PUT", "POST", "HEAD"]
-    response_header = ["Content-Type", "Content-MD5", "x-goog-resumable"]
-    max_age_seconds = 3600
-  }
-
-  depends_on = [google_project_service.required]
-}
+# There was a bucket here, and Terraform still provisions everything else the
+# API needs -- but the API speaks S3, and Supabase Storage answers S3. Keeping
+# the bucket meant either writing and proving a Cloud Storage client first, or
+# leaving an empty bucket in the plan pretending to be part of the system.
+#
+# What replaced it: var.storage_endpoint and the two lizmo-storage-* secrets.
+# If uploads ever move to Cloud Storage, this is the file to bring back, along
+# with the object-admin binding that used to live in iam.tf.

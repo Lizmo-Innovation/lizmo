@@ -91,3 +91,85 @@ variable "scheduler_timezone" {
   type        = string
   default     = "Asia/Manila"
 }
+
+variable "supabase_project_ref" {
+  description = <<-EOT
+    The Supabase project's reference id -- the string in its dashboard URL, and
+    under Project Settings → General as "Reference ID".
+
+    No default on purpose. It appears in the storage endpoint and in the
+    database host, and a project that is recreated gets a new one; a default
+    left over from an old project is a value that looks right, plans clean, and
+    points at something that no longer exists.
+  EOT
+  type        = string
+}
+
+variable "storage_region" {
+  description = <<-EOT
+    The region Supabase reports beside the S3 endpoint.
+
+    Part of the SigV4 signature rather than a routing hint, so a plausible-
+    looking wrong value produces a 403 that reads exactly like a bad key.
+
+    Singapore, to match var.region: the API and its database in different
+    regions pays the round trip on every query, and a single screen makes
+    several.
+  EOT
+  type        = string
+  default     = "ap-southeast-1"
+}
+
+variable "storage_bucket" {
+  description = "Supabase Storage bucket for tenant documents and payment proofs. Must be private."
+  type        = string
+  default     = "lizmo-uploads"
+}
+
+variable "mail_host" {
+  description = "SMTP host. Brevo's relay."
+  type        = string
+  default     = "smtp-relay.brevo.com"
+}
+
+variable "mail_port" {
+  description = "SMTP port. 587 is STARTTLS, which is what the prod profile requires."
+  type        = number
+  default     = 587
+}
+
+variable "mail_username" {
+  description = <<-EOT
+    Brevo SMTP login. Brevo shows this on its SMTP & API page and it is not
+    always the account's email address.
+
+    Not a secret -- it is a username, and it appears in plan output either way.
+    The SMTP key beside it is, and lives in Secret Manager.
+  EOT
+  type        = string
+}
+
+variable "mail_from" {
+  description = <<-EOT
+    What lands in the recipient's inbox. Must be an address verified in Brevo,
+    or every message is rejected at submission.
+  EOT
+  type        = string
+}
+
+variable "admin_service_name" {
+  description = "Cloud Run service name for the internal console."
+  type        = string
+  default     = "lizmo-admin"
+}
+
+variable "admin_image" {
+  description = <<-EOT
+    Container image for the console. A placeholder by default so `apply` can
+    create the service before anything is built -- which is the point: the
+    console's image has to be built with the API's URL compiled into it, and
+    that URL does not exist until this apply has run.
+  EOT
+  type        = string
+  default     = "us-docker.pkg.dev/cloudrun/container/hello"
+}

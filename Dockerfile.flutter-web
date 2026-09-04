@@ -24,6 +24,15 @@ RUN flutter precache --web
 
 # Which app to build: `admin` or `mobile`.
 ARG APP=admin
+
+# Where the built app looks for the API.
+#
+# Baked in at build time because that is the only time a Flutter web bundle can
+# be told anything: --dart-define is compiled in, and there is no environment
+# left to read at runtime. Empty means ApiConfig's own default, which is
+# localhost:8082 -- right on this machine, useless once deployed, and silent
+# about it either way.
+ARG API_BASE_URL=
 WORKDIR /src
 
 # Every local package is copied, not just the ones an app names directly:
@@ -35,7 +44,13 @@ COPY ${APP}/pubspec.yaml ${APP}/pubspec.lock ./${APP}/
 RUN cd ${APP} && flutter pub get
 
 COPY ${APP} ./${APP}
-RUN cd ${APP} && flutter build web --release
+RUN cd ${APP} && \
+    if [ -n "${API_BASE_URL}" ]; then \
+      flutter build web --release \
+        --dart-define=LIZMO_API_BASE_URL="${API_BASE_URL}"; \
+    else \
+      flutter build web --release; \
+    fi
 
 FROM nginx:1.27-alpine
 # Re-declared after FROM: ARGs do not carry across build stages.

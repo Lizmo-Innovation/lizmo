@@ -5,6 +5,19 @@
 #
 # Both authenticate with an OIDC token. The API must reject these paths for any
 # other caller; being on /internal/ is not itself protection.
+#
+# CREATED PAUSED, and they stay that way until those endpoints exist. Neither
+# /internal/jobs/* path is implemented: unpaused, these would POST into a 404
+# every night, retry three times, and file the failures somewhere nobody reads
+# -- so the first thing anybody learns from this alerting is to ignore it.
+#
+# To start them, once the endpoints are built and verify the OIDC token:
+#
+#   gcloud scheduler jobs resume lizmo-platform-billing-snapshot --location=asia-southeast1
+#   gcloud scheduler jobs resume lizmo-platform-billing-enforcement --location=asia-southeast1
+#
+# Terraform ignores the paused flag afterwards, so resuming by hand is not
+# undone by the next apply.
 
 resource "google_cloud_scheduler_job" "billing_snapshot" {
   project     = var.project_id
@@ -15,6 +28,7 @@ resource "google_cloud_scheduler_job" "billing_snapshot" {
   time_zone   = var.scheduler_timezone
 
   attempt_deadline = "320s"
+  paused           = true
 
   retry_config {
     retry_count = 3
@@ -30,6 +44,10 @@ resource "google_cloud_scheduler_job" "billing_snapshot" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [paused]
+  }
+
   depends_on = [google_project_service.required]
 }
 
@@ -42,6 +60,7 @@ resource "google_cloud_scheduler_job" "billing_enforcement" {
   time_zone   = var.scheduler_timezone
 
   attempt_deadline = "320s"
+  paused           = true
 
   retry_config {
     retry_count = 3
@@ -55,6 +74,10 @@ resource "google_cloud_scheduler_job" "billing_enforcement" {
       service_account_email = google_service_account.scheduler.email
       audience              = google_cloud_run_v2_service.api.uri
     }
+  }
+
+  lifecycle {
+    ignore_changes = [paused]
   }
 
   depends_on = [google_project_service.required]

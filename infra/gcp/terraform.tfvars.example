@@ -1,12 +1,25 @@
 # Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
 #
-# No secrets belong in this file — the database URL and JWT signing key go into
-# Secret Manager directly (see secrets.tf), so they never reach Terraform state.
+# No secrets belong in this file — the database password, the JWT signing key,
+# the Supabase storage key and the Brevo SMTP key all go into Secret Manager
+# directly (see secrets.tf), so they never reach Terraform state.
 
 project_id = "your-gcp-project-id"
 
 # Singapore: ~40ms from the Philippines.
 region = "asia-southeast1"
+
+# The Supabase project's reference id — the string in its dashboard URL.
+# Its region should match `region` above: the API and its database in
+# different regions pay the round trip on every query, and one screen makes
+# several of them.
+supabase_project_ref = "your-project-ref"
+
+# Brevo. The username is on Brevo's SMTP & API page and is not always the
+# account's email address; the from-address must be one Brevo has verified,
+# or every message is rejected at submission rather than bouncing later.
+mail_username = "your-brevo-smtp-login"
+mail_from     = "Lizmo <you@example.com>"
 
 # Leave at 0 to stay inside the free tier; expect a 10-20s cold start.
 # Set to 1 when that becomes unacceptable — this is the main cost lever.

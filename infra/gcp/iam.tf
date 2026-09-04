@@ -8,20 +8,9 @@ resource "google_service_account" "api" {
   depends_on = [google_project_service.required]
 }
 
-# Read/write objects in the uploads bucket only — scoped to the bucket, not the
-# project, so this cannot touch any other storage.
-resource "google_storage_bucket_iam_member" "api_uploads" {
-  bucket = google_storage_bucket.uploads.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.api.email}"
-}
-
-# Signing presigned upload URLs requires the SA to sign as itself.
-resource "google_service_account_iam_member" "api_token_creator" {
-  service_account_id = google_service_account.api.name
-  role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:${google_service_account.api.email}"
-}
+# No storage bindings: uploads are in Supabase, reached with an S3 key rather
+# than with this identity. The service account's only privilege is reading its
+# own secrets, below.
 
 # Read the two secrets, individually — not project-wide secret access.
 resource "google_secret_manager_secret_iam_member" "api_secrets" {

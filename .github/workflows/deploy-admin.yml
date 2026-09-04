@@ -1,0 +1,107 @@
+name: Deploy admin console
+
+# Manual, and separate from the API's workflow on purpose: the console changes
+# far less often, takes several minutes to build (the image installs the Flutter
+# SDK), and a broken console must never be able to hold up an API deploy.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type "deploy" to confirm
+        required: true
+
+concurrency:
+  group: deploy-admin
+  cancel-in-progress: false
+
+env:
+  REGION: asia-southeast1
+  SERVICE: lizmo-admin
+  API_SERVICE: lizmo-api
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build and deploy the console
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Guard against an accidental run
+        if: inputs.confirm != 'deploy'
+        run: |
+          echo "::error::Type 'deploy' to confirm."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # The console is a Flutter web bundle: whatever it is told about the API
+      # is compiled in, because there is no environment left to read at
+      # runtime. So the URL is looked up now rather than assumed — a console
+      # built against a guessed URL fails only in the browser, and only once
+      # somebody tries to sign in.
+      - name: Find the API's URL
+        id: api
+        run: |
+          URL=$(gcloud run services describe "${API_SERVICE}" \
+            --region "${REGION}" --format='value(status.url)')
+          if [ -z "$URL" ]; then
+            echo "::error::The API service has no URL. Deploy it first."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Building the console against ${URL}"
+
+      # Build context is the repo root: both apps depend on packages/ through
+      # path dependencies.
+      - name: Build and push
+        id: image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/lizmo/admin:${GITHUB_SHA}"
+          docker build \
+            -f Dockerfile.flutter-web \
+            --build-arg APP=admin \
+            --build-arg API_BASE_URL="${{ steps.api.outputs.url }}" \
+            -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${{ steps.image.outputs.image }}" \
+            --region "${REGION}" \
+            --port 80 \
+            --quiet
+
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe "${SERVICE}" --region "${REGION}" --format='value(status.url)')
+          echo "Deployed to ${URL}"
+          # Fails the job if the revision is not actually serving, rather than
+          # reporting success because the deploy command exited zero.
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${URL}/" || true)
+            if [ "$code" = "200" ]; then
+              echo "The console is serving"
+              exit 0
+            fi
+            echo "attempt ${i}: HTTP ${code}"
+            sleep 10
+          done
+          echo "::error::The console never returned 200"
+          exit 1
