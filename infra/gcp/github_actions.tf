@@ -44,7 +44,7 @@ resource "google_service_account" "deployer" {
   depends_on = [google_project_service.required]
 }
 
-# Scoped to the repository, not to a branch: any workflow in ariel823/lizmo can
+# Scoped to the repository, not to a branch: any workflow in the repository can
 # impersonate this account. A fork cannot, because its assertion.repository is
 # the fork's own name and fails the provider condition.
 #

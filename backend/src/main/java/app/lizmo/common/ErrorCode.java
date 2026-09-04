@@ -25,15 +25,59 @@ public enum ErrorCode {
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
 
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT),
-    PHONE_ALREADY_REGISTERED(HttpStatus.CONFLICT),
-
-    /** Neither email nor phone was supplied — chk_contact requires one. */
-    CONTACT_REQUIRED(HttpStatus.BAD_REQUEST),
 
     /** Too many failed sign-in attempts. Carries Retry-After. */
     TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
 
     NOT_FOUND(HttpStatus.NOT_FOUND),
+
+    /** The invitation link is unknown, or has already been taken up. */
+    INVITATION_INVALID(HttpStatus.BAD_REQUEST),
+
+    /** The invitation link is real but too old. */
+    INVITATION_EXPIRED(HttpStatus.BAD_REQUEST),
+
+    /** Inviting somebody who already lets rooms through Lizmo. */
+    ALREADY_A_LANDLORD(HttpStatus.CONFLICT),
+
+    /**
+     * The verification code has run out of time.
+     *
+     * <p>Separate from OTP_INCORRECT so the app can offer the right thing: a
+     * button to send a new code, rather than an invitation to retype the old
+     * one. Checked before correctness, so a guesser learns only that time
+     * passed and never that a code was right but late.
+     */
+    /**
+     * There is no code to check — none was ever asked for, or the one that was
+     * has already been used up.
+     *
+     * <p>Its own code rather than VALIDATION_FAILED so the app can send
+     * somebody back to the address step, which is the only thing that helps.
+     */
+    OTP_NOT_FOUND(HttpStatus.BAD_REQUEST),
+
+    OTP_EXPIRED(HttpStatus.BAD_REQUEST),
+
+    /** Wrong digits. The message names how many tries remain. */
+    OTP_INCORRECT(HttpStatus.BAD_REQUEST),
+
+    /** Too many wrong guesses; that code is dead and a new one is needed. */
+    OTP_ATTEMPTS_EXHAUSTED(HttpStatus.BAD_REQUEST),
+
+    /**
+     * The password does not meet the rule.
+     *
+     * <p>Its own code rather than VALIDATION_FAILED, so the app can put the
+     * message under the password field rather than in a general error banner.
+     */
+    WEAK_PASSWORD(HttpStatus.BAD_REQUEST),
+
+    /** A new code was asked for inside the cooldown. */
+    OTP_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS),
+
+    /** That address has had its codes for today. */
+    OTP_TOO_MANY(HttpStatus.TOO_MANY_REQUESTS),
 
     /**
      * A lease was asked for against a tenant whose profile is not complete.

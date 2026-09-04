@@ -41,10 +41,10 @@ class RentalDecisionIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        landlordToken = register("elena", true);
-        otherLandlordToken = register("mario", true);
-        anaToken = register("ana", false);
-        beaToken = register("bea", false);
+        landlordToken = accounts.landlord("elena").token();
+        otherLandlordToken = accounts.landlord("mario").token();
+        anaToken = accounts.tenant("ana").token();
+        beaToken = accounts.tenant("bea").token();
 
         String property = mvc.perform(post("/api/v1/properties")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -75,17 +75,6 @@ class RentalDecisionIntegrationTest extends IntegrationTest {
         makeReadyForALease(beaToken);
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private String addUnit(String body) throws Exception {
         String created = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")

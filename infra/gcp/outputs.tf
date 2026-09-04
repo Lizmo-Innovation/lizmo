@@ -4,8 +4,13 @@ output "api_url" {
 }
 
 output "uploads_bucket" {
-  description = "Cloud Storage bucket backing document and proof-of-payment uploads."
-  value       = google_storage_bucket.uploads.name
+  description = "Supabase Storage bucket backing document and proof-of-payment uploads. Created in the Supabase dashboard, not here."
+  value       = var.storage_bucket
+}
+
+output "admin_url" {
+  description = "Public HTTPS endpoint for the internal console."
+  value       = google_cloud_run_v2_service.admin.uri
 }
 
 output "artifact_registry_repo" {

@@ -10,19 +10,13 @@
 
 part of openapi.api;
 
-class RegisterRequest {
-  /// Returns a new [RegisterRequest] instance.
-  RegisterRequest({
-    required this.name,
+class InvitationSentResponse {
+  /// Returns a new [InvitationSentResponse] instance.
+  InvitationSentResponse({
     this.email,
-    this.phone,
-    required this.password,
-    this.asLandlord = false,
+    this.expiresAt,
   });
 
-  String name;
-
-  /// Required unless phone is given
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
@@ -31,62 +25,47 @@ class RegisterRequest {
   ///
   String? email;
 
-  /// Required unless email is given
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? phone;
-
-  String password;
-
-  /// Create a landlord profile as well as a tenant one
-  bool asLandlord;
+  DateTime? expiresAt;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is RegisterRequest &&
-    other.name == name &&
+  bool operator ==(Object other) => identical(this, other) || other is InvitationSentResponse &&
     other.email == email &&
-    other.phone == phone &&
-    other.password == password &&
-    other.asLandlord == asLandlord;
+    other.expiresAt == expiresAt;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (name.hashCode) +
     (email == null ? 0 : email!.hashCode) +
-    (phone == null ? 0 : phone!.hashCode) +
-    (password.hashCode) +
-    (asLandlord.hashCode);
+    (expiresAt == null ? 0 : expiresAt!.hashCode);
 
   @override
-  String toString() => 'RegisterRequest[name=$name, email=$email, phone=$phone, password=$password, asLandlord=$asLandlord]';
+  String toString() => 'InvitationSentResponse[email=$email, expiresAt=$expiresAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
-      json[r'name'] = this.name;
     if (this.email != null) {
       json[r'email'] = this.email;
     } else {
       json[r'email'] = null;
     }
-    if (this.phone != null) {
-      json[r'phone'] = this.phone;
+    if (this.expiresAt != null) {
+      json[r'expiresAt'] = this.expiresAt!.toUtc().toIso8601String();
     } else {
-      json[r'phone'] = null;
+      json[r'expiresAt'] = null;
     }
-      json[r'password'] = this.password;
-      json[r'asLandlord'] = this.asLandlord;
     return json;
   }
 
-  /// Returns a new [RegisterRequest] instance and imports its values from
+  /// Returns a new [InvitationSentResponse] instance and imports its values from
   /// [value] if it's a [Map], null otherwise.
   // ignore: prefer_constructors_over_static_methods
-  static RegisterRequest? fromJson(dynamic value) {
+  static InvitationSentResponse? fromJson(dynamic value) {
     if (value is Map) {
       final json = value.cast<String, dynamic>();
 
@@ -94,29 +73,22 @@ class RegisterRequest {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
-        assert(json.containsKey(r'name'), 'Required key "RegisterRequest[name]" is missing from JSON.');
-        assert(json[r'name'] != null, 'Required key "RegisterRequest[name]" has a null value in JSON.');
-        assert(json.containsKey(r'password'), 'Required key "RegisterRequest[password]" is missing from JSON.');
-        assert(json[r'password'] != null, 'Required key "RegisterRequest[password]" has a null value in JSON.');
         return true;
       }());
 
-      return RegisterRequest(
-        name: mapValueOfType<String>(json, r'name')!,
+      return InvitationSentResponse(
         email: mapValueOfType<String>(json, r'email'),
-        phone: mapValueOfType<String>(json, r'phone'),
-        password: mapValueOfType<String>(json, r'password')!,
-        asLandlord: mapValueOfType<bool>(json, r'asLandlord') ?? false,
+        expiresAt: mapDateTime(json, r'expiresAt', r''),
       );
     }
     return null;
   }
 
-  static List<RegisterRequest> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <RegisterRequest>[];
+  static List<InvitationSentResponse> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <InvitationSentResponse>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = RegisterRequest.fromJson(row);
+        final value = InvitationSentResponse.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -125,12 +97,12 @@ class RegisterRequest {
     return result.toList(growable: growable);
   }
 
-  static Map<String, RegisterRequest> mapFromJson(dynamic json) {
-    final map = <String, RegisterRequest>{};
+  static Map<String, InvitationSentResponse> mapFromJson(dynamic json) {
+    final map = <String, InvitationSentResponse>{};
     if (json is Map && json.isNotEmpty) {
       json = json.cast<String, dynamic>(); // ignore: parameter_assignments
       for (final entry in json.entries) {
-        final value = RegisterRequest.fromJson(entry.value);
+        final value = InvitationSentResponse.fromJson(entry.value);
         if (value != null) {
           map[entry.key] = value;
         }
@@ -139,14 +111,14 @@ class RegisterRequest {
     return map;
   }
 
-  // maps a json object with a list of RegisterRequest-objects as value to a dart map
-  static Map<String, List<RegisterRequest>> mapListFromJson(dynamic json, {bool growable = false,}) {
-    final map = <String, List<RegisterRequest>>{};
+  // maps a json object with a list of InvitationSentResponse-objects as value to a dart map
+  static Map<String, List<InvitationSentResponse>> mapListFromJson(dynamic json, {bool growable = false,}) {
+    final map = <String, List<InvitationSentResponse>>{};
     if (json is Map && json.isNotEmpty) {
       // ignore: parameter_assignments
       json = json.cast<String, dynamic>();
       for (final entry in json.entries) {
-        map[entry.key] = RegisterRequest.listFromJson(entry.value, growable: growable,);
+        map[entry.key] = InvitationSentResponse.listFromJson(entry.value, growable: growable,);
       }
     }
     return map;
@@ -154,8 +126,6 @@ class RegisterRequest {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
-    'name',
-    'password',
   };
 }
 

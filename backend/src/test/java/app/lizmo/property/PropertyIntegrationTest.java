@@ -27,22 +27,11 @@ class PropertyIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void signUpEveryone() throws Exception {
-        landlordToken = register("elena", true);
-        otherLandlordToken = register("rodel", true);
-        tenantToken = register("ana", false);
+        landlordToken = accounts.landlord("elena").token();
+        otherLandlordToken = accounts.landlord("rodel").token();
+        tenantToken = accounts.tenant("ana").token();
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private String createProperty(String token, String name) throws Exception {
         String body = mvc.perform(post("/api/v1/properties")

@@ -37,10 +37,10 @@ class RentalInboxIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        landlordToken = register("elena", true);
-        otherLandlordToken = register("mario", true);
-        tenantToken = register("ana", false);
-        otherTenantToken = register("bea", false);
+        landlordToken = accounts.landlord("elena").token();
+        otherLandlordToken = accounts.landlord("mario").token();
+        tenantToken = accounts.tenant("ana").token();
+        otherTenantToken = accounts.tenant("bea").token();
 
         String property = mvc.perform(post("/api/v1/properties")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -70,19 +70,6 @@ class RentalInboxIntegrationTest extends IntegrationTest {
         bedId = json.readTree(beds).get(0).get("id").asText();
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "phone":"0917%07d","password":"correct-horse-battery",
-                                 "asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(),
-                                    Math.abs(System.nanoTime() % 10000000), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private void makeReadyForALease(String token) throws Exception {
         mvc.perform(put("/api/v1/me/tenant-profile")

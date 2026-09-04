@@ -18,7 +18,8 @@ abstract final class ApiConfig {
     // there refers to the emulator itself. A physical device needs the LAN
     // address passed via --dart-define.
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8082';
+      //return 'http://10.0.2.2:8082';
+      return 'http://192.168.18.7:8082';
     }
 
     // Host port 8082, not 8080 — see the README on port collisions.

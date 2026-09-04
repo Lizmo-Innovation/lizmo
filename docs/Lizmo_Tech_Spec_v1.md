@@ -347,10 +347,14 @@ Base path: `/api/v1`. All endpoints (except `/auth/*`) require a valid JWT (`Aut
 ### 3.1 Auth
 | Method | Path | Description |
 |---|---|---|
-| POST | `/auth/register` | Create a User (base identity) |
+| POST | `/auth/register/start` | Email a six-digit code to prove the address |
+| POST | `/auth/register/complete` | Spend the code and create the account (tenant only) |
 | POST | `/auth/login` | Returns access + refresh token |
 | POST | `/auth/refresh` | Exchange refresh token for new access token |
 | POST | `/auth/logout` | Invalidate refresh token |
+| GET | `/auth/invitations/{token}` | What a landlord invitation is for |
+| POST | `/auth/invitations/accept` | Take up an invitation and become a landlord |
+| POST | `/admin/landlord-invitations` | Invite a landlord (Lizmo staff only) |
 
 ### 3.2 Properties / Units / Beds (landlord-scoped)
 | Method | Path | Description |

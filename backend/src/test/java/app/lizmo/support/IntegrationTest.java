@@ -50,4 +50,8 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected ObjectMapper json;
+
+    /** Somebody to be signed in as. See {@link Accounts}. */
+    @Autowired
+    protected Accounts accounts;
 }

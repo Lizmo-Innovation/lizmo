@@ -62,6 +62,25 @@ public class User {
         this.status = UserStatus.ACTIVE;
     }
 
+    /**
+     * When the address was proved, or null for an account that never did.
+     *
+     * <p>Every account created before verification existed was stamped in the
+     * migration: they are Ariel's own, and locking himself out of both test
+     * phones to be pedantic would have proved nothing.
+     */
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt;
+
+    /** Records that somebody read a code sent to this address. */
+    public void markEmailVerified(Instant at) {
+        this.emailVerifiedAt = at;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

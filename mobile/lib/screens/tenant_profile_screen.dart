@@ -15,9 +15,12 @@ import '../tenant/tenant_providers.dart';
 /// refuses the lot because the ID number is not to hand would leave nothing
 /// saved at all. The banner at the top says what is still missing instead.
 ///
-/// Identity the account already carries — name, phone, email — is not repeated
-/// here. What a landlord asks a *tenant* is: who to call in an emergency, what
-/// ID they carry, where they are from.
+/// The name at the top is the account's own, not a field of this form. A page
+/// called "My profile" that never says who you are reads as broken, and a
+/// tenant who has just been asked for an ID number wants to see that they are
+/// filling it in as themselves. Everything below it is what a landlord asks a
+/// *tenant*: who to call in an emergency, what ID they carry, where they are
+/// from.
 class TenantProfileScreen extends ConsumerStatefulWidget {
   const TenantProfileScreen({super.key});
 
@@ -195,6 +198,13 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _WhoYouAre(
+                  name: switch (ref.watch(authControllerProvider)) {
+                    AuthSignedIn(:final session) => session.name,
+                    _ => '',
+                  },
+                ),
+                const SizedBox(height: 14),
                 _ReadinessBanner(missing: missing),
                 const SizedBox(height: 20),
 
@@ -306,6 +316,83 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Who the tenant is signed in as.
+///
+/// Read from the session rather than fetched: the name arrives with the tokens
+/// at sign-in, and a request to render something the app already knows is a
+/// spinner for no reason.
+///
+/// Not a field. There is no endpoint that changes a name, so showing it in a
+/// box that looks typeable would promise something that does not work.
+class _WhoYouAre extends StatelessWidget {
+  const _WhoYouAre({required this.name});
+
+  final String name;
+
+  /// One letter, from the first word that has one. Falls back to nothing
+  /// rather than to a question mark, which reads as an error.
+  String get _initial {
+    for (final word in name.trim().split(RegExp(r'\s+'))) {
+      if (word.isNotEmpty) return word.characters.first.toUpperCase();
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E8E6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: context.lizmoSize(46),
+            height: context.lizmoSize(46),
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: LizmoColors.tealBg,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              _initial,
+              style: LizmoType.screenTitle.copyWith(
+                fontSize: context.lizmoSize(20),
+                color: LizmoColors.teal900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isEmpty ? 'Signed in' : name,
+                  style: LizmoType.rowName.copyWith(
+                    fontSize: context.lizmoSize(17),
+                    color: LizmoColors.teal900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'The name your landlord sees',
+                  style: LizmoType.rowSub.copyWith(
+                    fontSize: context.lizmoSize(12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

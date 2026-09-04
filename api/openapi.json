@@ -36,12 +36,20 @@
             "description": "A tenant's own photographs"
         },
         {
+            "name": "Admin",
+            "description": "Lizmo's own staff"
+        },
+        {
             "name": "Properties",
             "description": "A landlord's properties and their units"
         },
         {
             "name": "Leases",
             "description": "Who is living where"
+        },
+        {
+            "name": "Signing up",
+            "description": "Creating an account"
         },
         {
             "name": "Asking for a room",
@@ -1120,19 +1128,71 @@
                 }
             }
         },
-        "/api/v1/auth/register": {
+        "/api/v1/auth/register/start": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Signing up"
                 ],
-                "summary": "Create an account",
-                "description": "Always creates a tenant profile; adds a landlord profile when asLandlord is true.",
-                "operationId": "register",
+                "summary": "Send me a code",
+                "description": "Emails a six-digit code, good for ten minutes and one use. Asking again replaces any code already sent to that address.",
+                "operationId": "startRegistration",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/RegisterRequest"
+                                "$ref": "#/components/schemas/StartRegistrationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "A code is on its way",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartRegistrationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "That address already has an account",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too soon, or too many for today",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/complete": {
+            "post": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "Finish signing up",
+                "description": "Spends the code and creates the account. The password needs at least eight characters, with a capital, a small letter, a number and a symbol.",
+                "operationId": "completeRegistration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompleteRegistrationRequest"
                             }
                         }
                     },
@@ -1140,7 +1200,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Account created, tokens issued",
+                        "description": "Signed in, with the new account",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1150,17 +1210,7 @@
                         }
                     },
                     "400": {
-                        "description": "Validation failed, or neither email nor phone given",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Email or phone already registered",
+                        "description": "The code was wrong or expired, or the password is too weak",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1280,6 +1330,110 @@
                     },
                     "429": {
                         "description": "Too many failed attempts; see Retry-After",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/invitations/accept": {
+            "post": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "Become a landlord",
+                "description": "Spends the invitation and signs you in. A new account needs a name and a password of its own; an address that already signs in to Lizmo needs that account's password, and keeps its tenant side.",
+                "operationId": "acceptInvitation",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Signed in, now a landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The invitation is unusable, or the password is too weak",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The address has an account and that is not its password",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/landlord-invitations": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Invite a landlord",
+                "description": "Emails a link that lets somebody set up a landlord account. Good for seven days and one use; inviting the same address again replaces the earlier link.",
+                "operationId": "inviteLandlord",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InviteLandlordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The invitation is on its way",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationSentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a Lizmo administrator",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "That address is already a landlord",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1544,6 +1698,48 @@
                     }
                 }
             }
+        },
+        "/api/v1/auth/invitations/{token}": {
+            "get": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "What this invitation is for",
+                "description": "Says which address was invited and whether it already has a Lizmo account, so the screen knows whether to ask for a new password or the existing one.",
+                "operationId": "getInvitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The invitation is good",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationDetailsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Unknown, expired or already used",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1717,6 +1913,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -1755,30 +1975,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -2359,46 +2555,66 @@
                 },
                 "description": "Ending a lease"
             },
-            "RegisterRequest": {
+            "StartRegistrationRequest": {
                 "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    }
+                },
+                "description": "Where to send a verification code"
+            },
+            "StartRegistrationResponse": {
+                "type": "object",
+                "properties": {
+                    "resendAfterSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "description": "A code is on its way"
+            },
+            "CompleteRegistrationRequest": {
+                "required": [
+                    "code",
+                    "email",
                     "name",
                     "password"
                 ],
                 "type": "object",
                 "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    },
+                    "code": {
+                        "maxLength": 10,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "483920"
+                    },
                     "name": {
                         "maxLength": 255,
                         "minLength": 0,
                         "type": "string",
                         "example": "Ana Reyes"
                     },
-                    "email": {
-                        "maxLength": 255,
-                        "minLength": 0,
-                        "type": "string",
-                        "description": "Required unless phone is given",
-                        "example": "ana@example.com"
-                    },
-                    "phone": {
-                        "maxLength": 20,
-                        "minLength": 0,
-                        "type": "string",
-                        "description": "Required unless email is given",
-                        "example": "09171234567"
-                    },
                     "password": {
                         "maxLength": 100,
-                        "minLength": 8,
+                        "minLength": 0,
                         "type": "string",
-                        "example": "correct-horse-battery"
-                    },
-                    "asLandlord": {
-                        "type": "boolean",
-                        "description": "Create a landlord profile as well as a tenant one",
-                        "default": false
+                        "example": "Sunrise2Bed!"
                     }
                 },
-                "description": "New account details"
+                "description": "Finishing a sign-up"
             },
             "AuthResponse": {
                 "type": "object",
@@ -2467,6 +2683,68 @@
                     }
                 },
                 "description": "Login credentials"
+            },
+            "AcceptInvitationRequest": {
+                "required": [
+                    "password",
+                    "token"
+                ],
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "maxLength": 512,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "k7Qm2..."
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Elena Bautista"
+                    },
+                    "password": {
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sunrise2Bed!"
+                    }
+                },
+                "description": "Taking up a landlord invitation"
+            },
+            "InviteLandlordRequest": {
+                "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "elena@example.com"
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Elena Bautista"
+                    }
+                },
+                "description": "Inviting somebody to be a landlord"
+            },
+            "InvitationSentResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "An invitation on its way"
             },
             "PropertyByCodeResponse": {
                 "type": "object",
@@ -2598,6 +2876,22 @@
                     }
                 },
                 "description": "A whole unit that is free"
+            },
+            "InvitationDetailsResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "hasAccount": {
+                        "type": "boolean"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "What an invitation is for"
             }
         }
     }

@@ -35,6 +35,10 @@ final authApiProvider = Provider<AuthApi>((ref) {
   return AuthApi(ref.watch(apiClientProvider));
 });
 
+final signingUpApiProvider = Provider<SigningUpApi>((ref) {
+  return SigningUpApi(ref.watch(apiClientProvider));
+});
+
 /// Defaults to platform-backed storage. The admin console overrides this with
 /// an [InMemoryTokenStore], since browser storage is readable by script.
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
@@ -57,6 +61,7 @@ class AuthController extends Notifier<AuthState> {
   }
 
   AuthApi get _api => ref.read(authApiProvider);
+  SigningUpApi get _signingUp => ref.read(signingUpApiProvider);
   TokenStore get _tokens => ref.read(tokenStoreProvider);
 
   /// Exchanges a stored refresh token for a live session.
@@ -104,23 +109,45 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> register({
+  /// Asks for a code to be emailed, and says how long until another can be.
+  ///
+  /// No account exists after this and none is reserved: somebody who changes
+  /// their mind has not taken the address with them. The returned seconds are
+  /// the server's cooldown, so the resend button counts down rather than
+  /// guessing at a number the server might change.
+  Future<int> startRegistration(String email) async {
+    try {
+      final response = await _signingUp
+          .startRegistration(StartRegistrationRequest(email: email.trim()));
+      return response?.resendAfterSeconds ?? 60;
+    } catch (error) {
+      throw ApiFailure.from(error);
+    }
+  }
+
+  /// Spends the code, creates the account, and signs in.
+  ///
+  /// Signing in here rather than sending the user to the login screen: they
+  /// chose that password one screen ago, and asking them to type it again
+  /// proves nothing.
+  Future<void> completeRegistration({
+    required String email,
+    required String code,
     required String name,
     required String password,
-    String? email,
-    String? phone,
-    bool asLandlord = false,
   }) async {
     try {
-      final response = await _api.register(RegisterRequest(
-        name: name.trim(),
-        email: (email?.trim().isEmpty ?? true) ? null : email!.trim(),
-        phone: (phone?.trim().isEmpty ?? true) ? null : phone!.trim(),
-        password: password,
-        asLandlord: asLandlord,
-      ));
+      final response = await _signingUp.completeRegistration(
+        CompleteRegistrationRequest(
+          email: email.trim(),
+          code: code.trim(),
+          name: name.trim(),
+          password: password,
+        ),
+      );
       if (response == null) {
-        throw const ApiFailure(code: 'UNKNOWN', message: 'Sign up failed. Please try again.');
+        throw const ApiFailure(
+            code: 'UNKNOWN', message: 'Sign up failed. Please try again.');
       }
       await _persist(response);
     } catch (error) {

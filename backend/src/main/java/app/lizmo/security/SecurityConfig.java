@@ -56,12 +56,21 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                        // The one GET that has to be public: somebody following
+                        // an invitation link has no account yet, or is not
+                        // signed in on the device the email opened. Named
+                        // rather than opening every GET under /auth.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         // Unmatched requests are forwarded here internally. Without
                         // this, a genuine 404 is re-checked as an unauthenticated
                         // request and surfaces as 403, hiding the real cause.
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Restricted as a whole rather than per endpoint, so a
+                        // route added under /admin later cannot be left open by
+                        // somebody forgetting an annotation on it.
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // 401 for "not signed in", 403 for "signed in but not allowed".
                 .exceptionHandling(e -> e

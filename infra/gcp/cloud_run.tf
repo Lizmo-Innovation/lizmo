@@ -40,9 +40,95 @@ resource "google_cloud_run_v2_service" "api" {
         value = "prod"
       }
 
+      # Uploads: Supabase Storage over its S3-compatible endpoint. The API's
+      # S3 client and presigner both address it path-style, which is what this
+      # endpoint requires -- see S3Config.
       env {
-        name  = "GCS_BUCKET"
-        value = google_storage_bucket.uploads.name
+        name  = "AWS_S3_ENDPOINT"
+        value = local.storage_endpoint
+      }
+
+      env {
+        name  = "AWS_S3_BUCKET"
+        value = var.storage_bucket
+      }
+
+      env {
+        name  = "AWS_REGION"
+        value = var.storage_region
+      }
+
+      env {
+        name = "AWS_ACCESS_KEY_ID"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.app["lizmo-storage-access-key"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "AWS_SECRET_ACCESS_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.app["lizmo-storage-secret-key"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Mail. Without it nobody can sign up: the code that proves an address is
+      # the first step of registration, and an invitation is the only way a
+      # landlord exists at all.
+      env {
+        name  = "MAIL_HOST"
+        value = var.mail_host
+      }
+
+      env {
+        name  = "MAIL_PORT"
+        value = var.mail_port
+      }
+
+      env {
+        name  = "MAIL_USERNAME"
+        value = var.mail_username
+      }
+
+      env {
+        name  = "MAIL_FROM"
+        value = var.mail_from
+      }
+
+      env {
+        name = "MAIL_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.app["lizmo-mail-password"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Which browser origins may call the API. The console is a browser
+      # client, so without its exact origin here every request it makes is
+      # blocked by CORS -- and blocked in a way that reads, in the console's
+      # own error output, like the API being down.
+      env {
+        name  = "LIZMO_CORS_ORIGINS"
+        value = google_cloud_run_v2_service.admin.uri
+      }
+
+      # Where a landlord invitation link points.
+      #
+      # Nothing serves this path yet: there is no domain, no deep link, and no
+      # accept screen. The link is a placeholder that has to be *somewhere*,
+      # and the email carries the invitation token as text beside it, which is
+      # the path that actually works today.
+      env {
+        name  = "LIZMO_INVITE_BASE_URL"
+        value = "${google_cloud_run_v2_service.admin.uri}/invite"
       }
 
       env {
@@ -50,6 +136,26 @@ resource "google_cloud_run_v2_service" "api" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.app["lizmo-db-url"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "DB_USER"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.app["lizmo-db-user"].secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.app["lizmo-db-password"].secret_id
             version = "latest"
           }
         }

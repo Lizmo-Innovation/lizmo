@@ -1,13 +1,13 @@
 package app.lizmo.auth;
 
 import app.lizmo.auth.dto.AuthResponse;
+import app.lizmo.auth.dto.CompleteRegistrationRequest;
 import app.lizmo.auth.dto.LoginRequest;
-import app.lizmo.auth.dto.RegisterRequest;
+import app.lizmo.auth.verification.EmailVerificationService;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.config.JwtProperties;
 import app.lizmo.security.JwtService;
-import app.lizmo.user.LandlordProfile;
 import app.lizmo.user.LandlordProfileRepository;
 import app.lizmo.user.PlatformAdminRepository;
 import app.lizmo.user.TenantProfile;
@@ -42,6 +42,7 @@ public class AuthService {
     private final JwtService jwt;
     private final JwtProperties jwtProps;
     private final LoginThrottle throttle;
+    private final EmailVerificationService verifications;
 
     public AuthService(
             UserRepository users,
@@ -52,7 +53,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwt,
             JwtProperties jwtProps,
-            LoginThrottle throttle) {
+            LoginThrottle throttle,
+            EmailVerificationService verifications) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
@@ -62,36 +64,42 @@ public class AuthService {
         this.jwt = jwt;
         this.jwtProps = jwtProps;
         this.throttle = throttle;
+        this.verifications = verifications;
     }
 
+    /**
+     * Turns a verified address into an account.
+     *
+     * <p>The only place a self-service account is created. Everything before it
+     * — the code, the tries, the cooldown — leaves nothing behind, so somebody
+     * who abandons a sign-up half way through has not taken the address with
+     * them.
+     */
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        String email = normalise(request.email());
-        String phone = normalise(request.phone());
+    public AuthResponse completeRegistration(CompleteRegistrationRequest request) {
+        // Checked before the code is even looked at. A password that will be
+        // refused anyway should not cost somebody their one working code.
+        PasswordPolicy.require(request.password());
 
-        if (email == null && phone == null) {
-            throw new ApiException(ErrorCode.CONTACT_REQUIRED,
-                    "Provide an email address or a phone number.");
-        }
-        if (email != null && users.existsByEmail(email)) {
+        // Expiry before correctness, five tries, single use — all of it lives
+        // in the verification service, and this call is what spends the code.
+        String email = verifications.consume(request.email(), request.code());
+
+        // Between the code being issued and now, somebody could have registered
+        // this address by another route. Rare, and a duplicate account is worse
+        // than a confusing message.
+        if (users.existsByEmail(email)) {
             throw new ApiException(ErrorCode.EMAIL_ALREADY_REGISTERED,
-                    "That email address is already registered.");
-        }
-        if (phone != null && users.existsByPhone(phone)) {
-            throw new ApiException(ErrorCode.PHONE_ALREADY_REGISTERED,
-                    "That phone number is already registered.");
+                    "That address already has an account. Sign in instead.");
         }
 
-        User user = users.save(
-                new User(request.name(), email, phone, passwordEncoder.encode(request.password())));
+        User user = users.save(new User(
+                request.name(), email, null, passwordEncoder.encode(request.password())));
+        user.markEmailVerified(Instant.now());
 
-        // Everyone gets a tenant profile: it is the baseline capability, and a
-        // landlord may also rent elsewhere. Landlord is additive, never a
-        // replacement.
+        // A tenant profile and nothing else. Landlords are invited by an admin,
+        // so nobody makes themselves one by ticking a box.
         tenantProfiles.save(new TenantProfile(user.getId()));
-        if (request.asLandlord()) {
-            landlordProfiles.save(new LandlordProfile(user.getId()));
-        }
 
         return issueTokens(user);
     }
@@ -166,6 +174,19 @@ public class AuthService {
         return identifier.contains("@")
                 ? users.findByEmail(identifier)
                 : users.findByPhone(identifier);
+    }
+
+    /**
+     * Signs a user in, without a password having been typed.
+     *
+     * <p>For the paths that have already proved who somebody is by other means
+     * — finishing a sign-up, taking up a landlord invitation. Public so those
+     * can call it, and deliberately the same code as login so a session made
+     * this way is a session like any other.
+     */
+    @Transactional
+    public AuthResponse startSession(User user) {
+        return issueTokens(user);
     }
 
     private AuthResponse issueTokens(User user) {

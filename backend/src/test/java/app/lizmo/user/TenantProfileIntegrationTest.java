@@ -1,7 +1,6 @@
 package app.lizmo.user;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,31 +25,12 @@ class TenantProfileIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void signUpEveryone() throws Exception {
-        tenantToken = register("ana", false);
-        otherTenantToken = register("bea", false);
-        landlordOnlyToken = registerLandlordOnly("elena");
+        tenantToken = accounts.tenant("ana").token();
+        otherTenantToken = accounts.tenant("bea").token();
+        landlordOnlyToken = accounts.landlord("elena").token();
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
-    /**
-     * Registration always creates a tenant profile, so a landlord-only account
-     * has to be made the same way and is a landlord *as well*. This is the
-     * closest the API gets to an account with no tenant profile.
-     */
-    private String registerLandlordOnly(String prefix) throws Exception {
-        return register(prefix, true);
-    }
 
     private void save(String token, String body) throws Exception {
         mvc.perform(put("/api/v1/me/tenant-profile")
