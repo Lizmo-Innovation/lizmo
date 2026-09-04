@@ -25,7 +25,7 @@ public record CompleteRegistrationRequest(
         @Schema(example = "483920") String code,
 
         @NotBlank @Size(max = 255)
-        @Schema(example = "Ana Reyes") String name,
+        @Schema(example = "Juan Dela Cruz") String name,
 
         @NotBlank @Size(max = 100)
         @Schema(example = "Sunrise2Bed!") String password) {

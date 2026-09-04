@@ -493,7 +493,7 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
             autofocus: true,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            decoration: _fieldDecoration('Ana Reyes'),
+            decoration: _fieldDecoration('Juan Dela Cruz'),
             validator: (value) => (value ?? '').trim().isEmpty
                 // A landlord deciding who to let a room to sees this name, not
                 // an email address.

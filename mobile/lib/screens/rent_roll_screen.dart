@@ -14,7 +14,7 @@ class RentRollScreen extends StatelessWidget {
 
   static const _fixture = [
     (
-      name: 'Ana Reyes — Bed 1',
+      name: 'Juan Dela Cruz — Bed 1',
       subtitle: 'due Aug 5',
       amount: '₱2,500',
       status: LizmoStatus.paid,
