@@ -1,8 +1,10 @@
 package app.lizmo.auth;
 
 import app.lizmo.auth.dto.AuthResponse;
+import app.lizmo.auth.dto.CompleteRegistrationRequest;
 import app.lizmo.auth.dto.LoginRequest;
 import app.lizmo.auth.dto.RegisterRequest;
+import app.lizmo.auth.verification.EmailVerificationService;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.config.JwtProperties;
@@ -42,6 +44,7 @@ public class AuthService {
     private final JwtService jwt;
     private final JwtProperties jwtProps;
     private final LoginThrottle throttle;
+    private final EmailVerificationService verifications;
 
     public AuthService(
             UserRepository users,
@@ -52,7 +55,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwt,
             JwtProperties jwtProps,
-            LoginThrottle throttle) {
+            LoginThrottle throttle,
+            EmailVerificationService verifications) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
@@ -62,6 +66,44 @@ public class AuthService {
         this.jwt = jwt;
         this.jwtProps = jwtProps;
         this.throttle = throttle;
+        this.verifications = verifications;
+    }
+
+    /**
+     * Turns a verified address into an account.
+     *
+     * <p>The only place a self-service account is created. Everything before it
+     * — the code, the tries, the cooldown — leaves nothing behind, so somebody
+     * who abandons a sign-up half way through has not taken the address with
+     * them.
+     */
+    @Transactional
+    public AuthResponse completeRegistration(CompleteRegistrationRequest request) {
+        // Checked before the code is even looked at. A password that will be
+        // refused anyway should not cost somebody their one working code.
+        PasswordPolicy.require(request.password());
+
+        // Expiry before correctness, five tries, single use — all of it lives
+        // in the verification service, and this call is what spends the code.
+        String email = verifications.consume(request.email(), request.code());
+
+        // Between the code being issued and now, somebody could have registered
+        // this address by another route. Rare, and a duplicate account is worse
+        // than a confusing message.
+        if (users.existsByEmail(email)) {
+            throw new ApiException(ErrorCode.EMAIL_ALREADY_REGISTERED,
+                    "That address already has an account. Sign in instead.");
+        }
+
+        User user = users.save(new User(
+                request.name(), email, null, passwordEncoder.encode(request.password())));
+        user.markEmailVerified(Instant.now());
+
+        // A tenant profile and nothing else. Landlords are invited by an admin,
+        // so nobody makes themselves one by ticking a box.
+        tenantProfiles.save(new TenantProfile(user.getId()));
+
+        return issueTokens(user);
     }
 
     @Transactional

@@ -51,6 +51,14 @@ public enum ErrorCode {
     /** Too many wrong guesses; that code is dead and a new one is needed. */
     OTP_ATTEMPTS_EXHAUSTED(HttpStatus.BAD_REQUEST),
 
+    /**
+     * The password does not meet the rule.
+     *
+     * <p>Its own code rather than VALIDATION_FAILED, so the app can put the
+     * message under the password field rather than in a general error banner.
+     */
+    WEAK_PASSWORD(HttpStatus.BAD_REQUEST),
+
     /** A new code was asked for inside the cooldown. */
     OTP_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS),
 

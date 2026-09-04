@@ -1,5 +1,8 @@
 package app.lizmo.auth.verification;
 
+import app.lizmo.auth.AuthService;
+import app.lizmo.auth.dto.AuthResponse;
+import app.lizmo.auth.dto.CompleteRegistrationRequest;
 import app.lizmo.auth.dto.StartRegistrationRequest;
 import app.lizmo.auth.dto.StartRegistrationResponse;
 import app.lizmo.common.ApiError;
@@ -9,9 +12,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -27,9 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmailVerificationController {
 
     private final EmailVerificationService verifications;
+    private final AuthService auth;
 
-    public EmailVerificationController(EmailVerificationService verifications) {
+    public EmailVerificationController(
+            EmailVerificationService verifications, AuthService auth) {
         this.verifications = verifications;
+        this.auth = auth;
     }
 
     @PostMapping("/start")
@@ -45,5 +53,21 @@ public class EmailVerificationController {
     public StartRegistrationResponse start(
             @Valid @RequestBody StartRegistrationRequest request) {
         return new StartRegistrationResponse(verifications.start(request.email()));
+    }
+
+    @PostMapping("/complete")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(operationId = "completeRegistration", summary = "Finish signing up",
+            description = "Spends the code and creates the account. The password needs "
+                    + "at least eight characters, with a capital, a small letter, a "
+                    + "number and a symbol.")
+    @ApiResponse(responseCode = "201", description = "Signed in, with the new account",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class)))
+    @ApiResponse(responseCode = "400",
+            description = "The code was wrong or expired, or the password is too weak",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public AuthResponse complete(
+            @Valid @RequestBody CompleteRegistrationRequest request) {
+        return auth.completeRegistration(request);
     }
 }
