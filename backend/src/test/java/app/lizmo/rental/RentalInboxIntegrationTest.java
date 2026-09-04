@@ -11,6 +11,7 @@ import app.lizmo.support.IntegrationTest;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,17 @@ import org.springframework.mock.web.MockMultipartFile;
  * withheld matters as much as what is shown.
  */
 class RentalInboxIntegrationTest extends IntegrationTest {
+
+    /**
+     * Phone numbers, counted rather than taken from the clock.
+     *
+     * <p>This was nanoTime modulo ten million, which collides often enough to
+     * fail a run now and then: the registration comes back 409 and the test
+     * reads as a permissions failure rather than as two people handed the same
+     * number. It did exactly that once. A counter cannot collide within a run,
+     * and every run gets a fresh database.
+     */
+    private static final AtomicInteger PHONES = new AtomicInteger(1_000_000);
 
     private String landlordToken;
     private String otherLandlordToken;
@@ -78,7 +90,7 @@ class RentalInboxIntegrationTest extends IntegrationTest {
                                  "phone":"0917%07d","password":"correct-horse-battery",
                                  "asLandlord":%s}
                                 """.formatted(prefix, prefix, System.nanoTime(),
-                                    Math.abs(System.nanoTime() % 10000000), asLandlord)))
+                                    PHONES.incrementAndGet(), asLandlord)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("accessToken").asText();

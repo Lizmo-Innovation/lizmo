@@ -36,6 +36,28 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND),
 
     /**
+     * The verification code has run out of time.
+     *
+     * <p>Separate from OTP_INCORRECT so the app can offer the right thing: a
+     * button to send a new code, rather than an invitation to retype the old
+     * one. Checked before correctness, so a guesser learns only that time
+     * passed and never that a code was right but late.
+     */
+    OTP_EXPIRED(HttpStatus.BAD_REQUEST),
+
+    /** Wrong digits. The message names how many tries remain. */
+    OTP_INCORRECT(HttpStatus.BAD_REQUEST),
+
+    /** Too many wrong guesses; that code is dead and a new one is needed. */
+    OTP_ATTEMPTS_EXHAUSTED(HttpStatus.BAD_REQUEST),
+
+    /** A new code was asked for inside the cooldown. */
+    OTP_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS),
+
+    /** That address has had its codes for today. */
+    OTP_TOO_MANY(HttpStatus.TOO_MANY_REQUESTS),
+
+    /**
      * A lease was asked for against a tenant whose profile is not complete.
      *
      * <p>409 rather than 400: nothing is wrong with the request, and the same

@@ -17,6 +17,21 @@ import org.springframework.context.annotation.Primary;
 @TestConfiguration
 public class TestStorageConfig {
 
+    /**
+     * A clock every test can push forward, in place of the real one. Rules
+     * measured in minutes and days are checked by moving time, never by
+     * waiting for it.
+     *
+     * <p>Named differently from the production bean on purpose. Same name and
+     * Spring refuses to start at all — bean overriding is off by default — so
+     * this sits alongside ClockConfig's and wins on @Primary instead.
+     */
+    @Bean
+    @Primary
+    MutableClock mutableClock() {
+        return new MutableClock();
+    }
+
     @Bean
     @Primary
     InMemoryDocumentStore documentStore() {
