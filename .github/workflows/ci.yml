@@ -2,7 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Every branch the work actually happens on, not just the one it ends up
+    # in. Testing only main means the tests first run days after the code was
+    # written, on a merge, when the person who wrote it has moved on -- and in
+    # practice it meant they had never run in CI at all, because everything is
+    # written on feature.
+    branches: [main, development, feature]
   pull_request:
 
 # A newer push makes an in-flight run obsolete; cancelling keeps the queue short.
@@ -77,3 +82,29 @@ jobs:
       - name: Test
         working-directory: ${{ matrix.package }}
         run: flutter test --exclude-tags "live || golden"
+
+  infra:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # No credentials and no state: -backend=false initialises the providers
+      # far enough to validate the configuration, which is all this needs. A CI
+      # job that could reach the real project would be a job that could change
+      # it.
+      - name: Init
+        working-directory: infra/gcp
+        run: terraform init -backend=false -input=false
+
+      - name: Format
+        working-directory: infra/gcp
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        working-directory: infra/gcp
+        run: terraform validate

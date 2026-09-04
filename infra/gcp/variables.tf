@@ -22,9 +22,14 @@ variable "github_repository" {
     Workload Identity Federation is scoped to this exact value — without the
     condition, any GitHub repository in the world could mint tokens for this
     provider.
+
+    Compared verbatim against GitHub's OIDC assertion, including case. The
+    default here was a personal account long after the repository moved to an
+    organisation -- which fails as "unable to acquire impersonated
+    credentials", a message that says nothing about the name being wrong.
   EOT
   type        = string
-  default     = "ariel823/lizmo"
+  default     = "Lizmo-Innovation/lizmo"
 }
 
 variable "service_name" {
