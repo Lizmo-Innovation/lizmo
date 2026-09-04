@@ -61,7 +61,13 @@ public class SecurityConfig {
                         // signed in on the device the email opened. Named
                         // rather than opening every GET under /auth.
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // The sub-paths too, not just /actuator/health: Cloud
+                        // Run's liveness probe hits /actuator/health/liveness,
+                        // and a 401 counts as a failed probe. Three of those
+                        // and the container is killed -- an authentication
+                        // rule quietly restarting a healthy service.
+                        .requestMatchers("/actuator/health", "/actuator/health/**",
+                                "/actuator/info").permitAll()
                         // Unmatched requests are forwarded here internally. Without
                         // this, a genuine 404 is re-checked as an unauthenticated
                         // request and surfaces as 403, hiding the real cause.
