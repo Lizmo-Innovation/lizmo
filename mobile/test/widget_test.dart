@@ -3565,8 +3565,11 @@ void _tenantProfileTests() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
       // Dragged rather than ensureVisible: the drag clamps at the scroll
-      // extent, so it always lands at the bottom of the form.
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+      // extent, so it always lands at the bottom of the form. Comfortably
+      // further than the form is long -- at 600 it stopped clamping the day
+      // the identity card was added, and the button was then found but not
+      // hit, so the save silently never happened.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save profile'));
       await tester.pumpAndSettle();
@@ -3603,6 +3606,26 @@ void _tenantProfileTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('My profile'), findsOneWidget);
+    });
+
+    testWidgets('says who you are signed in as', (tester) async {
+      await tester.pumpWidget(appWith(complete()));
+      await openProfile(tester);
+
+      // A page called "My profile" that never says whose it is reads as
+      // broken, and somebody being asked for an ID number wants to see they
+      // are filling it in as themselves.
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('The name your landlord sees'), findsOneWidget);
+    });
+
+    testWidgets('the name is shown, not offered as a field', (tester) async {
+      await tester.pumpWidget(appWith(complete()));
+      await openProfile(tester);
+
+      // Nothing changes a name yet, so a box that looks typeable would promise
+      // something that does not work.
+      expect(fieldValues(tester), isNot(contains('Ana Reyes')));
     });
 
     testWidgets('stored details are shown for editing', (tester) async {
