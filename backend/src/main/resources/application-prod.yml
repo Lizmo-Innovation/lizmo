@@ -44,6 +44,20 @@ spring:
     # pointed at the wrong database. Failing loudly is the point.
     baseline-on-migrate: false
 
+management:
+  endpoint:
+    health:
+      # Splits /actuator/health into groups, giving /actuator/health/liveness
+      # and /actuator/health/readiness.
+      #
+      # Liveness must answer one question: is this process wedged, should it be
+      # killed? It deliberately does NOT check the database. The full health
+      # endpoint does -- which is right for a deploy smoke test and wrong for a
+      # liveness probe, because it makes a database blip look like a broken
+      # container and Cloud Run answers that by killing containers.
+      probes:
+        enabled: true
+
 server:
   # Cloud Run sends SIGTERM and then waits. Finishing in-flight requests rather
   # than dropping them is the difference between a deploy nobody notices and a

@@ -183,12 +183,25 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      # Liveness asks "is this process wedged", nothing more.
+      #
+      # It pointed at /actuator/health, which opens a database connection and
+      # takes over a second -- against a probe timeout that defaults to ONE
+      # second when unset. Every probe timed out, three in a row killed the
+      # instance, and the restart cold-started for 10-20s. The service spent
+      # its first hour in a kill-restart loop and answered 503.
+      #
+      # So: the liveness group, which excludes the database, and a timeout that
+      # is not the default. A database outage must not be answered by killing
+      # containers that are working.
       liveness_probe {
         http_get {
-          path = "/actuator/health"
+          path = "/actuator/health/liveness"
         }
         initial_delay_seconds = 30
         period_seconds        = 30
+        timeout_seconds       = 5
+        failure_threshold     = 3
       }
     }
   }
