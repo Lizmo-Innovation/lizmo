@@ -135,7 +135,7 @@ public class EmailVerificationService {
 
         EmailVerification verification = verifications
                 .findByEmailAndConsumedAtIsNull(email)
-                .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_FAILED,
+                .orElseThrow(() -> new ApiException(ErrorCode.OTP_NOT_FOUND,
                         "Ask for a code first."));
 
         if (verification.hasExpired(clock.instant())) {

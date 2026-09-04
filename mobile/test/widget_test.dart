@@ -53,6 +53,70 @@ class _FakeAuth extends AuthController {
   AuthState build() => _initial;
 }
 
+/// Stands in for the sign-up half of the session controller.
+///
+/// The screens are the subject here; the calls behind them are covered against
+/// a real API in lizmo_core's live tests.
+class _SigningUpAuth extends AuthController {
+  _SigningUpAuth({this.resendAfterSeconds = 60, this.failCompletionWith});
+
+  final int resendAfterSeconds;
+  final ApiFailure? failCompletionWith;
+
+  String? startedWith;
+  bool completed = false;
+
+  @override
+  AuthState build() => const AuthSignedOut();
+
+  @override
+  Future<int> startRegistration(String email) async {
+    startedWith = email;
+    return resendAfterSeconds;
+  }
+
+  @override
+  Future<void> completeRegistration({
+    required String email,
+    required String code,
+    required String name,
+    required String password,
+  }) async {
+    if (failCompletionWith != null) throw failCompletionWith!;
+    completed = true;
+    state = _signedIn({LizmoProfile.tenant});
+  }
+}
+
+/// The sign-up screen on its own, without going through login first.
+Widget _signUpApp({AuthController? auth}) => ProviderScope(
+      overrides: [
+        authControllerProvider
+            .overrideWith(() => auth ?? _FakeAuth(const AuthSignedOut())),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+      ],
+      child: const MaterialApp(home: RegisterScreen()),
+    );
+
+/// Address, then code, leaving the name and password step on screen.
+Future<void> _reachDetails(WidgetTester tester) async {
+  await tester.enterText(find.byType(TextFormField), 'ana@example.com');
+  await tester.tap(find.text('Send me a code'));
+  await tester.pumpAndSettle();
+
+  await tester.enterText(find.byType(TextFormField), '483920');
+  await tester.tap(find.text('Continue'));
+  await tester.pumpAndSettle();
+}
+
+/// The tick or the empty circle beside one password rule.
+Icon _ruleIcon(WidgetTester tester, String label) => tester.widget<Icon>(
+      find.descendant(
+        of: find.ancestor(of: find.text(label), matching: find.byType(Row)).first,
+        matching: find.byType(Icon),
+      ),
+    );
+
 Widget _app(AuthState initial) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
@@ -483,7 +547,7 @@ void main() {
       expect(find.byType(LoginScreen), findsOneWidget);
     });
 
-    testWidgets('signing up moves the user off the form', (tester) async {
+    testWidgets('finishing moves the user off the form', (tester) async {
       final container = ProviderContainer(
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
@@ -512,7 +576,7 @@ void main() {
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
-    testWidgets('signing up as a landlord lands on Today', (tester) async {
+    testWidgets('a landlord signing in from here lands on Today', (tester) async {
       final container = ProviderContainer(
         overrides: [
           authControllerProvider.overrideWith(() => _FakeAuth(const AuthSignedOut())),
@@ -536,49 +600,132 @@ void main() {
       expect(find.byType(LandlordHomeScreen), findsOneWidget);
     });
 
-    testWidgets('rejects empty fields before calling the API', (tester) async {
-      await tester.pumpWidget(_app(const AuthSignedOut()));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('New to Lizmo? Create an account'));
+    testWidgets('asks for an address and nothing else, first', (tester) async {
+      await tester.pumpWidget(_signUpApp());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Create account'));
-      await tester.pump();
-
-      expect(find.text('Enter your name'), findsOneWidget);
-      expect(find.text('Enter an email address or phone number'), findsOneWidget);
-      expect(find.text('Choose a password'), findsOneWidget);
+      // Nothing is stored until the last step, so there is no reason to ask
+      // for a name or a password before the address is proved.
+      expect(find.text('Send me a code'), findsOneWidget);
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(find.text('Full name'), findsNothing);
+      expect(find.text('Password'), findsNothing);
     });
 
-    testWidgets('enforces the same password length as the server', (tester) async {
-      await tester.pumpWidget(_app(const AuthSignedOut()));
+    testWidgets('will not send a code to something that is not an address',
+        (tester) async {
+      await tester.pumpWidget(_signUpApp());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('New to Lizmo? Create an account'));
+
+      await tester.enterText(find.byType(TextFormField), 'ana');
+      await tester.tap(find.text('Send me a code'));
+      await tester.pump();
+
+      expect(find.text('That does not look like an email address'), findsOneWidget);
+    });
+
+    testWidgets('a sent code moves on, and says where it went', (tester) async {
+      final auth = _SigningUpAuth();
+      await tester.pumpWidget(_signUpApp(auth: auth));
       await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'ana@example.com');
+      await tester.tap(find.text('Send me a code'));
+      await tester.pumpAndSettle();
+
+      expect(auth.startedWith, 'ana@example.com');
+      expect(find.text('Check your email'), findsOneWidget);
+      expect(find.textContaining('ana@example.com'), findsOneWidget);
+    });
+
+    testWidgets("the resend button waits out the server's cooldown",
+        (tester) async {
+      final auth = _SigningUpAuth(resendAfterSeconds: 3);
+      await tester.pumpWidget(_signUpApp(auth: auth));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'ana@example.com');
+      await tester.tap(find.text('Send me a code'));
+      await tester.pump();
+
+      // Every tap is an email somebody has to receive, so the button is
+      // disabled while it counts rather than tapped and refused.
+      expect(find.text('Send another in 3s'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Send another in 2s'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Send another code'), findsOneWidget);
+    });
+
+    testWidgets('a partial code is refused before the round trip',
+        (tester) async {
+      await tester.pumpWidget(_signUpApp(auth: _SigningUpAuth()));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'ana@example.com');
+      await tester.tap(find.text('Send me a code'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), '123');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter the six digits'), findsOneWidget);
+    });
+
+    testWidgets('the password rules tick off as they are met', (tester) async {
+      await tester.pumpWidget(_signUpApp(auth: _SigningUpAuth()));
+      await tester.pumpAndSettle();
+      await _reachDetails(tester);
+
+      expect(_ruleIcon(tester, 'A number').icon, Icons.circle_outlined);
+
+      await tester.enterText(find.byType(TextFormField).at(1), 'Sunrise2Bed!');
+      await tester.pump();
+
+      // Shown as they are met rather than after a refusal: somebody choosing a
+      // password can see what is wanted while they type.
+      expect(_ruleIcon(tester, 'A number').icon, Icons.check_circle);
+      expect(_ruleIcon(tester, 'A symbol like ! or @').icon, Icons.check_circle);
+    });
+
+    testWidgets('a weak password never reaches the server', (tester) async {
+      final auth = _SigningUpAuth();
+      await tester.pumpWidget(_signUpApp(auth: auth));
+      await tester.pumpAndSettle();
+      await _reachDetails(tester);
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Ana Reyes');
-      await tester.enterText(find.byType(TextFormField).at(1), 'ana@example.com');
-      await tester.enterText(find.byType(TextFormField).at(2), 'short');
+      await tester.enterText(find.byType(TextFormField).at(1), 'short');
       await tester.tap(find.text('Create account'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      // Caught here rather than after a round trip.
-      expect(find.text('Use at least 8 characters'), findsOneWidget);
+      expect(auth.completed, isFalse);
     });
 
-    testWidgets('landlord choice is off by default and toggles', (tester) async {
-      await tester.pumpWidget(_app(const AuthSignedOut()));
+    testWidgets('a rejected code sends you back to the code step',
+        (tester) async {
+      final auth = _SigningUpAuth(
+        failCompletionWith: const ApiFailure(
+          code: 'OTP_INCORRECT',
+          message: 'That code is not right. 4 tries left.',
+        ),
+      );
+      await tester.pumpWidget(_signUpApp(auth: auth));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('New to Lizmo? Create an account'));
+      await _reachDetails(tester);
+
+      await tester.enterText(find.byType(TextFormField).at(0), 'Ana Reyes');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Sunrise2Bed!');
+      await tester.tap(find.text('Create account'));
       await tester.pumpAndSettle();
 
-      Checkbox box() => tester.widget<Checkbox>(find.byType(Checkbox));
-      expect(box().value, isFalse, reason: 'most accounts are tenants');
-
-      await tester.tap(find.text('I am also a landlord'));
-      await tester.pump();
-
-      expect(box().value, isTrue);
+      // The code is only ever checked by the call that finishes signing up, so
+      // the failure arrives a screen late. It belongs to the code screen.
+      expect(find.text('Check your email'), findsOneWidget);
+      expect(find.textContaining('4 tries left'), findsOneWidget);
     });
   });
 

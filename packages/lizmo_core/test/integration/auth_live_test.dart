@@ -1,7 +1,10 @@
 @Tags(['live'])
 library;
 
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_api/api.dart';
 
@@ -14,30 +17,65 @@ import 'package:lizmo_api/api.dart';
 /// Unit tests cover our own logic; this covers the seam between the generated
 /// client, the wire format, and the error contract — the part that silently
 /// breaks when the backend changes.
+///
+/// Signing up now needs the code that was emailed, so this reads it back out
+/// of Mailpit, which is the same thing a person does with their inbox.
 void main() {
   const baseUrl = String.fromEnvironment(
     'LIZMO_API_BASE_URL',
     defaultValue: 'http://localhost:8082',
   );
+  const mailpitUrl = String.fromEnvironment(
+    'LIZMO_MAILPIT_URL',
+    defaultValue: 'http://localhost:8026',
+  );
+  const password = 'Sunrise2Bed!';
 
   late AuthApi api;
+  late SigningUpApi signingUp;
 
   setUp(() {
-    api = AuthApi(ApiClient(basePath: baseUrl));
+    final client = ApiClient(basePath: baseUrl);
+    api = AuthApi(client);
+    signingUp = SigningUpApi(client);
   });
 
   String uniqueEmail() => 'live${DateTime.now().microsecondsSinceEpoch}@lizmo.test';
 
-  test('register issues tokens and a tenant profile', () async {
-    final response = await api.register(RegisterRequest(
-      name: 'Live Test',
-      email: uniqueEmail(),
-      password: 'correct-horse-battery',
-    ));
+  /// The six digits Lizmo just emailed, read from the subject line.
+  Future<String> codeSentTo(String email) async {
+    final response = await http.get(
+      Uri.parse('$mailpitUrl/api/v1/search?query=${Uri.encodeQueryComponent('to:$email')}'),
+    );
+    final messages =
+        (jsonDecode(response.body) as Map<String, dynamic>)['messages'] as List;
+    expect(messages, isNotEmpty, reason: 'no email reached Mailpit for $email');
 
-    expect(response, isNotNull);
-    expect(response!.accessToken, isNotEmpty);
+    final subject = (messages.first as Map<String, dynamic>)['Subject'] as String;
+    final digits = RegExp(r'\d{6}').firstMatch(subject);
+    expect(digits, isNotNull, reason: 'no code in subject: $subject');
+    return digits!.group(0)!;
+  }
+
+  Future<AuthResponse> signUp(String email, {String name = 'Live Test'}) async {
+    await signingUp.startRegistration(StartRegistrationRequest(email: email));
+    final response = await signingUp.completeRegistration(
+      CompleteRegistrationRequest(
+        email: email,
+        code: await codeSentTo(email),
+        name: name,
+        password: password,
+      ),
+    );
+    return response!;
+  }
+
+  test('signing up issues tokens and a tenant profile', () async {
+    final response = await signUp(uniqueEmail());
+
+    expect(response.accessToken, isNotEmpty);
     expect(response.refreshToken, isNotEmpty);
+    // A tenant and nothing else: there is no self-service landlord any more.
     expect(response.profiles, ['TENANT']);
     expect(response.expiresIn, 3600);
 
@@ -48,29 +86,69 @@ void main() {
     expect(session.hasMultipleProfiles, isFalse);
   });
 
-  test('landlord registration yields both profiles', () async {
-    final response = await api.register(RegisterRequest(
-      name: 'Live Landlord',
-      email: uniqueEmail(),
-      password: 'correct-horse-battery',
-      asLandlord: true,
-    ));
+  test('the code is good for one account only', () async {
+    final email = uniqueEmail();
+    await signingUp.startRegistration(StartRegistrationRequest(email: email));
+    final code = await codeSentTo(email);
 
-    final session = Session.fromResponse(response!);
-    expect(session.isLandlord, isTrue);
-    expect(session.hasMultipleProfiles, isTrue);
+    await signingUp.completeRegistration(CompleteRegistrationRequest(
+      email: email, code: code, name: 'First', password: password));
+
+    await expectLater(
+      () => signingUp.completeRegistration(CompleteRegistrationRequest(
+          email: email, code: code, name: 'Second', password: password)),
+      throwsA(isA<ApiException>()),
+    );
+  });
+
+  test('a weak password is refused by code, and names what is missing', () async {
+    final email = uniqueEmail();
+    await signingUp.startRegistration(StartRegistrationRequest(email: email));
+
+    try {
+      await signingUp.completeRegistration(CompleteRegistrationRequest(
+        email: email,
+        code: await codeSentTo(email),
+        name: 'Weak',
+        password: 'nodigitsorcaps',
+      ));
+      fail('expected the call to throw');
+    } catch (error) {
+      final failure = ApiFailure.from(error);
+      expect(failure.code, 'WEAK_PASSWORD');
+      // The app mirrors these rules under the field; if the wording drifts the
+      // user is told two different things.
+      expect(failure.message, contains('a capital letter'));
+      expect(failure.message, contains('a number'));
+      expect(failure.message, contains('a symbol'));
+    }
+  });
+
+  test('the rule the app enforces is the rule the server enforces', () async {
+    // The mirror in PasswordRules exists so the rules can be shown while
+    // somebody types. If it drifts, the app promises an account the server
+    // then refuses.
+    final email = uniqueEmail();
+    expect(PasswordRules.isAcceptable(password), isTrue);
+
+    await signingUp.startRegistration(StartRegistrationRequest(email: email));
+    final response = await signingUp.completeRegistration(
+      CompleteRegistrationRequest(
+        email: email,
+        code: await codeSentTo(email),
+        name: 'Mirror',
+        password: password,
+      ),
+    );
+    expect(response, isNotNull);
   });
 
   test('login then refresh rotates the refresh token', () async {
     final email = uniqueEmail();
-    await api.register(RegisterRequest(
-      name: 'Rotation',
-      email: email,
-      password: 'correct-horse-battery',
-    ));
+    await signUp(email, name: 'Rotation');
 
     final login = await api.login(
-      LoginRequest(identifier: email, password: 'correct-horse-battery'),
+      LoginRequest(identifier: email, password: password),
     );
     final first = login!.refreshToken!;
 
@@ -102,17 +180,21 @@ void main() {
   });
 
   test('validation errors carry per-field messages', () async {
+    final email = uniqueEmail();
+    await signingUp.startRegistration(StartRegistrationRequest(email: email));
+
     try {
-      await api.register(RegisterRequest(
-        name: 'Short Password',
-        email: uniqueEmail(),
-        password: 'short',
+      await signingUp.completeRegistration(CompleteRegistrationRequest(
+        email: email,
+        code: await codeSentTo(email),
+        name: '',
+        password: password,
       ));
       fail('expected the call to throw');
     } catch (error) {
       final failure = ApiFailure.from(error);
       expect(failure.code, 'VALIDATION_FAILED');
-      expect(failure.fields['password'], isNotNull);
+      expect(failure.fields['name'], isNotNull);
     }
   });
 

@@ -39,6 +39,15 @@ public enum ErrorCode {
      * one. Checked before correctness, so a guesser learns only that time
      * passed and never that a code was right but late.
      */
+    /**
+     * There is no code to check — none was ever asked for, or the one that was
+     * has already been used up.
+     *
+     * <p>Its own code rather than VALIDATION_FAILED so the app can send
+     * somebody back to the address step, which is the only thing that helps.
+     */
+    OTP_NOT_FOUND(HttpStatus.BAD_REQUEST),
+
     OTP_EXPIRED(HttpStatus.BAD_REQUEST),
 
     /** Wrong digits. The message names how many tries remain. */

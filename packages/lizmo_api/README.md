@@ -64,7 +64,6 @@ Class | Method | HTTP request | Description
 *AuthApi* | [**login**](doc//AuthApi.md#login) | **POST** /api/v1/auth/login | Sign in with email or phone plus password
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
-*AuthApi* | [**register**](doc//AuthApi.md#register) | **POST** /api/v1/auth/register | Create an account
 *FindingAPlaceApi* | [**findPropertyByCode**](doc//FindingAPlaceApi.md#findpropertybycode) | **GET** /api/v1/properties/lookup | Find a property by its code
 *LeasesApi* | [**endLease**](doc//LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
 *LeasesApi* | [**listLeasesForProperty**](doc//LeasesApi.md#listleasesforproperty) | **GET** /api/v1/properties/{propertyId}/leases | Who is living here
@@ -81,6 +80,8 @@ Class | Method | HTTP request | Description
 *RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 *RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
 *RequestsToAnswerApi* | [**listRentalRequestsForProperty**](doc//RequestsToAnswerApi.md#listrentalrequestsforproperty) | **GET** /api/v1/properties/{propertyId}/rental-requests | Who has asked about this property
+*SigningUpApi* | [**completeRegistration**](doc//SigningUpApi.md#completeregistration) | **POST** /api/v1/auth/register/complete | Finish signing up
+*SigningUpApi* | [**startRegistration**](doc//SigningUpApi.md#startregistration) | **POST** /api/v1/auth/register/start | Send me a code
 *TenantDocumentsApi* | [**listMyTenantDocuments**](doc//TenantDocumentsApi.md#listmytenantdocuments) | **GET** /api/v1/me/tenant-profile/documents | My photographs
 *TenantDocumentsApi* | [**uploadMyTenantDocument**](doc//TenantDocumentsApi.md#uploadmytenantdocument) | **POST** /api/v1/me/tenant-profile/documents | Upload a photograph
 *TenantProfileApi* | [**getMyTenantProfile**](doc//TenantProfileApi.md#getmytenantprofile) | **GET** /api/v1/me/tenant-profile | My tenant profile
@@ -105,6 +106,7 @@ Class | Method | HTTP request | Description
  - [AuthResponse](doc//AuthResponse.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
+ - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)
  - [LeaseResponse](doc//LeaseResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
@@ -113,10 +115,11 @@ Class | Method | HTTP request | Description
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RefreshRequest](doc//RefreshRequest.md)
- - [RegisterRequest](doc//RegisterRequest.md)
  - [RentalRequestCreate](doc//RentalRequestCreate.md)
  - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
  - [RentalRequestResponse](doc//RentalRequestResponse.md)
+ - [StartRegistrationRequest](doc//StartRegistrationRequest.md)
+ - [StartRegistrationResponse](doc//StartRegistrationResponse.md)
  - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)

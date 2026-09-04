@@ -46,6 +46,10 @@
         {
             "name": "Asking for a room",
             "description": "Requests a tenant has sent"
+        },
+        {
+            "name": "Signing up",
+            "description": "Creating an account"
         }
     ],
     "paths": {
@@ -1120,19 +1124,71 @@
                 }
             }
         },
-        "/api/v1/auth/register": {
+        "/api/v1/auth/register/start": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Signing up"
                 ],
-                "summary": "Create an account",
-                "description": "Always creates a tenant profile; adds a landlord profile when asLandlord is true.",
-                "operationId": "register",
+                "summary": "Send me a code",
+                "description": "Emails a six-digit code, good for ten minutes and one use. Asking again replaces any code already sent to that address.",
+                "operationId": "startRegistration",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/RegisterRequest"
+                                "$ref": "#/components/schemas/StartRegistrationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "A code is on its way",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartRegistrationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "That address already has an account",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too soon, or too many for today",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register/complete": {
+            "post": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "Finish signing up",
+                "description": "Spends the code and creates the account. The password needs at least eight characters, with a capital, a small letter, a number and a symbol.",
+                "operationId": "completeRegistration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompleteRegistrationRequest"
                             }
                         }
                     },
@@ -1140,7 +1196,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Account created, tokens issued",
+                        "description": "Signed in, with the new account",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -1150,17 +1206,7 @@
                         }
                     },
                     "400": {
-                        "description": "Validation failed, or neither email nor phone given",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Email or phone already registered",
+                        "description": "The code was wrong or expired, or the password is too weak",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -2359,46 +2405,66 @@
                 },
                 "description": "Ending a lease"
             },
-            "RegisterRequest": {
+            "StartRegistrationRequest": {
                 "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    }
+                },
+                "description": "Where to send a verification code"
+            },
+            "StartRegistrationResponse": {
+                "type": "object",
+                "properties": {
+                    "resendAfterSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "description": "A code is on its way"
+            },
+            "CompleteRegistrationRequest": {
+                "required": [
+                    "code",
+                    "email",
                     "name",
                     "password"
                 ],
                 "type": "object",
                 "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    },
+                    "code": {
+                        "maxLength": 10,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "483920"
+                    },
                     "name": {
                         "maxLength": 255,
                         "minLength": 0,
                         "type": "string",
                         "example": "Ana Reyes"
                     },
-                    "email": {
-                        "maxLength": 255,
-                        "minLength": 0,
-                        "type": "string",
-                        "description": "Required unless phone is given",
-                        "example": "ana@example.com"
-                    },
-                    "phone": {
-                        "maxLength": 20,
-                        "minLength": 0,
-                        "type": "string",
-                        "description": "Required unless email is given",
-                        "example": "09171234567"
-                    },
                     "password": {
                         "maxLength": 100,
-                        "minLength": 8,
+                        "minLength": 0,
                         "type": "string",
-                        "example": "correct-horse-battery"
-                    },
-                    "asLandlord": {
-                        "type": "boolean",
-                        "description": "Create a landlord profile as well as a tenant one",
-                        "default": false
+                        "example": "Sunrise2Bed!"
                     }
                 },
-                "description": "New account details"
+                "description": "Finishing a sign-up"
             },
             "AuthResponse": {
                 "type": "object",

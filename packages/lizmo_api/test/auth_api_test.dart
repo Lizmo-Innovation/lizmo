@@ -19,6 +19,8 @@ void main() {
   group('tests for AuthApi', () {
     // Sign in with email or phone plus password
     //
+    // Failed attempts are rate limited per account and per client address.
+    //
     //Future<AuthResponse> login(LoginRequest loginRequest) async
     test('test login', () async {
       // TODO
@@ -39,15 +41,6 @@ void main() {
     //
     //Future<AuthResponse> refresh(RefreshRequest refreshRequest) async
     test('test refresh', () async {
-      // TODO
-    });
-
-    // Create an account
-    //
-    // Always creates a tenant profile; adds a landlord profile when asLandlord is true.
-    //
-    //Future<AuthResponse> register(RegisterRequest registerRequest) async
-    test('test register', () async {
       // TODO
     });
 

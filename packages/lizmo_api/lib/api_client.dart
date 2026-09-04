@@ -193,6 +193,8 @@ class ApiClient {
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
+        case 'CompleteRegistrationRequest':
+          return CompleteRegistrationRequest.fromJson(value);
         case 'EndLeaseRequest':
           return EndLeaseRequest.fromJson(value);
         case 'LeaseResponse':
@@ -209,14 +211,16 @@ class ApiClient {
           return PropertyResponse.fromJson(value);
         case 'RefreshRequest':
           return RefreshRequest.fromJson(value);
-        case 'RegisterRequest':
-          return RegisterRequest.fromJson(value);
         case 'RentalRequestCreate':
           return RentalRequestCreate.fromJson(value);
         case 'RentalRequestForLandlord':
           return RentalRequestForLandlord.fromJson(value);
         case 'RentalRequestResponse':
           return RentalRequestResponse.fromJson(value);
+        case 'StartRegistrationRequest':
+          return StartRegistrationRequest.fromJson(value);
+        case 'StartRegistrationResponse':
+          return StartRegistrationResponse.fromJson(value);
         case 'TenantDocumentResponse':
           return TenantDocumentResponse.fromJson(value);
         case 'TenantProfileRequest':

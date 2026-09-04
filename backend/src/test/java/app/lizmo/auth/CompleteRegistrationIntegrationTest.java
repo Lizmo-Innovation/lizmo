@@ -244,6 +244,9 @@ class CompleteRegistrationIntegrationTest extends IntegrationTest {
     void finishing_without_ever_asking_for_a_code_is_refused() throws Exception {
         complete("123456", "Ana", "Sunrise2Bed!")
                 .andExpect(status().isBadRequest())
+                // Its own code, so the app can send somebody back to the
+                // address step rather than showing this under a password field.
+                .andExpect(jsonPath("$.code").value("OTP_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value(
                         org.hamcrest.Matchers.containsString("Ask for a code first")));
     }
