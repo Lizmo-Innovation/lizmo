@@ -1,0 +1,58 @@
+# What differs in production. Everything else is in application.yml, which
+# already reads its values from the environment — this file exists for the
+# handful of settings whose safe default is the *local* one, and which would be
+# quietly wrong in production if a variable were forgotten.
+
+spring:
+  mail:
+    properties:
+      # On, and not merely defaulted on by an environment variable. Mailpit
+      # accepts unauthenticated plaintext, so the local defaults are off; if
+      # MAIL_AUTH went missing in Cloud Run the API would fall back to sending
+      # credentials-free over an unencrypted connection to a real relay, which
+      # fails in the best case and leaks the SMTP password in the worst.
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
+  datasource:
+    hikari:
+      # Supabase's pooler allows a modest number of client connections, and
+      # Cloud Run may run several instances at once. Each instance holding a
+      # large pool is how a service that works alone starts refusing
+      # connections the moment it scales out.
+      maximum-pool-size: 5
+
+      # Cloud Run freezes the CPU between requests, and the pooler drops
+      # connections it considers idle. Recycling well inside that window means
+      # a cold request finds a live connection rather than discovering a dead
+      # one and failing.
+      minimum-idle: 1
+      idle-timeout: 300000
+      max-lifetime: 900000
+      keepalive-time: 120000
+
+      # Long enough to survive a brief blip, short enough that a request fails
+      # rather than hanging until the client gives up.
+      connection-timeout: 10000
+
+  flyway:
+    # Off, deliberately, and the opposite of the local default. Baselining means
+    # "assume everything up to now was already applied" -- exactly what you want
+    # against a database that predates Flyway, and exactly what you do not want
+    # in production, where it silently skips every migration if the API is ever
+    # pointed at the wrong database. Failing loudly is the point.
+    baseline-on-migrate: false
+
+server:
+  # Cloud Run sends SIGTERM and then waits. Finishing in-flight requests rather
+  # than dropping them is the difference between a deploy nobody notices and a
+  # handful of failed uploads.
+  shutdown: graceful
+
+logging:
+  level:
+    # The default logs every statement's parameters at DEBUG. In production
+    # those parameters are tenants' ID numbers and phone numbers.
+    org.hibernate.SQL: WARN
+    org.springframework.web: WARN

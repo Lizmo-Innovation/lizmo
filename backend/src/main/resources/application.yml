@@ -26,6 +26,10 @@ spring:
       mail.smtp.writetimeout: 5000
 
   datasource:
+    # Credentials belong in DB_USER and DB_PASSWORD, not in DB_URL. Both work,
+    # but pgjdbc gives URL query parameters precedence over the properties set
+    # here -- so a URL carrying ?user=&password= silently wins and these two are
+    # ignored, which is a confusing half hour when the wrong one is stale.
     url: ${DB_URL:jdbc:postgresql://localhost:5432/lizmo}
     username: ${DB_USER:lizmo}
     password: ${DB_PASSWORD:lizmo_dev}
