@@ -31,6 +31,15 @@ public enum ErrorCode {
 
     NOT_FOUND(HttpStatus.NOT_FOUND),
 
+    /** The invitation link is unknown, or has already been taken up. */
+    INVITATION_INVALID(HttpStatus.BAD_REQUEST),
+
+    /** The invitation link is real but too old. */
+    INVITATION_EXPIRED(HttpStatus.BAD_REQUEST),
+
+    /** Inviting somebody who already lets rooms through Lizmo. */
+    ALREADY_A_LANDLORD(HttpStatus.CONFLICT),
+
     /**
      * The verification code has run out of time.
      *

@@ -36,6 +36,10 @@
             "description": "A tenant's own photographs"
         },
         {
+            "name": "Admin",
+            "description": "Lizmo's own staff"
+        },
+        {
             "name": "Properties",
             "description": "A landlord's properties and their units"
         },
@@ -44,12 +48,12 @@
             "description": "Who is living where"
         },
         {
-            "name": "Asking for a room",
-            "description": "Requests a tenant has sent"
-        },
-        {
             "name": "Signing up",
             "description": "Creating an account"
+        },
+        {
+            "name": "Asking for a room",
+            "description": "Requests a tenant has sent"
         }
     ],
     "paths": {
@@ -1337,6 +1341,110 @@
                 }
             }
         },
+        "/api/v1/auth/invitations/accept": {
+            "post": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "Become a landlord",
+                "description": "Spends the invitation and signs you in. A new account needs a name and a password of its own; an address that already signs in to Lizmo needs that account's password, and keeps its tenant side.",
+                "operationId": "acceptInvitation",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Signed in, now a landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The invitation is unusable, or the password is too weak",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "The address has an account and that is not its password",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/landlord-invitations": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Invite a landlord",
+                "description": "Emails a link that lets somebody set up a landlord account. Good for seven days and one use; inviting the same address again replaces the earlier link.",
+                "operationId": "inviteLandlord",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InviteLandlordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The invitation is on its way",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationSentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a Lizmo administrator",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "That address is already a landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/rental-requests/{id}": {
             "get": {
                 "tags": [
@@ -1590,6 +1698,48 @@
                     }
                 }
             }
+        },
+        "/api/v1/auth/invitations/{token}": {
+            "get": {
+                "tags": [
+                    "Signing up"
+                ],
+                "summary": "What this invitation is for",
+                "description": "Says which address was invited and whether it already has a Lizmo account, so the screen knows whether to ask for a new password or the existing one.",
+                "operationId": "getInvitation",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The invitation is good",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationDetailsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Unknown, expired or already used",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1763,6 +1913,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -1801,30 +1975,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -2534,6 +2684,68 @@
                 },
                 "description": "Login credentials"
             },
+            "AcceptInvitationRequest": {
+                "required": [
+                    "password",
+                    "token"
+                ],
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "maxLength": 512,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "k7Qm2..."
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Elena Bautista"
+                    },
+                    "password": {
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sunrise2Bed!"
+                    }
+                },
+                "description": "Taking up a landlord invitation"
+            },
+            "InviteLandlordRequest": {
+                "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "elena@example.com"
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Elena Bautista"
+                    }
+                },
+                "description": "Inviting somebody to be a landlord"
+            },
+            "InvitationSentResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "An invitation on its way"
+            },
             "PropertyByCodeResponse": {
                 "type": "object",
                 "properties": {
@@ -2664,6 +2876,22 @@
                     }
                 },
                 "description": "A whole unit that is free"
+            },
+            "InvitationDetailsResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "hasAccount": {
+                        "type": "boolean"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "What an invitation is for"
             }
         }
     }

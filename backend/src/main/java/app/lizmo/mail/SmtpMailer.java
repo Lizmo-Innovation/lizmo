@@ -65,4 +65,44 @@ public class SmtpMailer implements Mailer {
                     "We could not send the email just now. Please try again.");
         }
     }
+
+    @Override
+    public void sendLandlordInvitation(
+            String to, String name, String link, String token, int validDays) {
+        String greeting = name == null || name.isBlank() ? "Hello," : "Hello " + name + ",";
+
+        String body = """
+                %s
+
+                Lizmo has invited you to manage your rentals with us.
+
+                Open this link to set up your landlord account:
+
+                %s
+
+                If the link does not open Lizmo, start the app and enter this
+                invitation code instead:
+
+                %s
+
+                It works for %d days and only once. If you were not expecting
+                this, you can ignore it -- nothing has been created.
+                """.formatted(greeting, link, token, validDays);
+
+        try {
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(properties.from());
+            helper.setTo(to);
+            helper.setSubject("You are invited to Lizmo as a landlord");
+            helper.setText(body);
+            sender.send(message);
+        } catch (MailException | jakarta.mail.MessagingException e) {
+            // The address is logged; the token never is. A log line is not a
+            // place to leave a working key to a landlord account.
+            log.error("Could not send a landlord invitation to {}", to, e);
+            throw new ApiException(ErrorCode.INTERNAL_ERROR,
+                    "We could not send the email just now. Please try again.");
+        }
+    }
 }

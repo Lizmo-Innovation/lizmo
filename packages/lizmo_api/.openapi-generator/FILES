@@ -1,7 +1,9 @@
 .gitignore
 .travis.yml
 README.md
+doc/AcceptInvitationRequest.md
 doc/AcceptRequest.md
+doc/AdminApi.md
 doc/ApiError.md
 doc/AskingForARoomApi.md
 doc/AuthApi.md
@@ -11,6 +13,9 @@ doc/BedResponse.md
 doc/CompleteRegistrationRequest.md
 doc/EndLeaseRequest.md
 doc/FindingAPlaceApi.md
+doc/InvitationDetailsResponse.md
+doc/InvitationSentResponse.md
+doc/InviteLandlordRequest.md
 doc/LeaseResponse.md
 doc/LeasesApi.md
 doc/LoginRequest.md
@@ -44,6 +49,7 @@ doc/VacantBed.md
 doc/VacantUnit.md
 git_push.sh
 lib/api.dart
+lib/api/admin_api.dart
 lib/api/asking_for_a_room_api.dart
 lib/api/auth_api.dart
 lib/api/finding_a_place_api.dart
@@ -62,6 +68,7 @@ lib/auth/authentication.dart
 lib/auth/http_basic_auth.dart
 lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
+lib/model/accept_invitation_request.dart
 lib/model/accept_request.dart
 lib/model/api_error.dart
 lib/model/auth_response.dart
@@ -69,6 +76,9 @@ lib/model/bed_request.dart
 lib/model/bed_response.dart
 lib/model/complete_registration_request.dart
 lib/model/end_lease_request.dart
+lib/model/invitation_details_response.dart
+lib/model/invitation_sent_response.dart
+lib/model/invite_landlord_request.dart
 lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
@@ -94,4 +104,8 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/auth_api_test.dart
+test/accept_invitation_request_test.dart
+test/admin_api_test.dart
+test/invitation_details_response_test.dart
+test/invitation_sent_response_test.dart
+test/invite_landlord_request_test.dart

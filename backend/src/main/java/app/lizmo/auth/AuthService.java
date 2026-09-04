@@ -176,6 +176,19 @@ public class AuthService {
                 : users.findByPhone(identifier);
     }
 
+    /**
+     * Signs a user in, without a password having been typed.
+     *
+     * <p>For the paths that have already proved who somebody is by other means
+     * — finishing a sign-up, taking up a landlord invitation. Public so those
+     * can call it, and deliberately the same code as login so a session made
+     * this way is a session like any other.
+     */
+    @Transactional
+    public AuthResponse startSession(User user) {
+        return issueTokens(user);
+    }
+
     private AuthResponse issueTokens(User user) {
         List<String> profiles = profilesOf(user);
         String accessToken = jwt.issueAccessToken(user.getId(), profiles);

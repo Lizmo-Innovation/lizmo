@@ -28,6 +28,7 @@ part 'auth/oauth.dart';
 part 'auth/http_basic_auth.dart';
 part 'auth/http_bearer_auth.dart';
 
+part 'api/admin_api.dart';
 part 'api/asking_for_a_room_api.dart';
 part 'api/auth_api.dart';
 part 'api/finding_a_place_api.dart';
@@ -39,6 +40,7 @@ part 'api/tenant_documents_api.dart';
 part 'api/tenant_profile_api.dart';
 part 'api/units_api.dart';
 
+part 'model/accept_invitation_request.dart';
 part 'model/accept_request.dart';
 part 'model/api_error.dart';
 part 'model/auth_response.dart';
@@ -46,6 +48,9 @@ part 'model/bed_request.dart';
 part 'model/bed_response.dart';
 part 'model/complete_registration_request.dart';
 part 'model/end_lease_request.dart';
+part 'model/invitation_details_response.dart';
+part 'model/invitation_sent_response.dart';
+part 'model/invite_landlord_request.dart';
 part 'model/lease_response.dart';
 part 'model/login_request.dart';
 part 'model/maintenance_request.dart';

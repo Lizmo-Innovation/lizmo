@@ -3,6 +3,8 @@ package app.lizmo.support;
 import app.lizmo.security.JwtService;
 import app.lizmo.user.LandlordProfile;
 import app.lizmo.user.LandlordProfileRepository;
+import app.lizmo.user.PlatformAdmin;
+import app.lizmo.user.PlatformAdminRepository;
 import app.lizmo.user.TenantProfile;
 import app.lizmo.user.TenantProfileRepository;
 import app.lizmo.user.User;
@@ -42,6 +44,7 @@ public class Accounts {
     private final UserRepository users;
     private final TenantProfileRepository tenantProfiles;
     private final LandlordProfileRepository landlordProfiles;
+    private final PlatformAdminRepository platformAdmins;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
 
@@ -49,11 +52,13 @@ public class Accounts {
             UserRepository users,
             TenantProfileRepository tenantProfiles,
             LandlordProfileRepository landlordProfiles,
+            PlatformAdminRepository platformAdmins,
             PasswordEncoder passwordEncoder,
             JwtService jwt) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
+        this.platformAdmins = platformAdmins;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
     }
@@ -70,6 +75,23 @@ public class Accounts {
      */
     public Account landlord(String name) {
         return create(name, true);
+    }
+
+    /**
+     * Lizmo's own staff.
+     *
+     * <p>Made by writing the row, which is the only way one is ever made: there
+     * is no endpoint that grants admin, so that a compromised API cannot mint
+     * itself an administrator. A test doing it by hand is doing exactly what an
+     * operator would.
+     */
+    public Account admin(String name) {
+        Account account = create(name, false);
+        platformAdmins.save(new PlatformAdmin(account.id()));
+        // Re-issued: the profiles are baked into a token when it is made, and
+        // the one above was made before the admin row existed.
+        return new Account(account.id(), account.name(), account.email(), account.phone(),
+                jwt.issueAccessToken(account.id(), List.of("TENANT", "ADMIN")));
     }
 
     private Account create(String name, boolean asLandlord) {

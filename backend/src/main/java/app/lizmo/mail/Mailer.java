@@ -20,4 +20,16 @@ public interface Mailer {
      *             sign-up the address arrives before the name does.
      */
     void sendVerificationCode(String to, String name, String code, int validMinutes);
+
+    /**
+     * Lizmo asking somebody to be a landlord.
+     *
+     * @param name  what to call them, or null when the admin did not say
+     * @param link  where they go to accept
+     * @param token the same thing the link ends in, carried separately because
+     *              nothing registers a deep link yet -- until something does,
+     *              tapping the link opens a browser and this is what can be
+     *              pasted into the app instead
+     */
+    void sendLandlordInvitation(String to, String name, String link, String token, int validDays);
 }

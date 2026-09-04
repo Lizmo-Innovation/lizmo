@@ -183,6 +183,8 @@ class ApiClient {
           return valueString == 'true' || valueString == '1';
         case 'DateTime':
           return value is DateTime ? value : DateTime.tryParse(value);
+        case 'AcceptInvitationRequest':
+          return AcceptInvitationRequest.fromJson(value);
         case 'AcceptRequest':
           return AcceptRequest.fromJson(value);
         case 'ApiError':
@@ -197,6 +199,12 @@ class ApiClient {
           return CompleteRegistrationRequest.fromJson(value);
         case 'EndLeaseRequest':
           return EndLeaseRequest.fromJson(value);
+        case 'InvitationDetailsResponse':
+          return InvitationDetailsResponse.fromJson(value);
+        case 'InvitationSentResponse':
+          return InvitationSentResponse.fromJson(value);
+        case 'InviteLandlordRequest':
+          return InviteLandlordRequest.fromJson(value);
         case 'LeaseResponse':
           return LeaseResponse.fromJson(value);
         case 'LoginRequest':

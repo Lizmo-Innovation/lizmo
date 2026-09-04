@@ -9,28 +9,74 @@
 # again. Every account is stamped with the current epoch so the script can be
 # run repeatedly without colliding on an email address.
 #
-# OUT OF ORDER. It made its landlord by posting to /auth/register with
-# asLandlord, and that endpoint is gone: signing up is now an emailed code, and
-# a landlord is invited by an admin. It comes back once the invitation endpoint
-# exists -- until then there is no way for a script to make a landlord at all.
+# Needs the whole compose stack, not just the API. Signing up and being invited
+# are emailed now, so the codes come back out of Mailpit the way a person reads
+# their inbox. Being a Lizmo admin is a row in the database, which is the only
+# way one is ever granted -- no endpoint hands out admin, deliberately -- so the
+# script inserts it, which is what an operator would do.
 set -euo pipefail
 
-echo "This script needs the landlord invitation endpoint, which does not exist" >&2
-echo "yet. See the note at the top of the file." >&2
-exit 1
-
 API="${LIZMO_API:-http://localhost:8082}"
+MAILPIT="${LIZMO_MAILPIT:-http://localhost:8026}"
 STAMP=$(date +%s)
 
-say()  { printf '\n\033[1;36m== %s\033[0m\n' "$1"; }
-show() { python -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d,indent=2)[:700])"; }
+# Meets the password rule: at least eight characters, with a capital, a small
+# letter, a number and a symbol.
+PASSWORD="Sunrise2Bed!"
+
+say()   { printf '\n\033[1;36m== %s\033[0m\n' "$1"; }
+show()  { python -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d,indent=2)[:700])"; }
+field() { python -c "import json,sys; print(json.load(sys.stdin)$1)"; }
+
+# The six digits Lizmo just emailed, taken from the subject line.
+code_for() {
+  curl -s "$MAILPIT/api/v1/search?query=to:$1" \
+    | python -c "import json,sys,re; print(re.search(r'[0-9]{6}', json.load(sys.stdin)['messages'][0]['Subject']).group(0))"
+}
+
+# The invitation token, out of the most recent email to an address.
+invite_token_for() {
+  local id
+  id=$(curl -s "$MAILPIT/api/v1/search?query=to:$1" | field "['messages'][0]['ID']")
+  curl -s "$MAILPIT/api/v1/message/$id" \
+    | python -c "import json,sys,re; print(re.findall(r'invite/([^\s]+)', json.load(sys.stdin)['Text'])[0])"
+}
+
+# Signs somebody up the way the app does -- ask for a code, read it, finish --
+# and prints their access token.
+sign_up() {
+  local email="$1" name="$2"
+  curl -s -X POST "$API/api/v1/auth/register/start" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$email\"}" > /dev/null
+  curl -s -X POST "$API/api/v1/auth/register/complete" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$email\",\"code\":\"$(code_for "$email")\",\"name\":\"$name\",\"password\":\"$PASSWORD\"}" \
+    | field "['accessToken']"
+}
 
 # --- a landlord with somewhere to let ---------------------------------------
 
-say "Registering a landlord"
-LANDLORD=$(curl -s -X POST "$API/api/v1/auth/register" -H 'Content-Type: application/json' \
-  -d "{\"name\":\"Elena\",\"email\":\"elena$STAMP@example.com\",\"password\":\"correct-horse-battery\",\"asLandlord\":true}")
-LT=$(echo "$LANDLORD" | python -c "import json,sys; print(json.load(sys.stdin)['accessToken'])")
+say "Making a Lizmo admin (a row, because nothing else grants it)"
+ADMIN="admin$STAMP@lizmo.test"
+sign_up "$ADMIN" "Lizmo Staff" > /dev/null
+ADMIN_ID=$(curl -s -X POST "$API/api/v1/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"identifier\":\"$ADMIN\",\"password\":\"$PASSWORD\"}" | field "['userId']")
+docker compose exec -T postgres psql -U lizmo -d lizmo -q \
+  -c "INSERT INTO platform_admins (user_id, created_at) VALUES ('$ADMIN_ID', now());"
+# Signed in again: the profiles are baked into an access token when it is
+# issued, and the one from before the insert says TENANT.
+AT=$(curl -s -X POST "$API/api/v1/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"identifier\":\"$ADMIN\",\"password\":\"$PASSWORD\"}" | field "['accessToken']")
+echo "ok"
+
+say "Inviting a landlord"
+ELENA="elena$STAMP@example.com"
+curl -s -X POST "$API/api/v1/admin/landlord-invitations" -H "Authorization: Bearer $AT" \
+  -H 'Content-Type: application/json' -d "{\"email\":\"$ELENA\",\"name\":\"Elena\"}" | show
+
+say "Accepting the invitation -- the only way a landlord is made"
+LT=$(curl -s -X POST "$API/api/v1/auth/invitations/accept" -H 'Content-Type: application/json' \
+  -d "{\"token\":\"$(invite_token_for "$ELENA")\",\"name\":\"Elena Bautista\",\"password\":\"$PASSWORD\"}" \
+  | field "['accessToken']")
 echo "ok"
 
 say "Creating a property"
@@ -57,10 +103,8 @@ echo "ok"
 
 # --- a tenant finds the place ------------------------------------------------
 
-say "Registering a tenant"
-TENANT=$(curl -s -X POST "$API/api/v1/auth/register" -H 'Content-Type: application/json' \
-  -d "{\"name\":\"Ana\",\"email\":\"ana$STAMP@example.com\",\"password\":\"correct-horse-battery\",\"asLandlord\":false}")
-TT=$(echo "$TENANT" | python -c "import json,sys; print(json.load(sys.stdin)['accessToken'])")
+say "Signing a tenant up (address, code, then a password)"
+TT=$(sign_up "ana$STAMP@example.com" "Ana")
 echo "ok"
 
 say "Looking the property up by its code (what the tenant sees)"

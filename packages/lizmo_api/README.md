@@ -41,13 +41,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:lizmo_api/api.dart';
 
 
-final api_instance = AskingForARoomApi();
+final api_instance = AdminApi();
+final inviteLandlordRequest = InviteLandlordRequest(); // InviteLandlordRequest | 
 
 try {
-    final result = api_instance.listMyRentalRequests();
+    final result = api_instance.inviteLandlord(inviteLandlordRequest);
     print(result);
 } catch (e) {
-    print('Exception when calling AskingForARoomApi->listMyRentalRequests: $e\n');
+    print('Exception when calling AdminApi->inviteLandlord: $e\n');
 }
 
 ```
@@ -58,6 +59,7 @@ All URIs are relative to *http://localhost:8082*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AdminApi* | [**inviteLandlord**](doc//AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 *AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
 *AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
 *AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
@@ -80,7 +82,9 @@ Class | Method | HTTP request | Description
 *RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 *RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
 *RequestsToAnswerApi* | [**listRentalRequestsForProperty**](doc//RequestsToAnswerApi.md#listrentalrequestsforproperty) | **GET** /api/v1/properties/{propertyId}/rental-requests | Who has asked about this property
+*SigningUpApi* | [**acceptInvitation**](doc//SigningUpApi.md#acceptinvitation) | **POST** /api/v1/auth/invitations/accept | Become a landlord
 *SigningUpApi* | [**completeRegistration**](doc//SigningUpApi.md#completeregistration) | **POST** /api/v1/auth/register/complete | Finish signing up
+*SigningUpApi* | [**getInvitation**](doc//SigningUpApi.md#getinvitation) | **GET** /api/v1/auth/invitations/{token} | What this invitation is for
 *SigningUpApi* | [**startRegistration**](doc//SigningUpApi.md#startregistration) | **POST** /api/v1/auth/register/start | Send me a code
 *TenantDocumentsApi* | [**listMyTenantDocuments**](doc//TenantDocumentsApi.md#listmytenantdocuments) | **GET** /api/v1/me/tenant-profile/documents | My photographs
 *TenantDocumentsApi* | [**uploadMyTenantDocument**](doc//TenantDocumentsApi.md#uploadmytenantdocument) | **POST** /api/v1/me/tenant-profile/documents | Upload a photograph
@@ -101,6 +105,7 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AcceptInvitationRequest](doc//AcceptInvitationRequest.md)
  - [AcceptRequest](doc//AcceptRequest.md)
  - [ApiError](doc//ApiError.md)
  - [AuthResponse](doc//AuthResponse.md)
@@ -108,6 +113,9 @@ Class | Method | HTTP request | Description
  - [BedResponse](doc//BedResponse.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)
+ - [InvitationDetailsResponse](doc//InvitationDetailsResponse.md)
+ - [InvitationSentResponse](doc//InvitationSentResponse.md)
+ - [InviteLandlordRequest](doc//InviteLandlordRequest.md)
  - [LeaseResponse](doc//LeaseResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)

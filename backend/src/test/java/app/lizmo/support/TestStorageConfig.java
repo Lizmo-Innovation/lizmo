@@ -2,6 +2,7 @@ package app.lizmo.support;
 
 import app.lizmo.security.JwtService;
 import app.lizmo.user.LandlordProfileRepository;
+import app.lizmo.user.PlatformAdminRepository;
 import app.lizmo.user.TenantProfileRepository;
 import app.lizmo.user.UserRepository;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -64,8 +65,10 @@ public class TestStorageConfig {
             UserRepository users,
             TenantProfileRepository tenantProfiles,
             LandlordProfileRepository landlordProfiles,
+            PlatformAdminRepository platformAdmins,
             PasswordEncoder passwordEncoder,
             JwtService jwt) {
-        return new Accounts(users, tenantProfiles, landlordProfiles, passwordEncoder, jwt);
+        return new Accounts(users, tenantProfiles, landlordProfiles, platformAdmins,
+                passwordEncoder, jwt);
     }
 }

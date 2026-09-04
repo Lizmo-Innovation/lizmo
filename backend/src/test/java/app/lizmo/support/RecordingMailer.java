@@ -15,7 +15,12 @@ public class RecordingMailer implements Mailer {
 
     public record Sent(String to, String name, String code, int validMinutes) {}
 
+    /** What an invited landlord received. The token is what they would paste. */
+    public record Invitation(
+            String to, String name, String link, String token, int validDays) {}
+
     private final List<Sent> sent = new ArrayList<>();
+    private final List<Invitation> invitations = new ArrayList<>();
 
     /** Set to make the next send fail, the way a dead relay would. */
     public RuntimeException failWith;
@@ -26,6 +31,35 @@ public class RecordingMailer implements Mailer {
             throw failWith;
         }
         sent.add(new Sent(to, name, code, validMinutes));
+    }
+
+    @Override
+    public void sendLandlordInvitation(
+            String to, String name, String link, String token, int validDays) {
+        if (failWith != null) {
+            throw failWith;
+        }
+        invitations.add(new Invitation(to, name, link, token, validDays));
+    }
+
+    public List<Invitation> allInvitations() {
+        return List.copyOf(invitations);
+    }
+
+    public Invitation lastInvitation() {
+        if (invitations.isEmpty()) {
+            throw new AssertionError("No invitation was sent");
+        }
+        return invitations.get(invitations.size() - 1);
+    }
+
+    /** The token from the most recent invitation, which is what a person would use. */
+    public String lastInvitationToken() {
+        return lastInvitation().token();
+    }
+
+    public int invitationCount() {
+        return invitations.size();
     }
 
     public List<Sent> all() {
@@ -50,6 +84,7 @@ public class RecordingMailer implements Mailer {
 
     public void clear() {
         sent.clear();
+        invitations.clear();
         failWith = null;
     }
 }

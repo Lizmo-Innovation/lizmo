@@ -72,6 +72,13 @@ lizmo:
   mail:
     from: ${MAIL_FROM:Lizmo <hello@lizmo.local>}
 
+  app:
+    # Where an invitation link points. There is no domain yet, so this is
+    # configured rather than assumed: a LAN address while testing on two
+    # phones, a real host later. Until the apps register a deep link, tapping
+    # it opens a browser -- the email carries the token in text for that.
+    invite-base-url: ${LIZMO_INVITE_BASE_URL:http://localhost:8082/invite}
+
   s3:
     bucket: ${AWS_S3_BUCKET:lizmo-uploads-local}
     region: ${AWS_REGION:ap-southeast-1}
