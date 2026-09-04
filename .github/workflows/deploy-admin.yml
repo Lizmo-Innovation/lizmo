@@ -6,6 +6,10 @@ name: Deploy admin console
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Which GCP project to deploy to
+        type: environment
+        required: true
       confirm:
         description: Type "deploy" to confirm
         required: true
@@ -27,7 +31,7 @@ jobs:
   deploy:
     name: Build and deploy the console
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Guard against an accidental run

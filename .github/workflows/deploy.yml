@@ -7,6 +7,10 @@ name: Deploy API
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Which GCP project to deploy to
+        type: environment
+        required: true
       confirm:
         description: Type "deploy" to confirm
         required: true
@@ -30,9 +34,14 @@ jobs:
   deploy:
     name: Build and deploy
     runs-on: ubuntu-latest
-    # Add a required reviewer on this environment in repository settings to gate
-    # production behind an approval.
-    environment: production
+    # Chosen on the Run workflow form. Each environment carries its own
+    # GCP_PROJECT_ID, WIF_PROVIDER and WIF_SERVICE_ACCOUNT, so the same workflow
+    # deploys to whichever project that environment describes -- and vars.*
+    # resolves the environment's copy before any repository-wide one.
+    #
+    # It is also where a required reviewer goes, per environment, so a staging
+    # deploy can be unattended while production waits for a human.
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Guard against an accidental run
