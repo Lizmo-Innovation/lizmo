@@ -81,25 +81,30 @@ cp terraform.tfvars.example terraform.tfvars
 Fill in `project_id`, `supabase_project_ref`, `mail_username` and `mail_from`.
 No secrets go in this file.
 
-### 2 · Apply
+### 2 · Create the secrets, and nothing else yet
 
 ```bash
 terraform init
-terraform apply
+terraform apply -target='google_secret_manager_secret.app'
 ```
 
-This creates both Cloud Run services with a placeholder image, the Artifact
-Registry repo, seven **empty** secrets, the Workload Identity Federation setup
-for CI, and two **paused** scheduler jobs.
+**The order matters, and getting it wrong costs a confusing half hour.** Cloud
+Run validates a secret reference when it creates a revision, so a service
+pointing at `latest` of a secret with no versions cannot be created at all. It
+fails as:
 
-Both services get their URLs now, which is why nothing here needs a second
-apply: Terraform already knows the console's URL and puts it in the API's
-`LIZMO_CORS_ORIGINS`.
+```
+Error code 7, message: The service has encountered an internal error.
+```
+
+which names neither the secret nor the cause, and reads like a Google outage.
+Code 7 is PERMISSION_DENIED. This happened on the first real apply of this
+stack; the README used to say to apply everything first.
 
 ### 3 · Fill in the secrets
 
 Terraform creates them empty on purpose — any value it writes ends up in
-plaintext in the state file. Cloud Run will not start until each has a version.
+plaintext in the state file.
 
 `read -rs` does not echo, so nothing lands in your shell history:
 
@@ -123,7 +128,21 @@ password embedded there silently wins over `DB_PASSWORD`; keeping it out also
 means Supabase's symbol-heavy generated password never has to be
 percent-encoded.
 
-### 4 · Deploy the API
+### 4 · Apply the rest
+
+```bash
+terraform apply
+```
+
+Now both Cloud Run services are created with a placeholder image, along with
+the Artifact Registry repo, the Workload Identity Federation setup for CI, and
+two **paused** scheduler jobs.
+
+Both services get their URLs here, which is why nothing needs a third apply:
+Terraform already knows the console's URL and puts it in the API's
+`LIZMO_CORS_ORIGINS`.
+
+### 5 · Deploy the API
 
 ```bash
 gcloud auth configure-docker asia-southeast1-docker.pkg.dev
@@ -147,7 +166,7 @@ Check it:
 curl "$(terraform output -raw api_url)/actuator/health"
 ```
 
-### 5 · Deploy the console
+### 6 · Deploy the console
 
 The console is a Flutter web bundle, so the API's URL is **compiled in** — there
 is no runtime environment for it to read.
@@ -169,7 +188,7 @@ gcloud run deploy lizmo-admin \
 Run this from the repo root, not from `admin/` — both apps depend on
 `packages/` through path dependencies.
 
-### 6 · Make yourself an administrator
+### 7 · Make yourself an administrator
 
 No endpoint grants admin, deliberately: a compromised API cannot mint itself
 one. Sign up normally in the app first, then in Supabase's SQL editor:
@@ -182,7 +201,7 @@ values ('<your user id>', now());
 Sign in again afterwards — profiles are baked into an access token when it is
 issued, so the one you already hold still says TENANT.
 
-### 7 · Point a phone at it
+### 8 · Point a phone at it
 
 ```bash
 flutter run --dart-define=LIZMO_API_BASE_URL=https://lizmo-api-xxxx.run.app
