@@ -3,7 +3,6 @@ package app.lizmo.auth;
 import app.lizmo.auth.dto.AuthResponse;
 import app.lizmo.auth.dto.LoginRequest;
 import app.lizmo.auth.dto.RefreshRequest;
-import app.lizmo.auth.dto.RegisterRequest;
 import app.lizmo.common.ApiError;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,19 +27,6 @@ public class AuthController {
 
     public AuthController(AuthService auth) {
         this.auth = auth;
-    }
-
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create an account",
-            description = "Always creates a tenant profile; adds a landlord profile when asLandlord is true.")
-    @ApiResponse(responseCode = "201", description = "Account created, tokens issued")
-    @ApiResponse(responseCode = "400", description = "Validation failed, or neither email nor phone given",
-            content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(responseCode = "409", description = "Email or phone already registered",
-            content = @Content(schema = @Schema(implementation = ApiError.class)))
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return auth.register(request);
     }
 
     @PostMapping("/login")

@@ -11,7 +11,6 @@ import app.lizmo.support.IntegrationTest;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,17 +26,6 @@ import org.springframework.mock.web.MockMultipartFile;
  */
 class RentalInboxIntegrationTest extends IntegrationTest {
 
-    /**
-     * Phone numbers, counted rather than taken from the clock.
-     *
-     * <p>This was nanoTime modulo ten million, which collides often enough to
-     * fail a run now and then: the registration comes back 409 and the test
-     * reads as a permissions failure rather than as two people handed the same
-     * number. It did exactly that once. A counter cannot collide within a run,
-     * and every run gets a fresh database.
-     */
-    private static final AtomicInteger PHONES = new AtomicInteger(1_000_000);
-
     private String landlordToken;
     private String otherLandlordToken;
     private String tenantToken;
@@ -49,10 +37,10 @@ class RentalInboxIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        landlordToken = register("elena", true);
-        otherLandlordToken = register("mario", true);
-        tenantToken = register("ana", false);
-        otherTenantToken = register("bea", false);
+        landlordToken = accounts.landlord("elena").token();
+        otherLandlordToken = accounts.landlord("mario").token();
+        tenantToken = accounts.tenant("ana").token();
+        otherTenantToken = accounts.tenant("bea").token();
 
         String property = mvc.perform(post("/api/v1/properties")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -82,19 +70,6 @@ class RentalInboxIntegrationTest extends IntegrationTest {
         bedId = json.readTree(beds).get(0).get("id").asText();
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "phone":"0917%07d","password":"correct-horse-battery",
-                                 "asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(),
-                                    PHONES.incrementAndGet(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private void makeReadyForALease(String token) throws Exception {
         mvc.perform(put("/api/v1/me/tenant-profile")

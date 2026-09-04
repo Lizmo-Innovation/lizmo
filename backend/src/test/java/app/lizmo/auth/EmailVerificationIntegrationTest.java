@@ -86,15 +86,9 @@ class EmailVerificationIntegrationTest extends IntegrationTest {
     @Test
     void an_address_that_already_has_an_account_is_told_plainly()
             throws Exception {
-        mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"Ana","email":"%s",
-                                 "password":"correct-horse-battery","asLandlord":false}
-                                """.formatted(email)))
-                .andExpect(status().isCreated());
+        String taken = accounts.tenant("ana").email();
 
-        start(email)
+        start(taken)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(
                         org.hamcrest.Matchers.containsString("Sign in instead")));

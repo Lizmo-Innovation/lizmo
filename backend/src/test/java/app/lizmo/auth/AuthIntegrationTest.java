@@ -6,71 +6,54 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.lizmo.support.Accounts;
+import app.lizmo.support.IntegrationTest;
+import app.lizmo.support.RecordingMailer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Exercises the auth flow against real Postgres with the real Flyway migrations.
+ * Signing in, staying signed in, and being turned away.
  *
- * <p>Deliberately not H2: the schema leans on partial unique indexes and CHECK
- * constraints that H2 ignores, so an in-memory database would pass while
- * production rejected the same write.
+ * <p>What happens after an account exists. Making one is
+ * {@link CompleteRegistrationIntegrationTest}'s subject, and is done here only
+ * to have somebody to sign in as.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-class AuthIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
-
-    @DynamicPropertySource
-    static void datasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("lizmo.jwt.secret", () -> "test-secret-that-is-long-enough-for-hmac-sha256-signing");
-    }
+class AuthIntegrationTest extends IntegrationTest {
 
     @Autowired
-    MockMvc mvc;
-
-    @Autowired
-    ObjectMapper json;
+    private RecordingMailer mailer;
 
     @Test
-    void registers_then_logs_in_and_refreshes() throws Exception {
-        String email = "ana+" + System.nanoTime() + "@example.com";
+    void signing_up_then_signing_in_and_refreshing() throws Exception {
+        String email = "ana%d@example.com".formatted(System.nanoTime());
+        String password = "Sunrise2Bed!";
 
-        String registerBody = mvc.perform(post("/api/v1/auth/register")
+        mvc.perform(post("/api/v1/auth/register/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\"}".formatted(email)))
+                .andExpect(status().isOk());
+
+        mvc.perform(post("/api/v1/auth/register/complete")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Ana Reyes","email":"%s","password":"correct-horse-battery"}
-                                """.formatted(email)))
+                                {"email":"%s","code":"%s","name":"Ana Reyes","password":"%s"}
+                                """.formatted(email, mailer.lastCode(), password)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
-                // Every account gets a tenant profile; landlord was not requested.
+                // A tenant and nothing else. There is no longer any way to hand
+                // yourself a landlord profile on the way in.
                 .andExpect(jsonPath("$.profiles[0]").value("TENANT"))
-                .andExpect(jsonPath("$.profiles.length()").value(1))
-                .andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.profiles.length()").value(1));
 
         String loginBody = mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"identifier":"%s","password":"correct-horse-battery"}
-                                """.formatted(email)))
+                                {"identifier":"%s","password":"%s"}
+                                """.formatted(email, password)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -95,48 +78,23 @@ class AuthIntegrationTest {
                                 """.formatted(refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
-
-        assertThat(json.readTree(registerBody).get("userId").asText()).isNotEmpty();
     }
 
     @Test
-    void landlord_registration_yields_both_profiles() throws Exception {
-        mvc.perform(post("/api/v1/auth/register")
+    void an_account_can_be_signed_in_with_the_password_it_was_given()
+            throws Exception {
+        // Tests everywhere else are handed a token rather than signing in. If
+        // the seeded accounts were not real accounts, that shortcut would be
+        // hiding something, so one of them signs in here for real.
+        var ana = accounts.tenant("Ana");
+
+        mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Elena Bautista","email":"elena+%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":true}
-                                """.formatted(System.nanoTime())))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.profiles.length()").value(2));
-    }
-
-    @Test
-    void duplicate_email_is_rejected_with_a_specific_code() throws Exception {
-        String email = "dupe+" + System.nanoTime() + "@example.com";
-        String body = """
-                {"name":"First","email":"%s","password":"correct-horse-battery"}
-                """.formatted(email);
-
-        mvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated());
-
-        mvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_REGISTERED"));
-    }
-
-    @Test
-    void registration_without_email_or_phone_is_rejected() throws Exception {
-        mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"No Contact","password":"correct-horse-battery"}
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("CONTACT_REQUIRED"));
+                                {"identifier":"%s","password":"%s"}
+                                """.formatted(ana.email(), Accounts.PASSWORD)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(ana.id().toString()));
     }
 
     @Test
@@ -156,5 +114,19 @@ class AuthIntegrationTest {
         mvc.perform(get("/api/v1/properties"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+    }
+
+    @Test
+    void the_old_one_shot_registration_is_gone() throws Exception {
+        // It took a name, a password and an unverified address, and would make
+        // a landlord out of anyone who asked. An old build of the app still
+        // pointing here must fail outright rather than half-work.
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Elena","email":"elena%d@example.com",
+                                 "password":"correct-horse-battery","asLandlord":true}
+                                """.formatted(System.nanoTime())))
+                .andExpect(status().isNotFound());
     }
 }

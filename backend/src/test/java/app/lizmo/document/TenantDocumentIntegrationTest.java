@@ -3,7 +3,6 @@ package app.lizmo.document;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,21 +42,10 @@ class TenantDocumentIntegrationTest extends IntegrationTest {
     @BeforeEach
     void signUp() throws Exception {
         store.clear();
-        tenantToken = register("ana");
-        otherTenantToken = register("bea");
+        tenantToken = accounts.tenant("ana").token();
+        otherTenantToken = accounts.tenant("bea").token();
     }
 
-    private String register(String prefix) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":false}
-                                """.formatted(prefix, prefix, System.nanoTime())))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private void upload(String token, String docType, byte[] bytes) throws Exception {
         mvc.perform(multipart("/api/v1/me/tenant-profile/documents")

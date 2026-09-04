@@ -1,6 +1,11 @@
 package app.lizmo.support;
 
+import app.lizmo.security.JwtService;
+import app.lizmo.user.LandlordProfileRepository;
+import app.lizmo.user.TenantProfileRepository;
+import app.lizmo.user.UserRepository;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
@@ -49,5 +54,18 @@ public class TestStorageConfig {
     @Primary
     RecordingMailer mailer() {
         return new RecordingMailer();
+    }
+
+    /**
+     * Signed-in people, for the tests whose subject is something else.
+     */
+    @Bean
+    Accounts accounts(
+            UserRepository users,
+            TenantProfileRepository tenantProfiles,
+            LandlordProfileRepository landlordProfiles,
+            PasswordEncoder passwordEncoder,
+            JwtService jwt) {
+        return new Accounts(users, tenantProfiles, landlordProfiles, passwordEncoder, jwt);
     }
 }

@@ -51,10 +51,10 @@ class TenantDocumentAccessIntegrationTest extends IntegrationTest {
     void setUp() throws Exception {
         store.clear();
 
-        landlordToken = register("elena", true);
-        otherLandlordToken = register("mario", true);
-        anaToken = register("ana", false);
-        beaToken = register("bea", false);
+        landlordToken = accounts.landlord("elena").token();
+        otherLandlordToken = accounts.landlord("mario").token();
+        anaToken = accounts.tenant("ana").token();
+        beaToken = accounts.tenant("bea").token();
 
         String property = mvc.perform(post("/api/v1/properties")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -86,17 +86,6 @@ class TenantDocumentAccessIntegrationTest extends IntegrationTest {
         makeReadyForALease(anaToken);
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     private void makeReadyForALease(String token) throws Exception {
         mvc.perform(put("/api/v1/me/tenant-profile")

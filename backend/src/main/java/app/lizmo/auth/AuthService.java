@@ -3,13 +3,11 @@ package app.lizmo.auth;
 import app.lizmo.auth.dto.AuthResponse;
 import app.lizmo.auth.dto.CompleteRegistrationRequest;
 import app.lizmo.auth.dto.LoginRequest;
-import app.lizmo.auth.dto.RegisterRequest;
 import app.lizmo.auth.verification.EmailVerificationService;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.config.JwtProperties;
 import app.lizmo.security.JwtService;
-import app.lizmo.user.LandlordProfile;
 import app.lizmo.user.LandlordProfileRepository;
 import app.lizmo.user.PlatformAdminRepository;
 import app.lizmo.user.TenantProfile;
@@ -102,38 +100,6 @@ public class AuthService {
         // A tenant profile and nothing else. Landlords are invited by an admin,
         // so nobody makes themselves one by ticking a box.
         tenantProfiles.save(new TenantProfile(user.getId()));
-
-        return issueTokens(user);
-    }
-
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        String email = normalise(request.email());
-        String phone = normalise(request.phone());
-
-        if (email == null && phone == null) {
-            throw new ApiException(ErrorCode.CONTACT_REQUIRED,
-                    "Provide an email address or a phone number.");
-        }
-        if (email != null && users.existsByEmail(email)) {
-            throw new ApiException(ErrorCode.EMAIL_ALREADY_REGISTERED,
-                    "That email address is already registered.");
-        }
-        if (phone != null && users.existsByPhone(phone)) {
-            throw new ApiException(ErrorCode.PHONE_ALREADY_REGISTERED,
-                    "That phone number is already registered.");
-        }
-
-        User user = users.save(
-                new User(request.name(), email, phone, passwordEncoder.encode(request.password())));
-
-        // Everyone gets a tenant profile: it is the baseline capability, and a
-        // landlord may also rent elsewhere. Landlord is additive, never a
-        // replacement.
-        tenantProfiles.save(new TenantProfile(user.getId()));
-        if (request.asLandlord()) {
-            landlordProfiles.save(new LandlordProfile(user.getId()));
-        }
 
         return issueTokens(user);
     }

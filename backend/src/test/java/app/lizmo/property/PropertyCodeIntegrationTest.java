@@ -31,21 +31,10 @@ class PropertyCodeIntegrationTest extends IntegrationTest {
 
     @BeforeEach
     void signUp() throws Exception {
-        landlordToken = register("elena", true);
-        tenantToken = register("ana", false);
+        landlordToken = accounts.landlord("elena").token();
+        tenantToken = accounts.tenant("ana").token();
     }
 
-    private String register(String prefix, boolean asLandlord) throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"%s","email":"%s%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":%s}
-                                """.formatted(prefix, prefix, System.nanoTime(), asLandlord)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("accessToken").asText();
-    }
 
     /** @return the new property's code */
     private String createProperty(String name) throws Exception {

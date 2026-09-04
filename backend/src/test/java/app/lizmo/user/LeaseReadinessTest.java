@@ -3,12 +3,12 @@ package app.lizmo.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
+import app.lizmo.support.Accounts;
 import app.lizmo.support.IntegrationTest;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -43,18 +43,10 @@ class LeaseReadinessTest extends IntegrationTest {
     private UUID tenantId;
 
     @BeforeEach
-    void signUp() throws Exception {
-        String body = mvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"Ana","email":"ana%d@example.com",
-                                 "password":"correct-horse-battery","asLandlord":false}
-                                """.formatted(System.nanoTime())))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        token = json.readTree(body).get("accessToken").asText();
-        tenantId = UUID.fromString(json.readTree(body).get("userId").asText());
+    void signUp() {
+        Accounts.Account ana = accounts.tenant("Ana");
+        token = ana.token();
+        tenantId = ana.id();
     }
 
     @Test

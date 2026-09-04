@@ -8,7 +8,16 @@
 # tenant who tries to ask for a bed too early, fixes their profile, and asks
 # again. Every account is stamped with the current epoch so the script can be
 # run repeatedly without colliding on an email address.
+#
+# OUT OF ORDER. It made its landlord by posting to /auth/register with
+# asLandlord, and that endpoint is gone: signing up is now an emailed code, and
+# a landlord is invited by an admin. It comes back once the invitation endpoint
+# exists -- until then there is no way for a script to make a landlord at all.
 set -euo pipefail
+
+echo "This script needs the landlord invitation endpoint, which does not exist" >&2
+echo "yet. See the note at the top of the file." >&2
+exit 1
 
 API="${LIZMO_API:-http://localhost:8082}"
 STAMP=$(date +%s)

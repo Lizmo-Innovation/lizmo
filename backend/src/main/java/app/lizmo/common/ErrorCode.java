@@ -25,10 +25,6 @@ public enum ErrorCode {
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED),
 
     EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT),
-    PHONE_ALREADY_REGISTERED(HttpStatus.CONFLICT),
-
-    /** Neither email nor phone was supplied — chk_contact requires one. */
-    CONTACT_REQUIRED(HttpStatus.BAD_REQUEST),
 
     /** Too many failed sign-in attempts. Carries Retry-After. */
     TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
