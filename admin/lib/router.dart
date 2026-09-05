@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'screens/accept_invitation_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/invitations_screen.dart';
 import 'screens/landlord_detail_screen.dart';
@@ -14,6 +15,13 @@ abstract final class Routes {
   static const splash = '/';
   static const login = '/login';
   static const noAccess = '/no-access';
+
+  /// Where an invited landlord sets their password.
+  ///
+  /// Public, and outside every gate: the person following this link is not
+  /// staff, usually has no account at all, and must never be shown the console
+  /// login — which is what happened before this route existed.
+  static const invite = '/invite';
 
   /// Where an admin lands. Landlords rather than the payment queue: payments
   /// are a task, landlords are the subject.
@@ -35,6 +43,9 @@ abstract final class Routes {
       console.contains(location) || location.startsWith('$landlords/');
 }
 
+/// Matched as a prefix, since the token is part of the path.
+const invitePrefix = Routes.invite;
+
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = AuthRefreshNotifier(ref);
   ref.onDispose(refresh.dispose);
@@ -45,6 +56,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       final location = state.matchedLocation;
+
+      // Before anything else: an invited landlord is not a visitor to the
+      // console, and none of the rules below are about them.
+      if (location.startsWith('$invitePrefix/')) return null;
 
       return switch (auth) {
         AuthUnknown() => location == Routes.splash ? null : Routes.splash,
@@ -63,6 +78,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const AdminLoginScreen()),
+      GoRoute(
+        path: '${Routes.invite}/:token',
+        pageBuilder: (context, state) => NoTransitionPage(
+          child: AcceptInvitationScreen(token: state.pathParameters['token']!),
+        ),
+      ),
       // No transition between console screens.
       //
       // go_router animates a route change by default, which is right on a

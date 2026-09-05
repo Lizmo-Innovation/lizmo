@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo_admin/admin_providers.dart';
 import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_admin/router.dart';
+import 'package:lizmo_admin/screens/accept_invitation_screen.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
 import 'package:lizmo_admin/screens/invitations_screen.dart';
 import 'package:lizmo_admin/screens/landlord_detail_screen.dart';
@@ -70,6 +71,24 @@ Widget _app(
         landlordsProvider.overrideWith((ref) async => landlords ?? const []),
         invitationsProvider.overrideWith((ref) async => invitations ?? const []),
         landlordProvider.overrideWith((ref, id) async => landlord),
+      ],
+      child: const LizmoAdminApp(),
+    );
+
+/// The invitation page at a given token, with the API answering for it.
+Widget _inviteApp({
+  InvitationDetailsResponse? invitation,
+  Object? failure,
+  AuthState auth = const AuthSignedOut(),
+}) =>
+    ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(() => _FakeAuth(auth)),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        invitationDetailsProvider.overrideWith((ref, token) async {
+          if (failure != null) throw failure;
+          return invitation;
+        }),
       ],
       child: const LizmoAdminApp(),
     );
@@ -420,6 +439,111 @@ void main() {
       // Somebody has to notice that a landlord never signed up. One that
       // silently disappears after seven days is one nobody follows up.
       expect(find.text('Expired'), findsOneWidget);
+    });
+  });
+
+  group('an invited landlord', () {
+    testWidgets('the link opens a page of their own, not the staff console',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_inviteApp(
+        invitation: InvitationDetailsResponse(
+          email: 'elena@example.com',
+          hasAccount: false,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final router = ProviderScope.containerOf(
+        tester.element(find.byType(LizmoAdminApp)),
+      ).read(routerProvider);
+      router.go('/invite/a-token');
+      await tester.pumpAndSettle();
+
+      // Before this page existed, an invited landlord following their link was
+      // redirected to the console sign-in and could go no further.
+      expect(find.byType(AcceptInvitationScreen), findsOneWidget);
+      expect(find.byType(AdminLoginScreen), findsNothing);
+      expect(find.text('elena@example.com'), findsOneWidget);
+      expect(find.text('Create my account'), findsOneWidget);
+    });
+
+    testWidgets('a new landlord is shown the password rules', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_inviteApp(
+        invitation: InvitationDetailsResponse(
+          email: 'elena@example.com',
+          hasAccount: false,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/invite/a-token');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your name'), findsOneWidget);
+      expect(find.text('A capital letter'), findsOneWidget);
+    });
+
+    testWidgets('somebody who already rents is asked for the password they have',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_inviteApp(
+        invitation: InvitationDetailsResponse(
+          email: 'ana@example.com',
+          hasAccount: true,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/invite/a-token');
+      await tester.pumpAndSettle();
+
+      // A forwarded link must not hand a stranger somebody else's tenancies,
+      // so the existing password is the proof.
+      expect(find.text('Your Lizmo password'), findsOneWidget);
+      expect(find.text('Your name'), findsNothing);
+      expect(find.textContaining('you keep everything you already have'),
+          findsOneWidget);
+    });
+
+    testWidgets('an expired link says so, and what to do', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_inviteApp(
+        failure: const ApiFailure(
+          code: 'INVITATION_EXPIRED',
+          message: 'This invitation has expired.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/invite/a-token');
+      await tester.pumpAndSettle();
+
+      expect(find.text('This invitation has expired'), findsOneWidget);
+      expect(find.textContaining('Ask Lizmo to send a new invitation'),
+          findsOneWidget);
+    });
+
+    testWidgets('a used link is refused the same way', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_inviteApp(
+        failure: const ApiFailure(
+          code: 'INVITATION_INVALID',
+          message: 'This invitation has already been used. Sign in instead.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/invite/a-token');
+      await tester.pumpAndSettle();
+
+      // One invitation, one landlord: the link dies the moment it is used.
+      expect(find.text('This link cannot be used'), findsOneWidget);
     });
   });
 

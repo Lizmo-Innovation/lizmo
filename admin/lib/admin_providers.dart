@@ -29,3 +29,12 @@ final landlordProvider =
 final invitationsProvider = FutureProvider<List<PendingInvitation>>((ref) async {
   return await ref.watch(adminApiProvider).listInvitations() ?? const [];
 });
+
+/// What one invitation link is for.
+///
+/// Public: the person following it has no account yet, or has one and is not
+/// signed in on the device the email opened.
+final invitationDetailsProvider =
+    FutureProvider.family<InvitationDetailsResponse?, String>((ref, token) async {
+  return ref.watch(signingUpApiProvider).getInvitation(token);
+});
