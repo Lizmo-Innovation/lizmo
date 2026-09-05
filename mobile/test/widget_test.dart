@@ -9,6 +9,7 @@ import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
 import 'package:lizmo/screens/create_unit_screen.dart';
 import 'package:lizmo/screens/property_detail_screen.dart';
+import 'package:lizmo/screens/find_property_screen.dart';
 import 'package:lizmo/screens/scan_code_screen.dart';
 import 'package:lizmo/screens/property_share_screen.dart';
 import 'package:lizmo/screens/landlord_home_screen.dart';
@@ -3602,7 +3603,7 @@ void _tenantProfileTests() {
     testWidgets('the prompt opens the profile', (tester) async {
       await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Finish your profile'));
+      await tester.tap(find.text('Open my profile'));
       await tester.pumpAndSettle();
 
       expect(find.text('My profile'), findsOneWidget);
@@ -4172,17 +4173,21 @@ void _findingAPlaceTests() {
       child: const LizmoApp(),
     );
 
-    /// Home card, then the scanner's own way out to typing.
+    /// The My place tab, then its way out to typing.
     ///
-    /// The card opens the camera now, which is what most tenants will use and
-    /// what no widget test can drive. Going through "Type it instead" is both
-    /// the way to reach the field and a check that the fallback is reachable
-    /// at all — a camera-only path would strand anyone who refuses permission.
+    /// Finding somewhere lives under My place now: it is the same question as
+    /// "where do I live", asked before the answer exists.
+    ///
+    /// The primary action opens the camera, which is what most tenants will
+    /// use and what no widget test can drive. Going through the typing link is
+    /// both the way to reach the field and a check that the fallback is
+    /// reachable at all — a camera-only path would strand anyone who refuses
+    /// permission.
     Future<void> openFind(WidgetTester tester) async {
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Looking for a room?'));
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Type it instead'));
+      await tester.tap(find.text('Type the code instead'));
       await tester.pumpAndSettle();
     }
 
@@ -4193,12 +4198,15 @@ void _findingAPlaceTests() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('the home screen offers the way in', (tester) async {
+    testWidgets('My place is the way in', (tester) async {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
 
-      // A tenant with no lease has exactly one thing to do in this app.
-      expect(find.text('Looking for a room?'), findsOneWidget);
+      // A tenant with no lease has exactly one thing to do in this app, and
+      // the tab that will hold their tenancy is where they do it.
+      expect(find.text('Scan a property code'), findsOneWidget);
     });
 
     testWidgets('the code is upper-cased as it is typed', (tester) async {
@@ -4712,39 +4720,48 @@ void _tenantLeaseTests() {
           status: LeaseResponseStatusEnum.ACTIVE,
         );
 
-    testWidgets('the lease replaces the invitation to look', (tester) async {
+    /// The lease facts live on My place now, not on the home screen. Home
+    /// answers "what needs me"; this answers "where do I live".
+    Future<void> openMyPlace(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a tenancy replaces the invitation to look', (tester) async {
       await tester.pumpWidget(appWith([lease()]));
       await tester.pumpAndSettle();
+      await openMyPlace(tester);
 
       // Somebody who has somewhere to live does not need asking whether they
       // are looking for somewhere to live.
       expect(find.text('Bed 1, 2B'), findsOneWidget);
-      expect(find.text('Looking for a room?'), findsNothing);
+      expect(find.text('Scan a property code'), findsNothing);
     });
 
     testWidgets('without one, the invitation stands', (tester) async {
       await tester.pumpWidget(appWith(const []));
       await tester.pumpAndSettle();
+      await openMyPlace(tester);
 
-      expect(find.text('Looking for a room?'), findsOneWidget);
+      expect(find.textContaining('not renting through Lizmo yet'), findsOneWidget);
+      expect(find.text('Scan a property code'), findsOneWidget);
     });
 
     testWidgets('a whole unit is named as a unit', (tester) async {
       await tester.pumpWidget(appWith([lease(bedLabel: null)]));
       await tester.pumpAndSettle();
+      await openMyPlace(tester);
 
-      expect(find.text('Unit 2B'), findsOneWidget);
+      expect(find.text('Unit 2B'), findsWidgets);
     });
 
-    testWidgets('the due date reads as a date', (tester) async {
+    testWidgets('the rent day reads as a date', (tester) async {
       await tester.pumpWidget(appWith([lease(dueDay: 22)]));
       await tester.pumpAndSettle();
+      await openMyPlace(tester);
 
-      // "due on the 22" looks like a bug.
-      expect(
-        find.textContaining('rent due on the 22nd'),
-        findsOneWidget,
-      );
+      // "the 22" looks like a bug.
+      expect(find.text('The 22nd'), findsOneWidget);
     });
 
     testWidgets('the awkward ordinals are right', (tester) async {
@@ -4764,12 +4781,59 @@ void _tenantLeaseTests() {
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pumpWidget(appWith([lease(dueDay: day)]));
         await tester.pumpAndSettle();
+        await openMyPlace(tester);
         expect(
-          find.textContaining('rent due on the $expected'),
+          find.text('The $expected'),
           findsOneWidget,
           reason: 'day $day should read as $expected',
         );
       }
+    });
+
+    testWidgets('the home screen says what is waiting, not what is invented',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()]));
+      await tester.pumpAndSettle();
+
+      // This screen used to carry three hardcoded billing periods and a header
+      // naming a property the tenant had never heard of. A brand-new tenant
+      // was told they owed 2,500 pesos, overdue.
+      expect(find.text('Billing periods'), findsNothing);
+      expect(find.text('+ Submit a payment'), findsNothing);
+      expect(find.text('August 2026'), findsNothing);
+      expect(find.text('Sunrise Apartments'), findsOneWidget);
+    });
+
+    testWidgets('payments and maintenance say plainly that they are empty',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.pumpAndSettle();
+      expect(find.text('No bills yet'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
+      await tester.pumpAndSettle();
+      expect(find.text('Not built yet'), findsOneWidget);
+    });
+
+    testWidgets('each tab keeps its own stack', (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+
+      await openMyPlace(tester);
+      await tester.tap(find.text('Type the code instead'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FindPropertyScreen), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+
+      // Coming back lands where you left, which is what a tab bar is for.
+      expect(find.byType(FindPropertyScreen), findsOneWidget);
     });
   });
 }

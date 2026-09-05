@@ -42,9 +42,11 @@ class RoleSwitcher extends ConsumerWidget {
                   // Navigate explicitly: the router redirects on *auth* changes,
                   // and switching role is not one. go() rather than push() so
                   // back does not return to the other role's screen.
+                  // The section roots, not the prefixes: both sections are
+                  // tab shells now, and /tenant on its own is not a screen.
                   context.go(role == LizmoProfile.tenant
-                      ? Routes.tenant
-                      : Routes.landlord);
+                      ? Routes.tenantHome
+                      : Routes.landlordHome);
                 },
               ),
         ],
