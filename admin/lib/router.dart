@@ -63,19 +63,36 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const AdminLoginScreen()),
+      // No transition between console screens.
+      //
+      // go_router animates a route change by default, which is right on a
+      // phone where a push means "you have gone somewhere". Here the rail is
+      // always on screen and only the panel beside it changes: a fade makes
+      // moving between sections feel like waiting, and doing it twenty times
+      // an afternoon is the whole job.
       GoRoute(
         path: Routes.landlords,
-        builder: (context, state) => const LandlordsScreen(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: LandlordsScreen()),
         routes: [
           GoRoute(
             path: ':id',
-            builder: (context, state) =>
-                LandlordDetailScreen(landlordId: state.pathParameters['id']!),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: LandlordDetailScreen(landlordId: state.pathParameters['id']!),
+            ),
           ),
         ],
       ),
-      GoRoute(path: Routes.payments, builder: (context, state) => const PlatformPaymentsScreen()),
-      GoRoute(path: Routes.invitations, builder: (context, state) => const InvitationsScreen()),
+      GoRoute(
+        path: Routes.payments,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: PlatformPaymentsScreen()),
+      ),
+      GoRoute(
+        path: Routes.invitations,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: InvitationsScreen()),
+      ),
       GoRoute(path: Routes.noAccess, builder: (context, state) => const NoAccessScreen()),
     ],
     errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
