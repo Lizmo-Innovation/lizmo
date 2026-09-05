@@ -75,6 +75,29 @@ void main() {
     );
   });
 
+  testWidgets('the invitations screen', (tester) async {
+    tester.view
+      ..physicalSize = const Size(1100, 700)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_app(const AuthSignedIn(Session(
+      userId: 'u1',
+      name: 'Lizmo Staff',
+      profiles: {LizmoProfile.admin},
+      accessToken: 'token',
+    ))));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(InkWell, 'Invitations'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(LizmoAdminApp),
+      matchesGoldenFile('goldens/console_invitations.png'),
+    );
+  });
+
   testWidgets('login golden', (tester) async {
     tester.view
       ..physicalSize = const Size(1100, 900)

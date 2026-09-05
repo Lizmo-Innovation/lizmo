@@ -231,47 +231,72 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
               style: LizmoType.rowSub,
             ),
             const SizedBox(height: 14),
+
+            // Labels above the fields rather than inside the decoration, so
+            // all three controls start at the same line. With the label
+            // floating inside, the input boxes sit lower than a button beside
+            // them and the row reads as slightly broken.
+            //
+            // The button carries the same label widget, made invisible but
+            // still taking its space: that matches the heights exactly instead
+            // of guessing an offset that drifts the moment the type scale
+            // changes.
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   flex: 3,
-                  child: TextFormField(
-                    controller: _email,
-                    autocorrect: false,
-                    decoration: _field('elena@example.com', 'Email address'),
-                    validator: (value) {
-                      final text = (value ?? '').trim();
-                      if (text.isEmpty) return 'Enter an email address';
-                      if (!text.contains('@') || text.endsWith('@')) {
-                        return 'That does not look like an email address';
-                      }
-                      return null;
-                    },
+                  child: _Labelled(
+                    label: 'Email address',
+                    child: TextFormField(
+                      controller: _email,
+                      autocorrect: false,
+                      style: LizmoType.rowName,
+                      decoration: _field('elena@example.com'),
+                      onFieldSubmitted: (_) => _sending ? null : _send(),
+                      validator: (value) {
+                        final text = (value ?? '').trim();
+                        if (text.isEmpty) return 'Enter an email address';
+                        if (!text.contains('@') || text.endsWith('@')) {
+                          return 'That does not look like an email address';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: TextFormField(
-                    controller: _name,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: _field('Elena Bautista', 'Name (optional)'),
+                  child: _Labelled(
+                    label: 'Name (optional)',
+                    child: TextFormField(
+                      controller: _name,
+                      textCapitalization: TextCapitalization.words,
+                      style: LizmoType.rowName,
+                      decoration: _field('Elena Bautista'),
+                      onFieldSubmitted: (_) => _sending ? null : _send(),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Padding(
-                  padding: const EdgeInsets.only(top: 22),
-                  child: SizedBox(
-                    width: 132,
-                    child: _sending
-                        ? const Center(
-                            child: SizedBox(
-                              height: 20, width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : PrimaryActionButton(label: 'Send invitation', onPressed: _send),
+                SizedBox(
+                  width: 148,
+                  child: _Labelled(
+                    label: '',
+                    child: SizedBox(
+                      height: 46,
+                      child: _sending
+                          ? const Center(
+                              child: SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : PrimaryActionButton(
+                              label: 'Send invitation', onPressed: _send),
+                    ),
                   ),
                 ),
               ],
@@ -293,7 +318,7 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
     );
   }
 
-  InputDecoration _field(String hint, String label) {
+  InputDecoration _field(String hint) {
     OutlineInputBorder border(Color colour) => OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: colour),
@@ -301,19 +326,43 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
 
     return InputDecoration(
       hintText: hint,
-      labelText: label,
       hintStyle: LizmoType.rowSub,
-      labelStyle: LizmoType.rowSub,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
       filled: true,
       fillColor: LizmoColors.white,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      // Matches the action button's own vertical padding, so the field box and
+      // the button are the same height rather than nearly the same.
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
       enabledBorder: border(const Color(0xFFE3E8E6)),
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
       errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    );
+  }
+}
+
+/// A field with its label above it — and the same shape for the button beside
+/// them, whose label is blank but still occupies its line.
+class _Labelled extends StatelessWidget {
+  const _Labelled({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label.isEmpty ? ' ' : label,
+          style: LizmoType.rowSub.copyWith(fontSize: 11),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
     );
   }
 }
