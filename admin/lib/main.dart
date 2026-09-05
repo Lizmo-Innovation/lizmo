@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'router.dart';
 
 void main() {
+  // Real paths, not #fragments.
+  //
+  // Flutter web defaults to the hash strategy, which means the router only
+  // ever sees what follows a "#". An invitation link like /invite/<token>
+  // then arrives as an empty location, and the console redirects the landlord
+  // to a staff sign-in they cannot use -- which is exactly what it did.
+  //
+  // nginx already answers every path with index.html (see
+  // infra/nginx/flutter-web.conf), so a refresh or a pasted URL works.
+  usePathUrlStrategy();
+
   runApp(
     ProviderScope(
       overrides: [
