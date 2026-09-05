@@ -19,7 +19,8 @@ abstract final class ApiConfig {
     // address passed via --dart-define.
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       //return 'http://10.0.2.2:8082';
-      return 'http://192.168.18.7:8082';
+      //return 'http://192.168.18.7:8082';
+      return 'https://lizmo-api-66cqnyxeha-as.a.run.app';
     }
 
     // Host port 8082, not 8080 — see the README on port collisions.

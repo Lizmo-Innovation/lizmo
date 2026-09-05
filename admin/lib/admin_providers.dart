@@ -38,3 +38,21 @@ final invitationDetailsProvider =
     FutureProvider.family<InvitationDetailsResponse?, String>((ref, token) async {
   return ref.watch(signingUpApiProvider).getInvitation(token);
 });
+
+final platformApiProvider = Provider<AdminApi>((ref) {
+  return AdminApi(ref.watch(apiClientProvider));
+});
+
+/// Where somebody writes to ask for their account to be deleted.
+///
+/// Read without signing in: the page that shows it has to work for somebody
+/// who has already uninstalled the app.
+final supportContactProvider = FutureProvider<String?>((ref) async {
+  final contact = await ref.watch(platformApiProvider).getSupportContact();
+  return contact?.email;
+});
+
+/// The settings the console owns, for the screen that edits them.
+final platformSettingsProvider = FutureProvider<PlatformSettings?>((ref) async {
+  return ref.watch(adminApiProvider).getPlatformSettings();
+});

@@ -6,6 +6,8 @@ import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_admin/router.dart';
 import 'package:lizmo_admin/screens/accept_invitation_screen.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
+import 'package:lizmo_admin/screens/delete_account_info_screen.dart';
+import 'package:lizmo_admin/screens/settings_screen.dart';
 import 'package:lizmo_admin/screens/invitations_screen.dart';
 import 'package:lizmo_admin/screens/landlord_detail_screen.dart';
 import 'package:lizmo_admin/screens/landlords_screen.dart';
@@ -544,6 +546,92 @@ void main() {
 
       // One invitation, one landlord: the link dies the moment it is used.
       expect(find.text('This link cannot be used'), findsOneWidget);
+    });
+  });
+
+  group('the account deletion page', () {
+    Widget publicPage({String? support = 'help@lizmo.test'}) => ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+                () => _FakeAuth(const AuthSignedOut())),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            supportContactProvider.overrideWith((ref) async => support),
+          ],
+          child: const LizmoAdminApp(),
+        );
+
+    testWidgets('opens without signing in', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(publicPage());
+      await tester.pumpAndSettle();
+
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/delete-account');
+      await tester.pumpAndSettle();
+
+      // Google Play requires this reachable without installing anything, and
+      // somebody who has already uninstalled cannot sign in to ask.
+      expect(find.byType(DeleteAccountInfoScreen), findsOneWidget);
+      expect(find.byType(AdminLoginScreen), findsNothing);
+    });
+
+    testWidgets('says what goes, what stays, and where to write',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(publicPage());
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/delete-account');
+      await tester.pumpAndSettle();
+
+      expect(find.text('What is deleted'), findsOneWidget);
+      expect(find.text('What is kept, and for how long'), findsOneWidget);
+      // The address comes from a setting, so correcting it is a console visit
+      // rather than a redeploy.
+      expect(find.textContaining('help@lizmo.test'), findsOneWidget);
+    });
+
+    testWidgets('still explains itself when the address cannot be loaded',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(publicPage(support: null));
+      await tester.pumpAndSettle();
+      ProviderScope.containerOf(tester.element(find.byType(LizmoAdminApp)))
+          .read(routerProvider)
+          .go('/delete-account');
+      await tester.pumpAndSettle();
+
+      // A policy page that fails to render because one request failed is a
+      // policy page that is not there.
+      expect(find.text('What is deleted'), findsOneWidget);
+    });
+  });
+
+  group('settings', () {
+    testWidgets('shows the address the public page will carry', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.admin}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          landlordsProvider.overrideWith((ref) async => const []),
+          invitationsProvider.overrideWith((ref) async => const []),
+          landlordProvider.overrideWith((ref, id) async => null),
+          platformSettingsProvider.overrideWith(
+              (ref) async => PlatformSettings(supportEmail: 'help@lizmo.test')),
+        ],
+        child: const LizmoAdminApp(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(InkWell, 'Settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(find.text('help@lizmo.test'), findsOneWidget);
     });
   });
 

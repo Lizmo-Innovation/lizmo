@@ -25,6 +25,7 @@ import 'screens/scan_code_screen.dart';
 import 'screens/tenant_home_screen.dart';
 import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
+import 'screens/delete_account_screen.dart';
 import 'screens/maintenance_screen.dart';
 import 'screens/my_place_screen.dart';
 import 'screens/tenant_payments_screen.dart';
@@ -52,6 +53,10 @@ abstract final class Routes {
   /// The tenant's own profile. Under /tenant, so the role guard already
   /// covers it.
   static const tenantProfile = '/tenant/home/profile';
+
+  /// Closing the account. Under Home, so it is reachable from the account
+  /// sheet on any tenant screen.
+  static const deleteAccount = '/tenant/home/delete-account';
 
   /// Where a tenant starts looking for somewhere to live. Under My place,
   /// because that is the tab the question belongs to.
@@ -215,6 +220,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'profile',
                     builder: (context, state) => const TenantProfileScreen(),
+                  ),
+                  GoRoute(
+                    path: 'delete-account',
+                    builder: (context, state) => const DeleteAccountScreen(),
                   ),
                 ],
               ),

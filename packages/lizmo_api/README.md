@@ -60,12 +60,15 @@ All URIs are relative to *http://localhost:8082*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *AdminApi* | [**getLandlord**](doc//AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
+*AdminApi* | [**getPlatformSettings**](doc//AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
+*AdminApi* | [**getSupportContact**](doc//AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
 *AdminApi* | [**inviteLandlord**](doc//AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 *AdminApi* | [**listInvitations**](doc//AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
 *AdminApi* | [**listLandlords**](doc//AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
 *AdminApi* | [**lockProperty**](doc//AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
 *AdminApi* | [**revokeInvitation**](doc//AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
 *AdminApi* | [**unlockProperty**](doc//AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
+*AdminApi* | [**updatePlatformSettings**](doc//AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
 *AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
 *AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
 *AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
@@ -77,6 +80,8 @@ Class | Method | HTTP request | Description
 *LeasesApi* | [**listLeasesForProperty**](doc//LeasesApi.md#listleasesforproperty) | **GET** /api/v1/properties/{propertyId}/leases | Who is living here
 *LeasesApi* | [**listMyLeases**](doc//LeasesApi.md#listmyleases) | **GET** /api/v1/me/leases | My leases
 *LeasesApi* | [**listTenantDocumentsForLease**](doc//LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
+*MyAccountApi* | [**checkAccountDeletable**](doc//MyAccountApi.md#checkaccountdeletable) | **GET** /api/v1/me/deletable | Whether this account can be closed
+*MyAccountApi* | [**deleteMyAccount**](doc//MyAccountApi.md#deletemyaccount) | **DELETE** /api/v1/me | Close my account
 *PropertiesApi* | [**createProperty**](doc//PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 *PropertiesApi* | [**createUnit**](doc//PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 *PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
@@ -129,6 +134,7 @@ Class | Method | HTTP request | Description
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [PendingInvitation](doc//PendingInvitation.md)
+ - [PlatformSettings](doc//PlatformSettings.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
@@ -138,6 +144,7 @@ Class | Method | HTTP request | Description
  - [RentalRequestResponse](doc//RentalRequestResponse.md)
  - [StartRegistrationRequest](doc//StartRegistrationRequest.md)
  - [StartRegistrationResponse](doc//StartRegistrationResponse.md)
+ - [SupportContact](doc//SupportContact.md)
  - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)

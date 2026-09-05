@@ -10,12 +10,15 @@ All URIs are relative to *http://localhost:8082*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**getLandlord**](AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
+[**getPlatformSettings**](AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
+[**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
 [**inviteLandlord**](AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 [**listInvitations**](AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
 [**listLandlords**](AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
 [**lockProperty**](AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
 [**revokeInvitation**](AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
 [**unlockProperty**](AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
+[**updatePlatformSettings**](AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
 
 
 # **getLandlord**
@@ -49,6 +52,82 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**LandlordDetail**](LandlordDetail.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getPlatformSettings**
+> PlatformSettings getPlatformSettings()
+
+Settings the console owns
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+
+try {
+    final result = api_instance.getPlatformSettings();
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->getPlatformSettings: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**PlatformSettings**](PlatformSettings.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getSupportContact**
+> SupportContact getSupportContact()
+
+Where to write to Lizmo
+
+Public: the account deletion page shows it, and that page must work for somebody who has already uninstalled the app.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+
+try {
+    final result = api_instance.getSupportContact();
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->getSupportContact: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SupportContact**](SupportContact.md)
 
 ### Authorization
 
@@ -304,6 +383,49 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updatePlatformSettings**
+> PlatformSettings updatePlatformSettings(platformSettings)
+
+Change them
+
+The support address appears on a public page and is what a stranger is told to write to, so it is validated and who changed it is recorded.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final platformSettings = PlatformSettings(); // PlatformSettings | 
+
+try {
+    final result = api_instance.updatePlatformSettings(platformSettings);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->updatePlatformSettings: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **platformSettings** | [**PlatformSettings**](PlatformSettings.md)|  | 
+
+### Return type
+
+[**PlatformSettings**](PlatformSettings.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

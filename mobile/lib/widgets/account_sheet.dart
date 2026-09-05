@@ -75,6 +75,19 @@ class AccountSheet extends ConsumerWidget {
                 },
               ),
 
+            // Not buried, deliberately. An app that makes leaving hard is an
+            // app people leave badly -- by uninstalling, which deletes nothing
+            // and leaves their ID photographs where they were.
+            _SheetAction(
+              icon: Icons.delete_outline,
+              label: 'Delete my account',
+              colour: LizmoColors.ink,
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push(Routes.deleteAccount);
+              },
+            ),
+
             _SheetAction(
               icon: Icons.logout,
               label: 'Sign out',

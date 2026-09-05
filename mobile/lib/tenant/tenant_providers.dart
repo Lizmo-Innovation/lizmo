@@ -103,3 +103,16 @@ final myLeasesProvider =
     throw ApiFailure.from(error);
   }
 });
+
+final myAccountApiProvider = Provider<MyAccountApi>((ref) {
+  return MyAccountApi(ref.watch(apiClientProvider));
+});
+
+/// Whether this account can be closed right now.
+///
+/// Asked before the delete button is offered rather than after somebody has
+/// typed DELETE: a tenant in a tenancy is told their landlord has to end it
+/// first, while they can still go and ask.
+final canDeleteMyAccountProvider = FutureProvider.autoDispose<void>((ref) async {
+  await ref.watch(myAccountApiProvider).checkAccountDeletable();
+});

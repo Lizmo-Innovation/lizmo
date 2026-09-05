@@ -61,6 +61,11 @@ public class SecurityConfig {
                         // signed in on the device the email opened. Named
                         // rather than opening every GET under /auth.
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
+                        // Where to write to Lizmo. Public by requirement: the
+                        // account deletion page shows it, and that page has to
+                        // work for somebody who has already uninstalled the
+                        // app and cannot sign in to ask.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/platform/support").permitAll()
                         // The sub-paths too, not just /actuator/health: Cloud
                         // Run's liveness probe hits /actuator/health/liveness,
                         // and a 401 counts as a failed probe. Three of those

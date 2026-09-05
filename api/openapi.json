@@ -36,6 +36,10 @@
             "description": "A tenant's own photographs"
         },
         {
+            "name": "My account",
+            "description": "The signed-in person's own account"
+        },
+        {
             "name": "Admin",
             "description": "Lizmo's own staff"
         },
@@ -581,6 +585,57 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/settings": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Settings the console owns",
+                "operationId": "getPlatformSettings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlatformSettings"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Change them",
+                "description": "The support address appears on a public page and is what a stranger is told to write to, so it is validated and who changed it is recorded.",
+                "operationId": "updatePlatformSettings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlatformSettings"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlatformSettings"
                                 }
                             }
                         }
@@ -1717,6 +1772,28 @@
                 }
             }
         },
+        "/api/v1/platform/support": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Where to write to Lizmo",
+                "description": "Public: the account deletion page shows it, and that page must work for somebody who has already uninstalled the app.",
+                "operationId": "getSupportContact",
+                "responses": {
+                    "200": {
+                        "description": "The address",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SupportContact"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/leases": {
             "get": {
                 "tags": [
@@ -1734,6 +1811,31 @@
                                     "items": {
                                         "$ref": "#/components/schemas/LeaseResponse"
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/deletable": {
+            "get": {
+                "tags": [
+                    "My account"
+                ],
+                "summary": "Whether this account can be closed",
+                "description": "204 when it can. Asked before the confirmation screen, so somebody is told why not while they can still act on it rather than after they have typed DELETE.",
+                "operationId": "checkAccountDeletable",
+                "responses": {
+                    "204": {
+                        "description": "It can be closed"
+                    },
+                    "409": {
+                        "description": "A tenancy is still running",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -1896,6 +1998,31 @@
                     },
                     "404": {
                         "description": "No such landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me": {
+            "delete": {
+                "tags": [
+                    "My account"
+                ],
+                "summary": "Close my account",
+                "description": "Ends every session, deletes the photographs of your ID, and removes your name, phone number and profile details. Leases and the history of what was paid stay, attached to an id that no longer names anybody, because they are your landlord's records as much as yours.",
+                "operationId": "deleteMyAccount",
+                "responses": {
+                    "204": {
+                        "description": "Closed"
+                    },
+                    "409": {
+                        "description": "A tenancy is still running",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -2462,6 +2589,21 @@
                     }
                 },
                 "description": "A bed within a bedspace unit"
+            },
+            "PlatformSettings": {
+                "required": [
+                    "supportEmail"
+                ],
+                "type": "object",
+                "properties": {
+                    "supportEmail": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "lizmodev@gmail.com"
+                    }
+                },
+                "description": "Settings the console owns"
             },
             "RentalRequestForLandlord": {
                 "type": "object",
@@ -3116,6 +3258,15 @@
                     }
                 },
                 "description": "A whole unit that is free"
+            },
+            "SupportContact": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "description": "Where to write to Lizmo"
             },
             "InvitationDetailsResponse": {
                 "type": "object",

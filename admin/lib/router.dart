@@ -5,11 +5,13 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'screens/accept_invitation_screen.dart';
+import 'screens/delete_account_info_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/invitations_screen.dart';
 import 'screens/landlord_detail_screen.dart';
 import 'screens/landlords_screen.dart';
 import 'screens/platform_payments_screen.dart';
+import 'screens/settings_screen.dart';
 
 abstract final class Routes {
   static const splash = '/';
@@ -23,16 +25,24 @@ abstract final class Routes {
   /// login — which is what happened before this route existed.
   static const invite = '/invite';
 
+  /// How to delete a Lizmo account, for somebody not holding the app.
+  ///
+  /// Public and outside every gate. Google Play requires this reachable
+  /// without installing anything: somebody who has already uninstalled must
+  /// still be able to ask.
+  static const deleteAccount = '/delete-account';
+
   /// Where an admin lands. Landlords rather than the payment queue: payments
   /// are a task, landlords are the subject.
   static const landlords = '/landlords';
   static const payments = '/payments';
   static const invitations = '/invitations';
+  static const settings = '/settings';
 
   /// Everything an admin may be on. Anything else sends them home, which is
   /// how a typed URL, a stale bookmark and a signed-in visitor on /login all
   /// end up somewhere sensible.
-  static const console = {landlords, payments, invitations};
+  static const console = {landlords, payments, invitations, settings};
 
   /// Whether a location belongs to the console.
   ///
@@ -60,6 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Before anything else: an invited landlord is not a visitor to the
       // console, and none of the rules below are about them.
       if (location.startsWith('$invitePrefix/')) return null;
+      if (location == Routes.deleteAccount) return null;
 
       return switch (auth) {
         AuthUnknown() => location == Routes.splash ? null : Routes.splash,
@@ -78,6 +89,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const AdminLoginScreen()),
+      GoRoute(
+        path: Routes.deleteAccount,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: DeleteAccountInfoScreen()),
+      ),
       GoRoute(
         path: '${Routes.invite}/:token',
         pageBuilder: (context, state) => NoTransitionPage(
@@ -113,6 +129,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.invitations,
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: InvitationsScreen()),
+      ),
+      GoRoute(
+        path: Routes.settings,
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: SettingsScreen()),
       ),
       GoRoute(path: Routes.noAccess, builder: (context, state) => const NoAccessScreen()),
     ],

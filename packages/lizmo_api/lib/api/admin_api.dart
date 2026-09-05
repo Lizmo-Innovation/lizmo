@@ -74,6 +74,100 @@ class AdminApi {
     return null;
   }
 
+  /// Settings the console owns
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getPlatformSettingsWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/settings';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Settings the console owns
+  Future<PlatformSettings?> getPlatformSettings({ Future<void>? abortTrigger, }) async {
+    final response = await getPlatformSettingsWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformSettings',) as PlatformSettings;
+    
+    }
+    return null;
+  }
+
+  /// Where to write to Lizmo
+  ///
+  /// Public: the account deletion page shows it, and that page must work for somebody who has already uninstalled the app.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getSupportContactWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/platform/support';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Where to write to Lizmo
+  ///
+  /// Public: the account deletion page shows it, and that page must work for somebody who has already uninstalled the app.
+  Future<SupportContact?> getSupportContact({ Future<void>? abortTrigger, }) async {
+    final response = await getSupportContactWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'SupportContact',) as SupportContact;
+    
+    }
+    return null;
+  }
+
   /// Invite a landlord
   ///
   /// Emails a link that lets somebody set up a landlord account. Good for seven days and one use; inviting the same address again replaces the earlier link.
@@ -392,6 +486,63 @@ class AdminApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AdminPropertySummary',) as AdminPropertySummary;
+    
+    }
+    return null;
+  }
+
+  /// Change them
+  ///
+  /// The support address appears on a public page and is what a stranger is told to write to, so it is validated and who changed it is recorded.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [PlatformSettings] platformSettings (required):
+  Future<Response> updatePlatformSettingsWithHttpInfo(PlatformSettings platformSettings, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/settings';
+
+    // ignore: prefer_final_locals
+    Object? postBody = platformSettings;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Change them
+  ///
+  /// The support address appears on a public page and is what a stranger is told to write to, so it is validated and who changed it is recorded.
+  ///
+  /// Parameters:
+  ///
+  /// * [PlatformSettings] platformSettings (required):
+  Future<PlatformSettings?> updatePlatformSettings(PlatformSettings platformSettings, { Future<void>? abortTrigger, }) async {
+    final response = await updatePlatformSettingsWithHttpInfo(platformSettings, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformSettings',) as PlatformSettings;
     
     }
     return null;

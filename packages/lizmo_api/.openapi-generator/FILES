@@ -23,7 +23,9 @@ doc/LeaseResponse.md
 doc/LeasesApi.md
 doc/LoginRequest.md
 doc/MaintenanceRequest.md
+doc/MyAccountApi.md
 doc/PendingInvitation.md
+doc/PlatformSettings.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
 doc/PropertyRequest.md
@@ -36,6 +38,7 @@ doc/RequestsToAnswerApi.md
 doc/SigningUpApi.md
 doc/StartRegistrationRequest.md
 doc/StartRegistrationResponse.md
+doc/SupportContact.md
 doc/TenantDocumentResponse.md
 doc/TenantDocumentsApi.md
 doc/TenantProfileApi.md
@@ -58,6 +61,7 @@ lib/api/asking_for_a_room_api.dart
 lib/api/auth_api.dart
 lib/api/finding_a_place_api.dart
 lib/api/leases_api.dart
+lib/api/my_account_api.dart
 lib/api/properties_api.dart
 lib/api/requests_to_answer_api.dart
 lib/api/signing_up_api.dart
@@ -90,6 +94,7 @@ lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
 lib/model/pending_invitation.dart
+lib/model/platform_settings.dart
 lib/model/property_by_code_response.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
@@ -99,6 +104,7 @@ lib/model/rental_request_for_landlord.dart
 lib/model/rental_request_response.dart
 lib/model/start_registration_request.dart
 lib/model/start_registration_response.dart
+lib/model/support_contact.dart
 lib/model/tenant_document_response.dart
 lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
@@ -112,7 +118,6 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/admin_property_summary_test.dart
-test/landlord_detail_test.dart
-test/landlord_summary_test.dart
-test/pending_invitation_test.dart
+test/my_account_api_test.dart
+test/platform_settings_test.dart
+test/support_contact_test.dart

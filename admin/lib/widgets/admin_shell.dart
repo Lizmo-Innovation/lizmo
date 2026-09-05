@@ -82,6 +82,7 @@ const _destinations = [
   _Destination(Routes.landlords, 'Landlords', Icons.apartment_outlined),
   _Destination(Routes.payments, 'Payments', Icons.receipt_long_outlined),
   _Destination(Routes.invitations, 'Invitations', Icons.mark_email_read_outlined),
+  _Destination(Routes.settings, 'Settings', Icons.tune),
 ];
 
 class _NavigationRail extends ConsumerWidget {
