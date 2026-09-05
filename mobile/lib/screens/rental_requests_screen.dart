@@ -239,11 +239,16 @@ class _Facts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <(String, String?)>[
+      // Their own number, because arranging a viewing is the next thing that
+      // happens. The emergency contact is not here: that is a third person who
+      // never used Lizmo, and who to ring if something happens to somebody who
+      // does not live here yet is no use to a landlord deciding.
+      ('Contact number', request.tenantPhone),
+      // The age, not the birthday. A landlord thinks "27"; an ISO date is a
+      // sum to do in your head, and the server has already done it.
+      ('Age', _age(request)),
       ('Occupation', request.occupation),
-      ('Born', request.birthdate?.toIso8601String().substring(0, 10)),
       ('From', request.permanentAddress),
-      ('Phone', request.tenantPhone),
-      ('In an emergency', _emergency(request)),
       ('ID', request.idType?.toString().replaceAll('_', ' ')),
     ].where((row) => (row.$2 ?? '').isNotEmpty).toList();
 
@@ -279,13 +284,12 @@ class _Facts extends StatelessWidget {
     );
   }
 
-  static String? _emergency(RentalRequestForLandlord request) {
-    final name = request.emergencyContactName;
-    if (name == null || name.isEmpty) return null;
-    final relationship = request.emergencyContactRelationship;
-    final phone = request.emergencyContactPhone;
-    final who = (relationship ?? '').isEmpty ? name : '$name ($relationship)';
-    return (phone ?? '').isEmpty ? who : '$who · $phone';
+  /// Worked out by the server, which has a clock a test can move and does not
+  /// depend on the phone's own being right.
+  static String? _age(RentalRequestForLandlord request) {
+    final age = request.age;
+    if (age == null) return null;
+    return '$age years old';
   }
 }
 

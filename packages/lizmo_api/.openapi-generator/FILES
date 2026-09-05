@@ -118,6 +118,3 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/my_account_api_test.dart
-test/platform_settings_test.dart
-test/support_contact_test.dart

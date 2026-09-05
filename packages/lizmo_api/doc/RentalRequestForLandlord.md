@@ -23,9 +23,7 @@ Name | Type | Description | Notes
 **birthdate** | [**DateTime**](DateTime.md) |  | [optional] 
 **occupation** | **String** |  | [optional] 
 **permanentAddress** | **String** |  | [optional] 
-**emergencyContactName** | **String** |  | [optional] 
-**emergencyContactRelationship** | **String** |  | [optional] 
-**emergencyContactPhone** | **String** |  | [optional] 
+**age** | **int** |  | [optional] 
 **idType** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

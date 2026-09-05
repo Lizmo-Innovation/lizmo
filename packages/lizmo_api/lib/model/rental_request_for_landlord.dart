@@ -28,9 +28,7 @@ class RentalRequestForLandlord {
     this.birthdate,
     this.occupation,
     this.permanentAddress,
-    this.emergencyContactName,
-    this.emergencyContactRelationship,
-    this.emergencyContactPhone,
+    this.age,
     this.idType,
   });
 
@@ -154,23 +152,7 @@ class RentalRequestForLandlord {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? emergencyContactName;
-
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
-  String? emergencyContactRelationship;
-
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
-  String? emergencyContactPhone;
+  int? age;
 
   RentalRequestForLandlordIdTypeEnum? idType;
 
@@ -191,9 +173,7 @@ class RentalRequestForLandlord {
     other.birthdate == birthdate &&
     other.occupation == occupation &&
     other.permanentAddress == permanentAddress &&
-    other.emergencyContactName == emergencyContactName &&
-    other.emergencyContactRelationship == emergencyContactRelationship &&
-    other.emergencyContactPhone == emergencyContactPhone &&
+    other.age == age &&
     other.idType == idType;
 
   @override
@@ -214,13 +194,11 @@ class RentalRequestForLandlord {
     (birthdate == null ? 0 : birthdate!.hashCode) +
     (occupation == null ? 0 : occupation!.hashCode) +
     (permanentAddress == null ? 0 : permanentAddress!.hashCode) +
-    (emergencyContactName == null ? 0 : emergencyContactName!.hashCode) +
-    (emergencyContactRelationship == null ? 0 : emergencyContactRelationship!.hashCode) +
-    (emergencyContactPhone == null ? 0 : emergencyContactPhone!.hashCode) +
+    (age == null ? 0 : age!.hashCode) +
     (idType == null ? 0 : idType!.hashCode);
 
   @override
-  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, emergencyContactName=$emergencyContactName, emergencyContactRelationship=$emergencyContactRelationship, emergencyContactPhone=$emergencyContactPhone, idType=$idType]';
+  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, age=$age, idType=$idType]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -299,20 +277,10 @@ class RentalRequestForLandlord {
     } else {
       json[r'permanentAddress'] = null;
     }
-    if (this.emergencyContactName != null) {
-      json[r'emergencyContactName'] = this.emergencyContactName;
+    if (this.age != null) {
+      json[r'age'] = this.age;
     } else {
-      json[r'emergencyContactName'] = null;
-    }
-    if (this.emergencyContactRelationship != null) {
-      json[r'emergencyContactRelationship'] = this.emergencyContactRelationship;
-    } else {
-      json[r'emergencyContactRelationship'] = null;
-    }
-    if (this.emergencyContactPhone != null) {
-      json[r'emergencyContactPhone'] = this.emergencyContactPhone;
-    } else {
-      json[r'emergencyContactPhone'] = null;
+      json[r'age'] = null;
     }
     if (this.idType != null) {
       json[r'idType'] = this.idType;
@@ -352,9 +320,7 @@ class RentalRequestForLandlord {
         birthdate: mapDateTime(json, r'birthdate', r''),
         occupation: mapValueOfType<String>(json, r'occupation'),
         permanentAddress: mapValueOfType<String>(json, r'permanentAddress'),
-        emergencyContactName: mapValueOfType<String>(json, r'emergencyContactName'),
-        emergencyContactRelationship: mapValueOfType<String>(json, r'emergencyContactRelationship'),
-        emergencyContactPhone: mapValueOfType<String>(json, r'emergencyContactPhone'),
+        age: mapValueOfType<int>(json, r'age'),
         idType: RentalRequestForLandlordIdTypeEnum.fromJson(json[r'idType']),
       );
     }

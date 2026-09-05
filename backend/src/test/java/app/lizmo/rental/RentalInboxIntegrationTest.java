@@ -182,13 +182,22 @@ class RentalInboxIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].occupation").value("Nurse"))
                 .andExpect(jsonPath("$[0].birthdate").value("1998-04-12"))
                 .andExpect(jsonPath("$[0].permanentAddress").value("Naga City"))
-                .andExpect(jsonPath("$[0].emergencyContactName").value("Rosa Dela Cruz"))
-                .andExpect(jsonPath("$[0].emergencyContactRelationship").value("Mother"))
-                .andExpect(jsonPath("$[0].emergencyContactPhone").value("09171234567"))
+                // The age, not the sum. A landlord reads "27", and the
+                // arithmetic -- leap years, a phone whose clock is a day out --
+                // is not the app's to get wrong.
+                .andExpect(jsonPath("$[0].age").isNumber())
                 // What they carry, so the landlord knows a lease can be signed.
                 .andExpect(jsonPath("$[0].idType").value("PHILSYS"))
                 // And how to actually reach them about a viewing.
-                .andExpect(jsonPath("$[0].tenantPhone").exists());
+                .andExpect(jsonPath("$[0].tenantPhone").exists())
+
+                // Not the emergency contact. That is a third person who never
+                // used Lizmo and never agreed to anything, and a landlord
+                // deciding whether to let a room has no use for who to ring if
+                // something happens to somebody who does not live there yet.
+                .andExpect(jsonPath("$[0].emergencyContactName").doesNotExist())
+                .andExpect(jsonPath("$[0].emergencyContactPhone").doesNotExist())
+                .andExpect(jsonPath("$[0].emergencyContactRelationship").doesNotExist());
     }
 
     @Test

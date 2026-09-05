@@ -4507,9 +4507,7 @@ void _landlordRequestTests() {
       tenantPhone: '09171234567',
       occupation: 'Nurse',
       permanentAddress: 'Naga City',
-      emergencyContactName: 'Rosa Dela Cruz',
-      emergencyContactRelationship: 'Mother',
-      emergencyContactPhone: '09179876543',
+      age: 27,
       idType: RentalRequestForLandlordIdTypeEnum.PHILSYS,
     );
 
@@ -4618,11 +4616,26 @@ void _landlordRequestTests() {
 
       expect(find.text('Nurse'), findsOneWidget);
       expect(find.text('Naga City'), findsOneWidget);
+      // Their own number: arranging a viewing is the next thing that happens.
       expect(find.text('09171234567'), findsOneWidget);
-      // Who to call, in one line rather than three fields.
-      expect(find.text('Rosa Dela Cruz (Mother) · 09179876543'), findsOneWidget);
+      // The age, not a date to do arithmetic on.
+      expect(find.text('27 years old'), findsOneWidget);
       // What they carry, without the number.
       expect(find.text('PHILSYS'), findsOneWidget);
+    });
+
+    testWidgets('the emergency contact is not part of an application',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: [request()]));
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+
+      // A third person who never used Lizmo and never agreed to anything.
+      // Who to ring if something happens to somebody who does not live here
+      // yet is no use to a landlord deciding whether to let them.
+      expect(find.textContaining('In an emergency'), findsNothing);
+      expect(find.textContaining('Rosa'), findsNothing);
     });
 
     testWidgets('accepting asks first, then sends', (tester) async {

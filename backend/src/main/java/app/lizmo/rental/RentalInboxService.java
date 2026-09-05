@@ -13,6 +13,8 @@ import app.lizmo.user.TenantProfileRepository;
 import app.lizmo.user.User;
 import app.lizmo.user.UserRepository;
 import java.util.ArrayList;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -34,19 +36,24 @@ public class RentalInboxService {
     private final UserRepository users;
     private final TenantProfileRepository profiles;
 
+    /** Injected so an age can be asserted against a date a test chooses. */
+    private final Clock clock;
+
     public RentalInboxService(
             RentalRequestRepository requests,
             PropertyAccess access,
             UnitRepository units,
             BedRepository beds,
             UserRepository users,
-            TenantProfileRepository profiles) {
+            TenantProfileRepository profiles,
+            Clock clock) {
         this.requests = requests;
         this.access = access;
         this.units = units;
         this.beds = beds;
         this.users = users;
         this.profiles = profiles;
+        this.clock = clock;
     }
 
     /**
@@ -103,6 +110,7 @@ public class RentalInboxService {
                 tenant,
                 profile,
                 unit == null ? null : unit.getUnitNumber(),
-                bed == null ? null : bed.getBedLabel());
+                bed == null ? null : bed.getBedLabel(),
+                LocalDate.now(clock));
     }
 }
