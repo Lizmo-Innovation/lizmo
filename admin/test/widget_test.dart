@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_admin/router.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
+import 'package:lizmo_admin/screens/invitations_screen.dart';
+import 'package:lizmo_admin/screens/landlords_screen.dart';
 import 'package:lizmo_admin/screens/platform_payments_screen.dart';
+import 'package:lizmo_admin/widgets/platform_payment_card.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
@@ -53,12 +56,14 @@ void main() {
       expect(find.byType(PlatformPaymentsScreen), findsNothing);
     });
 
-    testWidgets('a platform admin reaches the queue', (tester) async {
+    testWidgets('a platform admin lands on the landlords list', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
       await tester.pumpAndSettle();
 
-      expect(find.byType(PlatformPaymentsScreen), findsOneWidget);
+      // Landlords rather than the payment queue: payments are a task you sit
+      // down to do, landlords are the subject the console is about.
+      expect(find.byType(LandlordsScreen), findsOneWidget);
     });
 
     testWidgets('a landlord with valid credentials is refused', (tester) async {
@@ -74,7 +79,7 @@ void main() {
       expect(find.textContaining('not a Lizmo admin'), findsOneWidget);
     });
 
-    testWidgets('an admin who also rents still reaches the queue', (tester) async {
+    testWidgets('an admin who also rents still gets in', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(
         _app(_signedIn({LizmoProfile.tenant, LizmoProfile.admin})),
@@ -82,7 +87,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Lizmo staff may rent somewhere too; that must not lock them out.
-      expect(find.byType(PlatformPaymentsScreen), findsOneWidget);
+      expect(find.byType(LandlordsScreen), findsOneWidget);
     });
 
     testWidgets('a landlord cannot reach the queue by URL', (tester) async {
@@ -125,28 +130,60 @@ void main() {
     });
   });
 
-  group('review queue', () {
-    testWidgets('lists payments with their statuses', (tester) async {
+  group('the console frame', () {
+    testWidgets('the rail moves between screens', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
       await tester.pumpAndSettle();
 
-      expect(find.text('LIZMO ADMIN'), findsOneWidget);
-      expect(find.text('Platform payments'), findsOneWidget);
-      expect(find.byType(StatusChip), findsNWidgets(4));
+      // The console had no navigation at all before: one screen, and a way
+      // out. A tool somebody works in needs somewhere to go.
+      await tester.tap(find.widgetWithText(InkWell, 'Payments'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PlatformPaymentsScreen), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InkWell, 'Invitations'));
+      await tester.pumpAndSettle();
+      expect(find.byType(InvitationsScreen), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InkWell, 'Landlords'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LandlordsScreen), findsOneWidget);
     });
 
-    testWidgets('only pending payments expose confirm/reject', (tester) async {
+    testWidgets('every screen says plainly that it is empty', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
       await tester.pumpAndSettle();
 
-      // Confirmed and overdue rows have nothing left to decide.
-      expect(find.text('Confirm'), findsNWidgets(2));
-      expect(find.text('Reject'), findsNWidgets(2));
+      // This screen used to render five invented landlords with Confirm and
+      // Reject buttons wired to nothing. A console that looks finished and
+      // does nothing is worse than one that admits what it is.
+      expect(find.text('No landlords yet'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InkWell, 'Payments'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nothing to review'), findsOneWidget);
+      expect(find.text('Confirm'), findsNothing);
     });
 
-    testWidgets('sign out is reachable from the header', (tester) async {
+    testWidgets('a narrow window keeps the rail, drops its labels',
+        (tester) async {
+      tester.view
+        ..physicalSize = const Size(600 * 2, 800 * 2)
+        ..devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
+
+      // A browser dragged to half a screen is a normal way to use a console.
+      // The rail narrows rather than pushing the content off the edge.
+      expect(find.text('Lizmo admin'), findsNothing);
+      expect(find.byIcon(Icons.receipt_long_outlined), findsOneWidget);
+    });
+
+    testWidgets('sign out is reachable', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
       await tester.pumpAndSettle();
@@ -154,6 +191,43 @@ void main() {
       // An admin session can confirm payments to Lizmo, so ending one on a
       // shared machine must be easy.
       expect(find.text('Sign out'), findsOneWidget);
+    });
+  });
+
+  group('the payment card', () {
+    // Built, and not yet placed on any screen: nothing raises a billing cycle,
+    // so there is nothing for the queue to list. Tested directly so the
+    // component stays honest until the endpoint exists.
+    Widget card(LizmoStatus status, String label) => MaterialApp(
+          home: Scaffold(
+            body: PlatformPaymentCard(
+              landlord: 'Elena Bautista',
+              subtitle: 'Sunrise Apartments · March',
+              amount: '\u20b12,480',
+              status: status,
+              statusLabel: label,
+              onConfirm: () {},
+              onReject: () {},
+              onViewProof: () {},
+            ),
+          ),
+        );
+
+    testWidgets('a pending payment offers a decision', (tester) async {
+      await tester.pumpWidget(card(LizmoStatus.pending, 'Pending'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Confirm'), findsOneWidget);
+      expect(find.text('Reject'), findsOneWidget);
+    });
+
+    testWidgets('a settled payment offers none', (tester) async {
+      await tester.pumpWidget(card(LizmoStatus.paid, 'Confirmed'));
+      await tester.pumpAndSettle();
+
+      // Confirmed rows have nothing left to decide.
+      expect(find.text('Confirm'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
     });
   });
 

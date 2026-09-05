@@ -30,7 +30,7 @@ Widget _app(AuthState initial) => ProviderScope(
     );
 
 void main() {
-  testWidgets('platform payments golden', (tester) async {
+  testWidgets('the console where an admin lands', (tester) async {
     tester.view
       ..physicalSize = const Size(1100, 900)
       ..devicePixelRatio = 1;
@@ -46,7 +46,7 @@ void main() {
 
     await expectLater(
       find.byType(LizmoAdminApp),
-      matchesGoldenFile('goldens/platform_payments.png'),
+      matchesGoldenFile('goldens/console_landlords.png'),
     );
   });
 
