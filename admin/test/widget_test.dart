@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizmo_admin/admin_providers.dart';
 import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_admin/router.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
 import 'package:lizmo_admin/screens/invitations_screen.dart';
+import 'package:lizmo_admin/screens/landlord_detail_screen.dart';
 import 'package:lizmo_admin/screens/landlords_screen.dart';
 import 'package:lizmo_admin/screens/platform_payments_screen.dart';
 import 'package:lizmo_admin/widgets/platform_payment_card.dart';
+import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
@@ -21,10 +24,52 @@ class _FakeAuth extends AuthController {
   AuthState build() => _initial;
 }
 
-Widget _app(AuthState initial) => ProviderScope(
+LandlordSummary _landlord({
+  String id = 'l1',
+  String name = 'Elena Bautista',
+  int properties = 2,
+  int locked = 0,
+  int beds = 6,
+}) =>
+    LandlordSummary(
+      userId: id,
+      name: name,
+      email: 'elena@example.com',
+      properties: properties,
+      lockedProperties: locked,
+      occupiedUnits: 1,
+      occupiedBeds: beds,
+    );
+
+AdminPropertySummary _property({String status = 'ACTIVE'}) => AdminPropertySummary(
+      id: 'p1',
+      name: 'Sunrise Apartments',
+      address: '12 Mabini St',
+      code: 'PH4CP4G2',
+      accountStatus: status,
+      units: 3,
+      occupiedUnits: 1,
+      beds: 6,
+      occupiedBeds: 4,
+    );
+
+/// The console, with the API answering whatever a test needs it to.
+///
+/// Every screen reads from it now, so a test that does not override this is a
+/// test about an error state rather than the one it meant to write.
+Widget _app(
+  AuthState initial, {
+  List<LandlordSummary>? landlords,
+  LandlordDetail? landlord,
+  List<PendingInvitation>? invitations,
+}) =>
+    ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(() => _FakeAuth(initial)),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        landlordsProvider.overrideWith((ref) async => landlords ?? const []),
+        invitationsProvider.overrideWith((ref) async => invitations ?? const []),
+        landlordProvider.overrideWith((ref, id) async => landlord),
       ],
       child: const LizmoAdminApp(),
     );
@@ -166,6 +211,111 @@ void main() {
       expect(find.text('Nothing to review'), findsOneWidget);
       expect(find.text('Confirm'), findsNothing);
     });
+  });
+
+  group('the landlords list', () {
+    testWidgets('shows each landlord and what they are billed for',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord(), _landlord(id: 'l2', name: 'Rodel Cruz')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Elena Bautista'), findsOneWidget);
+      expect(find.text('Rodel Cruz'), findsOneWidget);
+      // Slots, not money: nothing raises an invoice yet, and a total of zero
+      // pesos would read as "everybody has paid".
+      expect(find.text('Billable slots'), findsOneWidget);
+    });
+
+    testWidgets('a partly locked landlord is not simply "locked"',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord(properties: 3, locked: 1)],
+      ));
+      await tester.pumpAndSettle();
+
+      // The lock is per property. Telling an admin the landlord is locked
+      // would have them chasing the wrong thing.
+      expect(find.text('1 of 3 locked'), findsOneWidget);
+    });
+
+    testWidgets('every property locked says so plainly', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord(properties: 2, locked: 2)],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('All locked'), findsOneWidget);
+    });
+
+    testWidgets('a landlord opens their own page', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord()],
+        landlord: LandlordDetail(
+          landlord: _landlord(),
+          properties: [_property()],
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Elena Bautista'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LandlordDetailScreen), findsOneWidget);
+      expect(find.text('Sunrise Apartments'), findsOneWidget);
+    });
+  });
+
+  group('one landlord', () {
+    Widget page({String status = 'ACTIVE'}) => _app(
+          _signedIn({LizmoProfile.admin}),
+          landlords: [_landlord()],
+          landlord: LandlordDetail(
+            landlord: _landlord(),
+            properties: [_property(status: status)],
+          ),
+        );
+
+    testWidgets('offers to lock an active property', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(page());
+      await tester.pumpAndSettle();
+      tester.state<NavigatorState>(find.byType(Navigator));
+
+      await tester.tap(find.widgetWithText(InkWell, 'Landlords'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Elena Bautista').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lock'), findsOneWidget);
+      expect(find.text('Active'), findsWidgets);
+    });
+
+    testWidgets('offers to unlock a locked one, and says why it matters',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(page(status: 'LOCKED'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(InkWell, 'Landlords'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Elena Bautista').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unlock'), findsOneWidget);
+      // An admin looking for an invoice and finding none should learn that
+      // none exists, not conclude the page is broken.
+      expect(find.textContaining('No invoices yet'), findsOneWidget);
+    });
 
     testWidgets('a narrow window keeps the rail, drops its labels',
         (tester) async {
@@ -191,6 +341,85 @@ void main() {
       // An admin session can confirm payments to Lizmo, so ending one on a
       // shared machine must be easy.
       expect(find.text('Sign out'), findsOneWidget);
+    });
+  });
+
+  group('invitations', () {
+    Future<void> open(WidgetTester tester) async {
+      await tester.tap(find.widgetWithText(InkWell, 'Invitations'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('an address is required before anything is sent',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
+      await open(tester);
+
+      await tester.tap(find.text('Send invitation'));
+      await tester.pump();
+
+      expect(find.text('Enter an email address'), findsOneWidget);
+    });
+
+    testWidgets('nonsense is refused before the round trip', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin})));
+      await tester.pumpAndSettle();
+      await open(tester);
+
+      await tester.enterText(find.byType(TextFormField).first, 'elena');
+      await tester.tap(find.text('Send invitation'));
+      await tester.pump();
+
+      expect(find.text('That does not look like an email address'), findsOneWidget);
+    });
+
+    testWidgets('outstanding invitations are listed with their age',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        invitations: [
+          PendingInvitation(
+            id: 'i1',
+            email: 'rodel@example.com',
+            sentAt: DateTime.now().toUtc().subtract(const Duration(days: 3)),
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 4)),
+            expired: false,
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await open(tester);
+
+      expect(find.text('rodel@example.com'), findsOneWidget);
+      // How long ago, not a timestamp: the question is whether to chase.
+      expect(find.text('3 days ago'), findsOneWidget);
+      expect(find.text('Withdraw'), findsOneWidget);
+    });
+
+    testWidgets('an expired invitation stays on the list', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        invitations: [
+          PendingInvitation(
+            id: 'i1',
+            email: 'gone@example.com',
+            sentAt: DateTime.now().toUtc().subtract(const Duration(days: 9)),
+            expiresAt: DateTime.now().toUtc().subtract(const Duration(days: 2)),
+            expired: true,
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await open(tester);
+
+      // Somebody has to notice that a landlord never signed up. One that
+      // silently disappears after seven days is one nobody follows up.
+      expect(find.text('Expired'), findsOneWidget);
     });
   });
 

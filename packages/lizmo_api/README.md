@@ -42,13 +42,13 @@ import 'package:lizmo_api/api.dart';
 
 
 final api_instance = AdminApi();
-final inviteLandlordRequest = InviteLandlordRequest(); // InviteLandlordRequest | 
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.inviteLandlord(inviteLandlordRequest);
+    final result = api_instance.getLandlord(id);
     print(result);
 } catch (e) {
-    print('Exception when calling AdminApi->inviteLandlord: $e\n');
+    print('Exception when calling AdminApi->getLandlord: $e\n');
 }
 
 ```
@@ -59,7 +59,13 @@ All URIs are relative to *http://localhost:8082*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AdminApi* | [**getLandlord**](doc//AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 *AdminApi* | [**inviteLandlord**](doc//AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
+*AdminApi* | [**listInvitations**](doc//AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
+*AdminApi* | [**listLandlords**](doc//AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
+*AdminApi* | [**lockProperty**](doc//AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
+*AdminApi* | [**revokeInvitation**](doc//AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
+*AdminApi* | [**unlockProperty**](doc//AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
 *AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
 *AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
 *AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
@@ -107,6 +113,7 @@ Class | Method | HTTP request | Description
 
  - [AcceptInvitationRequest](doc//AcceptInvitationRequest.md)
  - [AcceptRequest](doc//AcceptRequest.md)
+ - [AdminPropertySummary](doc//AdminPropertySummary.md)
  - [ApiError](doc//ApiError.md)
  - [AuthResponse](doc//AuthResponse.md)
  - [BedRequest](doc//BedRequest.md)
@@ -116,9 +123,12 @@ Class | Method | HTTP request | Description
  - [InvitationDetailsResponse](doc//InvitationDetailsResponse.md)
  - [InvitationSentResponse](doc//InvitationSentResponse.md)
  - [InviteLandlordRequest](doc//InviteLandlordRequest.md)
+ - [LandlordDetail](doc//LandlordDetail.md)
+ - [LandlordSummary](doc//LandlordSummary.md)
  - [LeaseResponse](doc//LeaseResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
+ - [PendingInvitation](doc//PendingInvitation.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)

@@ -187,6 +187,8 @@ class ApiClient {
           return AcceptInvitationRequest.fromJson(value);
         case 'AcceptRequest':
           return AcceptRequest.fromJson(value);
+        case 'AdminPropertySummary':
+          return AdminPropertySummary.fromJson(value);
         case 'ApiError':
           return ApiError.fromJson(value);
         case 'AuthResponse':
@@ -205,12 +207,18 @@ class ApiClient {
           return InvitationSentResponse.fromJson(value);
         case 'InviteLandlordRequest':
           return InviteLandlordRequest.fromJson(value);
+        case 'LandlordDetail':
+          return LandlordDetail.fromJson(value);
+        case 'LandlordSummary':
+          return LandlordSummary.fromJson(value);
         case 'LeaseResponse':
           return LeaseResponse.fromJson(value);
         case 'LoginRequest':
           return LoginRequest.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'PendingInvitation':
+          return PendingInvitation.fromJson(value);
         case 'PropertyByCodeResponse':
           return PropertyByCodeResponse.fromJson(value);
         case 'PropertyRequest':

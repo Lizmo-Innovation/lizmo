@@ -94,9 +94,12 @@ public class LeaseService {
         Unit unit = units.findById(lease.getUnitId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));
 
-        // Writable, not readable: ending a tenancy is a change to who lives in
-        // the property.
-        access.writable(unit.getPropertyId(), landlordId);
+        // Reducible, not writable: ending a tenancy is allowed even when the
+        // property is locked for an unpaid invoice. It is the write that
+        // *lowers* what the landlord owes, and blocking it would mean billing
+        // for a bed they are not allowed to mark empty -- while the tenant who
+        // moved out keeps seeing an active lease.
+        access.reducible(unit.getPropertyId(), landlordId);
 
         if (!lease.isActive()) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,

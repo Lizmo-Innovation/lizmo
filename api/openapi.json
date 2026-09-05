@@ -1393,7 +1393,95 @@
                 }
             }
         },
+        "/api/v1/admin/properties/{id}/unlock": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Let a property be managed again",
+                "operationId": "unlockProperty",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unlocked",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminPropertySummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{id}/lock": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Stop a property being added to",
+                "description": "Blocks new units, new beds and accepting requests. Never affects the tenants already living there, and never stops the landlord ending a lease or declining a request.",
+                "operationId": "lockProperty",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Locked",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminPropertySummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/landlord-invitations": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Invitations not yet taken up",
+                "description": "Expired ones included: somebody has to notice that a landlord never signed up. Never includes the token.",
+                "operationId": "listInvitations",
+                "responses": {
+                    "200": {
+                        "description": "The invitations",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PendingInvitation"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "tags": [
                     "Admin"
@@ -1740,6 +1828,120 @@
                     }
                 }
             }
+        },
+        "/api/v1/admin/landlords": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Every landlord",
+                "description": "With their property count, how many are locked, and how many slots are occupied. Counts only — no tenant is named.",
+                "operationId": "listLandlords",
+                "responses": {
+                    "200": {
+                        "description": "The landlords",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LandlordSummary"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a Lizmo administrator",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/landlords/{id}": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "One landlord and their properties",
+                "description": "Each property carries its own status, because each carries its own invoice.",
+                "operationId": "getLandlord",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LandlordDetail"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No such landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/landlord-invitations/{id}": {
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Withdraw an invitation",
+                "description": "For a wrong address, or somebody who should not have been invited. The link stops working immediately.",
+                "operationId": "revokeInvitation",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Withdrawn"
+                    },
+                    "400": {
+                        "description": "Already used or withdrawn",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1913,30 +2115,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -1975,6 +2153,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -2605,7 +2807,7 @@
                         "maxLength": 255,
                         "minLength": 0,
                         "type": "string",
-                        "example": "Ana Reyes"
+                        "example": "Juan Dela Cruz"
                     },
                     "password": {
                         "maxLength": 100,
@@ -2711,6 +2913,44 @@
                     }
                 },
                 "description": "Taking up a landlord invitation"
+            },
+            "AdminPropertySummary": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "accountStatus": {
+                        "type": "string"
+                    },
+                    "units": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupiedUnits": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "beds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupiedBeds": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "description": "A property, as the console lists them"
             },
             "InviteLandlordRequest": {
                 "required": [
@@ -2892,6 +3132,84 @@
                     }
                 },
                 "description": "What an invitation is for"
+            },
+            "LandlordSummary": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "properties": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "lockedProperties": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupiedUnits": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupiedBeds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "joinedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A landlord, as the console lists them"
+            },
+            "LandlordDetail": {
+                "type": "object",
+                "properties": {
+                    "landlord": {
+                        "$ref": "#/components/schemas/LandlordSummary"
+                    },
+                    "properties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminPropertySummary"
+                        }
+                    }
+                },
+                "description": "A landlord in full"
+            },
+            "PendingInvitation": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "sentAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "expired": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "An invitation still waiting to be accepted"
             }
         }
     }

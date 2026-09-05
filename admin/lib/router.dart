@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'screens/admin_login_screen.dart';
 import 'screens/invitations_screen.dart';
+import 'screens/landlord_detail_screen.dart';
 import 'screens/landlords_screen.dart';
 import 'screens/platform_payments_screen.dart';
 
@@ -24,6 +25,14 @@ abstract final class Routes {
   /// how a typed URL, a stale bookmark and a signed-in visitor on /login all
   /// end up somewhere sensible.
   static const console = {landlords, payments, invitations};
+
+  /// Whether a location belongs to the console.
+  ///
+  /// A prefix test rather than set membership, because one landlord's page is
+  /// `/landlords/<id>` — matching exactly would bounce an admin home the moment
+  /// they opened one.
+  static bool insideConsole(String location) =>
+      console.contains(location) || location.startsWith('$landlords/');
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -47,14 +56,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         // This runs on every navigation, so a URL typed straight into the
         // address bar is checked the same as a tap.
         AuthSignedIn(:final session) => session.isPlatformAdmin
-            ? (Routes.console.contains(location) ? null : Routes.landlords)
+            ? (Routes.insideConsole(location) ? null : Routes.landlords)
             : (location == Routes.noAccess ? null : Routes.noAccess),
       };
     },
     routes: [
       GoRoute(path: Routes.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (context, state) => const AdminLoginScreen()),
-      GoRoute(path: Routes.landlords, builder: (context, state) => const LandlordsScreen()),
+      GoRoute(
+        path: Routes.landlords,
+        builder: (context, state) => const LandlordsScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) =>
+                LandlordDetailScreen(landlordId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
       GoRoute(path: Routes.payments, builder: (context, state) => const PlatformPaymentsScreen()),
       GoRoute(path: Routes.invitations, builder: (context, state) => const InvitationsScreen()),
       GoRoute(path: Routes.noAccess, builder: (context, state) => const NoAccessScreen()),

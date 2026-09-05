@@ -69,6 +69,17 @@ public class Property {
     @Column(nullable = false)
     private PropertyUsage usage;
 
+    /**
+     * Whether this property may be added to.
+     *
+     * <p>Per property rather than per landlord: somebody with three boarding
+     * houses who falls behind on one should not lose the other two. It never
+     * affects the tenants living here -- see PropertyAccess for what it stops.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false)
+    private PropertyAccountStatus accountStatus = PropertyAccountStatus.ACTIVE;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -120,6 +131,23 @@ public class Property {
         this.description = description;
         this.type = type;
         this.usage = usage;
+    }
+
+    public boolean isLocked() {
+        return accountStatus == PropertyAccountStatus.LOCKED;
+    }
+
+    public PropertyAccountStatus getAccountStatus() {
+        return accountStatus;
+    }
+
+    /** Stops the property being added to. Named for what an admin does, not for a setter. */
+    public void lock() {
+        this.accountStatus = PropertyAccountStatus.LOCKED;
+    }
+
+    public void unlock() {
+        this.accountStatus = PropertyAccountStatus.ACTIVE;
     }
 
     public boolean isOwnedBy(UUID landlordId) {

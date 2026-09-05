@@ -43,6 +43,11 @@ dependencies:
   lizmo_core:
     path: ../packages/lizmo_core
 
+  # The console reads the admin API directly, so the generated client is a
+  # dependency of its own rather than something reached through lizmo_core.
+  lizmo_api:
+    path: ../packages/lizmo_api
+
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
 

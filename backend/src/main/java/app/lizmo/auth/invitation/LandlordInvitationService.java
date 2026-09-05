@@ -3,6 +3,7 @@ package app.lizmo.auth.invitation;
 import app.lizmo.auth.AuthService;
 import app.lizmo.auth.PasswordPolicy;
 import app.lizmo.auth.dto.AuthResponse;
+import app.lizmo.admin.dto.PendingInvitation;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.config.AppProperties;
@@ -21,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -112,6 +114,48 @@ public class LandlordInvitationService {
                 email, name, app.inviteLink(token), token, (int) LIFETIME.toDays());
 
         return expiresAt;
+    }
+
+    /**
+     * Everything sent and not yet taken up, expired ones included.
+     *
+     * <p>Expired invitations stay on the list rather than vanishing: somebody
+     * has to notice that a landlord never signed up, and an invitation that
+     * silently disappears after seven days is one nobody follows up.
+     */
+    @Transactional(readOnly = true)
+    public List<PendingInvitation> pending() {
+        Instant now = clock.instant();
+        return invitations.findByAcceptedAtIsNullOrderByCreatedAtDesc().stream()
+                .map(invitation -> new PendingInvitation(
+                        invitation.getId(),
+                        invitation.getEmail(),
+                        invitation.getCreatedAt(),
+                        invitation.getExpiresAt(),
+                        invitation.hasExpired(now)))
+                .toList();
+    }
+
+    /**
+     * Withdraws an invitation that has not been accepted.
+     *
+     * <p>Marked spent rather than deleted. The row is the record that somebody
+     * was invited at all, and a wrong address that quietly disappears is a
+     * mistake nobody can later explain.
+     */
+    @Transactional
+    public void revoke(UUID invitationId) {
+        LandlordInvitation invitation = invitations.findById(invitationId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND,
+                        "No such invitation."));
+
+        if (invitation.isSpent()) {
+            throw new ApiException(ErrorCode.INVITATION_INVALID,
+                    "That invitation has already been used or withdrawn.");
+        }
+
+        invitation.accept(clock.instant());
+        invitations.save(invitation);
     }
 
     /**

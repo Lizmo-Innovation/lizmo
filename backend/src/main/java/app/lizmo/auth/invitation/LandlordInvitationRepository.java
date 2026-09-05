@@ -1,5 +1,6 @@
 package app.lizmo.auth.invitation;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,7 @@ public interface LandlordInvitationRepository
      * twice is told their invitation was never real.
      */
     Optional<LandlordInvitation> findByTokenHash(String tokenHash);
+
+    /** Everything still outstanding, newest first — the console's list. */
+    List<LandlordInvitation> findByAcceptedAtIsNullOrderByCreatedAtDesc();
 }

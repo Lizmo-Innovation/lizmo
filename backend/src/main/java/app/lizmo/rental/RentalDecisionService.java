@@ -67,7 +67,7 @@ public class RentalDecisionService {
 
     @Transactional
     public LeaseResponse accept(UUID requestId, UUID landlordId, AcceptRequest terms) {
-        RentalRequest request = pendingRequestFor(requestId, landlordId);
+        RentalRequest request = pendingRequestToAccept(requestId, landlordId);
 
         Unit unit = units.findById(request.getUnitId()).orElseThrow(
                 () -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));
@@ -117,7 +117,7 @@ public class RentalDecisionService {
 
     @Transactional
     public RentalRequestForLandlord decline(UUID requestId, UUID landlordId) {
-        RentalRequest request = pendingRequestFor(requestId, landlordId);
+        RentalRequest request = pendingRequestToDecline(requestId, landlordId);
         request.settle(RentalRequestStatus.DECLINED);
         requests.save(request);
         return inbox.one(requestId, landlordId);
@@ -243,14 +243,32 @@ public class RentalDecisionService {
         units.save(unit);
     }
 
-    private RentalRequest pendingRequestFor(UUID requestId, UUID landlordId) {
+    /**
+     * Saying yes takes on a tenant, so a locked property may not.
+     */
+    private RentalRequest pendingRequestToAccept(UUID requestId, UUID landlordId) {
+        RentalRequest request = pendingRequest(requestId);
+        access.writable(request.getPropertyId(), landlordId);
+        return request;
+    }
+
+    /**
+     * Saying no is allowed even while locked.
+     *
+     * <p>The tenant waiting for an answer is not the one who owes Lizmo money.
+     * Blocking this would leave their request PENDING for ever, on a room they
+     * could be looking for elsewhere -- punishing the only person here who has
+     * done nothing and can do nothing.
+     */
+    private RentalRequest pendingRequestToDecline(UUID requestId, UUID landlordId) {
+        RentalRequest request = pendingRequest(requestId);
+        access.reducible(request.getPropertyId(), landlordId);
+        return request;
+    }
+
+    private RentalRequest pendingRequest(UUID requestId) {
         RentalRequest request = requests.findById(requestId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such request."));
-
-        // Writable, not readable: answering a request changes who lives in the
-        // property, and a landlord locked for an unpaid invoice should not be
-        // able to take on new tenants.
-        access.writable(request.getPropertyId(), landlordId);
 
         if (!request.isPending()) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,

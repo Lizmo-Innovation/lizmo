@@ -19,4 +19,9 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
      * a tenant finding a place has no relationship to its owner yet.
      */
     Optional<Property> findByCode(String code);
+
+    /** Whether this landlord has any locked property — the create-property guard. */
+    boolean existsByLandlordIdAndAccountStatus(UUID landlordId, PropertyAccountStatus status);
+
+    long countByLandlordId(UUID landlordId);
 }
