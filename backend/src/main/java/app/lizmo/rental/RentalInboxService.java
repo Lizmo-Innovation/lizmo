@@ -111,6 +111,13 @@ public class RentalInboxService {
                 profile,
                 unit == null ? null : unit.getUnitNumber(),
                 bed == null ? null : bed.getBedLabel(),
-                LocalDate.now(clock));
+                LocalDate.now(clock),
+                // What the tenant was looking at, and what accepting will use
+                // unless the landlord types something else. The bed's own
+                // price wins over the unit's, exactly as the accept endpoint
+                // decides it.
+                bed != null && bed.getRent() != null
+                        ? bed.getRent()
+                        : (unit == null ? null : unit.getRent()));
     }
 }

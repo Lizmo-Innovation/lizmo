@@ -186,6 +186,10 @@ class RentalInboxIntegrationTest extends IntegrationTest {
                 // arithmetic -- leap years, a phone whose clock is a day out --
                 // is not the app's to get wrong.
                 .andExpect(jsonPath("$[0].age").isNumber())
+                // The figure accepting will use unless the landlord types
+                // another, so the decision is made against a number rather
+                // than the words "the asking rent".
+                .andExpect(jsonPath("$[0].askingRent").value(2500.0))
                 // What they carry, so the landlord knows a lease can be signed.
                 .andExpect(jsonPath("$[0].idType").value("PHILSYS"))
                 // And how to actually reach them about a viewing.

@@ -6,6 +6,7 @@ import app.lizmo.user.IdType;
 import app.lizmo.user.TenantProfile;
 import app.lizmo.user.User;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -35,6 +36,11 @@ import java.util.UUID;
  *                   thing every account has.
  * @param idType what they carry, without the number. Enough to know a lease can
  *               be signed against it.
+ * @param askingRent what this slot is advertised at — the bed's own price if it
+ *                   has one, otherwise the unit's. The same number the accept
+ *                   endpoint falls back to, so the landlord is shown the figure
+ *                   they are about to commit to rather than the words "the
+ *                   asking rent".
  * @param age worked out here rather than in the app. A birthday is a date and
  *            an age is a subtraction that goes wrong quietly -- leap years,
  *            time zones, a phone whose clock is a day out -- and the landlord
@@ -59,7 +65,8 @@ public record RentalRequestForLandlord(
         String occupation,
         String permanentAddress,
         Integer age,
-        IdType idType) {
+        IdType idType,
+        BigDecimal askingRent) {
 
     public static RentalRequestForLandlord of(
             RentalRequest request,
@@ -67,7 +74,8 @@ public record RentalRequestForLandlord(
             TenantProfile profile,
             String unitNumber,
             String bedLabel,
-            LocalDate today) {
+            LocalDate today,
+            BigDecimal askingRent) {
         return new RentalRequestForLandlord(
                 request.getId(),
                 request.getPropertyId(),
@@ -88,7 +96,8 @@ public record RentalRequestForLandlord(
                 profile == null ? null : profile.getOccupation(),
                 profile == null ? null : profile.getPermanentAddress(),
                 ageOn(profile == null ? null : profile.getBirthdate(), today),
-                profile == null ? null : profile.getIdType());
+                profile == null ? null : profile.getIdType(),
+                askingRent);
     }
 
     /**

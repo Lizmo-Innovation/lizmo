@@ -25,6 +25,7 @@ Name | Type | Description | Notes
 **permanentAddress** | **String** |  | [optional] 
 **age** | **int** |  | [optional] 
 **idType** | **String** |  | [optional] 
+**askingRent** | **num** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

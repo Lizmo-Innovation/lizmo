@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../widgets/accept_terms_sheet.dart';
 
 /// Who has asked to live here, and the landlord answering.
 ///
@@ -78,7 +79,7 @@ class _RequestCard extends ConsumerStatefulWidget {
 class _RequestCardState extends ConsumerState<_RequestCard> {
   bool _working = false;
 
-  Future<void> _answer({required bool accepting}) async {
+  Future<void> _answer({required bool accepting, AcceptRequest? terms}) async {
     setState(() => _working = true);
     final messenger = ScaffoldMessenger.of(context);
     final api = ref.read(requestsToAnswerApiProvider);
@@ -86,7 +87,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
 
     try {
       if (accepting) {
-        await api.acceptRentalRequest(id);
+        await api.acceptRentalRequest(id, acceptRequest: terms);
       } else {
         await api.declineRentalRequest(id);
       }
@@ -116,37 +117,23 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
     }
   }
 
-  void _confirmAccept() {
+  /// Settles the terms, then accepts on them.
+  ///
+  /// Was a yes/no dialog that said "at the asking rent" — words rather than a
+  /// number — and then created a lease with a rent and a start date the
+  /// landlord had never seen. Both are now chosen before anything is written.
+  Future<void> _confirmAccept() async {
     final request = widget.request;
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: LizmoColors.canvas,
-        title: Text('Accept this request?', style: LizmoType.rowName),
-        content: Text(
-          '${request.tenantName ?? 'This tenant'} will hold '
-          '${_slot(request)} from today, at ${_rentHint(request)}. '
-          'Anyone else waiting on it will be told it has gone.',
-          style: LizmoType.rowSub,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Not yet', style: LizmoType.rowSub),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _answer(accepting: true);
-            },
-            child: Text(
-              'Accept',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
-            ),
-          ),
-        ],
-      ),
+
+    final terms = await AcceptTermsSheet.show(
+      context,
+      tenantName: request.tenantName ?? 'this tenant',
+      slot: _slot(request),
+      askingRent: request.askingRent,
     );
+
+    if (terms == null) return;
+    await _answer(accepting: true, terms: terms);
   }
 
   static String _slot(RentalRequestForLandlord request) {
@@ -158,9 +145,6 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
   /// Deliberately vague: the exact figure is the asking rent, which this screen
   /// does not carry. Naming a number it has not been told would be worse than
   /// not naming one.
-  static String _rentHint(RentalRequestForLandlord request) =>
-      'the asking rent';
-
   @override
   Widget build(BuildContext context) {
     final request = widget.request;

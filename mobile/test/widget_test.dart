@@ -4452,6 +4452,7 @@ class _FakeAnsweringApi extends RequestsToAnswerApi {
 
   final ApiFailure? failWith;
   String? accepted;
+  AcceptRequest? acceptedOn;
   String? declined;
 
   @override
@@ -4462,6 +4463,7 @@ class _FakeAnsweringApi extends RequestsToAnswerApi {
   }) async {
     if (failWith != null) throw failWith!;
     accepted = id;
+    acceptedOn = acceptRequest;
     return LeaseResponse(id: 'l1', status: LeaseResponseStatusEnum.ACTIVE);
   }
 
@@ -4509,6 +4511,7 @@ void _landlordRequestTests() {
       permanentAddress: 'Naga City',
       age: 27,
       idType: RentalRequestForLandlordIdTypeEnum.PHILSYS,
+      askingRent: 2500,
     );
 
     Widget appWith({
@@ -4650,15 +4653,83 @@ void _landlordRequestTests() {
       await tester.tap(find.text('Accept'));
       await tester.pumpAndSettle();
 
-      // Confirmed first: accepting gives away a room and tells everybody else
-      // it has gone.
-      expect(find.text('Accept this request?'), findsOneWidget);
+      // The terms are settled first: accepting gives away a room, tells
+      // everybody else it has gone, and writes a rent into a lease.
+      expect(find.text('Accept Ana Reyes'), findsOneWidget);
       expect(answering.accepted, isNull);
 
-      await tester.tap(find.text('Accept').last);
+      // Filled in from what the tenant was looking at, rather than left blank
+      // for somebody to retype. Read off the field itself: the placeholder
+      // carries the same number, so find.text would match twice.
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText).first)
+            .controller.text,
+        '2500',
+      );
+
+      await tester.tap(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
 
       expect(answering.accepted, 'r1');
+      expect(answering.acceptedOn?.rentAmount, 2500);
+      expect(answering.acceptedOn?.startDate, isNotNull);
+    });
+
+    testWidgets('the rent can be changed before accepting', (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(
+        appWith(waiting: [request()], answering: answering),
+      );
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      // A landlord who agreed something else on the phone should not have to
+      // change the listing to record it.
+      await tester.enterText(find.byType(TextFormField).first, '3000');
+      await tester.tap(find.text('Accept and create the lease'));
+      await tester.pumpAndSettle();
+
+      expect(answering.acceptedOn?.rentAmount, 3000);
+    });
+
+    testWidgets('a rent of nothing is refused', (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(
+        appWith(waiting: [request()], answering: answering),
+      );
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, '0');
+      await tester.tap(find.text('Accept and create the lease'));
+      await tester.pump();
+
+      // Zero would read as free for the life of the lease.
+      expect(find.text('The rent has to be more than nothing'), findsOneWidget);
+      expect(answering.accepted, isNull);
+    });
+
+    testWidgets('backing out of the terms accepts nothing', (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(
+        appWith(waiting: [request()], answering: answering),
+      );
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Not yet'));
+      await tester.pumpAndSettle();
+
+      expect(answering.accepted, isNull);
     });
 
     testWidgets('declining does not ask', (tester) async {
@@ -4694,7 +4765,7 @@ void _landlordRequestTests() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Accept'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept').last);
+      await tester.tap(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
 
       expect(find.text('That bed is already let.'), findsOneWidget);

@@ -2688,6 +2688,9 @@
                             "PRC",
                             "OTHER"
                         ]
+                    },
+                    "askingRent": {
+                        "type": "number"
                     }
                 },
                 "description": "A request waiting on the landlord"
