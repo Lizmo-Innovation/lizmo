@@ -69,9 +69,11 @@ public class Accounts {
     }
 
     /**
-     * Somebody who lets rooms — and who also holds a tenant profile, because a
-     * landlord may rent somewhere themselves. Landlord is additive, never a
-     * replacement, which is what the old {@code asLandlord:true} did too.
+     * Somebody who lets rooms, and only that.
+     *
+     * <p>No tenant profile: a landlord is not a tenant. An account that held
+     * both could rent to itself, and the invitation flow now refuses an
+     * address that already rents.
      */
     public Account landlord(String name) {
         return create(name, true);
@@ -103,12 +105,13 @@ public class Accounts {
         user.markEmailVerified(Instant.now());
         users.save(user);
 
-        tenantProfiles.save(new TenantProfile(user.getId()));
         if (asLandlord) {
             landlordProfiles.save(new LandlordProfile(user.getId()));
+        } else {
+            tenantProfiles.save(new TenantProfile(user.getId()));
         }
 
-        List<String> profiles = asLandlord ? List.of("TENANT", "LANDLORD") : List.of("TENANT");
+        List<String> profiles = asLandlord ? List.of("LANDLORD") : List.of("TENANT");
         return new Account(user.getId(), name, email, phone,
                 jwt.issueAccessToken(user.getId(), profiles));
     }

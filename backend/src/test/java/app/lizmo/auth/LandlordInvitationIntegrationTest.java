@@ -136,9 +136,10 @@ class LandlordInvitationIntegrationTest extends IntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.name").value("Elena Bautista"))
-                // A landlord may rent somewhere themselves, so landlord is
-                // added to the baseline rather than instead of it.
-                .andExpect(jsonPath("$.profiles.length()").value(2));
+                // A landlord and nothing else. One account is one side of the
+                // arrangement, so there is no tenant profile underneath.
+                .andExpect(jsonPath("$.profiles.length()").value(1))
+                .andExpect(jsonPath("$.profiles[0]").value("LANDLORD"));
     }
 
     @Test
@@ -187,44 +188,52 @@ class LandlordInvitationIntegrationTest extends IntegrationTest {
     // ---- taking it up, as somebody who already rents -----------------------
 
     @Test
-    void an_existing_tenant_keeps_their_account_and_gains_a_landlord_side()
-            throws Exception {
+    void an_address_that_rents_cannot_be_invited() throws Exception {
         Accounts.Account ana = accounts.tenant("Ana");
-        invite(adminToken, ana.email()).andExpect(status().isCreated());
 
-        accept(mailer.lastInvitationToken(), "Ignored", Accounts.PASSWORD)
-                .andExpect(status().isCreated())
-                // The same person, not a second account: the name they already
-                // had, and both profiles.
-                .andExpect(jsonPath("$.userId").value(ana.id().toString()))
-                .andExpect(jsonPath("$.name").value("Ana"))
-                .andExpect(jsonPath("$.profiles.length()").value(2));
+        // A landlord is not a tenant: one account is one side of the
+        // arrangement. Somebody who does both needs a second address, which is
+        // a real cost and a deliberate one.
+        invite(adminToken, ana.email())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ALREADY_A_TENANT"));
+        assertThat(mailer.invitationCount()).isZero();
     }
 
     @Test
-    void a_forwarded_link_does_not_hand_over_somebody_elses_account()
+    void an_invitee_who_signs_up_as_a_tenant_meanwhile_is_refused()
             throws Exception {
-        String taken = accounts.tenant("Ana").email();
-        invite(adminToken, taken).andExpect(status().isCreated());
+        invite(adminToken, email).andExpect(status().isCreated());
+        String token = mailer.lastInvitationToken();
 
-        // The address already has an account, so the password is proof it is
-        // theirs. Without this, anyone the email was forwarded to would inherit
-        // Ana's tenancies along with the landlord profile.
-        // Not Accounts.PASSWORD -- writing the seeded password here by hand
-        // once made this test pass a forged acceptance as a success.
-        accept(mailer.lastInvitationToken(), "Not Ana", "Somebody2Else!")
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        // Seven days pass between sending and accepting, and sign-up is open.
+        // Checking only at invitation time would let exactly this through.
+        mvc.perform(post("/api/v1/auth/register/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\"}".formatted(email)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/register/complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","code":"%s","name":"Elena",
+                                 "password":"Sunrise2Bed!"}
+                                """.formatted(email, mailer.lastCode())))
+                .andExpect(status().isCreated());
+
+        accept(token, "Elena", "Sunrise2Bed!")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ALREADY_A_TENANT"));
     }
 
     @Test
     void a_refused_password_leaves_the_invitation_usable() throws Exception {
-        Accounts.Account ana = accounts.tenant("Ana");
-        invite(adminToken, ana.email()).andExpect(status().isCreated());
+        invite(adminToken, email).andExpect(status().isCreated());
         String token = mailer.lastInvitationToken();
 
-        accept(token, "Ana", "wrong-password").andExpect(status().isUnauthorized());
-        accept(token, "Ana", Accounts.PASSWORD).andExpect(status().isCreated());
+        // Checked before the invitation is spent, so a weak password does not
+        // cost somebody their one link.
+        accept(token, "Elena", "short").andExpect(status().isBadRequest());
+        accept(token, "Elena", "Sunrise2Bed!").andExpect(status().isCreated());
     }
 
     // ---- the link itself --------------------------------------------------
@@ -240,15 +249,6 @@ class LandlordInvitationIntegrationTest extends IntegrationTest {
                 // Which decides the whole screen: choose a password, or confirm
                 // the one you already have.
                 .andExpect(jsonPath("$.hasAccount").value(false));
-    }
-
-    @Test
-    void the_link_knows_when_the_address_already_signs_in() throws Exception {
-        String taken = accounts.tenant("Ana").email();
-        invite(adminToken, taken).andExpect(status().isCreated());
-
-        mvc.perform(get("/api/v1/auth/invitations/" + mailer.lastInvitationToken()))
-                .andExpect(jsonPath("$.hasAccount").value(true));
     }
 
     @Test

@@ -172,13 +172,15 @@ class TenantProfileIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void a_landlord_account_still_has_its_own_tenant_profile() throws Exception {
-        // Registration gives every account a tenant profile, landlords
-        // included — the roles are additive, so this is not an error case.
+    void a_landlord_has_no_tenant_profile_to_read() throws Exception {
+        // A landlord is not a tenant: one account is one side of the
+        // arrangement, and an account holding both could rent to itself.
+        // Somebody who does both needs a second address.
         mvc.perform(get("/api/v1/me/tenant-profile")
                         .header("Authorization", "Bearer " + landlordOnlyToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.readyForALease").value(false));
+                // 404 rather than 403: there is no profile, which is a
+                // different statement from "you may not see it".
+                .andExpect(status().isNotFound());
     }
 
     @Test

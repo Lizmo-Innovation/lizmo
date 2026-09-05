@@ -41,6 +41,15 @@ public enum ErrorCode {
     ALREADY_A_LANDLORD(HttpStatus.CONFLICT),
 
     /**
+     * Inviting somebody who rents through Lizmo.
+     *
+     * <p>A landlord is not a tenant: one account is one side of the
+     * arrangement. Somebody who does both needs a second address, which is a
+     * real cost and a deliberate one.
+     */
+    ALREADY_A_TENANT(HttpStatus.CONFLICT),
+
+    /**
      * The verification code has run out of time.
      *
      * <p>Separate from OTP_INCORRECT so the app can offer the right thing: a

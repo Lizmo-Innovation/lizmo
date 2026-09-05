@@ -88,12 +88,7 @@ public class LandlordInvitationService {
         String email = normalise(rawEmail);
         String name = StringUtils.hasText(rawName) ? rawName.trim() : null;
 
-        users.findByEmail(email).ifPresent(existing -> {
-            if (landlordProfiles.existsById(existing.getId())) {
-                throw new ApiException(ErrorCode.ALREADY_A_LANDLORD,
-                        "That address is already a landlord on Lizmo.");
-            }
-        });
+        users.findByEmail(email).ifPresent(this::requireInvitable);
 
         // Any live invitation for this address stops working now. Two valid
         // links at once means revoking one is not revoking anything.
@@ -114,6 +109,30 @@ public class LandlordInvitationService {
                 email, name, app.inviteLink(token), token, (int) LIFETIME.toDays());
 
         return expiresAt;
+    }
+
+    /**
+     * Whether this account can become a landlord at all.
+     *
+     * <p>A landlord is not a tenant. One account is one side of the
+     * arrangement, so somebody who rents through Lizmo cannot also let rooms
+     * through the same account -- they need a second address, which is a real
+     * cost and a deliberate one.
+     *
+     * <p>Checked when the invitation is sent and again when it is accepted:
+     * seven days pass in between, and sign-up is open, so an invited address
+     * can become a tenant before anybody clicks the link.
+     */
+    private void requireInvitable(User existing) {
+        if (landlordProfiles.existsById(existing.getId())) {
+            throw new ApiException(ErrorCode.ALREADY_A_LANDLORD,
+                    "That address is already a landlord on Lizmo.");
+        }
+        if (tenantProfiles.existsById(existing.getId())) {
+            throw new ApiException(ErrorCode.ALREADY_A_TENANT,
+                    "That address rents through Lizmo, and a landlord account "
+                            + "cannot also be a tenant. Invite a different address.");
+        }
     }
 
     /**
@@ -204,13 +223,19 @@ public class LandlordInvitationService {
             // is the same proof the sign-up code gives.
             user.markEmailVerified(clock.instant());
 
-            // A landlord may rent somewhere themselves, and everybody gets the
-            // baseline profile. Landlord is additive, never a replacement.
-            tenantProfiles.save(new TenantProfile(user.getId()));
-        } else if (!passwordEncoder.matches(password, user.getPasswordHash())
-                || !user.isActive()) {
-            throw new ApiException(ErrorCode.INVALID_CREDENTIALS,
-                    "That is not the password for this Lizmo account.");
+            // No tenant profile. A landlord is not a tenant, and an account
+            // that holds both is an account that can rent to itself.
+        } else {
+            // Checked again here, not only when the invitation was sent: seven
+            // days pass in between and sign-up is open, so this address may
+            // have become a tenant since.
+            requireInvitable(user);
+
+            if (!passwordEncoder.matches(password, user.getPasswordHash())
+                    || !user.isActive()) {
+                throw new ApiException(ErrorCode.INVALID_CREDENTIALS,
+                        "That is not the password for this Lizmo account.");
+            }
         }
 
         if (!landlordProfiles.existsById(user.getId())) {
