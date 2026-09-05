@@ -44,12 +44,23 @@ COPY ${APP}/pubspec.yaml ${APP}/pubspec.lock ./${APP}/
 RUN cd ${APP} && flutter pub get
 
 COPY ${APP} ./${APP}
+
+# No service worker.
+#
+# Flutter web ships one by default, and it serves its own cached copy of the
+# app regardless of what nginx says -- so a deploy can be live, verified, and
+# still invisible to somebody with the tab open, with nothing to indicate
+# anything is wrong. That happened: a console deployed with a new section in
+# its navigation kept showing the old one.
+#
+# These are a staff console and a preview build. Neither needs to work offline,
+# and neither is worth a whole category of "did my deploy actually work".
 RUN cd ${APP} && \
     if [ -n "${API_BASE_URL}" ]; then \
-      flutter build web --release \
+      flutter build web --release --pwa-strategy=none \
         --dart-define=LIZMO_API_BASE_URL="${API_BASE_URL}"; \
     else \
-      flutter build web --release; \
+      flutter build web --release --pwa-strategy=none; \
     fi
 
 FROM nginx:1.27-alpine
