@@ -50,6 +50,14 @@ public enum ErrorCode {
     ALREADY_A_TENANT(HttpStatus.CONFLICT),
 
     /**
+     * The account cannot be closed while a tenancy is running.
+     *
+     * <p>Its own code so the app can say which tenancy and what to do about
+     * it, rather than offering a dead end.
+     */
+    ACCOUNT_HAS_ACTIVE_LEASE(HttpStatus.CONFLICT),
+
+    /**
      * The verification code has run out of time.
      *
      * <p>Separate from OTP_INCORRECT so the app can offer the right thing: a

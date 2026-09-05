@@ -12,4 +12,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
 
     /** Used to revoke every session for a user, e.g. on staff deactivation. */
     List<RefreshToken> findByUserIdAndRevokedAtIsNullAndExpiresAtAfter(UUID userId, Instant now);
+
+    /** Ends every session this account has, on every device. */
+    void deleteByUserId(UUID userId);
 }

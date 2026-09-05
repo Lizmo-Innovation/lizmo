@@ -72,6 +72,43 @@ public class User {
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 
+    /**
+     * When the person asked to be deleted, or null for a live account.
+     *
+     * <p>The row survives so that a landlord's record of a tenancy does not
+     * disappear with their tenant. What does not survive is on the same line
+     * as this one: see {@link #close}.
+     */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    /**
+     * Closes the account at the person's own request.
+     *
+     * <p>Everything that names them is overwritten in the same breath as the
+     * timestamp, so there is no window in which an account is marked deleted
+     * and still carries an email address and a phone number.
+     *
+     * @param releasedEmail an address at a domain that can never exist, so the
+     *                      real one is free to be used again
+     */
+    public void close(String releasedEmail, String unusablePasswordHash) {
+        this.email = releasedEmail;
+        this.phone = null;
+        this.name = "Deleted account";
+        this.passwordHash = unusablePasswordHash;
+        this.status = UserStatus.INACTIVE;
+        this.deletedAt = Instant.now();
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
     /** Records that somebody read a code sent to this address. */
     public void markEmailVerified(Instant at) {
         this.emailVerifiedAt = at;

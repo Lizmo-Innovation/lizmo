@@ -98,6 +98,27 @@ public class TenantProfile {
         return userId;
     }
 
+    /**
+     * Empties everything personal, keeping the row.
+     *
+     * <p>The row itself cannot go: leases point at it by foreign key, and a
+     * lease is the landlord's record of their own property as much as the
+     * tenant's. So the profile survives as an empty shell attached to an id
+     * that no longer names anybody, and every fact somebody would recognise --
+     * their birthday, their address, their ID number, who to ring in an
+     * emergency -- is gone.
+     */
+    public void scrub() {
+        this.birthdate = null;
+        this.permanentAddress = null;
+        this.occupation = null;
+        this.emergencyContactName = null;
+        this.emergencyContactRelationship = null;
+        this.emergencyContactPhone = null;
+        this.idType = null;
+        this.idNumber = null;
+    }
+
     public LocalDate getBirthdate() {
         return birthdate;
     }
