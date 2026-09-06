@@ -5152,6 +5152,7 @@ void _tenantLeaseTests() {
       List<LeaseResponse> tenants = const [],
       TenantForLandlord? detail,
       Object? detailError,
+      List<TenantDocumentResponse> documents = const [],
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -5165,7 +5166,7 @@ void _tenantLeaseTests() {
           return detail ?? person();
         }),
         leaseTenantDocumentsProvider('l1').overrideWith(
-          (ref) async => const <TenantDocumentResponse>[],
+          (ref) async => documents,
         ),
       ],
       child: const LizmoApp(),
@@ -5200,6 +5201,24 @@ void _tenantLeaseTests() {
       expect(find.text('Rosa Dela Cruz'), findsOneWidget);
       expect(find.text('09171234567'), findsOneWidget);
       expect(find.text('Mother'), findsOneWidget);
+    });
+
+    /// go_router builds the stack for a nested route, so the AppBar gets its
+    /// own back arrow. Worth pinning: without a way back, a landlord who taps
+    /// a tenant is stuck on them.
+    testWidgets('there is a way back to the list', (tester) async {
+      await tester.pumpWidget(appWith(tenants: [tenancy()]));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BackButton), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantsScreen), findsOneWidget);
     });
 
     testWidgets('the ID reads as the tenant chose it', (tester) async {
@@ -5432,6 +5451,114 @@ void _tenantLeaseTests() {
 
       expect(find.byType(ForgotPasswordScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+  });
+
+  group('a tenant photograph', () {
+    /// A 1x1 PNG. Image.network cannot fetch anything in a widget test, so
+    /// every image here ends in errorBuilder -- which is fine: what is being
+    /// tested is that a tap opens the viewer and that it closes again, not
+    /// how a JPEG decodes.
+    TenantDocumentResponse photo(TenantDocumentResponseDocTypeEnum kind) =>
+        TenantDocumentResponse(
+          docType: kind,
+          url: 'https://example.invalid/${kind.toJson()}.jpg',
+          urlExpiresInSeconds: 300,
+        );
+
+    Widget appWith(List<TenantDocumentResponse> documents) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myTenantsProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+        leaseTenantProvider('l1').overrideWith(
+          (ref) async => TenantForLandlord(
+            leaseId: 'l1',
+            tenantId: 't1',
+            name: 'Ana Reyes',
+            idType: TenantForLandlordIdTypeEnum.DRIVERS_LICENSE,
+            idNumber: '1234-5678-9012',
+          ),
+        ),
+        leaseTenantDocumentsProvider('l1').overrideWith((ref) async => documents),
+      ],
+      child: const MaterialApp(home: TenantDetailScreen(leaseId: 'l1')),
+    );
+
+    testWidgets('the name is readable against the bar behind it',
+        (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+
+      final bar = tester.widget<AppBar>(find.byType(AppBar));
+      final title = tester.widget<Text>(
+        find.descendant(of: find.byType(AppBar), matching: find.text('Ana Reyes')),
+      );
+
+      // LizmoType.screenTitle is white because it is drawn on the teal
+      // header. On the canvas-coloured bar this screen used to have, that was
+      // white on almost-white.
+      expect(title.style?.color, LizmoColors.white);
+      expect(bar.backgroundColor, LizmoColors.teal900);
+    });
+
+    testWidgets('tapping one opens it large', (tester) async {
+      await tester.pumpWidget(
+          appWith([photo(TenantDocumentResponseDocTypeEnum.VALID_ID)]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('close-photo')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('photo-VALID_ID')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('close-photo')), findsOneWidget);
+      // Pinch and drag come from here rather than being written by hand.
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
+    testWidgets('the viewer says which photograph it is showing',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith([photo(TenantDocumentResponseDocTypeEnum.TENANT_PHOTO)]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('photo-TENANT_PHOTO')));
+      await tester.pumpAndSettle();
+
+      // "Photo", not TENANT_PHOTO.
+      expect(find.text('Photo'), findsWidgets);
+    });
+
+    testWidgets('closing returns to the tenant', (tester) async {
+      await tester.pumpWidget(
+          appWith([photo(TenantDocumentResponseDocTypeEnum.VALID_ID)]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('photo-VALID_ID')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('close-photo')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('close-photo')), findsNothing);
+      expect(find.text('1234-5678-9012'), findsOneWidget);
+    });
+
+    /// A presigned URL that has lapsed leaves nothing to enlarge. Opening a
+    /// black screen with a broken-image glyph on it would be worse than
+    /// saying so.
+    testWidgets('an expired photograph explains itself', (tester) async {
+      await tester.pumpWidget(
+          appWith([photo(TenantDocumentResponseDocTypeEnum.VALID_ID)]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('photo-VALID_ID')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('could not be loaded'), findsOneWidget);
     });
   });
 }

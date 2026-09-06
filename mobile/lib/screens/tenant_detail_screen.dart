@@ -29,8 +29,12 @@ class TenantDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
-        backgroundColor: LizmoColors.canvas,
-        surfaceTintColor: Colors.transparent,
+        // Teal, like every other pushed screen. It was canvas, which left
+        // LizmoType.screenTitle -- white, because it is drawn on the teal
+        // header -- as white text on an almost-white bar.
+        backgroundColor: LizmoColors.teal900,
+        foregroundColor: LizmoColors.white,
+        elevation: 0,
         title: Text(
           tenant.valueOrNull?.name ?? 'Tenant',
           style: LizmoType.screenTitle.copyWith(fontSize: 18),
@@ -213,11 +217,19 @@ class _Photo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = document.url;
+    final label = docTypeLabel(document.docType?.toJson());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
+        GestureDetector(
+          // Keyed by kind: a tenant has at most one of each.
+          key: ValueKey('photo-${document.docType?.toJson()}'),
+          // A 120px square is enough to see that an ID is there and not
+          // enough to read the number on it, which is the whole reason a
+          // landlord opens this.
+          onTap: url == null ? null : () => _FullPhoto.show(context, url, label),
+          child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: SizedBox(
             width: 120,
@@ -237,17 +249,126 @@ class _Photo extends StatelessWidget {
                   ),
           ),
         ),
+        ),
         const SizedBox(height: 4),
         SizedBox(
           width: 120,
           child: Text(
-            docTypeLabel(document.docType?.toJson()),
+            label,
             style: LizmoType.rowSub.copyWith(fontSize: 11),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One photograph, as large as the screen allows.
+///
+/// A 120px thumbnail proves a document was uploaded; it does not let anybody
+/// read the number on it, check a face against the person at the door, or see
+/// that a photo is of somebody's thumb. All of which are the reason a landlord
+/// opens this screen at all.
+///
+/// Pinch and drag are handled by InteractiveViewer rather than written here:
+/// an ID photographed at an angle is often only legible zoomed into one
+/// corner.
+class _FullPhoto extends StatelessWidget {
+  const _FullPhoto({required this.url, required this.label});
+
+  final String url;
+  final String label;
+
+  static Future<void> show(BuildContext context, String url, String label) {
+    return showDialog<void>(
+      context: context,
+      // Near-black rather than the usual scrim: a photograph is easier to
+      // read against something that is not competing with it.
+      barrierColor: Colors.black87,
+      builder: (_) => _FullPhoto(url: url, label: label),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      backgroundColor: Colors.transparent,
+      child: Stack(
+        children: [
+          // Tapping the backdrop closes it, which is what people try first.
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: const ColoredBox(color: Colors.transparent),
+            ),
+          ),
+          Center(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(LizmoColors.white),
+                        ),
+                      ),
+                // The URL is presigned and short-lived, so an expired one is
+                // an ordinary outcome here rather than a fault. Saying which
+                // it is beats a broken-image glyph on a black screen.
+                errorBuilder: (_, _, _) => Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.image_not_supported_outlined,
+                          size: 40, color: LizmoColors.white),
+                      const SizedBox(height: 12),
+                      Text(
+                        'That photograph could not be loaded. Close this and '
+                        'open the tenant again.',
+                        textAlign: TextAlign.center,
+                        style: LizmoType.rowSub
+                            .copyWith(color: LizmoColors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Row(
+                children: [
+                  IconButton(
+                    key: const ValueKey('close-photo'),
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: LizmoColors.white),
+                    tooltip: 'Close',
+                  ),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: LizmoType.rowName
+                          .copyWith(color: LizmoColors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

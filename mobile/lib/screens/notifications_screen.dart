@@ -29,8 +29,12 @@ class NotificationsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
-        backgroundColor: LizmoColors.canvas,
-        surfaceTintColor: Colors.transparent,
+        // Teal, like every other pushed screen. It was canvas, which left
+        // LizmoType.screenTitle -- white, because it is drawn on the teal
+        // header -- as white text on an almost-white bar.
+        backgroundColor: LizmoColors.teal900,
+        foregroundColor: LizmoColors.white,
+        elevation: 0,
         title: Text(
           'Notifications',
           style: LizmoType.screenTitle.copyWith(fontSize: 18),
@@ -42,8 +46,9 @@ class NotificationsScreen extends ConsumerWidget {
               onPressed: () => ref.read(notificationReaderProvider).all(),
               child: Text(
                 'Mark all read',
+                // White, now that the bar behind it is teal.
                 style: LizmoType.rowSub.copyWith(
-                  color: LizmoColors.teal900,
+                  color: LizmoColors.white,
                   fontWeight: FontWeight.w600,
                 ),
               ),
