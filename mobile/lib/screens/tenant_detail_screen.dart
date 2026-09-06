@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../tenant/id_labels.dart';
+import '../widgets/lease_attachments.dart';
 
 /// The person living in the room, as their landlord sees them.
 ///
@@ -86,6 +87,11 @@ class TenantDetailScreen extends ConsumerWidget {
             const SizedBox(height: 12),
 
             _Documents(leaseId: leaseId),
+            const SizedBox(height: 12),
+
+            // Last, because it is the landlord's own filing rather than
+            // anything about the person.
+            LeaseAttachments(leaseId: leaseId),
           ],
         ),
       ),

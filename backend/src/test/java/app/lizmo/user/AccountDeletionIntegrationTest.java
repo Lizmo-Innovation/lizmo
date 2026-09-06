@@ -224,6 +224,87 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
                 });
     }
 
+    /**
+     * Lease attachments outlive the tenancy on purpose, so nothing else ever
+     * removes them. Closing the landlord's account is the one thing that does:
+     * they are the landlord's records, and they end when the landlord does.
+     */
+    @Test
+    void a_landlords_paperwork_goes_with_them() throws Exception {
+        var world = aTenancy();
+
+        mvc.perform(multipart("/api/v1/leases/" + world.leaseId() + "/documents")
+                        .file(new MockMultipartFile(
+                                "file", "c.pdf", null, "%PDF-1.7\ncontract\n".getBytes()))
+                        .header("Authorization", "Bearer " + world.landlordToken())
+                        .param("docType", "LEASE_CONTRACT"))
+                .andExpect(status().isCreated());
+
+        assertThat(paperworkOn(world.leaseId())).hasSize(1);
+
+        mvc.perform(post("/api/v1/leases/" + world.leaseId() + "/end")
+                        .header("Authorization", "Bearer " + world.landlordToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endDate\":\"2026-11-30\",\"reason\":\"Moved out\"}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/v1/me")
+                        .header("Authorization", "Bearer " + world.landlordToken()))
+                .andExpect(status().isNoContent());
+
+        // The file, not only the row. An object left in a bucket that nothing
+        // points at is one nobody will ever delete.
+        assertThat(paperworkOn(world.leaseId())).isEmpty();
+    }
+
+    /**
+     * A contract is an agreement between two people, and one of them leaving
+     * does not entitle them to shred the other's copy.
+     */
+    @Test
+    void a_tenant_leaving_does_not_take_the_landlords_paperwork() throws Exception {
+        var world = aTenancy();
+
+        mvc.perform(multipart("/api/v1/leases/" + world.leaseId() + "/documents")
+                        .file(new MockMultipartFile(
+                                "file", "c.pdf", null, "%PDF-1.7\ncontract\n".getBytes()))
+                        .header("Authorization", "Bearer " + world.landlordToken())
+                        .param("docType", "LEASE_CONTRACT"))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/leases/" + world.leaseId() + "/end")
+                        .header("Authorization", "Bearer " + world.landlordToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endDate\":\"2026-11-30\",\"reason\":\"Moved out\"}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/v1/me")
+                        .header("Authorization", "Bearer " + world.tenantToken()))
+                .andExpect(status().isNoContent());
+
+        assertThat(paperworkOn(world.leaseId())).hasSize(1);
+        mvc.perform(get("/api/v1/leases/" + world.leaseId() + "/documents")
+                        .header("Authorization", "Bearer " + world.landlordToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    /**
+     * What is filed against <em>this</em> lease.
+     *
+     * <p>Scoped to the one lease on purpose. The document store is a singleton
+     * shared by every test class, so a count of everything under "leases/"
+     * tallies paperwork left behind by other tests and says nothing about the
+     * account under test -- it would fail while the rule was correct, which is
+     * a mistake this suite has made before.
+     */
+    private java.util.Map<String, ?> paperworkOn(String leaseId) {
+        return store.all().entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("leases/" + leaseId + "/"))
+                .collect(java.util.stream.Collectors.toMap(
+                        java.util.Map.Entry::getKey, java.util.Map.Entry::getValue));
+    }
+
     // ---- a world with somebody living in it --------------------------------
 
     private record World(

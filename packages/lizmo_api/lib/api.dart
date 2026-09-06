@@ -57,6 +57,7 @@ part 'model/invitation_sent_response.dart';
 part 'model/invite_landlord_request.dart';
 part 'model/landlord_detail.dart';
 part 'model/landlord_summary.dart';
+part 'model/lease_document_response.dart';
 part 'model/lease_response.dart';
 part 'model/login_request.dart';
 part 'model/maintenance_request.dart';

@@ -9,13 +9,62 @@ All URIs are relative to *http://localhost:8082*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**deleteLeaseDocument**](LeasesApi.md#deleteleasedocument) | **DELETE** /api/v1/leases/{leaseId}/documents/{documentId} | Remove a document
 [**endLease**](LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
 [**getTenantForLease**](LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
+[**listLeaseDocuments**](LeasesApi.md#listleasedocuments) | **GET** /api/v1/leases/{leaseId}/documents | Paperwork on this lease
 [**listLeasesForProperty**](LeasesApi.md#listleasesforproperty) | **GET** /api/v1/properties/{propertyId}/leases | Who is living here
+[**listMyLeaseDocuments**](LeasesApi.md#listmyleasedocuments) | **GET** /api/v1/me/leases/{leaseId}/documents | Paperwork my landlord has shared with me
 [**listMyLeases**](LeasesApi.md#listmyleases) | **GET** /api/v1/me/leases | My leases
 [**listMyTenants**](LeasesApi.md#listmytenants) | **GET** /api/v1/me/tenants | Everyone renting from me
 [**listTenantDocumentsForLease**](LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
+[**updateLeaseDocument**](LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
+[**uploadLeaseDocument**](LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
 
+
+# **deleteLeaseDocument**
+> deleteLeaseDocument(leaseId, documentId)
+
+Remove a document
+
+Gone for good, file and record together.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final documentId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    api_instance.deleteLeaseDocument(leaseId, documentId);
+} catch (e) {
+    print('Exception when calling LeasesApi->deleteLeaseDocument: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+ **documentId** | **String**|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **endLease**
 > LeaseResponse endLease(id, endLeaseRequest)
@@ -105,6 +154,49 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listLeaseDocuments**
+> List<LeaseDocumentResponse> listLeaseDocuments(leaseId)
+
+Paperwork on this lease
+
+Newest first. Each carries a presigned URL valid for a few minutes; do not cache it, ask again instead.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.listLeaseDocuments(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->listLeaseDocuments: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**List<LeaseDocumentResponse>**](LeaseDocumentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listLeasesForProperty**
 > List<LeaseResponse> listLeasesForProperty(propertyId)
 
@@ -134,6 +226,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List<LeaseResponse>**](LeaseResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listMyLeaseDocuments**
+> List<LeaseDocumentResponse> listMyLeaseDocuments(leaseId)
+
+Paperwork my landlord has shared with me
+
+The signed contract, and anything else the landlord chose to share. Still readable after the tenancy ends: a copy of what you signed is worth having afterwards.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.listMyLeaseDocuments(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->listMyLeaseDocuments: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**List<LeaseDocumentResponse>**](LeaseDocumentResponse.md)
 
 ### Authorization
 
@@ -261,6 +396,104 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updateLeaseDocument**
+> LeaseDocumentResponse updateLeaseDocument(leaseId, documentId, label, sharedWithTenant)
+
+Rename it, or change who can see it
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final documentId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final label = label_example; // String | 
+final sharedWithTenant = true; // bool | 
+
+try {
+    final result = api_instance.updateLeaseDocument(leaseId, documentId, label, sharedWithTenant);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->updateLeaseDocument: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+ **documentId** | **String**|  | 
+ **label** | **String**|  | [optional] 
+ **sharedWithTenant** | **bool**|  | [optional] 
+
+### Return type
+
+[**LeaseDocumentResponse**](LeaseDocumentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **uploadLeaseDocument**
+> LeaseDocumentResponse uploadLeaseDocument(leaseId, file, docType, label, sharedWithTenant)
+
+Attach a document
+
+A photograph is re-encoded on arrival so no EXIF or location survives. A PDF is stored as it arrived — there is no equivalent scrub, and rewriting a signed document would change the artefact somebody may later have to rely on. 20MB each, 20 per lease.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final file = BINARY_DATA_HERE; // MultipartFile | 
+final docType = docType_example; // String | 
+final label = label_example; // String | 
+final sharedWithTenant = true; // bool | 
+
+try {
+    final result = api_instance.uploadLeaseDocument(leaseId, file, docType, label, sharedWithTenant);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->uploadLeaseDocument: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+ **file** | **MultipartFile**|  | 
+ **docType** | **String**|  | [optional] [default to 'LEASE_CONTRACT']
+ **label** | **String**|  | [optional] 
+ **sharedWithTenant** | **bool**|  | [optional] [default to true]
+
+### Return type
+
+[**LeaseDocumentResponse**](LeaseDocumentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

@@ -11,6 +11,9 @@ public interface LeaseRepository extends JpaRepository<Lease, UUID> {
 
     List<Lease> findByUnitIdAndStatus(UUID unitId, LeaseStatus status);
 
+    /** Every lease a unit has ever held, ended ones included. */
+    List<Lease> findByUnitId(UUID unitId);
+
     Optional<Lease> findByBedIdAndStatus(UUID bedId, LeaseStatus status);
 
     Optional<Lease> findByRentalRequestId(UUID rentalRequestId);

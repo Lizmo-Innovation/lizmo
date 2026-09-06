@@ -52,6 +52,11 @@ dependencies:
   # cannot decode.
   image_picker: ^1.1.2
 
+  # For lease attachments, which may be a PDF as easily as a photograph.
+  # image_picker cannot see a PDF at all, and a landlord scanning a signed
+  # contract almost always ends up with one.
+  file_picker: ^8.1.2
+
   # Draws the property's QR entirely on the device — no service, no network,
   # nothing about a landlord's property leaves the phone to become an image.
   qr_flutter: ^4.1.0

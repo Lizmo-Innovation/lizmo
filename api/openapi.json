@@ -20,12 +20,12 @@
             "description": "Units and the beds within them"
         },
         {
-            "name": "Properties",
-            "description": "A landlord's properties and their units"
-        },
-        {
             "name": "Leases",
             "description": "Who is living where"
+        },
+        {
+            "name": "Properties",
+            "description": "A landlord's properties and their units"
         },
         {
             "name": "Notifications",
@@ -1185,6 +1185,144 @@
                 }
             }
         },
+        "/api/v1/leases/{leaseId}/documents": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Paperwork on this lease",
+                "description": "Newest first. Each carries a presigned URL valid for a few minutes; do not cache it, ask again instead.",
+                "operationId": "listLeaseDocuments",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The documents",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LeaseDocumentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Attach a document",
+                "description": "A photograph is re-encoded on arrival so no EXIF or location survives. A PDF is stored as it arrived — there is no equivalent scrub, and rewriting a signed document would change the artefact somebody may later have to rely on. 20MB each, 20 per lease.",
+                "operationId": "uploadLeaseDocument",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "docType",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "LEASE_CONTRACT",
+                                "VALID_ID",
+                                "RECEIPT",
+                                "TENANT_PHOTO",
+                                "OTHER"
+                            ],
+                            "default": "LEASE_CONTRACT"
+                        }
+                    },
+                    {
+                        "name": "label",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sharedWithTenant",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The stored document",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseDocumentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Too large, too many, or the wrong kind",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{id}/end": {
             "post": {
                 "tags": [
@@ -1716,6 +1854,116 @@
                 }
             }
         },
+        "/api/v1/leases/{leaseId}/documents/{documentId}": {
+            "delete": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Remove a document",
+                "description": "Gone for good, file and record together.",
+                "operationId": "deleteLeaseDocument",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "documentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not your lease, or no such document",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Rename it, or change who can see it",
+                "operationId": "updateLeaseDocument",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "documentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "label",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sharedWithTenant",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The document as it now stands",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseDocumentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease, or no such document",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/rental-requests/{id}": {
             "get": {
                 "tags": [
@@ -2011,6 +2259,52 @@
                                     "items": {
                                         "$ref": "#/components/schemas/LeaseResponse"
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/leases/{leaseId}/documents": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Paperwork my landlord has shared with me",
+                "description": "The signed contract, and anything else the landlord chose to share. Still readable after the tenancy ends: a copy of what you signed is worth having afterwards.",
+                "operationId": "listMyLeaseDocuments",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The shared documents",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LeaseDocumentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -3124,6 +3418,51 @@
                     }
                 },
                 "description": "A request a tenant has sent"
+            },
+            "LeaseDocumentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "docType": {
+                        "type": "string",
+                        "example": "LEASE_CONTRACT",
+                        "enum": [
+                            "LEASE_CONTRACT",
+                            "VALID_ID",
+                            "RECEIPT",
+                            "TENANT_PHOTO",
+                            "OTHER"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "urlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "byteSize": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "sharedWithTenant": {
+                        "type": "boolean"
+                    },
+                    "uploadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A document attached to a lease"
             },
             "EndLeaseRequest": {
                 "type": "object",

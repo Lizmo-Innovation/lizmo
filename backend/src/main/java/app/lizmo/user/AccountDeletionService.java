@@ -10,6 +10,7 @@ import app.lizmo.document.StoredDocumentRepository;
 import app.lizmo.lease.Lease;
 import app.lizmo.lease.LeaseRepository;
 import app.lizmo.lease.LeaseStatus;
+import app.lizmo.property.Property;
 import app.lizmo.property.PropertyRepository;
 import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
@@ -128,6 +129,7 @@ public class AccountDeletionService {
                 ErrorCode.NOT_FOUND, "No such account."));
 
         deletePhotographs(userId);
+        deleteLeasePaperwork(userId);
 
         // Every session ends now, including the one making this request and any
         // refresh token sitting in another device's storage.
@@ -171,6 +173,40 @@ public class AccountDeletionService {
                         document.getStorageKey(), userId, e);
             }
             documents.delete(document);
+        }
+    }
+
+    /**
+     * The landlord's own paperwork, filed against tenancies on their property.
+     *
+     * <p>Lease attachments outlive the tenancy on purpose -- a dispute is
+     * usually after somebody has moved out -- so nothing else ever removes
+     * them. This is the one thing that does: they are the landlord's records,
+     * and they end when the landlord does.
+     *
+     * <p>Nothing here is the tenant's. A tenant closing their own account
+     * leaves these standing, which is deliberate: a contract is an agreement
+     * between two people and one of them cannot delete the other's copy.
+     */
+    private void deleteLeasePaperwork(UUID landlordId) {
+        for (Property property : properties.findByLandlordIdOrderByNameAsc(landlordId)) {
+            for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(property.getId())) {
+                for (Lease lease : leases.findByUnitId(unit.getId())) {
+                    for (StoredDocument document : documents.findByOwnerTypeAndOwnerId(
+                            DocumentOwnerType.LEASE, lease.getId())) {
+                        try {
+                            store.delete(document.getStorageKey());
+                        } catch (RuntimeException e) {
+                            // As with the photographs: worth knowing about, not
+                            // worth stopping for. A half-closed account is worse
+                            // than a file that would not go.
+                            log.error("Could not delete {} while closing account {}",
+                                    document.getStorageKey(), landlordId, e);
+                        }
+                        documents.delete(document);
+                    }
+                }
+            }
         }
     }
 

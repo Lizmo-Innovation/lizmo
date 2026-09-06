@@ -5561,4 +5561,119 @@ void _tenantLeaseTests() {
       expect(find.textContaining('could not be loaded'), findsOneWidget);
     });
   });
+
+  group('paperwork on a lease', () {
+    LeaseDocumentResponse doc({
+      String id = 'd1',
+      String label = 'Signed contract',
+      bool shared = true,
+      String contentType = 'application/pdf',
+    }) => LeaseDocumentResponse(
+      id: id,
+      docType: LeaseDocumentResponseDocTypeEnum.LEASE_CONTRACT,
+      label: label,
+      url: 'https://example.invalid/$id.pdf',
+      urlExpiresInSeconds: 600,
+      contentType: contentType,
+      byteSize: 1024,
+      sharedWithTenant: shared,
+      uploadedAt: DateTime.now(),
+    );
+
+    Widget appWith(List<LeaseDocumentResponse> documents) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myTenantsProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+        leaseTenantProvider('l1').overrideWith(
+          (ref) async => TenantForLandlord(
+            leaseId: 'l1',
+            tenantId: 't1',
+            name: 'Ana Reyes',
+          ),
+        ),
+        leaseTenantDocumentsProvider('l1').overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        leaseDocumentsProvider('l1').overrideWith((ref) async => documents),
+      ],
+      child: const MaterialApp(home: TenantDetailScreen(leaseId: 'l1')),
+    );
+
+    testWidgets('an empty list says so rather than showing nothing',
+        (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Attachments'), findsOneWidget);
+      expect(find.text('Nothing attached yet.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('add-attachment')), findsOneWidget);
+    });
+
+    testWidgets('each one names itself', (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Signed contract'), findsOneWidget);
+    });
+
+    /// A landlord who cannot tell at a glance which documents their tenant is
+    /// reading will eventually share the wrong one. So it is on the row, not
+    /// hidden behind a menu.
+    testWidgets('every row says who can see it', (tester) async {
+      await tester.pumpWidget(appWith([
+        doc(id: 'd1', label: 'Signed contract'),
+        doc(id: 'd2', label: 'My own notes', shared: false),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your tenant can see this'), findsOneWidget);
+      expect(find.text('Only you can see this'), findsOneWidget);
+    });
+
+    testWidgets('a PDF and a photograph are told apart', (tester) async {
+      await tester.pumpWidget(appWith([
+        doc(id: 'd1', label: 'Contract'),
+        doc(id: 'd2', label: 'Receipt photo', contentType: 'image/jpeg'),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    });
+
+    /// There is no copy of this anywhere else, and the tenant may be relying
+    /// on it, so the confirmation says both things.
+    testWidgets('deleting asks first, and says who else loses it',
+        (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+
+      // Attachments are the last card on a long screen, so the button is
+      // below the fold until it is scrolled to.
+      await tester.ensureVisible(find.byKey(const ValueKey('delete-d1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('delete-d1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this document?'), findsOneWidget);
+      expect(find.textContaining('for you and for your tenant'), findsOneWidget);
+
+      await tester.tap(find.text('Keep it'));
+      await tester.pumpAndSettle();
+
+      // Backing out changes nothing.
+      expect(find.text('Signed contract'), findsOneWidget);
+    });
+
+    testWidgets('the sharing control is on every row', (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('share-d1')), findsOneWidget);
+    });
+  });
 }

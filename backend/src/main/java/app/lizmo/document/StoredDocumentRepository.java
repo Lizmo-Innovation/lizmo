@@ -14,4 +14,7 @@ public interface StoredDocumentRepository extends JpaRepository<StoredDocument, 
 
     /** Every document of one kind of owner, for the retention sweep. */
     List<StoredDocument> findByOwnerType(DocumentOwnerType ownerType);
+
+    /** For the cap on how much paperwork one lease may carry. */
+    long countByOwnerTypeAndOwnerId(DocumentOwnerType ownerType, UUID ownerId);
 }

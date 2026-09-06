@@ -185,3 +185,28 @@ final leaseTenantDocumentsProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// The paperwork filed against one lease, as the landlord sees it.
+///
+/// Every URL is presigned and short-lived, which is why this is autoDispose:
+/// one kept past its life shows a broken link.
+final leaseDocumentsProvider = FutureProvider.autoDispose
+    .family<List<LeaseDocumentResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(leasesApiProvider).listLeaseDocuments(leaseId) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// The same paperwork as the tenant sees it: only what was shared.
+final myLeaseDocumentsProvider = FutureProvider.autoDispose
+    .family<List<LeaseDocumentResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(leasesApiProvider).listMyLeaseDocuments(leaseId) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

@@ -16,6 +16,61 @@ class LeasesApi {
 
   final ApiClient apiClient;
 
+  /// Remove a document
+  ///
+  /// Gone for good, file and record together.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [String] documentId (required):
+  Future<Response> deleteLeaseDocumentWithHttpInfo(String leaseId, String documentId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{leaseId}/documents/{documentId}'
+      .replaceAll('{leaseId}', leaseId)
+      .replaceAll('{documentId}', documentId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'DELETE',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Remove a document
+  ///
+  /// Gone for good, file and record together.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [String] documentId (required):
+  Future<void> deleteLeaseDocument(String leaseId, String documentId, { Future<void>? abortTrigger, }) async {
+    final response = await deleteLeaseDocumentWithHttpInfo(leaseId, documentId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
   /// End a tenancy
   ///
   /// Frees the bed or unit back to the vacancy list. Defaults to ended today; pass terminated for a tenancy stopped early.
@@ -136,6 +191,67 @@ class LeasesApi {
     return null;
   }
 
+  /// Paperwork on this lease
+  ///
+  /// Newest first. Each carries a presigned URL valid for a few minutes; do not cache it, ask again instead.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<Response> listLeaseDocumentsWithHttpInfo(String leaseId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{leaseId}/documents'
+      .replaceAll('{leaseId}', leaseId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Paperwork on this lease
+  ///
+  /// Newest first. Each carries a presigned URL valid for a few minutes; do not cache it, ask again instead.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<List<LeaseDocumentResponse>?> listLeaseDocuments(String leaseId, { Future<void>? abortTrigger, }) async {
+    final response = await listLeaseDocumentsWithHttpInfo(leaseId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<LeaseDocumentResponse>') as List)
+        .cast<LeaseDocumentResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
   /// Who is living here
   ///
   /// Note: This method returns the HTTP [Response].
@@ -187,6 +303,67 @@ class LeasesApi {
       final responseBody = await _decodeBodyBytes(response);
       return (await apiClient.deserializeAsync(responseBody, 'List<LeaseResponse>') as List)
         .cast<LeaseResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
+  /// Paperwork my landlord has shared with me
+  ///
+  /// The signed contract, and anything else the landlord chose to share. Still readable after the tenancy ends: a copy of what you signed is worth having afterwards.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<Response> listMyLeaseDocumentsWithHttpInfo(String leaseId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/me/leases/{leaseId}/documents'
+      .replaceAll('{leaseId}', leaseId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Paperwork my landlord has shared with me
+  ///
+  /// The signed contract, and anything else the landlord chose to share. Still readable after the tenancy ends: a copy of what you signed is worth having afterwards.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<List<LeaseDocumentResponse>?> listMyLeaseDocuments(String leaseId, { Future<void>? abortTrigger, }) async {
+    final response = await listMyLeaseDocumentsWithHttpInfo(leaseId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<LeaseDocumentResponse>') as List)
+        .cast<LeaseDocumentResponse>()
         .toList(growable: false);
 
     }
@@ -350,6 +527,174 @@ class LeasesApi {
         .cast<TenantDocumentResponse>()
         .toList(growable: false);
 
+    }
+    return null;
+  }
+
+  /// Rename it, or change who can see it
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [String] documentId (required):
+  ///
+  /// * [String] label:
+  ///
+  /// * [bool] sharedWithTenant:
+  Future<Response> updateLeaseDocumentWithHttpInfo(String leaseId, String documentId, { String? label, bool? sharedWithTenant, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{leaseId}/documents/{documentId}'
+      .replaceAll('{leaseId}', leaseId)
+      .replaceAll('{documentId}', documentId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (label != null) {
+      queryParams.addAll(_queryParams('', 'label', label));
+    }
+    if (sharedWithTenant != null) {
+      queryParams.addAll(_queryParams('', 'sharedWithTenant', sharedWithTenant));
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PATCH',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Rename it, or change who can see it
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [String] documentId (required):
+  ///
+  /// * [String] label:
+  ///
+  /// * [bool] sharedWithTenant:
+  Future<LeaseDocumentResponse?> updateLeaseDocument(String leaseId, String documentId, { String? label, bool? sharedWithTenant, Future<void>? abortTrigger, }) async {
+    final response = await updateLeaseDocumentWithHttpInfo(leaseId, documentId, label: label, sharedWithTenant: sharedWithTenant, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'LeaseDocumentResponse',) as LeaseDocumentResponse;
+    
+    }
+    return null;
+  }
+
+  /// Attach a document
+  ///
+  /// A photograph is re-encoded on arrival so no EXIF or location survives. A PDF is stored as it arrived — there is no equivalent scrub, and rewriting a signed document would change the artefact somebody may later have to rely on. 20MB each, 20 per lease.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [MultipartFile] file (required):
+  ///
+  /// * [String] docType:
+  ///
+  /// * [String] label:
+  ///
+  /// * [bool] sharedWithTenant:
+  Future<Response> uploadLeaseDocumentWithHttpInfo(String leaseId, MultipartFile file, { String? docType, String? label, bool? sharedWithTenant, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{leaseId}/documents'
+      .replaceAll('{leaseId}', leaseId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (docType != null) {
+      queryParams.addAll(_queryParams('', 'docType', docType));
+    }
+    if (label != null) {
+      queryParams.addAll(_queryParams('', 'label', label));
+    }
+    if (sharedWithTenant != null) {
+      queryParams.addAll(_queryParams('', 'sharedWithTenant', sharedWithTenant));
+    }
+
+    const contentTypes = <String>['multipart/form-data'];
+
+    bool hasFields = false;
+    final mp = MultipartRequest('POST', Uri.parse(path));
+    if (file != null) {
+      hasFields = true;
+      mp.fields[r'file'] = file.field;
+      mp.files.add(file);
+    }
+    if (hasFields) {
+      postBody = mp;
+    }
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Attach a document
+  ///
+  /// A photograph is re-encoded on arrival so no EXIF or location survives. A PDF is stored as it arrived — there is no equivalent scrub, and rewriting a signed document would change the artefact somebody may later have to rely on. 20MB each, 20 per lease.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  ///
+  /// * [MultipartFile] file (required):
+  ///
+  /// * [String] docType:
+  ///
+  /// * [String] label:
+  ///
+  /// * [bool] sharedWithTenant:
+  Future<LeaseDocumentResponse?> uploadLeaseDocument(String leaseId, MultipartFile file, { String? docType, String? label, bool? sharedWithTenant, Future<void>? abortTrigger, }) async {
+    final response = await uploadLeaseDocumentWithHttpInfo(leaseId, file, docType: docType, label: label, sharedWithTenant: sharedWithTenant, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'LeaseDocumentResponse',) as LeaseDocumentResponse;
+    
     }
     return null;
   }

@@ -58,6 +58,18 @@ public class StoredDocument {
     @Column(name = "uploaded_at", nullable = false)
     private Instant uploadedAt;
 
+    /**
+     * Whether the tenant may see this. Meaningful only for lease attachments.
+     *
+     * <p>A tenant's own photographs are theirs already, so the flag says
+     * nothing about them and is left false. On a lease attachment it is the
+     * difference between the signed contract -- which is as much the tenant's
+     * as the landlord's -- and a clearance the landlord chased down for their
+     * own file.
+     */
+    @Column(name = "shared_with_tenant", nullable = false)
+    private boolean sharedWithTenant;
+
     protected StoredDocument() {
     }
 
@@ -69,6 +81,20 @@ public class StoredDocument {
             String storageKey,
             String contentType,
             long byteSize) {
+        this(ownerType, ownerId, uploadedBy, docType, storageKey, contentType,
+                byteSize, false);
+    }
+
+    public StoredDocument(
+            DocumentOwnerType ownerType,
+            UUID ownerId,
+            UUID uploadedBy,
+            DocumentType docType,
+            String storageKey,
+            String contentType,
+            long byteSize,
+            boolean sharedWithTenant) {
+        this.sharedWithTenant = sharedWithTenant;
         this.ownerType = ownerType;
         this.ownerId = ownerId;
         this.uploadedBy = uploadedBy;
@@ -134,5 +160,29 @@ public class StoredDocument {
 
     public Instant getUploadedAt() {
         return uploadedAt;
+    }
+
+    public boolean isSharedWithTenant() {
+        return sharedWithTenant;
+    }
+
+    /**
+     * Changes who may see it.
+     *
+     * <p>Named rather than a setter because it is a disclosure decision, not a
+     * field: turning it on shows a document to somebody who could not see it a
+     * moment ago.
+     */
+    public void shareWithTenant(boolean shared) {
+        this.sharedWithTenant = shared;
+    }
+
+    /** Renames it. The label is what a person recognises the file by. */
+    public void relabel(String label) {
+        this.label = label;
+    }
+
+    public String getLabel() {
+        return label;
     }
 }

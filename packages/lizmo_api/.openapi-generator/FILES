@@ -20,6 +20,7 @@ doc/InvitationSentResponse.md
 doc/InviteLandlordRequest.md
 doc/LandlordDetail.md
 doc/LandlordSummary.md
+doc/LeaseDocumentResponse.md
 doc/LeaseResponse.md
 doc/LeasesApi.md
 doc/LoginRequest.md
@@ -99,6 +100,7 @@ lib/model/invitation_sent_response.dart
 lib/model/invite_landlord_request.dart
 lib/model/landlord_detail.dart
 lib/model/landlord_summary.dart
+lib/model/lease_document_response.dart
 lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
@@ -132,3 +134,4 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
+test/lease_document_response_test.dart

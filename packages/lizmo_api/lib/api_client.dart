@@ -213,6 +213,8 @@ class ApiClient {
           return LandlordDetail.fromJson(value);
         case 'LandlordSummary':
           return LandlordSummary.fromJson(value);
+        case 'LeaseDocumentResponse':
+          return LeaseDocumentResponse.fromJson(value);
         case 'LeaseResponse':
           return LeaseResponse.fromJson(value);
         case 'LoginRequest':
