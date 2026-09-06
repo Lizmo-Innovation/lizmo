@@ -77,8 +77,10 @@ Class | Method | HTTP request | Description
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
 *FindingAPlaceApi* | [**findPropertyByCode**](doc//FindingAPlaceApi.md#findpropertybycode) | **GET** /api/v1/properties/lookup | Find a property by its code
 *LeasesApi* | [**endLease**](doc//LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
+*LeasesApi* | [**getTenantForLease**](doc//LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
 *LeasesApi* | [**listLeasesForProperty**](doc//LeasesApi.md#listleasesforproperty) | **GET** /api/v1/properties/{propertyId}/leases | Who is living here
 *LeasesApi* | [**listMyLeases**](doc//LeasesApi.md#listmyleases) | **GET** /api/v1/me/leases | My leases
+*LeasesApi* | [**listMyTenants**](doc//LeasesApi.md#listmytenants) | **GET** /api/v1/me/tenants | Everyone renting from me
 *LeasesApi* | [**listTenantDocumentsForLease**](doc//LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
 *MyAccountApi* | [**checkAccountDeletable**](doc//MyAccountApi.md#checkaccountdeletable) | **GET** /api/v1/me/deletable | Whether this account can be closed
 *MyAccountApi* | [**deleteMyAccount**](doc//MyAccountApi.md#deletemyaccount) | **DELETE** /api/v1/me | Close my account
@@ -151,6 +153,7 @@ Class | Method | HTTP request | Description
  - [StartRegistrationResponse](doc//StartRegistrationResponse.md)
  - [SupportContact](doc//SupportContact.md)
  - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
+ - [TenantForLandlord](doc//TenantForLandlord.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)
  - [UnitRequest](doc//UnitRequest.md)

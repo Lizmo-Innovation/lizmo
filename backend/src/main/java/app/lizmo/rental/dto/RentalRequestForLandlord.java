@@ -2,6 +2,7 @@ package app.lizmo.rental.dto;
 
 import app.lizmo.rental.RentalRequest;
 import app.lizmo.rental.RentalRequestStatus;
+import app.lizmo.user.Age;
 import app.lizmo.user.IdType;
 import app.lizmo.user.TenantProfile;
 import app.lizmo.user.User;
@@ -41,10 +42,7 @@ import java.util.UUID;
  *                   endpoint falls back to, so the landlord is shown the figure
  *                   they are about to commit to rather than the words "the
  *                   asking rent".
- * @param age worked out here rather than in the app. A birthday is a date and
- *            an age is a subtraction that goes wrong quietly -- leap years,
- *            time zones, a phone whose clock is a day out -- and the landlord
- *            reads the answer, not the sum. Null when no birthday was given.
+ * @param age worked out on the server. See {@link Age} for why.
  */
 @Schema(description = "A request waiting on the landlord")
 public record RentalRequestForLandlord(
@@ -95,22 +93,9 @@ public record RentalRequestForLandlord(
                 profile == null ? null : profile.getBirthdate(),
                 profile == null ? null : profile.getOccupation(),
                 profile == null ? null : profile.getPermanentAddress(),
-                ageOn(profile == null ? null : profile.getBirthdate(), today),
+                Age.on(profile == null ? null : profile.getBirthdate(), today),
                 profile == null ? null : profile.getIdType(),
                 askingRent);
     }
 
-    /**
-     * Years completed, not years begun.
-     *
-     * <p>Period rather than a subtraction of years: somebody born on the 30th
-     * of December is not a year older on the 1st of January, and that is the
-     * mistake the arithmetic version makes for two days out of every 365.
-     */
-    private static Integer ageOn(LocalDate birthdate, LocalDate today) {
-        if (birthdate == null || today == null || birthdate.isAfter(today)) {
-            return null;
-        }
-        return java.time.Period.between(birthdate, today).getYears();
-    }
 }

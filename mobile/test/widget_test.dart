@@ -16,6 +16,7 @@ import 'package:lizmo/screens/landlord_home_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo/screens/tenant_detail_screen.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo/screens/unit_utilities_screen.dart';
@@ -3292,6 +3293,7 @@ void main() {
                   )
                 ]),
             unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+            myTenantsProvider.overrideWith((ref) async => const <LeaseResponse>[]),
           ],
           child: const LizmoApp(),
         );
@@ -3324,8 +3326,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TenantsScreen), findsOneWidget);
-      // "No tenants" and "not built" are different statements.
-      expect(find.textContaining('Leases are not built yet'), findsOneWidget);
+      // It used to say "Leases are not built yet", which stopped being true
+      // and stayed on the screen. An empty list now means an empty list.
+      expect(find.text('No tenants yet'), findsOneWidget);
+      expect(find.textContaining('not built'), findsNothing);
     });
 
     testWidgets('each tab keeps its own stack', (tester) async {
@@ -5016,6 +5020,147 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nothing needs you'), findsNothing);
+    });
+  });
+
+  group('the landlord looking at a tenant', () {
+    LeaseResponse tenancy({String id = 'l1', String name = 'Ana Reyes'}) =>
+        LeaseResponse(
+          id: id,
+          tenantId: 't1',
+          tenantName: name,
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedId: 'b1',
+          bedLabel: 'Bed 1',
+          rentAmount: 2500,
+          dueDateDay: 5,
+          status: LeaseResponseStatusEnum.ACTIVE,
+        );
+
+    TenantForLandlord person({
+      String? emergencyName = 'Rosa Dela Cruz',
+      String? idNumber = '1234-5678-9012',
+      int? age = 26,
+      String? occupation,
+    }) => TenantForLandlord(
+      leaseId: 'l1',
+      tenantId: 't1',
+      name: 'Ana Reyes',
+      phone: '09171112222',
+      email: 'ana@example.com',
+      age: age,
+      occupation: occupation,
+      emergencyContactName: emergencyName,
+      emergencyContactRelationship: 'Mother',
+      emergencyContactPhone: '09171234567',
+      idType: TenantForLandlordIdTypeEnum.DRIVERS_LICENSE,
+      idNumber: idNumber,
+    );
+
+    Widget appWith({
+      List<LeaseResponse> tenants = const [],
+      TenantForLandlord? detail,
+      Object? detailError,
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myTenantsProvider.overrideWith((ref) async => tenants),
+        leaseTenantProvider('l1').overrideWith((ref) async {
+          if (detailError != null) throw detailError;
+          return detail ?? person();
+        }),
+        leaseTenantDocumentsProvider('l1').overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openTenants(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the list shows who is living where', (tester) async {
+      await tester.pumpWidget(appWith(tenants: [tenancy()]));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.textContaining('Bed 1, 2B'), findsOneWidget);
+    });
+
+    /// The reason the whole screen exists. A tenant cannot ask about a bed
+    /// without naming somebody to ring, and until now the one person who
+    /// might need to ring them could not read it.
+    testWidgets('the emergency contact is reachable', (tester) async {
+      await tester.pumpWidget(appWith(tenants: [tenancy()]));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+      expect(find.text('Rosa Dela Cruz'), findsOneWidget);
+      expect(find.text('09171234567'), findsOneWidget);
+      expect(find.text('Mother'), findsOneWidget);
+    });
+
+    testWidgets('the ID reads as the tenant chose it', (tester) async {
+      await tester.pumpWidget(appWith(tenants: [tenancy()]));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+
+      // Not DRIVERS_LICENSE. The tenant picked "Driving licence" from a list,
+      // and their landlord sees the same words for the same document.
+      expect(find.text('Driving licence'), findsOneWidget);
+      expect(find.text('1234-5678-9012'), findsOneWidget);
+    });
+
+    /// Null is not empty and not zero. "No occupation recorded" and
+    /// "unemployed" are different statements, and only the tenant makes the
+    /// second one.
+    testWidgets('a fact nobody gave reads as a dash', (tester) async {
+      await tester.pumpWidget(appWith(
+        tenants: [tenancy()],
+        detail: person(occupation: null, age: null),
+      ));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+
+      // Occupation, age and permanent address: three the tenant never gave.
+      expect(find.text('—'), findsNWidgets(3));
+      expect(find.text('0'), findsNothing);
+    });
+
+    /// A tenancy that ended answers 404, and the screen says so rather than
+    /// showing a half-empty record of somebody who has moved out.
+    testWidgets('an ended tenancy is not readable', (tester) async {
+      await tester.pumpWidget(appWith(
+        tenants: [tenancy()],
+        detailError: const ApiFailure(
+          code: 'NOT_FOUND',
+          message: 'That tenancy has ended.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await openTenants(tester);
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Not available'), findsOneWidget);
+      expect(find.text('That tenancy has ended.'), findsOneWidget);
+      expect(find.text('Rosa Dela Cruz'), findsNothing);
     });
   });
 }

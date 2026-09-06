@@ -48,6 +48,18 @@ public class LeaseController {
         return leases.mine(currentUser.requireId());
     }
 
+    @GetMapping("/me/tenants")
+    @Operation(operationId = "listMyTenants",
+            summary = "Everyone renting from me",
+            description = "Active leases across every property this landlord owns, so "
+                    + "the tenant list is one request rather than one per property.")
+    @ApiResponse(responseCode = "200", description = "The active leases",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = LeaseResponse.class))))
+    public List<LeaseResponse> myTenants() {
+        return leases.forLandlord(currentUser.requireId());
+    }
+
     @GetMapping("/properties/{propertyId}/leases")
     @Operation(operationId = "listLeasesForProperty", summary = "Who is living here")
     @ApiResponse(responseCode = "200", description = "The active leases",

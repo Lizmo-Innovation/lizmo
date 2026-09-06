@@ -80,6 +80,64 @@ class LeasesApi {
 
   /// Who is living here
   ///
+  /// The written half of what unlocks on acceptance: the emergency contact and the ID number, both of which a pending request deliberately withholds. Only while the lease is active.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<Response> getTenantForLeaseWithHttpInfo(String leaseId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{leaseId}/tenant'
+      .replaceAll('{leaseId}', leaseId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Who is living here
+  ///
+  /// The written half of what unlocks on acceptance: the emergency contact and the ID number, both of which a pending request deliberately withholds. Only while the lease is active.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] leaseId (required):
+  Future<TenantForLandlord?> getTenantForLease(String leaseId, { Future<void>? abortTrigger, }) async {
+    final response = await getTenantForLeaseWithHttpInfo(leaseId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'TenantForLandlord',) as TenantForLandlord;
+    
+    }
+    return null;
+  }
+
+  /// Who is living here
+  ///
   /// Note: This method returns the HTTP [Response].
   ///
   /// Parameters:
@@ -167,6 +225,58 @@ class LeasesApi {
   /// My leases
   Future<List<LeaseResponse>?> listMyLeases({ Future<void>? abortTrigger, }) async {
     final response = await listMyLeasesWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<LeaseResponse>') as List)
+        .cast<LeaseResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
+  /// Everyone renting from me
+  ///
+  /// Active leases across every property this landlord owns, so the tenant list is one request rather than one per property.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> listMyTenantsWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/me/tenants';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Everyone renting from me
+  ///
+  /// Active leases across every property this landlord owns, so the tenant list is one request rather than one per property.
+  Future<List<LeaseResponse>?> listMyTenants({ Future<void>? abortTrigger, }) async {
+    final response = await listMyTenantsWithHttpInfo(abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

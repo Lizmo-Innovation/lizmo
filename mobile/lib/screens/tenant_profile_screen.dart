@@ -6,6 +6,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../tenant/id_labels.dart';
 import '../tenant/tenant_providers.dart';
 
 /// What a tenant tells a landlord before signing a lease.
@@ -589,20 +590,6 @@ class _IdTypePicker extends StatelessWidget {
   final TenantProfileRequestIdTypeEnum? value;
   final ValueChanged<TenantProfileRequestIdTypeEnum?> onChanged;
 
-  static const _labels = {
-    'PHILSYS': 'PhilSys (National ID)',
-    'UMID': 'UMID',
-    'SSS': 'SSS',
-    'GSIS': 'GSIS',
-    'DRIVERS_LICENSE': 'Driving licence',
-    'PASSPORT': 'Passport',
-    'PHILHEALTH': 'PhilHealth',
-    'POSTAL': 'Postal ID',
-    'VOTERS': 'Voter ID',
-    'TIN': 'TIN',
-    'PRC': 'PRC',
-    'OTHER': 'Other',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -627,7 +614,7 @@ class _IdTypePicker extends StatelessWidget {
                   DropdownMenuItem(
                     value: option,
                     child: Text(
-                      _labels[option.toJson()] ?? option.toJson(),
+                      idTypeLabel(option.toJson() as String?),
                       style: LizmoType.rowSub,
                     ),
                   ),

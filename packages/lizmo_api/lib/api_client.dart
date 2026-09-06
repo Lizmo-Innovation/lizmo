@@ -245,6 +245,8 @@ class ApiClient {
           return SupportContact.fromJson(value);
         case 'TenantDocumentResponse':
           return TenantDocumentResponse.fromJson(value);
+        case 'TenantForLandlord':
+          return TenantForLandlord.fromJson(value);
         case 'TenantProfileRequest':
           return TenantProfileRequest.fromJson(value);
         case 'TenantProfileResponse':

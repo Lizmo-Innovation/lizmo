@@ -76,6 +76,30 @@ public class LeaseService {
     }
 
     /**
+     * Everyone renting from this landlord, across all their properties.
+     *
+     * <p>Here rather than in the app, which would otherwise have to fetch the
+     * properties and then ask each one in turn -- a request count that grows
+     * with the portfolio, on a screen that is the first thing a landlord opens.
+     *
+     * <p>Active only, like {@link #forProperty}: this answers "who is living in
+     * my buildings", and somebody who moved out last year is not.
+     */
+    @Transactional(readOnly = true)
+    public List<LeaseResponse> forLandlord(UUID landlordId) {
+        List<LeaseResponse> described = new ArrayList<>();
+        for (Property property : properties.findByLandlordIdOrderByNameAsc(landlordId)) {
+            for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(property.getId())) {
+                for (Lease lease :
+                        leases.findByUnitIdAndStatus(unit.getId(), LeaseStatus.ACTIVE)) {
+                    described.add(describe(lease));
+                }
+            }
+        }
+        return described;
+    }
+
+    /**
      * Ends a lease and gives the slot back.
      *
      * <p>ENDED or TERMINATED, which the landlord chooses: a tenancy that ran

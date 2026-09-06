@@ -1838,6 +1838,31 @@
                 }
             }
         },
+        "/api/v1/me/tenants": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Everyone renting from me",
+                "description": "Active leases across every property this landlord owns, so the tenant list is one request rather than one per property.",
+                "operationId": "listMyTenants",
+                "responses": {
+                    "200": {
+                        "description": "The active leases",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/LeaseResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/notifications": {
             "get": {
                 "tags": [
@@ -1923,6 +1948,49 @@
                     },
                     "409": {
                         "description": "A tenancy is still running",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/tenant": {
+            "get": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Who is living here",
+                "description": "The written half of what unlocks on acceptance: the emergency contact and the ID number, both of which a pending request deliberately withholds. Only while the lease is active.",
+                "operationId": "getTenantForLease",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The tenant",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TenantForLandlord"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease, or the tenancy has ended",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -3422,6 +3490,72 @@
                     }
                 },
                 "description": "How many notifications are unread"
+            },
+            "TenantForLandlord": {
+                "type": "object",
+                "properties": {
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "age": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "birthdate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "occupation": {
+                        "type": "string"
+                    },
+                    "permanentAddress": {
+                        "type": "string"
+                    },
+                    "emergencyContactName": {
+                        "type": "string"
+                    },
+                    "emergencyContactRelationship": {
+                        "type": "string"
+                    },
+                    "emergencyContactPhone": {
+                        "type": "string"
+                    },
+                    "idType": {
+                        "type": "string",
+                        "enum": [
+                            "PHILSYS",
+                            "UMID",
+                            "SSS",
+                            "GSIS",
+                            "DRIVERS_LICENSE",
+                            "PASSPORT",
+                            "PHILHEALTH",
+                            "POSTAL",
+                            "VOTERS",
+                            "TIN",
+                            "PRC",
+                            "OTHER"
+                        ]
+                    },
+                    "idNumber": {
+                        "type": "string"
+                    }
+                },
+                "description": "The tenant living under this lease"
             },
             "InvitationDetailsResponse": {
                 "type": "object",

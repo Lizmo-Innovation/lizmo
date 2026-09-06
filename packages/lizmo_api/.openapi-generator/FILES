@@ -43,6 +43,7 @@ doc/StartRegistrationResponse.md
 doc/SupportContact.md
 doc/TenantDocumentResponse.md
 doc/TenantDocumentsApi.md
+doc/TenantForLandlord.md
 doc/TenantProfileApi.md
 doc/TenantProfileRequest.md
 doc/TenantProfileResponse.md
@@ -111,6 +112,7 @@ lib/model/start_registration_request.dart
 lib/model/start_registration_response.dart
 lib/model/support_contact.dart
 lib/model/tenant_document_response.dart
+lib/model/tenant_for_landlord.dart
 lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
 lib/model/unit_request.dart
@@ -124,6 +126,3 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/notification_response_test.dart
-test/notifications_api_test.dart
-test/unread_count_test.dart

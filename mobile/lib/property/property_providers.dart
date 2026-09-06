@@ -132,3 +132,56 @@ final propertyLeasesProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// Everyone renting from this landlord, across every property they own.
+///
+/// One request rather than one per property: the Tenants tab is the first
+/// thing many landlords open, and a request count that grows with the
+/// portfolio is a screen that gets slower the more successful they are.
+final myTenantsProvider =
+    FutureProvider.autoDispose<List<LeaseResponse>>((ref) async {
+  try {
+    return await ref.watch(leasesApiProvider).listMyTenants() ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// The person living under one lease, in full.
+///
+/// Keyed by lease, never by tenant — the API answers "who is living in my
+/// room", so there is no id a screen could hold that opens a person.
+///
+/// autoDispose, and deliberately not cached: this is the most sensitive record
+/// the app shows a landlord, and it should leave memory when the screen does.
+final leaseTenantProvider = FutureProvider.autoDispose
+    .family<TenantForLandlord, String>((ref, leaseId) async {
+  try {
+    final tenant = await ref.watch(leasesApiProvider).getTenantForLease(leaseId);
+    if (tenant == null) {
+      throw const ApiFailure(
+        code: 'NOT_FOUND',
+        message: 'That tenancy has ended.',
+      );
+    }
+    return tenant;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// The ID photographs of whoever holds this lease.
+///
+/// Each URL is presigned and good for minutes, which is the reason this is
+/// autoDispose: one kept past its life shows a broken image.
+final leaseTenantDocumentsProvider = FutureProvider.autoDispose
+    .family<List<TenantDocumentResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref
+            .watch(leasesApiProvider)
+            .listTenantDocumentsForLease(leaseId) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

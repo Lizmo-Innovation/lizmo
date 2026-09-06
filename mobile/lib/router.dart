@@ -17,6 +17,7 @@ import 'screens/rental_requests_screen.dart';
 import 'screens/landlord_home_screen.dart';
 import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
+import 'screens/tenant_detail_screen.dart';
 import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/find_property_screen.dart';
@@ -83,6 +84,12 @@ abstract final class Routes {
   static const properties = '/landlord/properties';
   static const tenants = '/landlord/tenants';
   static const propertyNew = '/landlord/properties/new';
+
+  /// Addressed by lease, not by tenant, because the API is. There is no
+  /// route that takes a person -- the question the app can ask is "who is
+  /// living in my room", and it stops having an answer when they leave.
+  static String tenantDetailFor(String leaseId) =>
+      '/landlord/tenants/$leaseId';
 
   /// Detail and unit routes take the property id, so they are functions
   /// rather than constants — a typo in the path becomes a compile error.
@@ -363,6 +370,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenants,
                 builder: (context, state) => const TenantsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':leaseId',
+                    builder: (context, state) => TenantDetailScreen(
+                      leaseId: state.pathParameters['leaseId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

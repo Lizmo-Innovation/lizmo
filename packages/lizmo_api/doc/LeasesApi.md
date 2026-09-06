@@ -10,8 +10,10 @@ All URIs are relative to *http://localhost:8082*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**endLease**](LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
+[**getTenantForLease**](LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
 [**listLeasesForProperty**](LeasesApi.md#listleasesforproperty) | **GET** /api/v1/properties/{propertyId}/leases | Who is living here
 [**listMyLeases**](LeasesApi.md#listmyleases) | **GET** /api/v1/me/leases | My leases
+[**listMyTenants**](LeasesApi.md#listmytenants) | **GET** /api/v1/me/tenants | Everyone renting from me
 [**listTenantDocumentsForLease**](LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
 
 
@@ -56,6 +58,49 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getTenantForLease**
+> TenantForLandlord getTenantForLease(leaseId)
+
+Who is living here
+
+The written half of what unlocks on acceptance: the emergency contact and the ID number, both of which a pending request deliberately withholds. Only while the lease is active.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.getTenantForLease(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->getTenantForLease: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**TenantForLandlord**](TenantForLandlord.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -117,6 +162,45 @@ try {
     print(result);
 } catch (e) {
     print('Exception when calling LeasesApi->listMyLeases: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<LeaseResponse>**](LeaseResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listMyTenants**
+> List<LeaseResponse> listMyTenants()
+
+Everyone renting from me
+
+Active leases across every property this landlord owns, so the tenant list is one request rather than one per property.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+
+try {
+    final result = api_instance.listMyTenants();
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->listMyTenants: $e\n');
 }
 ```
 
