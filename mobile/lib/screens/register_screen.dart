@@ -8,6 +8,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../router.dart';
+import '../widgets/auth_form.dart';
 
 /// Signing up, in three steps: the address, the code sent to it, then a name
 /// and a password.
@@ -176,15 +177,15 @@ class _AddressStepState extends ConsumerState<_AddressStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Title('Create your account'),
+          AuthTitle('Create your account'),
           const SizedBox(height: 8),
-          _Blurb(
+          AuthBlurb(
             'We will email you a six-digit code to make sure the address is '
             'yours. Nothing is saved until you finish.',
           ),
           const SizedBox(height: 24),
 
-          _FieldLabel('Email address'),
+          AuthFieldLabel('Email address'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _email,
@@ -194,7 +195,7 @@ class _AddressStepState extends ConsumerState<_AddressStep> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _submitting ? null : _submit(),
-            decoration: _fieldDecoration('ana@example.com'),
+            decoration: authFieldDecoration('ana@example.com'),
             validator: (value) {
               final text = (value ?? '').trim();
               if (text.isEmpty) return 'Enter your email address';
@@ -211,12 +212,12 @@ class _AddressStepState extends ConsumerState<_AddressStep> {
 
           if (_error != null) ...[
             const SizedBox(height: 16),
-            _ErrorBanner(message: _error!),
+            AuthErrorBanner(message: _error!),
           ],
 
           const SizedBox(height: 24),
           _submitting
-              ? const _SubmittingButton()
+              ? const AuthSubmittingButton()
               : PrimaryActionButton(label: 'Send me a code', onPressed: _submit),
 
           const SizedBox(height: 16),
@@ -328,15 +329,15 @@ class _CodeStepState extends ConsumerState<_CodeStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BackLink(label: 'Use a different address', onTap: widget.onBack),
+          AuthBackLink(label: 'Use a different address', onTap: widget.onBack),
           const SizedBox(height: 16),
-          _Title('Check your email'),
+          AuthTitle('Check your email'),
           const SizedBox(height: 8),
-          _Blurb('We sent a six-digit code to ${widget.email}. '
+          AuthBlurb('We sent a six-digit code to ${widget.email}. '
               'It is good for ten minutes.'),
           const SizedBox(height: 24),
 
-          _FieldLabel('The code'),
+          AuthFieldLabel('The code'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _code,
@@ -352,7 +353,7 @@ class _CodeStepState extends ConsumerState<_CodeStep> {
               color: LizmoColors.teal900,
             ),
             textAlign: TextAlign.center,
-            decoration: _fieldDecoration('000000').copyWith(
+            decoration: authFieldDecoration('000000').copyWith(
               counterText: '',
               hintStyle: LizmoType.screenTitle.copyWith(
                 fontSize: context.lizmoSize(24),
@@ -369,7 +370,7 @@ class _CodeStepState extends ConsumerState<_CodeStep> {
 
           if (_error != null) ...[
             const SizedBox(height: 8),
-            _ErrorBanner(message: _error!),
+            AuthErrorBanner(message: _error!),
           ],
 
           const SizedBox(height: 20),
@@ -479,21 +480,21 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BackLink(label: 'Back to the code', onTap: widget.onBack),
+          AuthBackLink(label: 'Back to the code', onTap: widget.onBack),
           const SizedBox(height: 16),
-          _Title('Almost there'),
+          AuthTitle('Almost there'),
           const SizedBox(height: 8),
-          _Blurb('${widget.email} is confirmed. Now a name and a password.'),
+          AuthBlurb('${widget.email} is confirmed. Now a name and a password.'),
           const SizedBox(height: 24),
 
-          _FieldLabel('Full name'),
+          AuthFieldLabel('Full name'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            decoration: _fieldDecoration('Juan Dela Cruz'),
+            decoration: authFieldDecoration('Juan Dela Cruz'),
             validator: (value) => (value ?? '').trim().isEmpty
                 // A landlord deciding who to let a room to sees this name, not
                 // an email address.
@@ -502,7 +503,7 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
           ),
           const SizedBox(height: 16),
 
-          _FieldLabel('Password'),
+          AuthFieldLabel('Password'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _password,
@@ -510,7 +511,7 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
             textInputAction: TextInputAction.done,
             onChanged: (_) => setState(() {}),
             onFieldSubmitted: (_) => _submitting ? null : _submit(),
-            decoration: _fieldDecoration('Choose a password').copyWith(
+            decoration: authFieldDecoration('Choose a password').copyWith(
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscure
@@ -533,19 +534,19 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
             },
           ),
           const SizedBox(height: 12),
-          _PasswordChecklist(
+          PasswordChecklist(
             password: _password.text,
             missing: missing,
           ),
 
           if (_error != null) ...[
             const SizedBox(height: 16),
-            _ErrorBanner(message: _error!),
+            AuthErrorBanner(message: _error!),
           ],
 
           const SizedBox(height: 24),
           _submitting
-              ? const _SubmittingButton()
+              ? const AuthSubmittingButton()
               : PrimaryActionButton(
                   label: 'Create account', onPressed: _submit),
         ],
@@ -560,185 +561,3 @@ class _DetailsStepState extends ConsumerState<_DetailsStep> {
 /// password can see what is wanted while they type, instead of guessing and
 /// being corrected. The same rules the server enforces, kept in
 /// [PasswordRules] so there is one list rather than two.
-class _PasswordChecklist extends StatelessWidget {
-  const _PasswordChecklist({required this.password, required this.missing});
-
-  final String password;
-  final List<PasswordRule> missing;
-
-  @override
-  Widget build(BuildContext context) {
-    final missingLabels = missing.map((rule) => rule.label).toSet();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final rule in PasswordRules.all)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                Icon(
-                  missingLabels.contains(rule.label)
-                      ? Icons.circle_outlined
-                      : Icons.check_circle,
-                  size: context.lizmoSize(15),
-                  color: missingLabels.contains(rule.label)
-                      ? LizmoColors.slate
-                      : LizmoColors.teal900,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  rule.label,
-                  style: LizmoType.rowSub.copyWith(
-                    fontSize: context.lizmoSize(13),
-                    color: missingLabels.contains(rule.label)
-                        ? LizmoColors.slate
-                        : LizmoColors.teal900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Shared bits
-// ---------------------------------------------------------------------------
-
-InputDecoration _fieldDecoration(String hint) {
-  OutlineInputBorder border(Color colour) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: colour),
-      );
-
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: LizmoType.rowSub,
-    filled: true,
-    fillColor: LizmoColors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    enabledBorder: border(const Color(0xFFE3E8E6)),
-    focusedBorder: border(LizmoColors.teal900),
-    errorBorder: border(LizmoColors.red),
-    focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
-  );
-}
-
-class _Title extends StatelessWidget {
-  const _Title(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: LizmoType.screenTitle.copyWith(
-          color: LizmoColors.teal900,
-          fontSize: context.lizmoSize(28),
-        ),
-      );
-}
-
-class _Blurb extends StatelessWidget {
-  const _Blurb(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: LizmoType.rowSub.copyWith(fontSize: context.lizmoSize(14)),
-      );
-}
-
-class _BackLink extends StatelessWidget {
-  const _BackLink({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: onTap,
-        icon: const Icon(Icons.arrow_back, size: 18, color: LizmoColors.teal900),
-        label: Text(
-          label,
-          style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-        ),
-        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: LizmoType.rowName.copyWith(fontSize: context.lizmoSize(13)),
-      );
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: LizmoColors.redBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.error_outline, size: 18, color: LizmoColors.red),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubmittingButton extends StatelessWidget {
-  const _SubmittingButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: LizmoColors.coral.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(LizmoColors.white),
-        ),
-      ),
-    );
-  }
-}

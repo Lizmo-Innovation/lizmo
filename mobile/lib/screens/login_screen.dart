@@ -133,6 +133,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     const SizedBox(height: 16),
                     TextButton(
+                      key: const ValueKey('forgot-password'),
+                      onPressed: () => context.go(Routes.forgotPassword),
+                      child: Text(
+                        'I have forgotten my password',
+                        style: LizmoType.rowSub
+                            .copyWith(color: LizmoColors.teal900),
+                      ),
+                    ),
+                    TextButton(
                       onPressed: () => context.go(Routes.register),
                       child: Text(
                         'New to Lizmo? Create an account',

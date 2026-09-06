@@ -20,6 +20,7 @@ public class RecordingMailer implements Mailer {
             String to, String name, String link, String token, int validDays) {}
 
     private final List<Sent> sent = new ArrayList<>();
+    private final List<Sent> resets = new ArrayList<>();
     private final List<Invitation> invitations = new ArrayList<>();
 
     /** Set to make the next send fail, the way a dead relay would. */
@@ -31,6 +32,38 @@ public class RecordingMailer implements Mailer {
             throw failWith;
         }
         sent.add(new Sent(to, name, code, validMinutes));
+    }
+
+    @Override
+    public void sendPasswordResetCode(
+            String to, String name, String code, int validMinutes) {
+        if (failWith != null) {
+            throw failWith;
+        }
+        resets.add(new Sent(to, name, code, validMinutes));
+    }
+
+    /** Kept apart from the sign-up codes: "was anything sent at all" is the
+     *  question most of the reset tests ask, and a shared list cannot answer
+     *  it once a test has done both. */
+    public List<Sent> allResets() {
+        return List.copyOf(resets);
+    }
+
+    public Sent lastReset() {
+        if (resets.isEmpty()) {
+            throw new AssertionError("No password reset email was sent");
+        }
+        return resets.get(resets.size() - 1);
+    }
+
+    /** The code from the most recent reset email, which is what a person would type. */
+    public String lastResetCode() {
+        return lastReset().code();
+    }
+
+    public int resetCount() {
+        return resets.size();
     }
 
     @Override
@@ -84,6 +117,7 @@ public class RecordingMailer implements Mailer {
 
     public void clear() {
         sent.clear();
+        resets.clear();
         invitations.clear();
         failWith = null;
     }

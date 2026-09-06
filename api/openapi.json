@@ -1363,6 +1363,90 @@
                 }
             }
         },
+        "/api/v1/auth/password-reset": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Send me a reset code",
+                "description": "Emails a six-digit code, good for fifteen minutes and one use. The response is the same whether or not the address has an account: saying otherwise would make this a way to ask Lizmo who its users are.",
+                "operationId": "startPasswordReset",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartPasswordResetRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "If that address has an account, a code is on its way",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartPasswordResetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too soon, or too many for today",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/password-reset/complete": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Set a new password",
+                "description": "Spends the code, sets the password, and ends every session the account had -- including whoever's knowledge of the old password prompted the reset. Signs the caller back in.",
+                "operationId": "completePasswordReset",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompletePasswordResetRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in, with the new password",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The code was wrong or expired, or the password is too weak",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/logout": {
             "post": {
                 "tags": [
@@ -3165,6 +3249,60 @@
                     }
                 },
                 "description": "Exchange a refresh token for a new access token"
+            },
+            "StartPasswordResetRequest": {
+                "required": [
+                    "email"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    }
+                },
+                "description": "Asking for a password reset code"
+            },
+            "StartPasswordResetResponse": {
+                "type": "object",
+                "properties": {
+                    "resendAfterSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "description": "If that address has an account, a code is on its way"
+            },
+            "CompletePasswordResetRequest": {
+                "required": [
+                    "code",
+                    "email",
+                    "password"
+                ],
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "ana@example.com"
+                    },
+                    "code": {
+                        "maxLength": 10,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "483920"
+                    },
+                    "password": {
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sunrise2Bed!"
+                    }
+                },
+                "description": "Setting a new password"
             },
             "LoginRequest": {
                 "required": [

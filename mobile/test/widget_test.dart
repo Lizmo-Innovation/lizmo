@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/auth/active_role.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo/router.dart';
+import 'package:lizmo/screens/forgot_password_screen.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
@@ -90,6 +91,57 @@ class _SigningUpAuth extends AuthController {
     completed = true;
     state = _signedIn({LizmoProfile.tenant});
   }
+}
+
+/// Stands in for the password-reset half of the session controller.
+class _ResettingAuth extends AuthController {
+  _ResettingAuth({this.resendAfterSeconds = 60, this.failCompletionWith});
+
+  final int resendAfterSeconds;
+  final ApiFailure? failCompletionWith;
+
+  String? startedWith;
+  String? usedCode;
+  String? chosePassword;
+
+  @override
+  AuthState build() => const AuthSignedOut();
+
+  @override
+  Future<int> startPasswordReset(String email) async {
+    startedWith = email;
+    return resendAfterSeconds;
+  }
+
+  @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    if (failCompletionWith != null) throw failCompletionWith!;
+    usedCode = code;
+    chosePassword = password;
+    state = _signedIn({LizmoProfile.tenant});
+  }
+}
+
+/// The reset screen on its own, without going through login first.
+Widget _resetApp({AuthController? auth}) => ProviderScope(
+      overrides: [
+        authControllerProvider
+            .overrideWith(() => auth ?? _FakeAuth(const AuthSignedOut())),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+      ],
+      child: const MaterialApp(home: ForgotPasswordScreen()),
+    );
+
+/// Address step done, leaving the code and password step on screen.
+Future<void> _reachResetStep(WidgetTester tester) async {
+  await tester.enterText(
+      find.byKey(const ValueKey('reset-email')), 'ana@example.com');
+  await tester.tap(find.text('Send me a code'));
+  await tester.pumpAndSettle();
 }
 
 /// The sign-up screen on its own, without going through login first.
@@ -5199,6 +5251,187 @@ void _tenantLeaseTests() {
       expect(find.text('Not available'), findsOneWidget);
       expect(find.text('That tenancy has ended.'), findsOneWidget);
       expect(find.text('Rosa Dela Cruz'), findsNothing);
+    });
+  });
+
+  group('forgetting a password', () {
+    testWidgets('is reachable from login without a session', (tester) async {
+      await tester.pumpWidget(_app(const AuthSignedOut()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('forgot-password')));
+      await tester.pumpAndSettle();
+
+      // The signed-out redirect has to permit it, or somebody locked out could
+      // never reach the one screen that would let them back in.
+      expect(find.byType(ForgotPasswordScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+    });
+
+    testWidgets('asks for an address and nothing else, first', (tester) async {
+      await tester.pumpWidget(_resetApp());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Send me a code'), findsOneWidget);
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(find.text('New password'), findsNothing);
+    });
+
+    testWidgets('will not send a code to something that is not an address',
+        (tester) async {
+      final auth = _ResettingAuth();
+      await tester.pumpWidget(_resetApp(auth: auth));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.byKey(const ValueKey('reset-email')), 'not-an-address');
+      await tester.tap(find.text('Send me a code'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('That does not look like an email address'),
+          findsOneWidget);
+      expect(auth.startedWith, isNull);
+    });
+
+    /// The server answers identically whether or not the address has an
+    /// account. A screen that behaved differently would leak exactly what the
+    /// server refuses to.
+    testWidgets('moves on without claiming the address has an account',
+        (tester) async {
+      await tester.pumpWidget(_resetApp(auth: _ResettingAuth()));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      expect(find.textContaining('If ana@example.com has a Lizmo account'),
+          findsOneWidget);
+      // Never "we sent you a code" -- the app cannot stand behind that.
+      expect(find.textContaining('We sent'), findsNothing);
+    });
+
+    testWidgets('the code and the new password are asked for together',
+        (tester) async {
+      await tester.pumpWidget(_resetApp(auth: _ResettingAuth()));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      expect(find.byKey(const ValueKey('reset-code')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reset-password')), findsOneWidget);
+    });
+
+    testWidgets('a weak password is refused before anything is sent',
+        (tester) async {
+      final auth = _ResettingAuth();
+      await tester.pumpWidget(_resetApp(auth: auth));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      await tester.enterText(find.byKey(const ValueKey('reset-code')), '483920');
+      await tester.enterText(
+          find.byKey(const ValueKey('reset-password')), 'short');
+      await tester.tap(find.text('Set my password'));
+      await tester.pumpAndSettle();
+
+      expect(auth.chosePassword, isNull);
+    });
+
+    testWidgets('the code and password reach the controller', (tester) async {
+      final auth = _ResettingAuth();
+      await tester.pumpWidget(_resetApp(auth: auth));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      await tester.enterText(find.byKey(const ValueKey('reset-code')), '483920');
+      await tester.enterText(
+          find.byKey(const ValueKey('reset-password')), 'Moonrise7Bed!');
+      await tester.tap(find.text('Set my password'));
+      await tester.pumpAndSettle();
+
+      expect(auth.startedWith, 'ana@example.com');
+      expect(auth.usedCode, '483920');
+      expect(auth.chosePassword, 'Moonrise7Bed!');
+    });
+
+    /// The code is only ever checked by the call that spends it, so a wrong one
+    /// surfaces here rather than on a screen of its own.
+    testWidgets('a rejected code is reported under the form', (tester) async {
+      final auth = _ResettingAuth(
+        failCompletionWith: const ApiFailure(
+          code: 'OTP_INCORRECT',
+          message: 'That code is not right. 4 tries left.',
+        ),
+      );
+      await tester.pumpWidget(_resetApp(auth: auth));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      await tester.enterText(find.byKey(const ValueKey('reset-code')), '000000');
+      await tester.enterText(
+          find.byKey(const ValueKey('reset-password')), 'Moonrise7Bed!');
+      await tester.tap(find.text('Set my password'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('That code is not right. 4 tries left.'), findsOneWidget);
+      // Still on the form, rather than thrown back a step.
+      expect(find.byKey(const ValueKey('reset-password')), findsOneWidget);
+    });
+
+    testWidgets('resending is refused until the countdown runs out',
+        (tester) async {
+      await tester
+          .pumpWidget(_resetApp(auth: _ResettingAuth(resendAfterSeconds: 2)));
+      await tester.pumpAndSettle();
+      await _reachResetStep(tester);
+
+      // Every tap is an email somebody has to receive, so the button is
+      // disabled rather than tapped and told off.
+      expect(find.textContaining('Send another in'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Send another code'), findsOneWidget);
+    });
+
+    testWidgets('finishing signs the user in and moves them along',
+        (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(const AuthSignedOut())),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+          myTenantProfileProvider.overrideWith(
+            (ref) async => TenantProfileResponse(readyForALease: true),
+          ),
+          myRentalRequestsProvider.overrideWith(
+            (ref) async => const <RentalRequestResponse>[],
+          ),
+          myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+          myNotificationsProvider.overrideWith(
+            (ref) async => const <NotificationResponse>[],
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const LizmoApp()),
+      );
+      await tester.pumpAndSettle();
+
+      container.read(routerProvider).go(Routes.forgotPassword);
+      await tester.pumpAndSettle();
+      expect(find.byType(ForgotPasswordScreen), findsOneWidget);
+
+      // Resetting signs them straight in. Without the route in the move-along
+      // set they would sit on the form they had just submitted.
+      container.read(authControllerProvider.notifier).state =
+          _signedIn({LizmoProfile.tenant});
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ForgotPasswordScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
   });
 }

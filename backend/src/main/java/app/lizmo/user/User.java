@@ -109,6 +109,18 @@ public class User {
         return deletedAt != null;
     }
 
+    /**
+     * A new password, chosen by whoever holds this account.
+     *
+     * <p>Named rather than a plain setter because it is not a field
+     * assignment: every caller must also end the existing sessions, since the
+     * usual reason to change a password is that somebody else knows the old
+     * one.
+     */
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
     /** Records that somebody read a code sent to this address. */
     public void markEmailVerified(Instant at) {
         this.emailVerifiedAt = at;

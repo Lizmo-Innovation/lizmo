@@ -16,6 +16,63 @@ class AuthApi {
 
   final ApiClient apiClient;
 
+  /// Set a new password
+  ///
+  /// Spends the code, sets the password, and ends every session the account had -- including whoever's knowledge of the old password prompted the reset. Signs the caller back in.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [CompletePasswordResetRequest] completePasswordResetRequest (required):
+  Future<Response> completePasswordResetWithHttpInfo(CompletePasswordResetRequest completePasswordResetRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/auth/password-reset/complete';
+
+    // ignore: prefer_final_locals
+    Object? postBody = completePasswordResetRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Set a new password
+  ///
+  /// Spends the code, sets the password, and ends every session the account had -- including whoever's knowledge of the old password prompted the reset. Signs the caller back in.
+  ///
+  /// Parameters:
+  ///
+  /// * [CompletePasswordResetRequest] completePasswordResetRequest (required):
+  Future<AuthResponse?> completePasswordReset(CompletePasswordResetRequest completePasswordResetRequest, { Future<void>? abortTrigger, }) async {
+    final response = await completePasswordResetWithHttpInfo(completePasswordResetRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AuthResponse',) as AuthResponse;
+    
+    }
+    return null;
+  }
+
   /// Sign in with email or phone plus password
   ///
   /// Failed attempts are rate limited per account and per client address.
@@ -174,6 +231,63 @@ class AuthApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AuthResponse',) as AuthResponse;
+    
+    }
+    return null;
+  }
+
+  /// Send me a reset code
+  ///
+  /// Emails a six-digit code, good for fifteen minutes and one use. The response is the same whether or not the address has an account: saying otherwise would make this a way to ask Lizmo who its users are.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [StartPasswordResetRequest] startPasswordResetRequest (required):
+  Future<Response> startPasswordResetWithHttpInfo(StartPasswordResetRequest startPasswordResetRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/auth/password-reset';
+
+    // ignore: prefer_final_locals
+    Object? postBody = startPasswordResetRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Send me a reset code
+  ///
+  /// Emails a six-digit code, good for fifteen minutes and one use. The response is the same whether or not the address has an account: saying otherwise would make this a way to ask Lizmo who its users are.
+  ///
+  /// Parameters:
+  ///
+  /// * [StartPasswordResetRequest] startPasswordResetRequest (required):
+  Future<StartPasswordResetResponse?> startPasswordReset(StartPasswordResetRequest startPasswordResetRequest, { Future<void>? abortTrigger, }) async {
+    final response = await startPasswordResetWithHttpInfo(startPasswordResetRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'StartPasswordResetResponse',) as StartPasswordResetResponse;
     
     }
     return null;

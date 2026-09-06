@@ -32,4 +32,14 @@ public interface Mailer {
      *              pasted into the app instead
      */
     void sendLandlordInvitation(String to, String name, String link, String token, int validDays);
+
+    /**
+     * The code that lets somebody set a new password.
+     *
+     * <p>Deliberately its own method rather than reusing the sign-up code
+     * email. The words have to differ: this one arrives unbidden when an
+     * account is under attack, so it must say what is happening and what to do
+     * if the reader did not ask for it.
+     */
+    void sendPasswordResetCode(String to, String name, String code, int validMinutes);
 }

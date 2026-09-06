@@ -67,6 +67,40 @@ public class SmtpMailer implements Mailer {
     }
 
     @Override
+    public void sendPasswordResetCode(
+            String to, String name, String code, int validMinutes) {
+        String greeting = name == null || name.isBlank() ? "Hello," : "Hello " + name + ",";
+
+        String body = """
+                %s
+
+                Your Lizmo password reset code is %s
+
+                Enter it in the app to choose a new password. It works for %d
+                minutes, and only once.
+
+                If you did not ask to reset your password, somebody has your
+                email address and is trying to get into your account. Your
+                password has not changed and this code does nothing on its own
+                -- but it is worth signing in to check nothing else has.
+                """.formatted(greeting, code, validMinutes);
+
+        try {
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(properties.from());
+            helper.setTo(to);
+            helper.setSubject(code + " is your Lizmo password reset code");
+            helper.setText(body);
+            sender.send(message);
+        } catch (MailException | jakarta.mail.MessagingException e) {
+            log.error("Could not send a password reset code to {}", to, e);
+            throw new ApiException(ErrorCode.INTERNAL_ERROR,
+                    "We could not send the email just now. Please try again.");
+        }
+    }
+
+    @Override
     public void sendLandlordInvitation(
             String to, String name, String link, String token, int validDays) {
         String greeting = name == null || name.isBlank() ? "Hello," : "Hello " + name + ",";

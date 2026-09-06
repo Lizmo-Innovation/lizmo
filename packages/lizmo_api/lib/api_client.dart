@@ -197,6 +197,8 @@ class ApiClient {
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
+        case 'CompletePasswordResetRequest':
+          return CompletePasswordResetRequest.fromJson(value);
         case 'CompleteRegistrationRequest':
           return CompleteRegistrationRequest.fromJson(value);
         case 'EndLeaseRequest':
@@ -237,6 +239,10 @@ class ApiClient {
           return RentalRequestForLandlord.fromJson(value);
         case 'RentalRequestResponse':
           return RentalRequestResponse.fromJson(value);
+        case 'StartPasswordResetRequest':
+          return StartPasswordResetRequest.fromJson(value);
+        case 'StartPasswordResetResponse':
+          return StartPasswordResetResponse.fromJson(value);
         case 'StartRegistrationRequest':
           return StartRegistrationRequest.fromJson(value);
         case 'StartRegistrationResponse':

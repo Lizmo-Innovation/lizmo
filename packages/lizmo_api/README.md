@@ -72,9 +72,11 @@ Class | Method | HTTP request | Description
 *AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
 *AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
 *AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
+*AuthApi* | [**completePasswordReset**](doc//AuthApi.md#completepasswordreset) | **POST** /api/v1/auth/password-reset/complete | Set a new password
 *AuthApi* | [**login**](doc//AuthApi.md#login) | **POST** /api/v1/auth/login | Sign in with email or phone plus password
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
+*AuthApi* | [**startPasswordReset**](doc//AuthApi.md#startpasswordreset) | **POST** /api/v1/auth/password-reset | Send me a reset code
 *FindingAPlaceApi* | [**findPropertyByCode**](doc//FindingAPlaceApi.md#findpropertybycode) | **GET** /api/v1/properties/lookup | Find a property by its code
 *LeasesApi* | [**endLease**](doc//LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
 *LeasesApi* | [**getTenantForLease**](doc//LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
@@ -129,6 +131,7 @@ Class | Method | HTTP request | Description
  - [AuthResponse](doc//AuthResponse.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
+ - [CompletePasswordResetRequest](doc//CompletePasswordResetRequest.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)
  - [InvitationDetailsResponse](doc//InvitationDetailsResponse.md)
@@ -149,6 +152,8 @@ Class | Method | HTTP request | Description
  - [RentalRequestCreate](doc//RentalRequestCreate.md)
  - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
  - [RentalRequestResponse](doc//RentalRequestResponse.md)
+ - [StartPasswordResetRequest](doc//StartPasswordResetRequest.md)
+ - [StartPasswordResetResponse](doc//StartPasswordResetResponse.md)
  - [StartRegistrationRequest](doc//StartRegistrationRequest.md)
  - [StartRegistrationResponse](doc//StartRegistrationResponse.md)
  - [SupportContact](doc//SupportContact.md)

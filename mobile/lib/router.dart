@@ -7,6 +7,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'auth/active_role.dart';
+import 'screens/forgot_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/create_property_screen.dart';
@@ -111,10 +112,12 @@ abstract final class Routes {
   /// wherever you were rather than switching you to a tab.
   static const notifications = '/notifications';
 
+  static const forgotPassword = '/forgot-password';
+
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
-  static const signedOutAllowed = {login, register};
+  static const signedOutAllowed = {login, register, forgotPassword};
 }
 
 /// Holds the splash for a moment at launch.
@@ -217,6 +220,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: Routes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       // Four sections, each with its own navigation stack. What needs me, my
       // room, my money, my problems — organised around what a tenant thinks

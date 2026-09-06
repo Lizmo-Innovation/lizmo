@@ -24,6 +24,7 @@ abstract final class ApiConfig {
     }
 
     // Host port 8082, not 8080 — see the README on port collisions.
-    return 'http://localhost:8082';
+    //return 'http://localhost:8082';
+    return 'https://lizmo-api-66cqnyxeha-as.a.run.app';
   }
 }

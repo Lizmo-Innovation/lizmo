@@ -155,6 +155,52 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Asks for a code that will let a forgotten password be replaced.
+  ///
+  /// The answer is the same whether or not the address has an account, so
+  /// there is nothing here to tell the caller apart from a wasted request.
+  /// That is the point: anything more specific would make this a way to ask
+  /// Lizmo who its users are.
+  Future<int> startPasswordReset(String email) async {
+    try {
+      final response = await _api
+          .startPasswordReset(StartPasswordResetRequest(email: email.trim()));
+      return response?.resendAfterSeconds ?? 60;
+    } catch (error) {
+      throw ApiFailure.from(error);
+    }
+  }
+
+  /// Spends the code, sets the new password, and signs in.
+  ///
+  /// Signing in for the same reason registration does: they chose that
+  /// password one field ago, and asking them to type it again proves nothing.
+  ///
+  /// Every other session the account had is ended by the server, including
+  /// whoever's knowledge of the old password prompted this.
+  Future<void> completePasswordReset({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
+    try {
+      final response = await _api.completePasswordReset(
+        CompletePasswordResetRequest(
+          email: email.trim(),
+          code: code.trim(),
+          password: password,
+        ),
+      );
+      if (response == null) {
+        throw const ApiFailure(
+            code: 'UNKNOWN', message: 'Could not set the password. Please try again.');
+      }
+      await _persist(response);
+    } catch (error) {
+      throw ApiFailure.from(error);
+    }
+  }
+
   /// Exchanges the stored refresh token for a new access token, mid-session.
   ///
   /// Called by [AuthenticatedClient] when a request comes back 401, and returns
