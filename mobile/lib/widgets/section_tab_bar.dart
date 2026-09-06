@@ -29,11 +29,17 @@ class SectionTabBar extends StatelessWidget {
     required this.tabs,
     required this.index,
     required this.onTap,
+    this.badges = const {},
   });
 
   final List<SectionTab> tabs;
   final int index;
   final ValueChanged<int> onTap;
+
+  /// How many unread things sit behind each tab, by tab key. A tab missing
+  /// from the map, or carrying zero, gets no badge -- an empty badge would
+  /// claim there is something to see.
+  final Map<Key, int> badges;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,7 @@ class SectionTabBar extends StatelessWidget {
                   icon: tab.icon,
                   label: tab.label,
                   selected: position == index,
+                  badge: badges[tab.key] ?? 0,
                   onTap: () => onTap(position),
                 ),
             ],
@@ -70,12 +77,14 @@ class _Tab extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.selected,
+    required this.badge,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+  final int badge;
   final VoidCallback onTap;
 
   @override
@@ -90,7 +99,40 @@ class _Tab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 22, color: colour),
+            // Coral here and nowhere else in the bar: a badge is not
+            // navigation, it is the one thing asking to be dealt with, which
+            // is exactly what the action accent is for.
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 22, color: colour),
+                if (badge > 0)
+                  Positioned(
+                    right: -7,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      constraints: const BoxConstraints(minWidth: 16),
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: LizmoColors.coral,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          badge > 9 ? '9+' : '$badge',
+                          style: LizmoType.rowSub.copyWith(
+                            color: LizmoColors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(
               label,

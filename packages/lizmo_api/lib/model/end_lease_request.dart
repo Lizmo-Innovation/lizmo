@@ -55,7 +55,7 @@ class EndLeaseRequest {
       json[r'terminated'] = null;
     }
     if (this.endDate != null) {
-      json[r'endDate'] = _dateFormatter.format(this.endDate!.toUtc());
+      json[r'endDate'] = _dateFormatter.format(this.endDate!);
     } else {
       json[r'endDate'] = null;
     }

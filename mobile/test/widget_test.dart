@@ -26,6 +26,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
+import 'package:lizmo/notifications/notification_providers.dart';
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -4918,6 +4919,103 @@ void _tenantLeaseTests() {
 
       // Coming back lands where you left, which is what a tab bar is for.
       expect(find.byType(FindPropertyScreen), findsOneWidget);
+    });
+  });
+
+  group('being told what happened', () {
+    NotificationResponse note({
+      required String id,
+      String title = 'Your request was accepted',
+      String message = 'You have Bed 1 in 2B.',
+      bool unread = true,
+    }) => NotificationResponse(
+      id: id,
+      type: NotificationResponseTypeEnum.REQUEST_ACCEPTED,
+      title: title,
+      message: message,
+      unread: unread,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    );
+
+    Widget appWith(List<NotificationResponse> news) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith((ref) async => news),
+      ],
+      child: const LizmoApp(),
+    );
+
+    testWidgets('the news is on the home screen', (tester) async {
+      await tester.pumpWidget(appWith([note(id: 'n1')]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('What happened'), findsOneWidget);
+      expect(find.text('Your request was accepted'), findsOneWidget);
+      expect(find.text('You have Bed 1 in 2B.'), findsOneWidget);
+    });
+
+    testWidgets('the unread count rides on the Home tab', (tester) async {
+      await tester.pumpWidget(appWith([
+        note(id: 'n1'),
+        note(id: 'n2', title: 'That one has gone'),
+        note(id: 'n3', title: 'Old news', unread: false),
+      ]));
+      await tester.pumpAndSettle();
+
+      // Two, not three: a badge counts what is waiting, not what exists.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('tab-home')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('nothing waiting means no badge', (tester) async {
+      await tester.pumpWidget(appWith([note(id: 'n1', unread: false)]));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('tab-home')),
+          matching: find.text('1'),
+        ),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('mark-all-read')), findsNothing);
+    });
+
+    /// A landlord signed up before any of this existed still opens a home
+    /// screen. An empty feed must leave no trace of itself.
+    testWidgets('an empty feed shows nothing at all', (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+
+      expect(find.text('What happened'), findsNothing);
+      expect(find.text('Nothing needs you'), findsOneWidget);
+    });
+
+    /// The feed is news, not the state of things. A tenant with news and
+    /// nothing outstanding is not "all quiet".
+    testWidgets('news displaces the all-quiet card', (tester) async {
+      await tester.pumpWidget(appWith([note(id: 'n1')]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing needs you'), findsNothing);
     });
   });
 }

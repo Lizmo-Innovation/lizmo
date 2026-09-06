@@ -231,12 +231,12 @@ class LeaseResponse {
       json[r'dueDateDay'] = null;
     }
     if (this.startDate != null) {
-      json[r'startDate'] = _dateFormatter.format(this.startDate!.toUtc());
+      json[r'startDate'] = _dateFormatter.format(this.startDate!);
     } else {
       json[r'startDate'] = null;
     }
     if (this.endDate != null) {
-      json[r'endDate'] = _dateFormatter.format(this.endDate!.toUtc());
+      json[r'endDate'] = _dateFormatter.format(this.endDate!);
     } else {
       json[r'endDate'] = null;
     }

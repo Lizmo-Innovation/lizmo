@@ -5,7 +5,9 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../notifications/notification_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/notification_feed.dart';
 import '../widgets/role_switcher.dart';
 
 /// The landlord's dashboard.
@@ -60,9 +62,18 @@ class LandlordHomeScreen extends ConsumerWidget {
             ],
           ),
           Expanded(
-            child: ListView(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(propertiesProvider);
+                ref.invalidate(myNotificationsProvider);
+              },
+              child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
               children: const [
+                // First: what has happened since they last looked, which is
+                // the only live thing on a screen otherwise made of sections
+                // waiting to be built.
+                NotificationFeed(),
                 _Awaiting(
                   icon: Icons.payments_outlined,
                   title: 'Collections',
@@ -85,6 +96,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                   needs: 'Needs leases',
                 ),
               ],
+              ),
             ),
           ),
         ],

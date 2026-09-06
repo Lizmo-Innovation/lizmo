@@ -217,6 +217,8 @@ class ApiClient {
           return LoginRequest.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'NotificationResponse':
+          return NotificationResponse.fromJson(value);
         case 'PendingInvitation':
           return PendingInvitation.fromJson(value);
         case 'PlatformSettings':
@@ -251,6 +253,8 @@ class ApiClient {
           return UnitRequest.fromJson(value);
         case 'UnitResponse':
           return UnitResponse.fromJson(value);
+        case 'UnreadCount':
+          return UnreadCount.fromJson(value);
         case 'UtilitiesRequest':
           return UtilitiesRequest.fromJson(value);
         case 'UtilitiesResponse':

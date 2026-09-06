@@ -2,6 +2,9 @@ package app.lizmo.rental;
 
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
+import app.lizmo.notification.NotificationEntityType;
+import app.lizmo.notification.NotificationService;
+import app.lizmo.notification.NotificationType;
 import app.lizmo.property.Bed;
 import app.lizmo.property.BedRepository;
 import app.lizmo.property.BedStatus;
@@ -37,17 +40,22 @@ public class RentalRequestService {
     private final BedRepository beds;
     private final LeaseReadiness readiness;
 
+    /** So a landlord finds out somebody asked without opening the inbox. */
+    private final NotificationService notifications;
+
     public RentalRequestService(
             RentalRequestRepository requests,
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
-            LeaseReadiness readiness) {
+            LeaseReadiness readiness,
+            NotificationService notifications) {
         this.requests = requests;
         this.properties = properties;
         this.units = units;
         this.beds = beds;
         this.readiness = readiness;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -86,6 +94,19 @@ public class RentalRequestService {
             throw new ApiException(ErrorCode.ALREADY_REQUESTED,
                     "You have already asked about this one. The landlord will reply.");
         }
+
+        // No tenant name in the message. The landlord opens the request to see
+        // who it is, and a notification is read in places -- a lock screen,
+        // later a push -- where a name is more exposure than the tenant agreed
+        // to when they asked.
+        notifications.raise(
+                landlordOf(unit),
+                NotificationType.REQUEST_RECEIVED,
+                "Somebody has asked about a room",
+                "A tenant has asked about %s. Open your requests to see who, and accept or decline."
+                        .formatted(slotWords(unit, bed)),
+                NotificationEntityType.RENTAL_REQUEST,
+                request.getId());
 
         return describe(request, unit, bed);
     }
@@ -187,6 +208,20 @@ public class RentalRequestService {
                 property == null ? null : property.getName(),
                 unit == null ? null : unit.getUnitNumber(),
                 bed == null ? null : bed.getBedLabel());
+    }
+
+    /** The landlord to tell. Null if the property has gone, which cannot happen. */
+    private UUID landlordOf(Unit unit) {
+        return properties.findById(unit.getPropertyId())
+                .map(Property::getLandlordId)
+                .orElse(null);
+    }
+
+    /** "bed 1 in 2B", or "unit 101" -- how a person would say it. */
+    private static String slotWords(Unit unit, Bed bed) {
+        return bed == null
+                ? "unit " + unit.getUnitNumber()
+                : bed.getBedLabel() + " in " + unit.getUnitNumber();
     }
 
     private static ApiException unavailable(String message) {

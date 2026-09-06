@@ -12,20 +12,32 @@
     ],
     "tags": [
         {
-            "name": "Auth",
-            "description": "Registration, login and token lifecycle"
-        },
-        {
-            "name": "Tenant profile",
-            "description": "A tenant's own details"
-        },
-        {
             "name": "Requests to answer",
             "description": "What is waiting for a landlord"
         },
         {
             "name": "Units",
             "description": "Units and the beds within them"
+        },
+        {
+            "name": "Properties",
+            "description": "A landlord's properties and their units"
+        },
+        {
+            "name": "Leases",
+            "description": "Who is living where"
+        },
+        {
+            "name": "Notifications",
+            "description": "What is waiting to be read"
+        },
+        {
+            "name": "Auth",
+            "description": "Registration, login and token lifecycle"
+        },
+        {
+            "name": "Tenant profile",
+            "description": "A tenant's own details"
         },
         {
             "name": "Finding a place",
@@ -42,14 +54,6 @@
         {
             "name": "Admin",
             "description": "Lizmo's own staff"
-        },
-        {
-            "name": "Properties",
-            "description": "A landlord's properties and their units"
-        },
-        {
-            "name": "Leases",
-            "description": "Who is living where"
         },
         {
             "name": "Signing up",
@@ -1141,6 +1145,46 @@
                 }
             }
         },
+        "/api/v1/me/notifications/{id}/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark one read",
+                "operationId": "markNotificationRead",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/me/notifications/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark everything read",
+                "description": "What the badge invites somebody to do.",
+                "operationId": "markAllNotificationsRead",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{id}/end": {
             "post": {
                 "tags": [
@@ -1787,6 +1831,53 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SupportContact"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "What is waiting",
+                "description": "Newest first, read and unread together: what happened last week is still the answer to what happened.",
+                "operationId": "listMyNotifications",
+                "responses": {
+                    "200": {
+                        "description": "The notifications",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/NotificationResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "How many are unread",
+                "description": "Its own endpoint so drawing a badge costs one small request rather than the whole list.",
+                "operationId": "countUnreadNotifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnreadCount"
                                 }
                             }
                         }
@@ -3265,6 +3356,72 @@
                     }
                 },
                 "description": "Where to write to Lizmo"
+            },
+            "NotificationResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "REQUEST_RECEIVED",
+                            "REQUEST_ACCEPTED",
+                            "REQUEST_DECLINED",
+                            "REQUEST_SUPERSEDED",
+                            "RENT_DUE_REMINDER",
+                            "RENT_OVERDUE",
+                            "PAYMENT_CONFIRMED",
+                            "PAYMENT_REJECTED",
+                            "MAINTENANCE_STATUS_CHANGED",
+                            "NEW_NOTICE_POSTED",
+                            "LEASE_EXPIRING",
+                            "STAFF_ASSIGNED"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "unread": {
+                        "type": "boolean"
+                    },
+                    "relatedEntityType": {
+                        "type": "string",
+                        "enum": [
+                            "RENTAL_REQUEST",
+                            "LEASE",
+                            "BILLING_PERIOD",
+                            "PAYMENT",
+                            "MAINTENANCE_REQUEST",
+                            "NOTICE",
+                            "STAFF_ASSIGNMENT"
+                        ]
+                    },
+                    "relatedEntityId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Something waiting to be read"
+            },
+            "UnreadCount": {
+                "type": "object",
+                "properties": {
+                    "unread": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "How many notifications are unread"
             },
             "InvitationDetailsResponse": {
                 "type": "object",

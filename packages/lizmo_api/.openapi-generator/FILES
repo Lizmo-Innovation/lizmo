@@ -24,6 +24,8 @@ doc/LeasesApi.md
 doc/LoginRequest.md
 doc/MaintenanceRequest.md
 doc/MyAccountApi.md
+doc/NotificationResponse.md
+doc/NotificationsApi.md
 doc/PendingInvitation.md
 doc/PlatformSettings.md
 doc/PropertiesApi.md
@@ -47,6 +49,7 @@ doc/TenantProfileResponse.md
 doc/UnitRequest.md
 doc/UnitResponse.md
 doc/UnitsApi.md
+doc/UnreadCount.md
 doc/UtilitiesRequest.md
 doc/UtilitiesResponse.md
 doc/UtilityRequest.md
@@ -62,6 +65,7 @@ lib/api/auth_api.dart
 lib/api/finding_a_place_api.dart
 lib/api/leases_api.dart
 lib/api/my_account_api.dart
+lib/api/notifications_api.dart
 lib/api/properties_api.dart
 lib/api/requests_to_answer_api.dart
 lib/api/signing_up_api.dart
@@ -93,6 +97,7 @@ lib/model/landlord_summary.dart
 lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
+lib/model/notification_response.dart
 lib/model/pending_invitation.dart
 lib/model/platform_settings.dart
 lib/model/property_by_code_response.dart
@@ -110,6 +115,7 @@ lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
+lib/model/unread_count.dart
 lib/model/utilities_request.dart
 lib/model/utilities_response.dart
 lib/model/utility_request.dart
@@ -118,3 +124,6 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
+test/notification_response_test.dart
+test/notifications_api_test.dart
+test/unread_count_test.dart

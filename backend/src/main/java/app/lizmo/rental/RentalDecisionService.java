@@ -1,6 +1,9 @@
 package app.lizmo.rental;
 
 import app.lizmo.common.ApiException;
+import app.lizmo.notification.NotificationEntityType;
+import app.lizmo.notification.NotificationService;
+import app.lizmo.notification.NotificationType;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.lease.Lease;
 import app.lizmo.lease.LeaseRepository;
@@ -46,6 +49,9 @@ public class RentalDecisionService {
     private final BedRepository beds;
     private final UserRepository users;
 
+    /** Nobody was told anything before this. See NotificationService. */
+    private final NotificationService notifications;
+
     public RentalDecisionService(
             RentalRequestRepository requests,
             RentalInboxService inbox,
@@ -54,7 +60,8 @@ public class RentalDecisionService {
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
-            UserRepository users) {
+            UserRepository users,
+            NotificationService notifications) {
         this.requests = requests;
         this.inbox = inbox;
         this.leases = leases;
@@ -63,6 +70,7 @@ public class RentalDecisionService {
         this.units = units;
         this.beds = beds;
         this.users = users;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -112,6 +120,22 @@ public class RentalDecisionService {
         supersedeRivals(request);
         markOccupied(unit, bed);
 
+        // The terms are in the message on purpose: this is the first moment
+        // the tenant sees what was agreed, and the rent may not be the one
+        // they were looking at when they asked.
+        notifications.raise(
+                request.getTenantId(),
+                NotificationType.REQUEST_ACCEPTED,
+                "Your request was accepted",
+                "You have %s. Rent is P%s a month, due on the %s, from %s."
+                        .formatted(
+                                slotWords(unit, bed),
+                                rent.stripTrailingZeros().toPlainString(),
+                                ordinal(dueDay),
+                                start),
+                NotificationEntityType.LEASE,
+                lease.getId());
+
         return describe(lease, unit, bed);
     }
 
@@ -120,6 +144,18 @@ public class RentalDecisionService {
         RentalRequest request = pendingRequestToDecline(requestId, landlordId);
         request.settle(RentalRequestStatus.DECLINED);
         requests.save(request);
+
+        // No reason given, because the landlord was not asked for one. Better
+        // a plain no than an invented explanation.
+        notifications.raise(
+                request.getTenantId(),
+                NotificationType.REQUEST_DECLINED,
+                "Your request was declined",
+                "The landlord has said no to your request. You can look for "
+                        + "somewhere else in Lizmo.",
+                NotificationEntityType.RENTAL_REQUEST,
+                request.getId());
+
         return inbox.one(requestId, landlordId);
     }
 
@@ -143,6 +179,20 @@ public class RentalDecisionService {
             }
             rival.settle(RentalRequestStatus.SUPERSEDED);
             requests.save(rival);
+
+            // The whole reason for this feature. Their request changed state
+            // because of something a third party did, and until now nobody
+            // told them -- which is worse than a decline, because a decline at
+            // least happens to you.
+            notifications.raise(
+                    rival.getTenantId(),
+                    NotificationType.REQUEST_SUPERSEDED,
+                    "That one has gone",
+                    "Somebody else was accepted for the room you asked about. "
+                            + "Your request has closed -- have a look for "
+                            + "another one.",
+                    NotificationEntityType.RENTAL_REQUEST,
+                    rival.getId());
         }
     }
 
@@ -246,6 +296,26 @@ public class RentalDecisionService {
     /**
      * Saying yes takes on a tenant, so a locked property may not.
      */
+    /** "Bed 1 in 2B", or "unit 101" — how a person would say it. */
+    private static String slotWords(Unit unit, Bed bed) {
+        return bed == null
+                ? "unit " + unit.getUnitNumber()
+                : bed.getBedLabel() + " in " + unit.getUnitNumber();
+    }
+
+    /** "5th", not "5". A due date read as "the 5" looks like a bug. */
+    private static String ordinal(int day) {
+        if (day >= 11 && day <= 13) {
+            return day + "th";
+        }
+        return switch (day % 10) {
+            case 1 -> day + "st";
+            case 2 -> day + "nd";
+            case 3 -> day + "rd";
+            default -> day + "th";
+        };
+    }
+
     private RentalRequest pendingRequestToAccept(UUID requestId, UUID landlordId) {
         RentalRequest request = pendingRequest(requestId);
         access.writable(request.getPropertyId(), landlordId);

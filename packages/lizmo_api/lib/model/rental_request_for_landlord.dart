@@ -274,7 +274,7 @@ class RentalRequestForLandlord {
       json[r'tenantPhone'] = null;
     }
     if (this.birthdate != null) {
-      json[r'birthdate'] = _dateFormatter.format(this.birthdate!.toUtc());
+      json[r'birthdate'] = _dateFormatter.format(this.birthdate!);
     } else {
       json[r'birthdate'] = null;
     }
