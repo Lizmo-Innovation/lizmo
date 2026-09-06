@@ -41,14 +41,5 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-
-        <!-- So url_launcher can find a browser or PDF viewer for a shared
-             lease document. From Android 11 an app cannot see other apps it
-             has not declared, and without this launchUrl simply returns false
-             on a real phone while every test still passes. -->
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="https"/>
-        </intent>
     </queries>
 </manifest>

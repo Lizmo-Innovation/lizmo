@@ -7,6 +7,8 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import 'document_download.dart';
+import 'full_screen_image.dart';
 
 /// The paperwork a landlord keeps against a tenancy.
 ///
@@ -57,7 +59,9 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
 
     setState(() => _busy = true);
     try {
-      await ref.read(leasesApiProvider).uploadLeaseDocument(
+      await ref
+          .read(leasesApiProvider)
+          .uploadLeaseDocument(
             widget.leaseId,
             http.MultipartFile.fromBytes('file', bytes, filename: file.name),
             docType: choice.docType,
@@ -75,7 +79,9 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
   Future<void> _setShared(LeaseDocumentResponse document, bool shared) async {
     setState(() => _error = null);
     try {
-      await ref.read(leasesApiProvider).updateLeaseDocument(
+      await ref
+          .read(leasesApiProvider)
+          .updateLeaseDocument(
             widget.leaseId,
             document.id!,
             sharedWithTenant: shared,
@@ -104,8 +110,10 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Delete',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+            child: Text(
+              'Delete',
+              style: LizmoType.rowName.copyWith(color: LizmoColors.red),
+            ),
           ),
         ],
       ),
@@ -192,8 +200,10 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
 
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+            Text(
+              _error!,
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+            ),
           ],
         ],
       ),
@@ -201,7 +211,7 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
   }
 }
 
-class _Row extends StatelessWidget {
+class _Row extends StatefulWidget {
   const _Row({
     required this.document,
     required this.onShare,
@@ -213,58 +223,135 @@ class _Row extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  State<_Row> createState() => _RowState();
+}
+
+class _RowState extends State<_Row> {
+  bool _saving = false;
+
+  bool get _isPdf => widget.document.contentType == 'application/pdf';
+
+  /// A landlord could file paperwork and then never look at it again: the row
+  /// carried only "share" and "delete". Opening your own contract is the
+  /// obvious thing to want from a list of contracts.
+  Future<void> _open() async {
+    if (!_isPdf) {
+      FullScreenImage.show(
+        context,
+        widget.document.url ?? '',
+        widget.document.label ?? 'Document',
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final error = await DocumentDownload.save(widget.document);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (error != null) showDownloadError(context, error);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isPdf = document.contentType == 'application/pdf';
+    final document = widget.document;
+    final isPdf = _isPdf;
     final shared = document.sharedWithTenant == true;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(
-            isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined,
-            size: 20,
-            color: LizmoColors.slate,
-          ),
-          const SizedBox(width: 10),
+          // The icon is inside the tap target, not beside it. It is the most
+          // obvious thing to reach for, and a document icon that does nothing
+          // when tapped reads as a row that does nothing.
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  document.label ?? 'Document',
-                  style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            child: InkWell(
+              key: ValueKey('open-${document.id}'),
+              onTap: _saving ? null : _open,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      isPdf
+                          ? Icons.picture_as_pdf_outlined
+                          : Icons.image_outlined,
+                      size: 20,
+                      color: LizmoColors.slate,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            document.label ?? 'Document',
+                            style: LizmoType.rowName.copyWith(
+                              color: LizmoColors.ink,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          // Who can see it, and what tapping does, on one
+                          // line. The second line is the only room there is,
+                          // and both facts have to fit in it.
+                          Text(
+                            '${shared ? 'Your tenant can see this' : 'Only you can see this'}'
+                            ' · ${isPdf ? 'Tap to download' : 'Tap to view'}',
+                            style: LizmoType.rowSub.copyWith(
+                              fontSize: 11,
+                              color: shared
+                                  ? LizmoColors.teal900
+                                  : LizmoColors.slate,
+                            ),
+                            // Two lines: "Your tenant can see this · Tap to
+                            // download" does not fit on one at this width, and
+                            // truncating it hides the half that says what
+                            // tapping does.
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  shared
-                      ? 'Your tenant can see this'
-                      : 'Only you can see this',
-                  style: LizmoType.rowSub.copyWith(
-                    fontSize: 11,
-                    color: shared ? LizmoColors.teal900 : LizmoColors.slate,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          if (_saving)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
           IconButton(
             key: ValueKey('share-${document.id}'),
-            onPressed: () => onShare(!shared),
+            onPressed: () => widget.onShare(!shared),
             icon: Icon(
-              shared ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              shared
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
               size: 20,
               color: shared ? LizmoColors.teal900 : LizmoColors.slate,
             ),
-            tooltip: shared ? 'Stop sharing with the tenant' : 'Share with the tenant',
+            tooltip: shared
+                ? 'Stop sharing with the tenant'
+                : 'Share with the tenant',
           ),
           IconButton(
             key: ValueKey('delete-${document.id}'),
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline,
-                size: 20, color: LizmoColors.slate),
+            onPressed: widget.onDelete,
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 20,
+              color: LizmoColors.slate,
+            ),
             tooltip: 'Delete',
           ),
         ],
@@ -300,7 +387,11 @@ class _AddSheet extends StatefulWidget {
 }
 
 class _Choice {
-  const _Choice({required this.docType, required this.label, required this.shared});
+  const _Choice({
+    required this.docType,
+    required this.label,
+    required this.shared,
+  });
 
   final String docType;
   final String label;
@@ -308,8 +399,9 @@ class _Choice {
 }
 
 class _AddSheetState extends State<_AddSheet> {
-  late final TextEditingController _label =
-      TextEditingController(text: _stripExtension(widget.filename));
+  late final TextEditingController _label = TextEditingController(
+    text: _stripExtension(widget.filename),
+  );
 
   String _docType = 'LEASE_CONTRACT';
 
@@ -339,7 +431,11 @@ class _AddSheetState extends State<_AddSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 16),
+          20,
+          16,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -393,11 +489,13 @@ class _AddSheetState extends State<_AddSheet> {
             const SizedBox(height: 14),
             PrimaryActionButton(
               label: 'Attach',
-              onPressed: () => Navigator.of(context).pop(_Choice(
-                docType: _docType,
-                label: _label.text.trim(),
-                shared: _shared,
-              )),
+              onPressed: () => Navigator.of(context).pop(
+                _Choice(
+                  docType: _docType,
+                  label: _label.text.trim(),
+                  shared: _shared,
+                ),
+              ),
             ),
           ],
         ),

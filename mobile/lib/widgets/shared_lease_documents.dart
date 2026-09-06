@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../property/property_providers.dart';
+import 'document_download.dart';
 import 'full_screen_image.dart';
 
 /// Paperwork the landlord has shared with this tenant.
@@ -65,79 +65,79 @@ class _Row extends StatefulWidget {
 }
 
 class _RowState extends State<_Row> {
-  String? _error;
+  bool _saving = false;
 
   bool get _isPdf => widget.document.contentType == 'application/pdf';
 
   Future<void> _open() async {
-    setState(() => _error = null);
-
-    final url = widget.document.url;
-    if (url == null) {
-      setState(() => _error = 'That document is not available just now.');
-      return;
-    }
-
+    // An image is worth looking at in place; a PDF is worth keeping. The link
+    // behind either lapses in minutes, so a PDF opened rather than saved is a
+    // view of something about to stop existing -- no use for a contract, whose
+    // whole point is having your own copy.
     if (!_isPdf) {
       FullScreenImage.show(
-          context, url, widget.document.label ?? 'Document');
+        context,
+        widget.document.url ?? '',
+        widget.document.label ?? 'Document',
+      );
       return;
     }
 
-    // Nothing in the app renders a PDF, so it goes to whatever the phone
-    // already uses for one. The link is presigned and lapses in minutes, which
-    // is the point: it is a document, not an address.
-    final opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!opened && mounted) {
-      setState(() => _error =
-          'Nothing on this phone could open it. Try again from a browser.');
-    }
+    setState(() => _saving = true);
+    final error = await DocumentDownload.save(widget.document);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (error != null) showDownloadError(context, error);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          key: ValueKey('shared-doc-${widget.document.id}'),
-          onTap: _open,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  _isPdf
-                      ? Icons.picture_as_pdf_outlined
-                      : Icons.image_outlined,
-                  size: 20,
-                  color: LizmoColors.slate,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
+    return InkWell(
+      key: ValueKey('shared-doc-${widget.document.id}'),
+      onTap: _open,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              _isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined,
+              size: 20,
+              color: LizmoColors.slate,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     widget.document.label ?? 'Document',
                     style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const Icon(Icons.chevron_right, color: LizmoColors.slate),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    _isPdf ? 'Tap to download' : 'Tap to view',
+                    style: LizmoType.rowSub.copyWith(fontSize: 11),
+                  ),
+                ],
+              ),
             ),
-          ),
+            if (_saving)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                _isPdf ? Icons.download_outlined : Icons.chevron_right,
+                color: LizmoColors.slate,
+              ),
+          ],
         ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(_error!,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
-          ),
-      ],
+      ),
     );
   }
 }

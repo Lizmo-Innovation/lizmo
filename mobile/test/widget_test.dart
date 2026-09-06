@@ -5631,8 +5631,8 @@ void _tenantLeaseTests() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Your tenant can see this'), findsOneWidget);
-      expect(find.text('Only you can see this'), findsOneWidget);
+      expect(find.textContaining('Your tenant can see this'), findsOneWidget);
+      expect(find.textContaining('Only you can see this'), findsOneWidget);
     });
 
     testWidgets('a PDF and a photograph are told apart', (tester) async {
@@ -5675,6 +5675,57 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('share-d1')), findsOneWidget);
+    });
+
+    /// The row used to carry only share and delete, so a landlord could file
+    /// paperwork and never look at it again.
+    testWidgets('a landlord can open their own attachment', (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('open-d1')), findsOneWidget);
+    });
+
+    /// Nothing on the row said it could be tapped, which is how somebody
+    /// concludes the app cannot show them their own contract.
+    testWidgets('the row says what tapping it does', (tester) async {
+      await tester.pumpWidget(appWith([
+        doc(id: 'd1', label: 'Contract'),
+        doc(id: 'd2', label: 'Receipt', contentType: 'image/jpeg'),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Tap to download'), findsOneWidget);
+      expect(find.textContaining('Tap to view'), findsOneWidget);
+    });
+
+    /// The document icon is the obvious thing to reach for. It used to sit
+    /// outside the tap target and do nothing.
+    testWidgets('the icon is part of the tap target', (tester) async {
+      await tester.pumpWidget(
+          appWith([doc(id: 'd1', label: 'Receipt', contentType: 'image/jpeg')]));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('open-d1')),
+          matching: find.byIcon(Icons.image_outlined),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('tapping an attached image opens the viewer', (tester) async {
+      await tester.pumpWidget(
+          appWith([doc(id: 'd1', label: 'Receipt', contentType: 'image/jpeg')]));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('open-d1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('open-d1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('close-photo')), findsOneWidget);
     });
   });
 
@@ -5780,6 +5831,22 @@ void _tenantLeaseTests() {
 
       expect(find.byIcon(Icons.picture_as_pdf_outlined), findsOneWidget);
       expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    });
+
+    /// A PDF is downloaded rather than opened. The link behind it lapses in
+    /// minutes, so a browser tab shows something about to stop existing --
+    /// no use for a contract, whose whole point is having your own copy.
+    testWidgets('a PDF offers a download and an image a view', (tester) async {
+      await tester.pumpWidget(appWith([
+        doc(id: 'd1', label: 'Contract'),
+        doc(id: 'd2', label: 'Receipt', contentType: 'image/jpeg'),
+      ]));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Tap to download'), findsOneWidget);
+      expect(find.text('Tap to view'), findsOneWidget);
+      expect(find.byIcon(Icons.download_outlined), findsOneWidget);
     });
 
     testWidgets('tapping an image opens it large', (tester) async {

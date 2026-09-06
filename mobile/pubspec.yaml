@@ -69,10 +69,10 @@ dependencies:
   go_router: ^14.6.2
   share_plus: ^12.0.2
 
-  # A lease attachment may be a PDF, which nothing in the app can render.
-  # Handing the presigned URL to whatever the phone already uses for PDFs
-  # beats bundling a viewer to show a document once.
-  url_launcher: ^6.3.1
+  # Somewhere to put a downloaded lease document before handing it to the
+  # phone's save sheet. Already in the tree as a transitive dependency; named
+  # here because the app now imports it directly.
+  path_provider: ^2.1.6
   mobile_scanner: ^7.4.0
 
 dev_dependencies:
