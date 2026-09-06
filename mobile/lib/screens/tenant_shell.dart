@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import '../notifications/notification_providers.dart';
 import '../widgets/section_tab_bar.dart';
 
 /// The tenant's four sections, and the bar that switches between them.
@@ -14,7 +12,7 @@ import '../widgets/section_tab_bar.dart';
 /// Before this, the tenant side was one screen with everything on it — which
 /// hid how little the app does once somebody has moved in. A bar makes that
 /// visible, which is an argument for it rather than against.
-class TenantShell extends ConsumerWidget {
+class TenantShell extends StatelessWidget {
   const TenantShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
@@ -46,18 +44,13 @@ class TenantShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: shell,
       bottomNavigationBar: SectionTabBar(
         tabs: _tabs,
         index: shell.currentIndex,
-        // On Home because that is where the feed is. A badge on a tab that
-        // does not answer it is a badge nobody can clear.
-        badges: {
-          _tabs.first.key: ref.watch(unreadNotificationCountProvider),
-        },
         onTap: (index) => shell.goBranch(
           index,
           initialLocation: index == shell.currentIndex,

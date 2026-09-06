@@ -17,6 +17,7 @@ import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/tenant_detail_screen.dart';
+import 'package:lizmo/widgets/notification_bell.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo/screens/unit_utilities_screen.dart';
@@ -4962,16 +4963,37 @@ void _tenantLeaseTests() {
       child: const LizmoApp(),
     );
 
-    testWidgets('the news is on the home screen', (tester) async {
+    Future<void> openTheBell(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('notification-bell')));
+      await tester.pumpAndSettle();
+    }
+
+    /// The reason this moved off the home screen. As a section it rendered
+    /// nothing when there was nothing waiting, so somebody who had never had
+    /// a notification had no way to learn that notifications existed.
+    testWidgets('the bell is there with nothing waiting', (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('notification-bell')), findsOneWidget);
+
+      await openTheBell(tester);
+      expect(find.text('Nothing yet'), findsOneWidget);
+    });
+
+    testWidgets('the bell opens the news', (tester) async {
       await tester.pumpWidget(appWith([note(id: 'n1')]));
       await tester.pumpAndSettle();
 
-      expect(find.text('What happened'), findsOneWidget);
+      // Not on the home screen any more: it lives behind the bell.
+      expect(find.text('Your request was accepted'), findsNothing);
+
+      await openTheBell(tester);
       expect(find.text('Your request was accepted'), findsOneWidget);
       expect(find.text('You have Bed 1 in 2B.'), findsOneWidget);
     });
 
-    testWidgets('the unread count rides on the Home tab', (tester) async {
+    testWidgets('the unread count rides on the bell', (tester) async {
       await tester.pumpWidget(appWith([
         note(id: 'n1'),
         note(id: 'n2', title: 'That one has gone'),
@@ -4982,44 +5004,60 @@ void _tenantLeaseTests() {
       // Two, not three: a badge counts what is waiting, not what exists.
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('tab-home')),
+          of: find.byType(NotificationBell),
           matching: find.text('2'),
         ),
         findsOneWidget,
       );
     });
 
-    testWidgets('nothing waiting means no badge', (tester) async {
+    testWidgets('nothing unread means no badge', (tester) async {
       await tester.pumpWidget(appWith([note(id: 'n1', unread: false)]));
       await tester.pumpAndSettle();
 
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('tab-home')),
+          of: find.byType(NotificationBell),
           matching: find.text('1'),
         ),
         findsNothing,
       );
+
+      await openTheBell(tester);
+      // Nothing to clear, so the screen does not offer to clear it.
       expect(find.byKey(const ValueKey('mark-all-read')), findsNothing);
     });
 
-    /// A landlord signed up before any of this existed still opens a home
-    /// screen. An empty feed must leave no trace of itself.
-    testWidgets('an empty feed shows nothing at all', (tester) async {
-      await tester.pumpWidget(appWith(const []));
-      await tester.pumpAndSettle();
-
-      expect(find.text('What happened'), findsNothing);
-      expect(find.text('Nothing needs you'), findsOneWidget);
-    });
-
-    /// The feed is news, not the state of things. A tenant with news and
-    /// nothing outstanding is not "all quiet".
-    testWidgets('news displaces the all-quiet card', (tester) async {
+    /// Home answers "what needs me". A notification is news about something
+    /// that already happened, and must not displace that.
+    testWidgets('the home screen is unchanged by news', (tester) async {
       await tester.pumpWidget(appWith([note(id: 'n1')]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Nothing needs you'), findsNothing);
+      expect(find.text('Nothing needs you'), findsOneWidget);
+    });
+
+    testWidgets('a landlord has the same bell', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+          ),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith(
+            (ref) async => const <PropertyResponse>[],
+          ),
+          myNotificationsProvider.overrideWith(
+            (ref) async => [note(id: 'n1', title: 'Somebody has asked')],
+          ),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await openTheBell(tester);
+
+      // Being told what happened is not a tenant feature.
+      expect(find.text('Somebody has asked'), findsOneWidget);
     });
   });
 

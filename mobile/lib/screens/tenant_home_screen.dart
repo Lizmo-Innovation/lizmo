@@ -6,9 +6,8 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
-import '../notifications/notification_providers.dart';
 import '../widgets/account_sheet.dart';
-import '../widgets/notification_feed.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 
 /// What is waiting on the tenant.
@@ -41,10 +40,7 @@ class TenantHomeScreen extends ConsumerWidget {
         .toList();
     final unfinished = profile.valueOrNull?.readyForALease == false;
 
-    final news = ref.watch(myNotificationsProvider).valueOrNull ?? const [];
-
-    final nothingToSay =
-        !unfinished && waiting.isEmpty && lease == null && news.isEmpty;
+    final nothingToSay = !unfinished && waiting.isEmpty && lease == null;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -55,7 +51,12 @@ class TenantHomeScreen extends ConsumerWidget {
             title: lease == null ? 'Home' : _where(lease),
             trailing: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
             ),
             stats: lease == null
                 ? const []
@@ -79,7 +80,6 @@ class TenantHomeScreen extends ConsumerWidget {
                 ref.invalidate(myTenantProfileProvider);
                 ref.invalidate(myRentalRequestsProvider);
                 ref.invalidate(myLeasesProvider);
-                ref.invalidate(myNotificationsProvider);
               },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
@@ -100,10 +100,6 @@ class TenantHomeScreen extends ConsumerWidget {
                   ],
 
                   if (nothingToSay) const _AllQuiet(),
-
-                  // Below the cards, which are the state of things now; this
-                  // is the record of how it got there.
-                  const NotificationFeed(),
 
                   const SizedBox(height: 10),
                   _NoticesNotYet(),

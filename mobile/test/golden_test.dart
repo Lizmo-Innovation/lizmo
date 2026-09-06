@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
+import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 
@@ -45,6 +46,11 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        // Pinned so the bell renders a known state. Left alone it depends
+        // on a real request failing, which is not a thing to rest a golden on.
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
         // Fixed data so the golden is stable, matching the seeded landlord.
         propertiesProvider.overrideWith((ref) async => [
               PropertyResponse(
@@ -86,6 +92,11 @@ Widget _detailApp() => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        // Pinned so the bell renders a known state. Left alone it depends
+        // on a real request failing, which is not a thing to rest a golden on.
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
         propertiesProvider.overrideWith((ref) async => [
               PropertyResponse(
                 id: 'p1',

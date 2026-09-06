@@ -7,15 +7,13 @@ import '../notifications/notification_providers.dart';
 
 /// What the app has told this person, newest first.
 ///
-/// The same widget on both homes, because being told what happened is not a
-/// landlord feature or a tenant feature. It renders the stored title and
-/// message rather than rebuilding words from the type: a notification is a
-/// record of what somebody was told, and rewriting it later would quietly
-/// change history every time the copy changed.
+/// The rows only. Its heading, its "mark all read" and its empty state belong
+/// to [NotificationsScreen], which is the only thing that shows it — this used
+/// to be a section on the home screens and carried all of that itself.
 ///
-/// Renders nothing at all when there is nothing to say. The homes it sits on
-/// have their own empty states, and a second "no notifications" panel
-/// underneath one of those reads as a fault.
+/// Renders the stored title and message rather than rebuilding words from the
+/// type: a notification is a record of what somebody was told, and rewriting
+/// it later would quietly change history every time the copy changed.
 class NotificationFeed extends ConsumerWidget {
   const NotificationFeed({super.key});
 
@@ -28,37 +26,9 @@ class NotificationFeed extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final unread = rows.where((row) => row.unread == true).length;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text('What happened', style: LizmoType.sectionHeading),
-              ),
-              if (unread > 0)
-                InkWell(
-                  key: const ValueKey('mark-all-read'),
-                  onTap: () => ref.read(notificationReaderProvider).all(),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 2),
-                    child: Text(
-                      'Mark all read',
-                      style: LizmoType.rowSub.copyWith(
-                        color: LizmoColors.teal900,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
         for (final row in rows) ...[
           _Row(notification: row),
           const SizedBox(height: 8),

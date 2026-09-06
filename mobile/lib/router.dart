@@ -17,6 +17,7 @@ import 'screens/rental_requests_screen.dart';
 import 'screens/landlord_home_screen.dart';
 import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'screens/tenant_detail_screen.dart';
 import 'screens/tenants_screen.dart';
 import 'screens/splash_screen.dart';
@@ -105,6 +106,11 @@ abstract final class Routes {
       '/landlord/properties/$propertyId/units/$unitId';
   static String unitUtilities(String propertyId, String unitId) =>
       '/landlord/properties/$propertyId/units/$unitId/utilities';
+  /// Pushed over whichever shell is showing rather than living in a branch:
+  /// it is reached from the header on both sides, and it belongs on top of
+  /// wherever you were rather than switching you to a tab.
+  static const notifications = '/notifications';
+
   static const noProfile = '/no-profile';
 
   /// Reachable without a session. Anything else redirects to login.
@@ -382,6 +388,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.notifications,
+        builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
         path: Routes.noProfile,
