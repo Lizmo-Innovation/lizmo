@@ -103,7 +103,9 @@ public class RentalDecisionService {
                 rent,
                 dueDay,
                 start,
-                request.getId());
+                request.getId(),
+                terms == null ? null : terms.depositAmount(),
+                terms == null ? null : terms.advanceAmount());
 
         try {
             lease = leases.saveAndFlush(lease);

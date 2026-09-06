@@ -16,6 +16,8 @@ class AcceptRequest {
     this.rentAmount,
     this.dueDateDay,
     this.startDate,
+    this.depositAmount,
+    this.advanceAmount,
   });
 
   /// Defaults to the asking rent
@@ -50,21 +52,47 @@ class AcceptRequest {
   ///
   DateTime? startDate;
 
+  /// Held against damage, and mostly given back. Not rent. Null means none was recorded, which is not the same as none being taken.
+  ///
+  /// Minimum value: 0.0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? depositAmount;
+
+  /// Rent paid before moving in, which pays for the first month. Kept apart from the deposit because it is money the landlord has earned rather than money they are holding.
+  ///
+  /// Minimum value: 0.0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? advanceAmount;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is AcceptRequest &&
     other.rentAmount == rentAmount &&
     other.dueDateDay == dueDateDay &&
-    other.startDate == startDate;
+    other.startDate == startDate &&
+    other.depositAmount == depositAmount &&
+    other.advanceAmount == advanceAmount;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (rentAmount == null ? 0 : rentAmount!.hashCode) +
     (dueDateDay == null ? 0 : dueDateDay!.hashCode) +
-    (startDate == null ? 0 : startDate!.hashCode);
+    (startDate == null ? 0 : startDate!.hashCode) +
+    (depositAmount == null ? 0 : depositAmount!.hashCode) +
+    (advanceAmount == null ? 0 : advanceAmount!.hashCode);
 
   @override
-  String toString() => 'AcceptRequest[rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate]';
+  String toString() => 'AcceptRequest[rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, depositAmount=$depositAmount, advanceAmount=$advanceAmount]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -82,6 +110,16 @@ class AcceptRequest {
       json[r'startDate'] = _dateFormatter.format(this.startDate!);
     } else {
       json[r'startDate'] = null;
+    }
+    if (this.depositAmount != null) {
+      json[r'depositAmount'] = this.depositAmount;
+    } else {
+      json[r'depositAmount'] = null;
+    }
+    if (this.advanceAmount != null) {
+      json[r'advanceAmount'] = this.advanceAmount;
+    } else {
+      json[r'advanceAmount'] = null;
     }
     return json;
   }
@@ -106,6 +144,12 @@ class AcceptRequest {
             : num.parse('${json[r'rentAmount']}'),
         dueDateDay: mapValueOfType<int>(json, r'dueDateDay'),
         startDate: mapDateTime(json, r'startDate', r''),
+        depositAmount: json[r'depositAmount'] == null
+            ? null
+            : num.parse('${json[r'depositAmount']}'),
+        advanceAmount: json[r'advanceAmount'] == null
+            ? null
+            : num.parse('${json[r'advanceAmount']}'),
       );
     }
     return null;

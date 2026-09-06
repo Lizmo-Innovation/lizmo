@@ -210,3 +210,22 @@ final myLeaseDocumentsProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// One lease from the landlord's own list, by id.
+///
+/// Derived from [myTenantsProvider] rather than fetched: the list is already
+/// the answer to "which tenancies are mine", and a second endpoint returning
+/// one of them would be a second place for the same permission rule to live.
+///
+/// Null while the list is loading, or when the tenancy has ended — the list
+/// carries active leases only, which is the same window the tenant detail
+/// screen itself is readable in.
+final landlordLeaseProvider = Provider.autoDispose
+    .family<LeaseResponse?, String>((ref, leaseId) {
+  final tenants = ref.watch(myTenantsProvider).valueOrNull;
+  if (tenants == null) return null;
+  for (final lease in tenants) {
+    if (lease.id == leaseId) return lease;
+  }
+  return null;
+});

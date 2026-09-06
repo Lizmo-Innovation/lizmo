@@ -140,8 +140,22 @@ public class LeaseService {
                     "A lease cannot end before it starts.");
         }
 
+        if (command != null && command.depositReturned() != null
+                && lease.getDepositAmount() != null
+                && command.depositReturned().compareTo(lease.getDepositAmount()) > 0) {
+            // Giving back more than was taken is a typo, not a generosity the
+            // ledger should record silently.
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "You cannot return more than the deposit that was taken.");
+        }
+
         boolean terminated = command != null && Boolean.TRUE.equals(command.terminated());
         lease.close(terminated ? LeaseStatus.TERMINATED : LeaseStatus.ENDED, on);
+
+        if (command != null) {
+            lease.settleDeposit(command.depositReturned(), command.depositSettlement());
+        }
+
         leases.save(lease);
 
         freeTheSlot(unit, lease.getBedId());

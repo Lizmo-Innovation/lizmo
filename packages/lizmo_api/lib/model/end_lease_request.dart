@@ -15,6 +15,8 @@ class EndLeaseRequest {
   EndLeaseRequest({
     this.terminated,
     this.endDate,
+    this.depositReturned,
+    this.depositSettlement,
   });
 
   ///
@@ -33,19 +35,43 @@ class EndLeaseRequest {
   ///
   DateTime? endDate;
 
+  /// How much of the deposit went back. Null when there was no deposit, or when the landlord has not settled it yet.
+  ///
+  /// Minimum value: 0.0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? depositReturned;
+
+  /// What was withheld and why, in the landlord's own words. Free text rather than itemised deductions: withholding money is where tenancies go wrong, and an explanation somebody actually wrote beats a form nobody fills in honestly.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? depositSettlement;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is EndLeaseRequest &&
     other.terminated == terminated &&
-    other.endDate == endDate;
+    other.endDate == endDate &&
+    other.depositReturned == depositReturned &&
+    other.depositSettlement == depositSettlement;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (terminated == null ? 0 : terminated!.hashCode) +
-    (endDate == null ? 0 : endDate!.hashCode);
+    (endDate == null ? 0 : endDate!.hashCode) +
+    (depositReturned == null ? 0 : depositReturned!.hashCode) +
+    (depositSettlement == null ? 0 : depositSettlement!.hashCode);
 
   @override
-  String toString() => 'EndLeaseRequest[terminated=$terminated, endDate=$endDate]';
+  String toString() => 'EndLeaseRequest[terminated=$terminated, endDate=$endDate, depositReturned=$depositReturned, depositSettlement=$depositSettlement]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -58,6 +84,16 @@ class EndLeaseRequest {
       json[r'endDate'] = _dateFormatter.format(this.endDate!);
     } else {
       json[r'endDate'] = null;
+    }
+    if (this.depositReturned != null) {
+      json[r'depositReturned'] = this.depositReturned;
+    } else {
+      json[r'depositReturned'] = null;
+    }
+    if (this.depositSettlement != null) {
+      json[r'depositSettlement'] = this.depositSettlement;
+    } else {
+      json[r'depositSettlement'] = null;
     }
     return json;
   }
@@ -79,6 +115,10 @@ class EndLeaseRequest {
       return EndLeaseRequest(
         terminated: mapValueOfType<bool>(json, r'terminated'),
         endDate: mapDateTime(json, r'endDate', r''),
+        depositReturned: json[r'depositReturned'] == null
+            ? null
+            : num.parse('${json[r'depositReturned']}'),
+        depositSettlement: mapValueOfType<String>(json, r'depositSettlement'),
       );
     }
     return null;

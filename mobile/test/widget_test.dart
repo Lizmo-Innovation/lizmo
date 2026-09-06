@@ -4726,6 +4726,10 @@ void _landlordRequestTests() {
         '2500',
       );
 
+      // The sheet scrolls now that it carries deposit and advance, so the
+      // button can start below the fold.
+      await tester.ensureVisible(find.text('Accept and create the lease'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
 
@@ -4748,6 +4752,10 @@ void _landlordRequestTests() {
       // A landlord who agreed something else on the phone should not have to
       // change the listing to record it.
       await tester.enterText(find.byType(TextFormField).first, '3000');
+      // The sheet scrolls now that it carries deposit and advance, so the
+      // button can start below the fold.
+      await tester.ensureVisible(find.text('Accept and create the lease'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
 
@@ -4766,6 +4774,10 @@ void _landlordRequestTests() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).first, '0');
+      // The sheet scrolls now that it carries deposit and advance, so the
+      // button can start below the fold.
+      await tester.ensureVisible(find.text('Accept and create the lease'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Accept and create the lease'));
       await tester.pump();
 
@@ -4823,6 +4835,10 @@ void _landlordRequestTests() {
       await tester.tap(find.text('Somebody is asking about a room'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+      // The sheet scrolls now that it carries deposit and advance, so the
+      // button can start below the fold.
+      await tester.ensureVisible(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Accept and create the lease'));
       await tester.pumpAndSettle();
@@ -5861,6 +5877,127 @@ void _tenantLeaseTests() {
       // The same viewer the landlord gets, rather than a second one.
       expect(find.byKey(const ValueKey('close-photo')), findsOneWidget);
       expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+  });
+
+  group('deposit and advance', () {
+    LeaseResponse tenancy({num? deposit, num? advance, num? returned,
+        String? settlement}) => LeaseResponse(
+      id: 'l1',
+      tenantId: 't1',
+      tenantName: 'Ana Reyes',
+      propertyName: 'Sunrise Apartments',
+      unitNumber: '2B',
+      bedId: 'b1',
+      bedLabel: 'Bed 1',
+      rentAmount: 2500,
+      depositAmount: deposit,
+      advanceAmount: advance,
+      depositReturned: returned,
+      depositSettlement: settlement,
+      dueDateDay: 5,
+      startDate: DateTime.utc(2026, 10, 1),
+      status: LeaseResponseStatusEnum.ACTIVE,
+    );
+
+    Widget tenantApp(LeaseResponse lease) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => [lease]),
+        myLeaseDocumentsProvider('l1').overrideWith(
+          (ref) async => const <LeaseDocumentResponse>[],
+        ),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openMyPlace(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the tenant sees what they handed over', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(deposit: 5000, advance: 2500)));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Before you moved in'), findsOneWidget);
+      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('₱2500'), findsOneWidget);
+    });
+
+    /// The two are constantly muddled, and the difference only matters at the
+    /// end of the tenancy -- when it matters a great deal.
+    testWidgets('each says which kind of money it is', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(deposit: 5000, advance: 2500)));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.textContaining('given back when you move out'), findsOneWidget);
+      expect(find.textContaining('pays for your first month'), findsOneWidget);
+    });
+
+    /// A tenancy where neither was recorded shows no card, rather than a panel
+    /// of dashes implying somebody forgot to fill it in.
+    testWidgets('nothing recorded shows no card', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy()));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Before you moved in'), findsNothing);
+    });
+
+    /// Null is not zero. A landlord who took no deposit and one who has not
+    /// recorded it are different facts, and a tenant asking "did I pay a
+    /// deposit?" needs to be able to tell them apart.
+    testWidgets('a recorded zero is not the same as nothing', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(deposit: 0)));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Before you moved in'), findsOneWidget);
+      expect(find.text('₱0'), findsOneWidget);
+    });
+
+    /// What was withheld and why is the thing a former tenant wants months
+    /// later, and the landlord holding the only copy is how a disagreement
+    /// becomes their word against nobody's.
+    testWidgets('the settlement is shown once the deposit is returned',
+        (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(
+        deposit: 5000,
+        returned: 4500,
+        settlement: 'Withheld ₱500 for the window latch.',
+      )));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Deposit returned'), findsOneWidget);
+      expect(find.text('₱4500'), findsOneWidget);
+      expect(find.text('Withheld ₱500 for the window latch.'), findsOneWidget);
+    });
+
+    testWidgets('a live tenancy shows no settlement', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(deposit: 5000)));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Deposit returned'), findsNothing);
     });
   });
 }

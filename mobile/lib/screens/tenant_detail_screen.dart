@@ -78,6 +78,14 @@ class TenantDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
 
+            // Only when there is something to say. A tenancy where neither
+            // was recorded shows no card, rather than a panel of dashes
+            // implying somebody forgot to fill it in.
+            if (_hasUpfrontMoney(ref, leaseId)) ...[
+              _UpfrontMoney(leaseId: leaseId),
+              const SizedBox(height: 12),
+            ],
+
             _Section(
               title: 'Identification',
               rows: [
@@ -96,6 +104,49 @@ class TenantDetailScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+bool _hasUpfrontMoney(WidgetRef ref, String leaseId) {
+  final lease = ref.watch(landlordLeaseProvider(leaseId));
+  return lease != null &&
+      (lease.depositAmount != null || lease.advanceAmount != null);
+}
+
+/// What this tenant handed over before moving in.
+///
+/// Two figures, not one. A deposit is money the landlord is holding and a
+/// advance is money they have earned, and the difference only matters at the
+/// end of the tenancy -- when it matters a great deal.
+class _UpfrontMoney extends ConsumerWidget {
+  const _UpfrontMoney({required this.leaseId});
+
+  final String leaseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lease = ref.watch(landlordLeaseProvider(leaseId));
+    if (lease == null) return const SizedBox.shrink();
+
+    return _Section(
+      title: 'Before they moved in',
+      rows: [
+        _Fact(
+          'Deposit',
+          lease.depositAmount == null
+              ? null
+              : '₱${lease.depositAmount!.toStringAsFixed(0)}',
+        ),
+        _Fact(
+          'Advance rent',
+          lease.advanceAmount == null
+              ? null
+              : '₱${lease.advanceAmount!.toStringAsFixed(0)}',
+        ),
+      ],
+      subtitle: 'The deposit goes back when they move out. The advance pays '
+          'for their first month.',
     );
   }
 }

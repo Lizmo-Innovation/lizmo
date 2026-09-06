@@ -134,4 +134,3 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/lease_document_response_test.dart

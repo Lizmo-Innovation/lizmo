@@ -133,6 +133,11 @@ class _Tenancy extends StatelessWidget {
             ],
           ),
         ),
+
+        if (_hasUpfrontMoney(lease)) ...[
+          const SizedBox(height: 16),
+          _UpfrontMoney(lease: lease),
+        ],
         const SizedBox(height: 16),
 
         // Renders nothing until the landlord shares something, so a tenancy
@@ -149,6 +154,13 @@ class _Tenancy extends StatelessWidget {
       ],
     );
   }
+
+  /// Whether there is anything to say about money handed over up front.
+  ///
+  /// A tenancy where neither was recorded shows no card at all, rather than a
+  /// panel of dashes implying somebody forgot to fill it in.
+  static bool _hasUpfrontMoney(LeaseResponse lease) =>
+      lease.depositAmount != null || lease.advanceAmount != null;
 
   static String _date(DateTime? date) {
     if (date == null) return '—';
@@ -192,6 +204,83 @@ class _Fact extends StatelessWidget {
             child: Text(value == null || value!.isEmpty ? '—' : value!,
                 style: LizmoType.rowName),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the tenant handed over before moving in, and what came back.
+///
+/// A deposit and an advance are two different things and are shown as two,
+/// with a line each saying which is which. Tenants are told "two months
+/// deposit, one month advance" at the door and then have nothing in writing;
+/// this is the writing.
+class _UpfrontMoney extends StatelessWidget {
+  const _UpfrontMoney({required this.lease});
+
+  final LeaseResponse lease;
+
+  @override
+  Widget build(BuildContext context) {
+    final settled = lease.depositReturned != null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E8E6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Before you moved in', style: LizmoType.sectionHeading),
+          const SizedBox(height: 12),
+
+          if (lease.depositAmount != null) ...[
+            _Fact(
+              label: 'Deposit',
+              value: '₱${lease.depositAmount!.toStringAsFixed(0)}',
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Held against damage, and given back when you move out.',
+                style: LizmoType.rowSub.copyWith(fontSize: 11),
+              ),
+            ),
+          ],
+
+          if (lease.advanceAmount != null) ...[
+            _Fact(
+              label: 'Advance rent',
+              value: '₱${lease.advanceAmount!.toStringAsFixed(0)}',
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Rent paid up front. It pays for your first month.',
+                style: LizmoType.rowSub.copyWith(fontSize: 11),
+              ),
+            ),
+          ],
+
+          if (settled) ...[
+            const Divider(height: 20, color: Color(0xFFE3E8E6)),
+            _Fact(
+              label: 'Deposit returned',
+              value: '₱${lease.depositReturned!.toStringAsFixed(0)}',
+            ),
+            if ((lease.depositSettlement ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  lease.depositSettlement!,
+                  style: LizmoType.rowSub,
+                ),
+              ),
+          ],
         ],
       ),
     );

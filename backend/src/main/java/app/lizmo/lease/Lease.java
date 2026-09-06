@@ -55,6 +55,33 @@ public class Lease {
     @Column(name = "due_date_day", nullable = false)
     private short dueDateDay;
 
+    /**
+     * Held against damage, and mostly given back. Not rent.
+     *
+     * <p>Null means nobody recorded one, which is not the same as none being
+     * taken -- the apps show a dash rather than a zero for exactly that
+     * reason.
+     */
+    @Column(name = "deposit_amount")
+    private BigDecimal depositAmount;
+
+    /**
+     * Rent paid before moving in, which pays for the first month.
+     *
+     * <p>Kept apart from the deposit because it is money the landlord has
+     * earned, while a deposit is money they are holding.
+     */
+    @Column(name = "advance_amount")
+    private BigDecimal advanceAmount;
+
+    /** How much of the deposit went back, recorded when the tenancy ended. */
+    @Column(name = "deposit_returned")
+    private BigDecimal depositReturned;
+
+    /** What was withheld and why, in the landlord's own words. */
+    @Column(name = "deposit_settlement")
+    private String depositSettlement;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -87,6 +114,22 @@ public class Lease {
             short dueDateDay,
             LocalDate startDate,
             UUID rentalRequestId) {
+        this(tenantId, unitId, bedId, rentAmount, dueDateDay, startDate,
+                rentalRequestId, null, null);
+    }
+
+    public Lease(
+            UUID tenantId,
+            UUID unitId,
+            UUID bedId,
+            BigDecimal rentAmount,
+            short dueDateDay,
+            LocalDate startDate,
+            UUID rentalRequestId,
+            BigDecimal depositAmount,
+            BigDecimal advanceAmount) {
+        this.depositAmount = depositAmount;
+        this.advanceAmount = advanceAmount;
         this.tenantId = tenantId;
         this.unitId = unitId;
         this.bedId = bedId;
@@ -144,6 +187,34 @@ public class Lease {
 
     public BigDecimal getRentAmount() {
         return rentAmount;
+    }
+
+    public BigDecimal getDepositAmount() {
+        return depositAmount;
+    }
+
+    public BigDecimal getAdvanceAmount() {
+        return advanceAmount;
+    }
+
+    public BigDecimal getDepositReturned() {
+        return depositReturned;
+    }
+
+    public String getDepositSettlement() {
+        return depositSettlement;
+    }
+
+    /**
+     * Records what happened to the deposit.
+     *
+     * <p>Named rather than two setters because the amount and the explanation
+     * belong together: a figure smaller than the deposit with no reason beside
+     * it is the shape of an argument.
+     */
+    public void settleDeposit(BigDecimal returned, String settlement) {
+        this.depositReturned = returned;
+        this.depositSettlement = settlement;
     }
 
     public short getDueDateDay() {

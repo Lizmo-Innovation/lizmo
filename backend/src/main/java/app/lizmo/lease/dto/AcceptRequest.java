@@ -28,5 +28,19 @@ public record AcceptRequest(
         Integer dueDateDay,
 
         @Schema(example = "2026-09-01", description = "Defaults to today")
-        LocalDate startDate) {
+        LocalDate startDate,
+
+        @DecimalMin(value = "0.0")
+        @Schema(example = "5000.00",
+                description = "Held against damage, and mostly given back. Not rent. "
+                        + "Null means none was recorded, which is not the same as none "
+                        + "being taken.")
+        BigDecimal depositAmount,
+
+        @DecimalMin(value = "0.0")
+        @Schema(example = "2500.00",
+                description = "Rent paid before moving in, which pays for the first "
+                        + "month. Kept apart from the deposit because it is money the "
+                        + "landlord has earned rather than money they are holding.")
+        BigDecimal advanceAmount) {
 }

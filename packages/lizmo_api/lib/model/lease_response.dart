@@ -23,6 +23,10 @@ class LeaseResponse {
     this.bedId,
     this.bedLabel,
     this.rentAmount,
+    this.depositAmount,
+    this.advanceAmount,
+    this.depositReturned,
+    this.depositSettlement,
     this.dueDateDay,
     this.startDate,
     this.endDate,
@@ -115,6 +119,38 @@ class LeaseResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
+  num? depositAmount;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? advanceAmount;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? depositReturned;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? depositSettlement;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
   int? dueDateDay;
 
   ///
@@ -147,6 +183,10 @@ class LeaseResponse {
     other.bedId == bedId &&
     other.bedLabel == bedLabel &&
     other.rentAmount == rentAmount &&
+    other.depositAmount == depositAmount &&
+    other.advanceAmount == advanceAmount &&
+    other.depositReturned == depositReturned &&
+    other.depositSettlement == depositSettlement &&
     other.dueDateDay == dueDateDay &&
     other.startDate == startDate &&
     other.endDate == endDate &&
@@ -165,13 +205,17 @@ class LeaseResponse {
     (bedId == null ? 0 : bedId!.hashCode) +
     (bedLabel == null ? 0 : bedLabel!.hashCode) +
     (rentAmount == null ? 0 : rentAmount!.hashCode) +
+    (depositAmount == null ? 0 : depositAmount!.hashCode) +
+    (advanceAmount == null ? 0 : advanceAmount!.hashCode) +
+    (depositReturned == null ? 0 : depositReturned!.hashCode) +
+    (depositSettlement == null ? 0 : depositSettlement!.hashCode) +
     (dueDateDay == null ? 0 : dueDateDay!.hashCode) +
     (startDate == null ? 0 : startDate!.hashCode) +
     (endDate == null ? 0 : endDate!.hashCode) +
     (status == null ? 0 : status!.hashCode);
 
   @override
-  String toString() => 'LeaseResponse[id=$id, tenantId=$tenantId, tenantName=$tenantName, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, endDate=$endDate, status=$status]';
+  String toString() => 'LeaseResponse[id=$id, tenantId=$tenantId, tenantName=$tenantName, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, rentAmount=$rentAmount, depositAmount=$depositAmount, advanceAmount=$advanceAmount, depositReturned=$depositReturned, depositSettlement=$depositSettlement, dueDateDay=$dueDateDay, startDate=$startDate, endDate=$endDate, status=$status]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -225,6 +269,26 @@ class LeaseResponse {
     } else {
       json[r'rentAmount'] = null;
     }
+    if (this.depositAmount != null) {
+      json[r'depositAmount'] = this.depositAmount;
+    } else {
+      json[r'depositAmount'] = null;
+    }
+    if (this.advanceAmount != null) {
+      json[r'advanceAmount'] = this.advanceAmount;
+    } else {
+      json[r'advanceAmount'] = null;
+    }
+    if (this.depositReturned != null) {
+      json[r'depositReturned'] = this.depositReturned;
+    } else {
+      json[r'depositReturned'] = null;
+    }
+    if (this.depositSettlement != null) {
+      json[r'depositSettlement'] = this.depositSettlement;
+    } else {
+      json[r'depositSettlement'] = null;
+    }
     if (this.dueDateDay != null) {
       json[r'dueDateDay'] = this.dueDateDay;
     } else {
@@ -275,6 +339,16 @@ class LeaseResponse {
         rentAmount: json[r'rentAmount'] == null
             ? null
             : num.parse('${json[r'rentAmount']}'),
+        depositAmount: json[r'depositAmount'] == null
+            ? null
+            : num.parse('${json[r'depositAmount']}'),
+        advanceAmount: json[r'advanceAmount'] == null
+            ? null
+            : num.parse('${json[r'advanceAmount']}'),
+        depositReturned: json[r'depositReturned'] == null
+            ? null
+            : num.parse('${json[r'depositReturned']}'),
+        depositSettlement: mapValueOfType<String>(json, r'depositSettlement'),
         dueDateDay: mapValueOfType<int>(json, r'dueDateDay'),
         startDate: mapDateTime(json, r'startDate', r''),
         endDate: mapDateTime(json, r'endDate', r''),

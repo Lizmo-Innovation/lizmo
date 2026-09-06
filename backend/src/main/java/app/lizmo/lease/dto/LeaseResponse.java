@@ -25,6 +25,13 @@ public record LeaseResponse(
         UUID bedId,
         String bedLabel,
         BigDecimal rentAmount,
+
+        /* Two different kinds of money. See the Lease entity. */
+        BigDecimal depositAmount,
+        BigDecimal advanceAmount,
+        BigDecimal depositReturned,
+        String depositSettlement,
+
         short dueDateDay,
         LocalDate startDate,
         LocalDate endDate,
@@ -48,6 +55,10 @@ public record LeaseResponse(
                 lease.getBedId(),
                 bedLabel,
                 lease.getRentAmount(),
+                lease.getDepositAmount(),
+                lease.getAdvanceAmount(),
+                lease.getDepositReturned(),
+                lease.getDepositSettlement(),
                 lease.getDueDateDay(),
                 lease.getStartDate(),
                 lease.getEndDate(),

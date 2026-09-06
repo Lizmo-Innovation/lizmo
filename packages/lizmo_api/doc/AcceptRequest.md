@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **rentAmount** | **num** | Defaults to the asking rent | [optional] 
 **dueDateDay** | **int** | Defaults to the start date's day | [optional] 
 **startDate** | [**DateTime**](DateTime.md) | Defaults to today | [optional] 
+**depositAmount** | **num** | Held against damage, and mostly given back. Not rent. Null means none was recorded, which is not the same as none being taken. | [optional] 
+**advanceAmount** | **num** | Rent paid before moving in, which pays for the first month. Kept apart from the deposit because it is money the landlord has earned rather than money they are holding. | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

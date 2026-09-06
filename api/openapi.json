@@ -2779,30 +2779,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -2841,6 +2817,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -3255,6 +3255,20 @@
                         "description": "Defaults to today",
                         "format": "date",
                         "example": "2026-09-01"
+                    },
+                    "depositAmount": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": false,
+                        "type": "number",
+                        "description": "Held against damage, and mostly given back. Not rent. Null means none was recorded, which is not the same as none being taken.",
+                        "example": 5000.0
+                    },
+                    "advanceAmount": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": false,
+                        "type": "number",
+                        "description": "Rent paid before moving in, which pays for the first month. Kept apart from the deposit because it is money the landlord has earned rather than money they are holding.",
+                        "example": 2500.0
                     }
                 },
                 "description": "Terms for the lease being created"
@@ -3296,6 +3310,18 @@
                     },
                     "rentAmount": {
                         "type": "number"
+                    },
+                    "depositAmount": {
+                        "type": "number"
+                    },
+                    "advanceAmount": {
+                        "type": "number"
+                    },
+                    "depositReturned": {
+                        "type": "number"
+                    },
+                    "depositSettlement": {
+                        "type": "string"
                     },
                     "dueDateDay": {
                         "type": "integer",
@@ -3475,6 +3501,20 @@
                         "type": "string",
                         "format": "date",
                         "example": "2026-09-30"
+                    },
+                    "depositReturned": {
+                        "minimum": 0.0,
+                        "exclusiveMinimum": false,
+                        "type": "number",
+                        "description": "How much of the deposit went back. Null when there was no deposit, or when the landlord has not settled it yet.",
+                        "example": 4500.0
+                    },
+                    "depositSettlement": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string",
+                        "description": "What was withheld and why, in the landlord's own words. Free text rather than itemised deductions: withholding money is where tenancies go wrong, and an explanation somebody actually wrote beats a form nobody fills in honestly.",
+                        "example": "Withheld P500 for the broken window latch."
                     }
                 },
                 "description": "Ending a lease"
