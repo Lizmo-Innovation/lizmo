@@ -6,7 +6,14 @@ plugins {
 
 android {
     namespace = "app.lizmo"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned rather than flutter.compileSdkVersion, which is 34 for this
+    // Flutter release. file_picker pulls in flutter_plugin_android_lifecycle,
+    // which now requires everything depending on it to compile against 36.
+    //
+    // compileSdk only decides which APIs may be referenced at build time.
+    // minSdk and targetSdk are untouched below, so which phones can install
+    // the app and which runtime behaviours it opts into are both unchanged.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

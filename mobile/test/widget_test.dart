@@ -17,6 +17,7 @@ import 'package:lizmo/screens/landlord_home_screen.dart';
 import 'package:lizmo/screens/property_list_screen.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
+import 'package:lizmo/screens/my_place_screen.dart';
 import 'package:lizmo/screens/tenant_detail_screen.dart';
 import 'package:lizmo/widgets/notification_bell.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
@@ -5674,6 +5675,125 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('share-d1')), findsOneWidget);
+    });
+  });
+
+  group('a tenant reading their own paperwork', () {
+    LeaseResponse tenancy() => LeaseResponse(
+          id: 'l1',
+          tenantId: 't1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedId: 'b1',
+          bedLabel: 'Bed 1',
+          rentAmount: 2500,
+          dueDateDay: 5,
+          status: LeaseResponseStatusEnum.ACTIVE,
+        );
+
+    LeaseDocumentResponse doc({
+      String id = 'd1',
+      String label = 'Signed contract',
+      String contentType = 'application/pdf',
+    }) => LeaseDocumentResponse(
+      id: id,
+      docType: LeaseDocumentResponseDocTypeEnum.LEASE_CONTRACT,
+      label: label,
+      url: 'https://example.invalid/$id',
+      urlExpiresInSeconds: 600,
+      contentType: contentType,
+      byteSize: 1024,
+      sharedWithTenant: true,
+      uploadedAt: DateTime.now(),
+    );
+
+    Widget appWith(List<LeaseDocumentResponse> documents) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => [tenancy()]),
+        myLeaseDocumentsProvider('l1').overrideWith((ref) async => documents),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openMyPlace(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a shared document appears under the tenancy', (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Your documents'), findsOneWidget);
+      expect(find.text('Signed contract'), findsOneWidget);
+    });
+
+    /// A tenancy with no paperwork must look exactly as it did before this
+    /// existed. An empty "Your documents" panel reads as a fault.
+    testWidgets('nothing shared leaves no trace', (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Your documents'), findsNothing);
+      expect(find.byType(MyPlaceScreen), findsOneWidget);
+    });
+
+    /// The screen used to promise that a copy of the contract was "not
+    /// recorded yet". It can be now, and stale copy on a screen a tenant reads
+    /// is how they stop believing the rest of it.
+    testWidgets('the screen no longer says a contract cannot be kept',
+        (tester) async {
+      await tester.pumpWidget(appWith([doc()]));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.textContaining('copy of your contract'), findsNothing);
+      // What genuinely is missing still says so.
+      expect(find.textContaining('deposit or advance'), findsOneWidget);
+    });
+
+    testWidgets('a PDF and an image are told apart', (tester) async {
+      await tester.pumpWidget(appWith([
+        doc(id: 'd1', label: 'Contract'),
+        doc(id: 'd2', label: 'Receipt', contentType: 'image/jpeg'),
+      ]));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+    });
+
+    testWidgets('tapping an image opens it large', (tester) async {
+      await tester.pumpWidget(
+          appWith([doc(id: 'd2', label: 'Receipt', contentType: 'image/jpeg')]));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      await tester.tap(find.byKey(const ValueKey('shared-doc-d2')));
+      await tester.pumpAndSettle();
+
+      // The same viewer the landlord gets, rather than a second one.
+      expect(find.byKey(const ValueKey('close-photo')), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
     });
   });
 }

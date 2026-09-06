@@ -8,6 +8,7 @@ import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/role_switcher.dart';
+import '../widgets/shared_lease_documents.dart';
 
 /// Where the tenant lives, or how to find somewhere.
 ///
@@ -133,9 +134,16 @@ class _Tenancy extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+
+        // Renders nothing until the landlord shares something, so a tenancy
+        // with no paperwork looks exactly as it did before.
+        SharedLeaseDocuments(leaseId: lease.id!),
+
+        const SizedBox(height: 16),
+        // No longer mentions a contract: one can be shared now, and the card
+        // above is where it appears.
         Text(
-          'A deposit or advance, house rules and a copy of your contract are '
-          'not recorded yet.',
+          'A deposit or advance and house rules are not recorded yet.',
           style: LizmoType.rowSub,
         ),
       ],
