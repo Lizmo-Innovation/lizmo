@@ -173,6 +173,16 @@ class _Waiting extends StatelessWidget {
               style: LizmoType.rowSub
                   .copyWith(fontSize: 11, color: LizmoColors.amberText),
             ),
+            if ((payment.remarks ?? '').isNotEmpty) ...[
+              const SizedBox(height: 6),
+              // What the figures cannot say -- "paid from my sister's number"
+              // -- and exactly the thing that would otherwise make a landlord
+              // hesitate before confirming.
+              Text(
+                payment.remarks!,
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+              ),
+            ],
             if (payment.proofUrl != null) ...[
               const SizedBox(height: 8),
               ClipRRect(

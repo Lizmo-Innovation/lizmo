@@ -6357,17 +6357,21 @@ void _tenantLeaseTests() {
       overdue: false,
     );
 
-    PaymentResponse waiting({String id = 'p1', num amount = 2500}) =>
-        PaymentResponse(
-          id: id,
-          billingPeriodId: 'b1',
-          periodLabel: 'October 2026',
-          amountPaid: amount,
-          paymentDate: DateTime.utc(2026, 10, 4),
-          paymentMethod: PaymentResponsePaymentMethodEnum.GCASH,
-          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
-          proofUrlExpiresInSeconds: 600,
-        );
+    PaymentResponse waiting({
+      String id = 'p1',
+      num amount = 2500,
+      String? note,
+    }) => PaymentResponse(
+      id: id,
+      billingPeriodId: 'b1',
+      periodLabel: 'October 2026',
+      amountPaid: amount,
+      paymentDate: DateTime.utc(2026, 10, 4),
+      paymentMethod: PaymentResponsePaymentMethodEnum.GCASH,
+      status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+      remarks: note,
+      proofUrlExpiresInSeconds: 600,
+    );
 
     // ---- the tenant's side ------------------------------------------------
 
@@ -6466,6 +6470,37 @@ void _tenantLeaseTests() {
       expect(field.controller?.text, '1500');
     });
 
+    /// The figures cannot say "I paid from my sister's number", and that is
+    /// exactly what would otherwise make a landlord hesitate.
+    testWidgets('a note can be added, and is not demanded', (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('payment-note')), findsOneWidget);
+      expect(find.textContaining('Your landlord sees this'), findsOneWidget);
+    });
+
+    testWidgets('the amount is required', (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const ValueKey('payment-amount')), '');
+      await tester.ensureVisible(find.text('I have paid'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('I have paid'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How much did you pay?'), findsOneWidget);
+      // Still on the sheet, having declared nothing.
+      expect(find.byType(DeclarePaymentSheet), findsOneWidget);
+    });
+
     testWidgets('proof is offered, not demanded', (tester) async {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
@@ -6474,7 +6509,9 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('attach-proof')), findsOneWidget);
-      expect(find.textContaining('Optional'), findsOneWidget);
+      // Specific: the note is optional too, so a bare "Optional" now matches
+      // twice.
+      expect(find.textContaining('if you paid by GCash'), findsOneWidget);
     });
 
     // ---- the landlord's side ----------------------------------------------
@@ -6551,6 +6588,27 @@ void _tenantLeaseTests() {
       expect(find.text('Paid by GCash'), findsOneWidget);
       expect(find.byKey(const ValueKey('confirm-p1')), findsOneWidget);
       expect(find.byKey(const ValueKey('reject-p1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reject-p1')), findsOneWidget);
+    });
+
+    testWidgets('the landlord reads the note while deciding', (tester) async {
+      await tester.pumpWidget(landlordApp(
+        months: [month()],
+        payments: [waiting(note: 'Sent from my sister’s number.')],
+      ));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.text('Sent from my sister’s number.'), findsOneWidget);
+    });
+
+    testWidgets('no note leaves the card uncluttered', (tester) async {
+      await tester.pumpWidget(
+          landlordApp(months: [month()], payments: [waiting()]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.text('One payment is waiting on you'), findsOneWidget);
     });
 
     testWidgets('nothing waiting means no prompt', (tester) async {

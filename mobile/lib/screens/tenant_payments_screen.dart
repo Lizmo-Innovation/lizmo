@@ -90,6 +90,7 @@ class _RentState extends ConsumerState<_Rent> {
               billingPeriodId: period.id!,
               amountPaid: said.amount,
               paymentMethod: said.method,
+              remarks: said.note,
             ),
             proof: said.proof == null
                 ? null

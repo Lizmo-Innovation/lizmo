@@ -48,10 +48,20 @@ class DeclarePaymentSheet extends StatefulWidget {
 
 /// What the tenant said, and the screenshot if they attached one.
 class Declared {
-  const Declared({required this.amount, required this.method, this.proof});
+  const Declared({
+    required this.amount,
+    required this.method,
+    this.note,
+    this.proof,
+  });
 
   final num amount;
   final RecordPaymentRequestPaymentMethodEnum method;
+
+  /// Anything the figures cannot say: paid from somebody else's number, sent
+  /// in two halves, a reference number. Null when left blank.
+  final String? note;
+
   final XFile? proof;
 }
 
@@ -62,6 +72,7 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
 
   RecordPaymentRequestPaymentMethodEnum _method =
       RecordPaymentRequestPaymentMethodEnum.GCASH;
+  final _note = TextEditingController();
   XFile? _proof;
 
   static const _methods = {
@@ -75,6 +86,7 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
   @override
   void dispose() {
     _amount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -92,9 +104,15 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final note = _note.text.trim();
+
     Navigator.of(context).pop(Declared(
       amount: num.parse(_amount.text.trim()),
       method: _method,
+      // Null rather than an empty string: nothing written down and something
+      // written down that says nothing are different, and only the first
+      // should leave the landlord's screen uncluttered.
+      note: note.isEmpty ? null : note,
       proof: _proof,
     ));
   }
@@ -173,6 +191,26 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
                       onSelected: (_) => setState(() => _method = entry.key),
                     ),
                 ],
+              ),
+
+              const SizedBox(height: 18),
+              _Label('Note'),
+              const SizedBox(height: 6),
+              TextFormField(
+                key: const ValueKey('payment-note'),
+                controller: _note,
+                maxLines: 2,
+                maxLength: 500,
+                decoration: _field('Sent from my sister’s number')
+                    .copyWith(counterText: ''),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                // The figures cannot say "I paid from my mother's GCash", and
+                // that is exactly the thing that makes a landlord hesitate
+                // before confirming.
+                'Optional. Your landlord sees this when they confirm.',
+                style: LizmoType.rowSub.copyWith(fontSize: 11),
               ),
 
               const SizedBox(height: 18),
