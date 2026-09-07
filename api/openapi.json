@@ -60,6 +60,10 @@
             "description": "Creating an account"
         },
         {
+            "name": "Rent",
+            "description": "What is owed, and what has come in"
+        },
+        {
             "name": "Asking for a room",
             "description": "Requests a tenant has sent"
         }
@@ -2312,6 +2316,52 @@
                 }
             }
         },
+        "/api/v1/me/leases/{leaseId}/billing": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "My rent",
+                "description": "The same months the landlord sees. Readable after the tenancy ends: what you paid is worth having afterwards.",
+                "operationId": "listMyBilling",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The months",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/BillingPeriodResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/deletable": {
             "get": {
                 "tags": [
@@ -2415,6 +2465,52 @@
                     },
                     "404": {
                         "description": "Not your lease, or the tenancy has ended",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/billing": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Rent on this tenancy",
+                "description": "Oldest month first. Months are created as they begin, so opening this is what brings the schedule up to date.",
+                "operationId": "listLeaseBilling",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The months",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/BillingPeriodResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -2779,6 +2875,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -2817,30 +2937,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -4015,6 +4111,51 @@
                     }
                 },
                 "description": "How many notifications are unread"
+            },
+            "BillingPeriodResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "periodStart": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "periodEnd": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "amountDue": {
+                        "type": "number"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "UNPAID",
+                            "PARTIALLY_PAID",
+                            "PAID"
+                        ]
+                    },
+                    "overdue": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "One month of rent"
             },
             "TenantForLandlord": {
                 "type": "object",

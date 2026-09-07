@@ -4864,6 +4864,9 @@ void _tenantLeaseTests() {
           (ref) async => const <TenantDocumentResponse>[],
         ),
         myLeasesProvider.overrideWith((ref) async => leases),
+        myBillingProvider('l1').overrideWith(
+          (ref) async => const <BillingPeriodResponse>[],
+        ),
       ],
       child: const LizmoApp(),
     );
@@ -4964,14 +4967,25 @@ void _tenantLeaseTests() {
       expect(find.text('Sunrise Apartments'), findsOneWidget);
     });
 
-    testWidgets('payments and maintenance say plainly that they are empty',
+    /// Payments used to say Lizmo could not record anything and that the
+    /// tenant should keep their own receipts. It shows real rent now, so what
+    /// an empty list means has changed: no months yet, not no feature.
+    testWidgets('payments shows the rent schedule, empty or not',
         (tester) async {
       await tester.pumpWidget(appWith([lease()]));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('tab-payments')));
       await tester.pumpAndSettle();
-      expect(find.text('No bills yet'), findsOneWidget);
+
+      expect(find.text('Nothing due yet'), findsOneWidget);
+      expect(find.textContaining('cannot record payments'), findsNothing);
+    });
+
+    testWidgets('maintenance still says plainly that it is empty',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()]));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
       await tester.pumpAndSettle();
@@ -6166,6 +6180,159 @@ void _tenantLeaseTests() {
 
       expect(find.byType(EndTenancySheet), findsNothing);
       expect(find.byType(TenantDetailScreen), findsOneWidget);
+    });
+  });
+
+  group('rent, month by month', () {
+    BillingPeriodResponse month({
+      String id = 'b1',
+      String label = 'October 2026',
+      num due = 2500,
+      num paid = 0,
+      bool overdue = false,
+      BillingPeriodResponseStatusEnum status =
+          BillingPeriodResponseStatusEnum.UNPAID,
+    }) => BillingPeriodResponse(
+      id: id,
+      label: label,
+      periodStart: DateTime.utc(2026, 10, 3),
+      periodEnd: DateTime.utc(2026, 11, 2),
+      dueDate: DateTime.utc(2026, 10, 5),
+      amountDue: due,
+      amountPaid: paid,
+      outstanding: due - paid < 0 ? 0 : due - paid,
+      status: status,
+      overdue: overdue,
+    );
+
+    Widget appWith(List<BillingPeriodResponse> periods) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => [
+              LeaseResponse(
+                id: 'l1',
+                tenantId: 't1',
+                propertyName: 'Sunrise Apartments',
+                unitNumber: '2B',
+                bedLabel: 'Bed 1',
+                rentAmount: 2500,
+                dueDateDay: 5,
+                startDate: DateTime.utc(2026, 10, 3),
+                status: LeaseResponseStatusEnum.ACTIVE,
+              ),
+            ]),
+        myLeaseDocumentsProvider('l1').overrideWith(
+          (ref) async => const <LeaseDocumentResponse>[],
+        ),
+        myBillingProvider('l1').overrideWith((ref) async => periods),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openPayments(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a month shows what is owed and what came in', (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.text('October 2026'), findsOneWidget);
+      expect(find.text('Due'), findsWidgets);
+      expect(find.text('Outstanding'), findsOneWidget);
+      expect(find.text('₱2500'), findsWidgets);
+    });
+
+    /// The number somebody actually opened the screen to find, so no client
+    /// has to do the subtraction and none can get it wrong.
+    testWidgets('a part payment leaves the rest showing', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(
+          paid: 1000,
+          status: BillingPeriodResponseStatusEnum.PARTIALLY_PAID,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.text('₱1000'), findsOneWidget);
+      expect(find.text('₱1500'), findsOneWidget);
+    });
+
+    testWidgets('a settled month says so', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      // Scoped to the chip: "Paid" is also a ledger column heading, so a bare
+      // find.text matches twice in a settled row.
+      expect(
+        find.descendant(
+          of: find.byType(StatusChip),
+          matching: find.text('Paid'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Settled'), findsOneWidget);
+    });
+
+    /// Late is louder than unpaid. Rent merely not yet due is the ordinary
+    /// state of the current month and must not look like a problem.
+    testWidgets('late rent is called late, and pending rent is not',
+        (tester) async {
+      await tester.pumpWidget(appWith([
+        month(id: 'b1', label: 'October 2026', overdue: true),
+        month(id: 'b2', label: 'November 2026'),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('Due'), findsWidgets);
+    });
+
+    /// The month somebody opens this to check is almost always the current
+    /// one, and the server sends oldest first.
+    testWidgets('the newest month is at the top', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(id: 'b1', label: 'October 2026'),
+        month(id: 'b2', label: 'November 2026'),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      final october = tester.getTopLeft(find.text('October 2026')).dy;
+      final november = tester.getTopLeft(find.text('November 2026')).dy;
+      expect(november, lessThan(october));
+    });
+
+    testWidgets('no months yet says why, not that nothing works',
+        (tester) async {
+      await tester.pumpWidget(appWith(const []));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.text('Nothing due yet'), findsOneWidget);
+      expect(find.textContaining('once the tenancy has started'), findsOneWidget);
     });
   });
 }

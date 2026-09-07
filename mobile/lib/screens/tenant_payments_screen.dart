@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/rent_schedule_list.dart';
 import '../widgets/role_switcher.dart';
 
 /// Rent: what is coming, and what has been paid.
@@ -43,17 +46,43 @@ class TenantPaymentsScreen extends ConsumerWidget {
                     detail: 'Once you are renting through Lizmo, what you owe '
                         'and what you have paid will be recorded here.',
                   )
-                : LizmoMessageState(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'No bills yet',
-                    detail: 'Your rent is ₱'
-                        '${(lease.rentAmount ?? 0).toStringAsFixed(0)} a month. '
-                        'Lizmo cannot record payments yet, so nothing you pay '
-                        'your landlord shows up here — keep your own receipts '
-                        'for now.',
-                  ),
+                : _Rent(leaseId: lease.id!),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The months of rent on this tenancy.
+///
+/// This screen used to say Lizmo could not record payments and that the tenant
+/// should keep their own receipts. It can now record what is owed; recording
+/// what has been handed over comes next.
+class _Rent extends ConsumerWidget {
+  const _Rent({required this.leaseId});
+
+  final String leaseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final billing = ref.watch(myBillingProvider(leaseId));
+
+    return billing.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => LizmoMessageState(
+        icon: Icons.error_outline,
+        title: 'Could not load your rent',
+        detail: ApiFailure.from(error).message,
+      ),
+      data: (periods) => RefreshIndicator(
+        // Refreshing is also how the schedule catches up: months are written
+        // when somebody looks.
+        onRefresh: () async => ref.invalidate(myBillingProvider(leaseId)),
+        child: RentScheduleList(
+          periods: periods,
+          emptyDetail: 'Your first month appears once the tenancy has started.',
+        ),
       ),
     );
   }

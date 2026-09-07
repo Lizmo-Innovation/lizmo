@@ -102,6 +102,8 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
+*RentApi* | [**listLeaseBilling**](doc//RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
+*RentApi* | [**listMyBilling**](doc//RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
 *RequestsToAnswerApi* | [**acceptRentalRequest**](doc//RequestsToAnswerApi.md#acceptrentalrequest) | **POST** /api/v1/rental-requests/{id}/accept | Say yes, and create the lease
 *RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 *RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
@@ -136,6 +138,7 @@ Class | Method | HTTP request | Description
  - [AuthResponse](doc//AuthResponse.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
+ - [BillingPeriodResponse](doc//BillingPeriodResponse.md)
  - [CompletePasswordResetRequest](doc//CompletePasswordResetRequest.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)

@@ -197,6 +197,8 @@ class ApiClient {
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
+        case 'BillingPeriodResponse':
+          return BillingPeriodResponse.fromJson(value);
         case 'CompletePasswordResetRequest':
           return CompletePasswordResetRequest.fromJson(value);
         case 'CompleteRegistrationRequest':

@@ -229,3 +229,31 @@ final landlordLeaseProvider = Provider.autoDispose
   }
   return null;
 });
+
+final rentApiProvider = Provider<RentApi>((ref) {
+  return RentApi(ref.watch(apiClientProvider));
+});
+
+/// The months of rent on one tenancy, as the landlord sees them.
+///
+/// Reading this is what brings the schedule up to date: months are written
+/// when somebody looks rather than by a scheduled job, so an invalidate here
+/// is also a catch-up.
+final leaseBillingProvider = FutureProvider.autoDispose
+    .family<List<BillingPeriodResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(rentApiProvider).listLeaseBilling(leaseId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// The same months, as the tenant living under them sees them.
+final myBillingProvider = FutureProvider.autoDispose
+    .family<List<BillingPeriodResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(rentApiProvider).listMyBilling(leaseId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
