@@ -3357,6 +3357,14 @@ void main() {
                   awaitingConfirmation: 0,
                   tenanciesInArrears: 0,
                 )),
+            occupancyProvider.overrideWith((ref) async => OccupancySummary(
+                  lettable: 0,
+                  occupied: 0,
+                  empty: 0,
+                  outOfService: 0,
+                  earningRent: 0,
+                  emptyRent: 0,
+                )),
           ],
           child: const LizmoApp(),
         );
@@ -3383,7 +3391,11 @@ void main() {
       expect(find.text('₱10000'), findsOneWidget);
       expect(find.text('Needs leases and billing'), findsNothing);
       expect(find.text('Collections'), findsOneWidget);
-      expect(find.text('Needs leases'), findsNWidgets(2));
+      expect(find.text('Occupancy'), findsOneWidget);
+
+      // Only "Coming up" is still waiting on something, and it still says so.
+      expect(find.text('Needs leases'), findsOneWidget);
+      expect(find.text('Coming up'), findsOneWidget);
     });
 
     testWidgets('tenants is empty for a reason it explains', (tester) async {
@@ -6781,6 +6793,130 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('behind'), findsNothing);
+    });
+  });
+
+  group('occupancy', () {
+    VacancyRow vacancy({
+      String id = 'p1',
+      String name = 'Sunrise Apartments',
+      int empty = 3,
+      num emptyRent = 7500,
+    }) => VacancyRow(
+      propertyId: id,
+      propertyName: name,
+      lettable: 4,
+      occupied: 4 - empty,
+      empty: empty,
+      emptyRent: emptyRent,
+    );
+
+    Widget appWith({
+      int lettable = 4,
+      int occupied = 1,
+      int empty = 3,
+      int outOfService = 0,
+      num emptyRent = 7500,
+      List<VacancyRow> vacancies = const [],
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+              dueThisMonth: 0,
+              collectedThisMonth: 0,
+              outstandingAllTime: 0,
+              awaitingConfirmation: 0,
+              tenanciesInArrears: 0,
+            )),
+        occupancyProvider.overrideWith((ref) async => OccupancySummary(
+              lettable: lettable,
+              occupied: occupied,
+              empty: empty,
+              outOfService: outOfService,
+              earningRent: 2500,
+              emptyRent: emptyRent,
+              vacancies: vacancies,
+            )),
+      ],
+      child: const LizmoApp(),
+    );
+
+    /// Slots, not units. One tenant in a four-bed room is not a full building,
+    /// and the headline is the sentence a landlord would say out loud.
+    testWidgets('the headline counts lettable slots', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Occupancy'), findsOneWidget);
+      expect(find.text('1 of 4 let'), findsOneWidget);
+    });
+
+    /// The figure that turns "three beds free" into a reason to do something.
+    testWidgets('empty space is priced', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Going begging'), findsOneWidget);
+      expect(find.text('₱7500'), findsOneWidget);
+    });
+
+    /// A room off the market on purpose is not a vacancy anybody needs to
+    /// fill, so it is counted apart.
+    testWidgets('out of service is shown apart from empty', (tester) async {
+      await tester.pumpWidget(appWith(outOfService: 2));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Out of service'), findsOneWidget);
+      expect(find.text('2'), findsWidgets);
+    });
+
+    testWidgets('nothing out of service leaves the column off', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Out of service'), findsNothing);
+    });
+
+    testWidgets('nothing to let says what to do about it', (tester) async {
+      await tester.pumpWidget(appWith(lettable: 0, occupied: 0, empty: 0));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Add a room or a unit'), findsOneWidget);
+      expect(find.text('Going begging'), findsNothing);
+    });
+
+    testWidgets('where the space is, and how much it is worth',
+        (tester) async {
+      await tester.pumpWidget(appWith(vacancies: [vacancy()]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Where the space is'), findsOneWidget);
+      expect(find.text('Sunrise Apartments'), findsOneWidget);
+      expect(find.text('3 free'), findsOneWidget);
+    });
+
+    testWidgets('a full portfolio lists no vacancies', (tester) async {
+      await tester.pumpWidget(appWith(occupied: 4, empty: 0, emptyRent: 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('4 of 4 let'), findsOneWidget);
+      expect(find.text('Where the space is'), findsNothing);
+    });
+
+    /// The next thing a landlord wants is the room list they will advertise
+    /// from.
+    testWidgets('a vacancy row leads to the property', (tester) async {
+      await tester.pumpWidget(appWith(vacancies: [vacancy()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('vacancy-p1')), findsOneWidget);
     });
   });
 }

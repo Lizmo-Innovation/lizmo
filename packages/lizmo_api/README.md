@@ -98,6 +98,7 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**createProperty**](doc//PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 *PropertiesApi* | [**createUnit**](doc//PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 *PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
+*PropertiesApi* | [**getOccupancy**](doc//PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 *PropertiesApi* | [**getProperty**](doc//PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
@@ -161,6 +162,7 @@ Class | Method | HTTP request | Description
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [NotificationResponse](doc//NotificationResponse.md)
+ - [OccupancySummary](doc//OccupancySummary.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
  - [PlatformSettings](doc//PlatformSettings.md)
@@ -189,6 +191,7 @@ Class | Method | HTTP request | Description
  - [UtilityRequest](doc//UtilityRequest.md)
  - [UtilityResponse](doc//UtilityResponse.md)
  - [VacancyFloor](doc//VacancyFloor.md)
+ - [VacancyRow](doc//VacancyRow.md)
  - [VacantBed](doc//VacantBed.md)
  - [VacantUnit](doc//VacantUnit.md)
 

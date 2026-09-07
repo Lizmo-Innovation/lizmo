@@ -2486,6 +2486,28 @@
                 }
             }
         },
+        "/api/v1/me/occupancy": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "What is let and what is empty",
+                "description": "Counted in lettable slots rather than units: a four-bed room with one tenant is one let and three empty. Beds taken off the market are counted apart from vacancies, because a refurbishment is not a failure to let.",
+                "operationId": "getOccupancy",
+                "responses": {
+                    "200": {
+                        "description": "The summary",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OccupancySummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/notifications": {
             "get": {
                 "tags": [
@@ -4449,6 +4471,68 @@
                     }
                 },
                 "description": "Where to write to Lizmo"
+            },
+            "OccupancySummary": {
+                "type": "object",
+                "properties": {
+                    "lettable": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupied": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "empty": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "outOfService": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "earningRent": {
+                        "type": "number"
+                    },
+                    "emptyRent": {
+                        "type": "number"
+                    },
+                    "vacancies": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/VacancyRow"
+                        }
+                    }
+                },
+                "description": "How much of a portfolio is let"
+            },
+            "VacancyRow": {
+                "type": "object",
+                "properties": {
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "lettable": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupied": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "empty": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "emptyRent": {
+                        "type": "number"
+                    }
+                },
+                "description": "Vacancy in one property"
             },
             "NotificationResponse": {
                 "type": "object",

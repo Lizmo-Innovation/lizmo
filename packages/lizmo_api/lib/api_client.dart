@@ -229,6 +229,8 @@ class ApiClient {
           return MaintenanceRequest.fromJson(value);
         case 'NotificationResponse':
           return NotificationResponse.fromJson(value);
+        case 'OccupancySummary':
+          return OccupancySummary.fromJson(value);
         case 'PaymentResponse':
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':
@@ -285,6 +287,8 @@ class ApiClient {
           return UtilityResponse.fromJson(value);
         case 'VacancyFloor':
           return VacancyFloor.fromJson(value);
+        case 'VacancyRow':
+          return VacancyRow.fromJson(value);
         case 'VacantBed':
           return VacantBed.fromJson(value);
         case 'VacantUnit':

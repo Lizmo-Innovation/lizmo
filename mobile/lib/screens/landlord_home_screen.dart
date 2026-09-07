@@ -8,6 +8,7 @@ import '../property/property_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/collections_card.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/occupancy_card.dart';
 import '../widgets/role_switcher.dart';
 
 /// The landlord's dashboard.
@@ -71,6 +72,7 @@ class LandlordHomeScreen extends ConsumerWidget {
               onRefresh: () async {
                 ref.invalidate(propertiesProvider);
                 ref.invalidate(collectionsProvider);
+                ref.invalidate(occupancyProvider);
               },
               child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
@@ -79,12 +81,9 @@ class LandlordHomeScreen extends ConsumerWidget {
                 // the first day this screen existed. Both now exist.
                 CollectionsCard(),
                 SizedBox(height: 10),
-                _Awaiting(
-                  icon: Icons.people_outline,
-                  title: 'Occupancy',
-                  detail: 'How many beds and units are let, and what is empty.',
-                  needs: 'Needs leases',
-                ),
+                // The second placeholder this screen carried. It read "Needs
+                // leases", which stopped being true the day leases were built.
+                OccupancyCard(),
                 SizedBox(height: 10),
                 _Awaiting(
                   icon: Icons.event_outlined,

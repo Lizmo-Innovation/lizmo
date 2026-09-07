@@ -298,3 +298,24 @@ final collectionsProvider =
     throw ApiFailure.from(error);
   }
 });
+
+/// How much of this landlord's portfolio is let.
+///
+/// Read from bed and unit status, the same source the room lists show, so the
+/// dashboard cannot disagree with the screen a landlord opens next.
+final occupancyProvider =
+    FutureProvider.autoDispose<OccupancySummary>((ref) async {
+  try {
+    final summary =
+        await PropertiesApi(ref.watch(apiClientProvider)).getOccupancy();
+    if (summary == null) {
+      throw const ApiFailure(
+        code: 'UNKNOWN',
+        message: 'Could not work out what is let.',
+      );
+    }
+    return summary;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

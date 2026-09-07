@@ -51,6 +51,24 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        occupancyProvider.overrideWith((ref) async => OccupancySummary(
+              lettable: 4,
+              occupied: 1,
+              empty: 3,
+              outOfService: 0,
+              earningRent: 2500,
+              emptyRent: 7500,
+              vacancies: [
+                VacancyRow(
+                  propertyId: 'p1',
+                  propertyName: 'Sunrise Apartments',
+                  lettable: 4,
+                  occupied: 1,
+                  empty: 3,
+                  emptyRent: 7500,
+                ),
+              ],
+            )),
         // Pinned for the same reason as the bell: left alone the dashboard
         // would render whatever a failed request produced.
         collectionsProvider.overrideWith((ref) async => CollectionsSummary(
@@ -118,6 +136,24 @@ Widget _detailApp() => ProviderScope(
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        occupancyProvider.overrideWith((ref) async => OccupancySummary(
+              lettable: 4,
+              occupied: 1,
+              empty: 3,
+              outOfService: 0,
+              earningRent: 2500,
+              emptyRent: 7500,
+              vacancies: [
+                VacancyRow(
+                  propertyId: 'p1',
+                  propertyName: 'Sunrise Apartments',
+                  lettable: 4,
+                  occupied: 1,
+                  empty: 3,
+                  emptyRent: 7500,
+                ),
+              ],
+            )),
         // Pinned for the same reason as the bell: left alone the dashboard
         // would render whatever a failed request produced.
         collectionsProvider.overrideWith((ref) async => CollectionsSummary(

@@ -66,6 +66,7 @@ part 'model/lease_response.dart';
 part 'model/login_request.dart';
 part 'model/maintenance_request.dart';
 part 'model/notification_response.dart';
+part 'model/occupancy_summary.dart';
 part 'model/payment_response.dart';
 part 'model/pending_invitation.dart';
 part 'model/platform_settings.dart';
@@ -94,6 +95,7 @@ part 'model/utilities_response.dart';
 part 'model/utility_request.dart';
 part 'model/utility_response.dart';
 part 'model/vacancy_floor.dart';
+part 'model/vacancy_row.dart';
 part 'model/vacant_bed.dart';
 part 'model/vacant_unit.dart';
 

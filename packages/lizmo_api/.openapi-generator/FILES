@@ -31,6 +31,7 @@ doc/MaintenanceRequest.md
 doc/MyAccountApi.md
 doc/NotificationResponse.md
 doc/NotificationsApi.md
+doc/OccupancySummary.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
 doc/PlatformSettings.md
@@ -66,6 +67,7 @@ doc/UtilitiesResponse.md
 doc/UtilityRequest.md
 doc/UtilityResponse.md
 doc/VacancyFloor.md
+doc/VacancyRow.md
 doc/VacantBed.md
 doc/VacantUnit.md
 git_push.sh
@@ -115,6 +117,7 @@ lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
 lib/model/notification_response.dart
+lib/model/occupancy_summary.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
 lib/model/platform_settings.dart
@@ -143,8 +146,9 @@ lib/model/utilities_response.dart
 lib/model/utility_request.dart
 lib/model/utility_response.dart
 lib/model/vacancy_floor.dart
+lib/model/vacancy_row.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/arrears_row_test.dart
-test/collections_summary_test.dart
+test/occupancy_summary_test.dart
+test/vacancy_row_test.dart

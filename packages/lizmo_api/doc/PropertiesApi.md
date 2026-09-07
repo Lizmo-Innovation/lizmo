@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**createProperty**](PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 [**createUnit**](PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 [**deleteProperty**](PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
+[**getOccupancy**](PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 [**getProperty**](PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
 [**listProperties**](PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 [**listUnits**](PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
@@ -143,6 +144,45 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getOccupancy**
+> OccupancySummary getOccupancy()
+
+What is let and what is empty
+
+Counted in lettable slots rather than units: a four-bed room with one tenant is one let and three empty. Beds taken off the market are counted apart from vacancies, because a refurbishment is not a failure to let.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+
+try {
+    final result = api_instance.getOccupancy();
+    print(result);
+} catch (e) {
+    print('Exception when calling PropertiesApi->getOccupancy: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**OccupancySummary**](OccupancySummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
