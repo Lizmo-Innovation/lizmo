@@ -17,6 +17,12 @@ import java.time.LocalDate;
 @Schema(description = "Ending a lease")
 public record EndLeaseRequest(
         @Schema(example = "false") Boolean terminated,
+
+        @Size(max = 500)
+        @Schema(example = "Moved back to the province",
+                description = "Why it ended, for the landlord's own records. Not shown "
+                        + "to the tenant -- the deposit settlement is the part that is.")
+        String reason,
         @Schema(example = "2026-09-30") LocalDate endDate,
 
         @DecimalMin(value = "0.0")

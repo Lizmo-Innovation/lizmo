@@ -27,6 +27,15 @@ public enum NotificationType {
      */
     REQUEST_SUPERSEDED,
 
+    /**
+     * The tenancy is over, said to the tenant.
+     *
+     * <p>Distinct from LEASE_EXPIRING, which warns that an end is coming. A
+     * tenant reading "your lease is expiring" the day after they moved out
+     * would not know which of the two was meant.
+     */
+    LEASE_ENDED,
+
     RENT_DUE_REMINDER,
     RENT_OVERDUE,
     PAYMENT_CONFIRMED,

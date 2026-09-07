@@ -19,6 +19,7 @@ import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/my_place_screen.dart';
 import 'package:lizmo/screens/tenant_detail_screen.dart';
+import 'package:lizmo/widgets/end_tenancy_sheet.dart';
 import 'package:lizmo/widgets/notification_bell.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
@@ -5998,6 +5999,173 @@ void _tenantLeaseTests() {
       await openMyPlace(tester);
 
       expect(find.text('Deposit returned'), findsNothing);
+    });
+  });
+
+  group('ending a tenancy', () {
+    LeaseResponse tenancy({num? deposit}) => LeaseResponse(
+          id: 'l1',
+          tenantId: 't1',
+          tenantName: 'Ana Reyes',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitId: 'u1',
+          unitNumber: '2B',
+          bedId: 'b1',
+          bedLabel: 'Bed 1',
+          rentAmount: 2500,
+          depositAmount: deposit,
+          dueDateDay: 5,
+          startDate: DateTime.utc(2026, 10, 1),
+          status: LeaseResponseStatusEnum.ACTIVE,
+        );
+
+    Widget appWith({num? deposit}) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myTenantsProvider.overrideWith((ref) async => [tenancy(deposit: deposit)]),
+        leaseTenantProvider('l1').overrideWith(
+          (ref) async => TenantForLandlord(
+            leaseId: 'l1',
+            tenantId: 't1',
+            name: 'Ana Reyes',
+          ),
+        ),
+        leaseTenantDocumentsProvider('l1').overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        leaseDocumentsProvider('l1').overrideWith(
+          (ref) async => const <LeaseDocumentResponse>[],
+        ),
+      ],
+      child: const MaterialApp(home: TenantDetailScreen(leaseId: 'l1')),
+    );
+
+    /// Scrolls rather than ensureVisible. ListView(children:) builds lazily,
+    /// so the button -- last on a long screen -- does not exist in the tree
+    /// until it is scrolled towards, and ensureVisible cannot reach a widget
+    /// that was never built.
+    Future<void> reachTheButton(WidgetTester tester) async {
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('end-tenancy')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await reachTheButton(tester);
+      await tester.tap(find.byKey(const ValueKey('end-tenancy')));
+      await tester.pumpAndSettle();
+    }
+
+    /// The whole point. Nothing in the app could end a tenancy, so a bed once
+    /// let could never be let again.
+    testWidgets('there is a way to end one at all', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await reachTheButton(tester);
+
+      expect(find.byKey(const ValueKey('end-tenancy')), findsOneWidget);
+    });
+
+    testWidgets('the sheet says what ending it does', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      expect(find.textContaining('goes back on the market'), findsOneWidget);
+      expect(find.textContaining('is told'), findsOneWidget);
+    });
+
+    /// Ran-its-course and stopped-early are different things to look back on,
+    /// and nothing else in the record can tell them apart.
+    testWidgets('how it ended is asked, not assumed', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      expect(find.text('Ran its course'), findsOneWidget);
+      expect(find.text('Stopped early'), findsOneWidget);
+    });
+
+    testWidgets('a tenancy with no deposit is not asked to settle one',
+        (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      expect(find.text('Settling the deposit'), findsNothing);
+      expect(find.byKey(const ValueKey('deposit-returned')), findsNothing);
+    });
+
+    testWidgets('a tenancy with one is', (tester) async {
+      await tester.pumpWidget(appWith(deposit: 5000));
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      expect(find.text('Settling the deposit'), findsOneWidget);
+      expect(find.textContaining('You took ₱5000'), findsOneWidget);
+    });
+
+    /// Caught before it costs a round trip, and the server refuses it too.
+    testWidgets('returning more than was taken is refused', (tester) async {
+      await tester.pumpWidget(appWith(deposit: 5000));
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('deposit-returned')), '6000');
+      await tester.ensureVisible(find.text('End the tenancy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('End the tenancy'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('more than the ₱5000 you took'), findsOneWidget);
+      // Still on the sheet rather than having ended anything.
+      expect(find.byType(EndTenancySheet), findsOneWidget);
+    });
+
+    testWidgets('"all of it" fills in the whole deposit', (tester) async {
+      await tester.pumpWidget(appWith(deposit: 5000));
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('return-all')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('return-all')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('5000'), findsWidgets);
+    });
+
+    /// The note goes nowhere a tenant can see, and nowhere the landlord can
+    /// read back yet either. Saying so beats leaving somebody hunting for it.
+    testWidgets('the note admits it cannot be read back yet', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      expect(find.textContaining('does not see this'), findsOneWidget);
+    });
+
+    testWidgets('backing out ends nothing', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+      await openSheet(tester);
+
+      await tester.ensureVisible(find.text('Not yet'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Not yet'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EndTenancySheet), findsNothing);
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
     });
   });
 }

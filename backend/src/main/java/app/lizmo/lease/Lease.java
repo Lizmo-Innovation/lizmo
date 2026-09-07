@@ -74,6 +74,16 @@ public class Lease {
     @Column(name = "advance_amount")
     private BigDecimal advanceAmount;
 
+    /**
+     * Why it ended, in the landlord's own words.
+     *
+     * <p>Their note to themselves, not the tenant's business: it sits beside
+     * "stopped early" to say what actually happened, while the deposit
+     * settlement -- which the tenant does see -- is about money.
+     */
+    @Column(name = "end_reason")
+    private String endReason;
+
     /** How much of the deposit went back, recorded when the tenancy ended. */
     @Column(name = "deposit_returned")
     private BigDecimal depositReturned;
@@ -195,6 +205,14 @@ public class Lease {
 
     public BigDecimal getAdvanceAmount() {
         return advanceAmount;
+    }
+
+    public String getEndReason() {
+        return endReason;
+    }
+
+    public void recordEndReason(String reason) {
+        this.endReason = reason;
     }
 
     public BigDecimal getDepositReturned() {

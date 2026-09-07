@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_api/api.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../router.dart';
 import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
+import '../widgets/end_tenancy_sheet.dart';
 import '../widgets/lease_attachments.dart';
 
 /// The person living in the room, as their landlord sees them.
@@ -101,9 +104,118 @@ class TenantDetailScreen extends ConsumerWidget {
             // Last, because it is the landlord's own filing rather than
             // anything about the person.
             LeaseAttachments(leaseId: leaseId),
+            const SizedBox(height: 12),
+
+            // Last, and deliberately plain rather than a red button at the
+            // top. Ending a tenancy is a normal part of letting rooms, not a
+            // destructive act to be warned about -- but it is also not the
+            // thing somebody opened this screen to do.
+            _EndTenancy(leaseId: leaseId),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Ending the tenancy, and freeing the bed.
+///
+/// Nothing in the app could do this before: the endpoint existed and was
+/// tested, and no screen called it. A landlord could let a bed and then never
+/// get it back, which made the second tenancy of any bed impossible.
+class _EndTenancy extends ConsumerStatefulWidget {
+  const _EndTenancy({required this.leaseId});
+
+  final String leaseId;
+
+  @override
+  ConsumerState<_EndTenancy> createState() => _EndTenancyState();
+}
+
+class _EndTenancyState extends ConsumerState<_EndTenancy> {
+  bool _working = false;
+  String? _error;
+
+  Future<void> _end(LeaseResponse lease) async {
+    final terms = await EndTenancySheet.show(
+      context,
+      tenantName: lease.tenantName ?? 'this tenant',
+      slot: lease.bedLabel == null
+          ? 'Unit ${lease.unitNumber}'
+          : '${lease.bedLabel}, ${lease.unitNumber}',
+      depositAmount: lease.depositAmount,
+    );
+    if (terms == null) return;
+
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(leasesApiProvider).endLease(
+            widget.leaseId,
+            endLeaseRequest: terms,
+          );
+
+      // Everything the ending touched. The bed is the one that matters and
+      // the one most easily missed: it lives under a different provider from
+      // the tenant list, and a stale bed still reading OCCUPIED is a room the
+      // landlord cannot re-let without restarting the app.
+      ref.invalidate(myTenantsProvider);
+      ref.invalidate(propertiesProvider);
+      if (lease.propertyId != null) {
+        ref.invalidate(propertyLeasesProvider(lease.propertyId!));
+        ref.invalidate(unitsProvider(lease.propertyId!));
+      }
+      if (lease.unitId != null) {
+        ref.invalidate(bedsProvider(lease.unitId!));
+      }
+
+      // The tenant screen is addressed by a lease that is no longer live, so
+      // staying here would show a not-found. Back to the list, which is now
+      // one shorter.
+      if (mounted) context.go(Routes.tenants);
+    } catch (error) {
+      if (mounted) setState(() => _error = ApiFailure.from(error).message);
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lease = ref.watch(landlordLeaseProvider(widget.leaseId));
+    if (lease == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_working)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          OutlinedButton.icon(
+            key: const ValueKey('end-tenancy'),
+            onPressed: () => _end(lease),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('End this tenancy'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: LizmoColors.teal900,
+              side: const BorderSide(color: Color(0xFFE3E8E6)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(_error!,
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+        ],
+      ],
     );
   }
 }

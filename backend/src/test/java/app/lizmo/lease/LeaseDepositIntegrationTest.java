@@ -225,6 +225,58 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.depositReturned").doesNotExist());
     }
 
+    /**
+     * Until now a tenant learned their tenancy had ended by opening the app
+     * and noticing it was gone -- the same silence the request notifications
+     * were built to close.
+     */
+    @Test
+    void the_tenant_is_told_their_tenancy_ended() throws Exception {
+        String lease = leaseFrom(accept("""
+                {"rentAmount":2500.00,"startDate":"2026-10-01","depositAmount":5000.00}
+                """));
+
+        mvc.perform(post("/api/v1/leases/" + lease + "/end")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"endDate":"2026-11-30","depositReturned":4500.00,
+                                 "depositSettlement":"Withheld P500 for the window latch."}
+                                """))
+                .andExpect(status().isOk());
+
+        String body = mvc.perform(get("/api/v1/me/notifications")
+                        .header("Authorization", "Bearer " + anaToken))
+                .andExpect(jsonPath("$[0].type").value("LEASE_ENDED"))
+                .andReturn().getResponse().getContentAsString();
+
+        // The settlement travels with the news: what came back and why is the
+        // whole of what somebody wants on the day they move out.
+        org.assertj.core.api.Assertions.assertThat(body)
+                .contains("4500")
+                .contains("window latch");
+    }
+
+    @Test
+    void ending_without_a_settlement_invents_no_words() throws Exception {
+        String lease = leaseFrom(accept("""
+                {"rentAmount":2500.00,"startDate":"2026-10-01","depositAmount":5000.00}
+                """));
+
+        mvc.perform(post("/api/v1/leases/" + lease + "/end")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endDate\":\"2026-11-30\"}"))
+                .andExpect(status().isOk());
+
+        String body = mvc.perform(get("/api/v1/me/notifications")
+                        .header("Authorization", "Bearer " + anaToken))
+                .andExpect(jsonPath("$[0].type").value("LEASE_ENDED"))
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("Deposit returned");
+    }
+
     // ---- fixtures ---------------------------------------------------------
 
     private ResultActions accept(String terms) throws Exception {

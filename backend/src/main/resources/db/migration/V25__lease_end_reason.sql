@@ -1,0 +1,12 @@
+-- Why a tenancy ended, in the landlord's own words.
+--
+-- EndLeaseRequest documented a "reason" from the beginning and never carried
+-- one: the record had only a boolean for stopped-early versus ran-its-course.
+-- Requests sending {"reason": "..."} were accepted and the field silently
+-- dropped, which is worse than refusing it -- the caller believes it was
+-- recorded.
+--
+-- Kept apart from deposit_settlement, which is about money. "Moved back to the
+-- province" and "withheld P500 for the window latch" answer different
+-- questions, and only the second is any of the tenant's business to dispute.
+ALTER TABLE leases ADD COLUMN end_reason VARCHAR(500);

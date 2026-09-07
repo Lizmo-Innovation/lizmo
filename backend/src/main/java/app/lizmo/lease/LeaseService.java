@@ -1,6 +1,9 @@
 package app.lizmo.lease;
 
 import app.lizmo.common.ApiException;
+import app.lizmo.notification.NotificationEntityType;
+import app.lizmo.notification.NotificationService;
+import app.lizmo.notification.NotificationType;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.lease.dto.EndLeaseRequest;
 import app.lizmo.lease.dto.LeaseResponse;
@@ -36,19 +39,24 @@ public class LeaseService {
     private final BedRepository beds;
     private final UserRepository users;
 
+    /** So a tenant is told their tenancy ended rather than discovering it. */
+    private final NotificationService notifications;
+
     public LeaseService(
             LeaseRepository leases,
             PropertyAccess access,
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
-            UserRepository users) {
+            UserRepository users,
+            NotificationService notifications) {
         this.leases = leases;
         this.access = access;
         this.properties = properties;
         this.units = units;
         this.beds = beds;
         this.users = users;
+        this.notifications = notifications;
     }
 
     /** The tenant's own leases, newest first. */
@@ -154,13 +162,47 @@ public class LeaseService {
 
         if (command != null) {
             lease.settleDeposit(command.depositReturned(), command.depositSettlement());
+            lease.recordEndReason(command.reason());
         }
 
         leases.save(lease);
 
         freeTheSlot(unit, lease.getBedId());
 
+        // Carrying the settlement, because "you got P4,500 of your P5,000
+        // back, and here is why" is the whole of what a tenant wants to know
+        // on the day they move out.
+        notifications.raise(
+                lease.getTenantId(),
+                NotificationType.LEASE_ENDED,
+                "Your tenancy has ended",
+                endedMessage(lease, on),
+                NotificationEntityType.LEASE,
+                lease.getId());
+
         return describe(lease);
+    }
+
+    /**
+     * What the tenant is told, which depends on whether money changed hands.
+     *
+     * <p>Three sentences at most. A landlord who settled the deposit has said
+     * something worth passing on verbatim; one who has not should not have
+     * words invented on their behalf.
+     */
+    private static String endedMessage(Lease lease, java.time.LocalDate on) {
+        StringBuilder message = new StringBuilder(
+                "Your tenancy ended on %s.".formatted(on));
+
+        if (lease.getDepositReturned() != null) {
+            message.append(" Deposit returned: P%s."
+                    .formatted(lease.getDepositReturned()
+                            .stripTrailingZeros().toPlainString()));
+        }
+        if (org.springframework.util.StringUtils.hasText(lease.getDepositSettlement())) {
+            message.append(' ').append(lease.getDepositSettlement().trim());
+        }
+        return message.toString();
     }
 
     /**

@@ -14,6 +14,7 @@ class EndLeaseRequest {
   /// Returns a new [EndLeaseRequest] instance.
   EndLeaseRequest({
     this.terminated,
+    this.reason,
     this.endDate,
     this.depositReturned,
     this.depositSettlement,
@@ -26,6 +27,15 @@ class EndLeaseRequest {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   bool? terminated;
+
+  /// Why it ended, for the landlord's own records. Not shown to the tenant -- the deposit settlement is the part that is.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? reason;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -58,6 +68,7 @@ class EndLeaseRequest {
   @override
   bool operator ==(Object other) => identical(this, other) || other is EndLeaseRequest &&
     other.terminated == terminated &&
+    other.reason == reason &&
     other.endDate == endDate &&
     other.depositReturned == depositReturned &&
     other.depositSettlement == depositSettlement;
@@ -66,12 +77,13 @@ class EndLeaseRequest {
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (terminated == null ? 0 : terminated!.hashCode) +
+    (reason == null ? 0 : reason!.hashCode) +
     (endDate == null ? 0 : endDate!.hashCode) +
     (depositReturned == null ? 0 : depositReturned!.hashCode) +
     (depositSettlement == null ? 0 : depositSettlement!.hashCode);
 
   @override
-  String toString() => 'EndLeaseRequest[terminated=$terminated, endDate=$endDate, depositReturned=$depositReturned, depositSettlement=$depositSettlement]';
+  String toString() => 'EndLeaseRequest[terminated=$terminated, reason=$reason, endDate=$endDate, depositReturned=$depositReturned, depositSettlement=$depositSettlement]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -79,6 +91,11 @@ class EndLeaseRequest {
       json[r'terminated'] = this.terminated;
     } else {
       json[r'terminated'] = null;
+    }
+    if (this.reason != null) {
+      json[r'reason'] = this.reason;
+    } else {
+      json[r'reason'] = null;
     }
     if (this.endDate != null) {
       json[r'endDate'] = _dateFormatter.format(this.endDate!);
@@ -114,6 +131,7 @@ class EndLeaseRequest {
 
       return EndLeaseRequest(
         terminated: mapValueOfType<bool>(json, r'terminated'),
+        reason: mapValueOfType<String>(json, r'reason'),
         endDate: mapDateTime(json, r'endDate', r''),
         depositReturned: json[r'depositReturned'] == null
             ? null
