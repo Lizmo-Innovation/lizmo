@@ -91,6 +91,28 @@ variable "billing_enforcement_cron" {
   default     = "0 2 * * *"
 }
 
+variable "api_base_url" {
+  description = <<-EOT
+    The API's own Cloud Run URL, used as the OIDC audience the scheduler's
+    tokens must be addressed to. Empty until the first apply has created the
+    service -- a service cannot read its own URI while it is being created.
+
+    Leave it empty and jobs still work: the gate that matters is the
+    scheduler's service account email, which only we control. Setting this
+    adds a second lock, so that a token minted for some other Google-fronted
+    service cannot be replayed here. Fill it in from the api_url output and
+    apply again.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "rent_reminders_cron" {
+  description = "Daily nudge about rent coming due and rent gone late. Morning, because a reminder that lands at 2am is read at 8am anyway and looks careless."
+  type        = string
+  default     = "0 8 * * *"
+}
+
 variable "scheduler_timezone" {
   description = "Timezone for scheduled jobs. Billing dates are calendar-day concepts, so this must match how landlords read them."
   type        = string

@@ -82,3 +82,40 @@ resource "google_cloud_scheduler_job" "billing_enforcement" {
 
   depends_on = [google_project_service.required]
 }
+
+# Rent reminders. Unlike the two above, its endpoint exists -- so this one is
+# created running rather than paused.
+#
+# Daily rather than hourly: the job is idempotent (a due reminder goes once per
+# month, an overdue one weekly), so a second run the same day sends nothing.
+# Running it once is enough and keeps the log readable.
+resource "google_cloud_scheduler_job" "rent_reminders" {
+  project     = var.project_id
+  region      = var.region
+  name        = "lizmo-rent-reminders"
+  description = "Daily: tell tenants rent is coming, and that it is late."
+  schedule    = var.rent_reminders_cron
+  time_zone   = var.scheduler_timezone
+
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 3
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "${google_cloud_run_v2_service.api.uri}/internal/jobs/rent-reminders"
+
+    oidc_token {
+      service_account_email = google_service_account.scheduler.email
+      audience              = google_cloud_run_v2_service.api.uri
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [paused]
+  }
+
+  depends_on = [google_project_service.required]
+}

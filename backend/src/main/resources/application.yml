@@ -83,6 +83,13 @@ lizmo:
     # it opens a browser -- the email carries the token in text for that.
     invite-base-url: ${LIZMO_INVITE_BASE_URL:http://localhost:8082/invite}
 
+  # Who may run /internal/jobs/*. Both blank by default, which refuses every
+  # job: an endpoint that defaults to open is worse than one that never runs,
+  # because the second gets noticed.
+  jobs:
+    service-account: ${LIZMO_JOBS_SERVICE_ACCOUNT:}
+    audience: ${LIZMO_JOBS_AUDIENCE:}
+
   s3:
     bucket: ${AWS_S3_BUCKET:lizmo-uploads-local}
     region: ${AWS_REGION:ap-southeast-1}

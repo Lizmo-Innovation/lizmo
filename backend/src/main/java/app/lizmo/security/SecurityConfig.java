@@ -76,6 +76,12 @@ public class SecurityConfig {
                         // Unmatched requests are forwarded here internally. Without
                         // this, a genuine 404 is re-checked as an unauthenticated
                         // request and surfaces as 403, hiding the real cause.
+                        // Let through at the Spring level and defended inside
+                        // by JobAuthoriser, which verifies Google's OIDC token.
+                        // Spring's own filter would reject the scheduler's
+                        // token as an unparseable Lizmo JWT before the
+                        // controller ever saw it.
+                        .requestMatchers("/internal/jobs/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Restricted as a whole rather than per endpoint, so a

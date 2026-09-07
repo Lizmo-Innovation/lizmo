@@ -31,6 +31,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Verifies the Google-signed OIDC token Cloud Scheduler presents to the
+    // /internal/jobs/* endpoints. Brings NimbusJwtDecoder, which fetches and
+    // caches Google's public keys -- they rotate, so a pinned key works until
+    // the morning it does not.
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

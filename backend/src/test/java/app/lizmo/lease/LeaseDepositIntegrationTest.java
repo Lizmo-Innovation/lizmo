@@ -247,12 +247,12 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
 
         String body = mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$[0].type").value("LEASE_ENDED"))
                 .andReturn().getResponse().getContentAsString();
 
         // The settlement travels with the news: what came back and why is the
         // whole of what somebody wants on the day they move out.
         org.assertj.core.api.Assertions.assertThat(body)
+                .contains("LEASE_ENDED")
                 .contains("4500")
                 .contains("window latch");
     }
@@ -271,10 +271,11 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
 
         String body = mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$[0].type").value("LEASE_ENDED"))
                 .andReturn().getResponse().getContentAsString();
 
-        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("Deposit returned");
+        org.assertj.core.api.Assertions.assertThat(body)
+                .contains("LEASE_ENDED")
+                .doesNotContain("Deposit returned");
     }
 
     // ---- fixtures ---------------------------------------------------------

@@ -131,6 +131,25 @@ resource "google_cloud_run_v2_service" "api" {
         value = "${google_cloud_run_v2_service.admin.uri}/invite"
       }
 
+      # Who may run /internal/jobs/*. The service account is the scheduler's
+      # own; the audience is this service's URL, without which a token minted
+      # for any other Google-fronted service would verify here.
+      #
+      # Not a secret: both are public facts about the deployment, and the
+      # defence is Google's signature rather than these being unguessable.
+      env {
+        name  = "LIZMO_JOBS_SERVICE_ACCOUNT"
+        value = google_service_account.scheduler.email
+      }
+
+      # Self-referential: a service cannot read its own URI while it is being
+      # created. Set from the same deterministic value Cloud Run assigns, so
+      # the audience matches what Scheduler puts in the token.
+      env {
+        name  = "LIZMO_JOBS_AUDIENCE"
+        value = var.api_base_url
+      }
+
       env {
         name = "DB_URL"
         value_source {

@@ -52,8 +52,8 @@ public class NotificationService {
         if (recipient == null) {
             return;
         }
-        notifications.save(
-                new Notification(recipient, type, title, message, entityType, entityId));
+        notifications.save(new Notification(
+                recipient, type, title, message, entityType, entityId, clock.instant()));
     }
 
     @Transactional(readOnly = true)

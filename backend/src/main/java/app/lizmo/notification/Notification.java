@@ -72,6 +72,25 @@ public class Notification {
             String message,
             NotificationEntityType relatedEntityType,
             UUID relatedEntityId) {
+        this(recipientUserId, type, title, message, relatedEntityType,
+                relatedEntityId, null);
+    }
+
+    /**
+     * @param createdAt passed in rather than stamped on persist, because the
+     *                  rent reminder cooldown is measured from it -- and a rule
+     *                  measured from an untestable clock is a rule nothing can
+     *                  check. The same reasoning as EmailVerification.
+     */
+    public Notification(
+            UUID recipientUserId,
+            NotificationType type,
+            String title,
+            String message,
+            NotificationEntityType relatedEntityType,
+            UUID relatedEntityId,
+            Instant createdAt) {
+        this.createdAt = createdAt;
         this.recipientUserId = recipientUserId;
         this.type = type;
         this.title = title;

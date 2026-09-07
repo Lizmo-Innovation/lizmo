@@ -122,9 +122,10 @@ class PaymentIntegrationTest extends IntegrationTest {
     void the_tenant_is_told_their_landlord_recorded_it() throws Exception {
         record(2500, "CASH").andExpect(status().isCreated());
 
-        mvc.perform(get("/api/v1/me/notifications")
-                        .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$[0].type").value("PAYMENT_CONFIRMED"));
+        // That the tenant was told, not that it is the newest thing in their
+        // bell: notifications raised in one moment share a timestamp, so
+        // "first" is not a stable way to ask.
+        assertThat(typesFor(anaToken)).contains("PAYMENT_CONFIRMED");
     }
 
     // ---- the tenant claiming it --------------------------------------------
@@ -205,22 +206,21 @@ class PaymentIntegrationTest extends IntegrationTest {
         String payment = idOf(declare(2500, null));
         reject(payment, "Nothing arrived in my GCash.").andExpect(status().isOk());
 
-        String body = mvc.perform(get("/api/v1/me/notifications")
+        assertThat(typesFor(anaToken)).contains("PAYMENT_REJECTED");
+        assertThat(mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$[0].type").value("PAYMENT_REJECTED"))
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(body).contains("Nothing arrived in my GCash.");
+                .andReturn().getResponse().getContentAsString())
+                .contains("Nothing arrived in my GCash.");
     }
 
     @Test
     void the_landlord_is_told_somebody_claims_to_have_paid() throws Exception {
         declare(2500, null).andExpect(status().isCreated());
 
-        mvc.perform(get("/api/v1/me/notifications")
+        assertThat(mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(jsonPath("$[0].message").value(
-                        org.hamcrest.Matchers.containsString("waiting for you to confirm")));
+                .andReturn().getResponse().getContentAsString())
+                .contains("waiting for you to confirm");
     }
 
     // ---- proof -------------------------------------------------------------
@@ -292,6 +292,16 @@ class PaymentIntegrationTest extends IntegrationTest {
                                  "paymentMethod":"CASH"}
                                 """.formatted(otherMonth)))
                 .andExpect(status().isNotFound());
+    }
+
+    /** Every notification type in somebody's bell, order-independent. */
+    private java.util.List<String> typesFor(String token) throws Exception {
+        var all = json.readTree(mvc.perform(get("/api/v1/me/notifications")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString());
+        java.util.List<String> types = new java.util.ArrayList<>();
+        all.forEach(one -> types.add(one.get("type").asText()));
+        return types;
     }
 
     // ---- fixtures ----------------------------------------------------------

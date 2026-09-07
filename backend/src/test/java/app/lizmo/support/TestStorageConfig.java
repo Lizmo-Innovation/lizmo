@@ -24,6 +24,16 @@ import org.springframework.context.annotation.Primary;
 public class TestStorageConfig {
 
     /**
+     * In front of the OIDC one, so no test needs Google's public keys or a
+     * service account to run a job.
+     */
+    @Bean
+    @Primary
+    public app.lizmo.jobs.JobAuthoriser testJobAuthoriser() {
+        return new TestJobAuthoriser();
+    }
+
+    /**
      * A clock every test can push forward, in place of the real one. Rules
      * measured in minutes and days are checked by moving time, never by
      * waiting for it.
