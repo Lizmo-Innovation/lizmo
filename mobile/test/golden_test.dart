@@ -51,6 +51,27 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        // Pinned for the same reason as the bell: left alone the dashboard
+        // would render whatever a failed request produced.
+        collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+              dueThisMonth: 5000,
+              collectedThisMonth: 2500,
+              outstandingAllTime: 7500,
+              awaitingConfirmation: 1,
+              tenanciesInArrears: 1,
+              inArrears: [
+                ArrearsRow(
+                  leaseId: 'l1',
+                  tenantName: 'Ana Reyes',
+                  propertyName: 'Sunrise Apartments',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 1',
+                  outstanding: 5000,
+                  monthsLate: 2,
+                  oldestDueDate: DateTime.utc(2026, 8, 5),
+                ),
+              ],
+            )),
         // Fixed data so the golden is stable, matching the seeded landlord.
         propertiesProvider.overrideWith((ref) async => [
               PropertyResponse(
@@ -97,6 +118,27 @@ Widget _detailApp() => ProviderScope(
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        // Pinned for the same reason as the bell: left alone the dashboard
+        // would render whatever a failed request produced.
+        collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+              dueThisMonth: 5000,
+              collectedThisMonth: 2500,
+              outstandingAllTime: 7500,
+              awaitingConfirmation: 1,
+              tenanciesInArrears: 1,
+              inArrears: [
+                ArrearsRow(
+                  leaseId: 'l1',
+                  tenantName: 'Ana Reyes',
+                  propertyName: 'Sunrise Apartments',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 1',
+                  outstanding: 5000,
+                  monthsLate: 2,
+                  oldestDueDate: DateTime.utc(2026, 8, 5),
+                ),
+              ],
+            )),
         propertiesProvider.overrideWith((ref) async => [
               PropertyResponse(
                 id: 'p1',

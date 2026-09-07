@@ -3350,6 +3350,13 @@ void main() {
                 ]),
             unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
             myTenantsProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+            collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+                  dueThisMonth: 0,
+                  collectedThisMonth: 0,
+                  outstandingAllTime: 0,
+                  awaitingConfirmation: 0,
+                  tenanciesInArrears: 0,
+                )),
           ],
           child: const LizmoApp(),
         );
@@ -3364,6 +3371,9 @@ void main() {
       expect(find.byType(LandlordHomeScreen), findsOneWidget);
     });
 
+    /// Collections was a placeholder reading "Needs leases and billing" from
+    /// the first day this screen existed. Both now exist, so the promise is
+    /// gone -- while the parts genuinely unbuilt still say so.
     testWidgets('the dashboard says which parts are not built', (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
@@ -3371,7 +3381,8 @@ void main() {
       // Real figures where they exist, and named dependencies where they do
       // not. Fake numbers would be a lie about the state of the product.
       expect(find.text('₱10000'), findsOneWidget);
-      expect(find.text('Needs leases and billing'), findsOneWidget);
+      expect(find.text('Needs leases and billing'), findsNothing);
+      expect(find.text('Collections'), findsOneWidget);
       expect(find.text('Needs leases'), findsNWidgets(2));
     });
 
@@ -6647,6 +6658,129 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('One payment is waiting on you'), findsOneWidget);
+    });
+  });
+
+  group('collections', () {
+    ArrearsRow behind({
+      String leaseId = 'l1',
+      String tenant = 'Ana Reyes',
+      int months = 2,
+      num owed = 5000,
+    }) => ArrearsRow(
+      leaseId: leaseId,
+      tenantName: tenant,
+      propertyName: 'Sunrise Apartments',
+      unitNumber: '2B',
+      bedLabel: 'Bed 1',
+      outstanding: owed,
+      monthsLate: months,
+      oldestDueDate: DateTime.utc(2026, 8, 5),
+    );
+
+    Widget appWith({
+      num due = 5000,
+      num collected = 2500,
+      num outstanding = 7500,
+      int waiting = 0,
+      List<ArrearsRow> arrears = const [],
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+              dueThisMonth: due,
+              collectedThisMonth: collected,
+              outstandingAllTime: outstanding,
+              awaitingConfirmation: waiting,
+              tenanciesInArrears: arrears.length,
+              inArrears: arrears,
+            )),
+      ],
+      child: const LizmoApp(),
+    );
+
+    testWidgets('the three figures a landlord opens the app for',
+        (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Due'), findsOneWidget);
+      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('Collected'), findsOneWidget);
+      expect(find.text('₱2500'), findsOneWidget);
+      expect(find.text('Owed in all'), findsOneWidget);
+      expect(find.text('₱7500'), findsOneWidget);
+    });
+
+    /// Four zeroes read as a broken screen rather than an empty portfolio.
+    testWidgets('nothing let says so in words', (tester) async {
+      await tester.pumpWidget(
+          appWith(due: 0, collected: 0, outstanding: 0));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('once somebody is renting from you'),
+          findsOneWidget);
+      expect(find.text('Due'), findsNothing);
+    });
+
+    /// The only line here about the landlord's own behaviour rather than
+    /// their tenants'.
+    testWidgets('anything waiting on the landlord is said first',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: 2));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('2 payments are waiting for you'),
+          findsOneWidget);
+    });
+
+    testWidgets('nothing waiting means no prompt', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('waiting for you'), findsNothing);
+    });
+
+    testWidgets('a tenant behind is named, with how far and how much',
+        (tester) async {
+      await tester.pumpWidget(appWith(arrears: [behind()]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('One tenant is behind'), findsOneWidget);
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.textContaining('Bed 1, 2B · 2 months late'), findsOneWidget);
+      expect(find.text('₱5000'), findsWidgets);
+    });
+
+    testWidgets('one month late reads as one month', (tester) async {
+      await tester.pumpWidget(
+          appWith(arrears: [behind(months: 1, owed: 2500)]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('1 month late'), findsOneWidget);
+    });
+
+    /// Seeing who is behind and then having to go and find them is the half
+    /// of this that wastes the time.
+    testWidgets('tapping one opens that tenant', (tester) async {
+      await tester.pumpWidget(appWith(arrears: [behind()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('arrears-l1')), findsOneWidget);
+    });
+
+    testWidgets('nobody behind means no list', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('behind'), findsNothing);
     });
   });
 }

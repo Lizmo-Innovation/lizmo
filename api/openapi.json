@@ -2674,6 +2674,28 @@
                 }
             }
         },
+        "/api/v1/me/collections": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "How rent is going",
+                "description": "Due and collected this month, everything still outstanding, and who is behind -- worst first. Asking also brings the schedule up to date, so a tenancy nobody has opened this month is still counted.",
+                "operationId": "getCollections",
+                "responses": {
+                    "200": {
+                        "description": "The summary",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionsSummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{leaseId}/tenant": {
             "get": {
                 "tags": [
@@ -3162,30 +3184,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -3224,6 +3222,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -4539,6 +4561,68 @@
                     }
                 },
                 "description": "One month of rent"
+            },
+            "ArrearsRow": {
+                "type": "object",
+                "properties": {
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "monthsLate": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "oldestDueDate": {
+                        "type": "string",
+                        "format": "date"
+                    }
+                },
+                "description": "A tenant who is behind"
+            },
+            "CollectionsSummary": {
+                "type": "object",
+                "properties": {
+                    "dueThisMonth": {
+                        "type": "number"
+                    },
+                    "collectedThisMonth": {
+                        "type": "number"
+                    },
+                    "outstandingAllTime": {
+                        "type": "number"
+                    },
+                    "awaitingConfirmation": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "tenanciesInArrears": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "inArrears": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ArrearsRow"
+                        }
+                    }
+                },
+                "description": "Rent across every property, this month"
             },
             "TenantForLandlord": {
                 "type": "object",

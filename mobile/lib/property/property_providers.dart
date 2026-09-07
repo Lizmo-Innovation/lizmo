@@ -278,3 +278,23 @@ final myPaymentsProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// Rent across every property this landlord owns.
+///
+/// Reading this also brings every tenancy's schedule up to date, so a
+/// dashboard is never missing a month nobody happened to open.
+final collectionsProvider =
+    FutureProvider.autoDispose<CollectionsSummary>((ref) async {
+  try {
+    final summary = await ref.watch(rentApiProvider).getCollections();
+    if (summary == null) {
+      throw const ApiFailure(
+        code: 'UNKNOWN',
+        message: 'Could not work out where rent stands.',
+      );
+    }
+    return summary;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/collections_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 
@@ -67,17 +68,16 @@ class LandlordHomeScreen extends ConsumerWidget {
           ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async => ref.invalidate(propertiesProvider),
+              onRefresh: () async {
+                ref.invalidate(propertiesProvider);
+                ref.invalidate(collectionsProvider);
+              },
               child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
               children: const [
-                _Awaiting(
-                  icon: Icons.payments_outlined,
-                  title: 'Collections',
-                  detail: 'How much is due this month, how much has come in, '
-                      'and who is late.',
-                  needs: 'Needs leases and billing',
-                ),
+                // Was a placeholder reading "Needs leases and billing" from
+                // the first day this screen existed. Both now exist.
+                CollectionsCard(),
                 SizedBox(height: 10),
                 _Awaiting(
                   icon: Icons.people_outline,

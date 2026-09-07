@@ -191,6 +191,8 @@ class ApiClient {
           return AdminPropertySummary.fromJson(value);
         case 'ApiError':
           return ApiError.fromJson(value);
+        case 'ArrearsRow':
+          return ArrearsRow.fromJson(value);
         case 'AuthResponse':
           return AuthResponse.fromJson(value);
         case 'BedRequest':
@@ -199,6 +201,8 @@ class ApiClient {
           return BedResponse.fromJson(value);
         case 'BillingPeriodResponse':
           return BillingPeriodResponse.fromJson(value);
+        case 'CollectionsSummary':
+          return CollectionsSummary.fromJson(value);
         case 'CompletePasswordResetRequest':
           return CompletePasswordResetRequest.fromJson(value);
         case 'CompleteRegistrationRequest':

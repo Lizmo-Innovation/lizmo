@@ -1,0 +1,55 @@
+package app.lizmo.billing.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * What a landlord opens the app to find out.
+ *
+ * <p>Three questions, in the order they are asked: how much is owed me, how
+ * much has come in, and who is behind. The dashboard has promised this since
+ * the beginning under a placeholder reading "Needs leases and billing".
+ *
+ * @param dueThisMonth what fell due in the month being asked about, across
+ *                     every tenancy. Not a running total of all time: a
+ *                     landlord asking "how am I doing" means this month.
+ * @param collectedThisMonth of that, what has been confirmed. Only confirmed:
+ *                           a tenant's unverified claim is not money.
+ * @param outstandingAllTime everything still owed across every live tenancy,
+ *                           however old. Kept apart from the monthly figures
+ *                           because a landlord owed for three past months and
+ *                           paid up for this one is not doing well, and one
+ *                           number cannot say both.
+ * @param awaitingConfirmation how many tenant claims are waiting on the
+ *                             landlord. The one figure that is about their own
+ *                             behaviour rather than their tenants'.
+ */
+@Schema(description = "Rent across every property, this month")
+public record CollectionsSummary(
+        BigDecimal dueThisMonth,
+        BigDecimal collectedThisMonth,
+        BigDecimal outstandingAllTime,
+        int awaitingConfirmation,
+        int tenanciesInArrears,
+        List<ArrearsRow> inArrears) {
+
+    /**
+     * One tenant who is behind.
+     *
+     * @param monthsLate how many periods are past due and unpaid, which is what
+     *                   a landlord judges by. Two months late is a different
+     *                   conversation from two days.
+     */
+    @Schema(description = "A tenant who is behind")
+    public record ArrearsRow(
+            java.util.UUID leaseId,
+            String tenantName,
+            String propertyName,
+            String unitNumber,
+            String bedLabel,
+            BigDecimal outstanding,
+            int monthsLate,
+            java.time.LocalDate oldestDueDate) {
+    }
+}

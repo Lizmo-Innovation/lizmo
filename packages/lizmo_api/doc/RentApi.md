@@ -11,6 +11,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**confirmPayment**](RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 [**declarePayment**](RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
+[**getCollections**](RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
 [**listLeaseBilling**](RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 [**listLeasePayments**](RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
 [**listMyBilling**](RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
@@ -107,6 +108,45 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: multipart/form-data
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getCollections**
+> CollectionsSummary getCollections()
+
+How rent is going
+
+Due and collected this month, everything still outstanding, and who is behind -- worst first. Asking also brings the schedule up to date, so a tenancy nobody has opened this month is still counted.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = RentApi();
+
+try {
+    final result = api_instance.getCollections();
+    print(result);
+} catch (e) {
+    print('Exception when calling RentApi->getCollections: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**CollectionsSummary**](CollectionsSummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

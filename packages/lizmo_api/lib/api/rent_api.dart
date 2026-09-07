@@ -159,6 +159,55 @@ class RentApi {
     return null;
   }
 
+  /// How rent is going
+  ///
+  /// Due and collected this month, everything still outstanding, and who is behind -- worst first. Asking also brings the schedule up to date, so a tenancy nobody has opened this month is still counted.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getCollectionsWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/me/collections';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// How rent is going
+  ///
+  /// Due and collected this month, everything still outstanding, and who is behind -- worst first. Asking also brings the schedule up to date, so a tenancy nobody has opened this month is still counted.
+  Future<CollectionsSummary?> getCollections({ Future<void>? abortTrigger, }) async {
+    final response = await getCollectionsWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CollectionsSummary',) as CollectionsSummary;
+    
+    }
+    return null;
+  }
+
   /// Rent on this tenancy
   ///
   /// Oldest month first. Months are created as they begin, so opening this is what brings the schedule up to date.

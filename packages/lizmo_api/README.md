@@ -104,6 +104,7 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
 *RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 *RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
+*RentApi* | [**getCollections**](doc//RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
 *RentApi* | [**listLeaseBilling**](doc//RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 *RentApi* | [**listLeasePayments**](doc//RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
 *RentApi* | [**listMyBilling**](doc//RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
@@ -141,10 +142,12 @@ Class | Method | HTTP request | Description
  - [AcceptRequest](doc//AcceptRequest.md)
  - [AdminPropertySummary](doc//AdminPropertySummary.md)
  - [ApiError](doc//ApiError.md)
+ - [ArrearsRow](doc//ArrearsRow.md)
  - [AuthResponse](doc//AuthResponse.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
  - [BillingPeriodResponse](doc//BillingPeriodResponse.md)
+ - [CollectionsSummary](doc//CollectionsSummary.md)
  - [CompletePasswordResetRequest](doc//CompletePasswordResetRequest.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)

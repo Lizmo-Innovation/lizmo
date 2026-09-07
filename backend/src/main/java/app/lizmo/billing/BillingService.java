@@ -72,8 +72,12 @@ public class BillingService {
      *
      * <p>Idempotent by construction: what exists is read first, and only the
      * gaps are written.
+     *
+     * <p>Package-visible so the dashboard can bring a whole portfolio up to
+     * date before summing it. A landlord who has not opened a particular
+     * tenancy this month would otherwise see totals that quietly left it out.
      */
-    private void catchUp(Lease lease, LocalDate today) {
+    void catchUp(Lease lease, LocalDate today) {
         Set<LocalDate> already = new HashSet<>();
         for (BillingPeriod period : periods.findByLeaseIdOrderByPeriodStartAsc(lease.getId())) {
             already.add(period.getPeriodStart());
