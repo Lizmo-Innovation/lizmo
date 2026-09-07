@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/declare_payment_sheet.dart';
 import '../widgets/rent_schedule_list.dart';
 import '../widgets/role_switcher.dart';
 
@@ -59,14 +62,69 @@ class TenantPaymentsScreen extends ConsumerWidget {
 /// This screen used to say Lizmo could not record payments and that the tenant
 /// should keep their own receipts. It can now record what is owed; recording
 /// what has been handed over comes next.
-class _Rent extends ConsumerWidget {
+class _Rent extends ConsumerStatefulWidget {
   const _Rent({required this.leaseId});
 
   final String leaseId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final billing = ref.watch(myBillingProvider(leaseId));
+  ConsumerState<_Rent> createState() => _RentState();
+}
+
+class _RentState extends ConsumerState<_Rent> {
+  bool _sending = false;
+
+  Future<void> _declare(BillingPeriodResponse period) async {
+    final said = await DeclarePaymentSheet.show(
+      context,
+      periodLabel: period.label ?? 'this month',
+      outstanding: period.outstanding ?? 0,
+    );
+    if (said == null || !mounted) return;
+
+    setState(() => _sending = true);
+    try {
+      await ref.read(rentApiProvider).declarePayment(
+            widget.leaseId,
+            RecordPaymentRequest(
+              billingPeriodId: period.id!,
+              amountPaid: said.amount,
+              paymentMethod: said.method,
+            ),
+            proof: said.proof == null
+                ? null
+                : http.MultipartFile.fromBytes(
+                    'proof',
+                    await said.proof!.readAsBytes(),
+                    filename: said.proof!.name,
+                  ),
+          );
+      ref.invalidate(myBillingProvider(widget.leaseId));
+      ref.invalidate(myPaymentsProvider(widget.leaseId));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Told your landlord. They will confirm it.'),
+        ));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiFailure.from(error).message),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final billing = ref.watch(myBillingProvider(widget.leaseId));
+
+    if (_sending) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return billing.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -78,10 +136,11 @@ class _Rent extends ConsumerWidget {
       data: (periods) => RefreshIndicator(
         // Refreshing is also how the schedule catches up: months are written
         // when somebody looks.
-        onRefresh: () async => ref.invalidate(myBillingProvider(leaseId)),
+        onRefresh: () async => ref.invalidate(myBillingProvider(widget.leaseId)),
         child: RentScheduleList(
           periods: periods,
           emptyDetail: 'Your first month appears once the tenancy has started.',
+          onTap: _declare,
         ),
       ),
     );

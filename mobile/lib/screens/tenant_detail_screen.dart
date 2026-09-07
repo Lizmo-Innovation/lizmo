@@ -11,6 +11,7 @@ import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
 import '../widgets/end_tenancy_sheet.dart';
 import '../widgets/lease_attachments.dart';
+import '../widgets/tenant_rent_card.dart';
 
 /// The person living in the room, as their landlord sees them.
 ///
@@ -96,6 +97,11 @@ class TenantDetailScreen extends ConsumerWidget {
                 _Fact('Number', person.idNumber),
               ],
             ),
+            const SizedBox(height: 12),
+
+            // Above the paperwork: money is what a landlord opens a tenant
+            // to check, and anything waiting on them belongs near the top.
+            TenantRentCard(leaseId: leaseId),
             const SizedBox(height: 12),
 
             _Documents(leaseId: leaseId),

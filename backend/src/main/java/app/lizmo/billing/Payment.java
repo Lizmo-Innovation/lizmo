@@ -95,6 +95,34 @@ public class Payment {
         }
     }
 
+    /**
+     * The landlord agreeing the money arrived.
+     *
+     * <p>Named rather than a status setter because it is the moment a balance
+     * moves, and the caller must credit the month in the same transaction.
+     */
+    public void confirm(UUID landlordId, java.time.Instant at) {
+        this.status = PaymentStatus.CONFIRMED;
+        this.verifiedBy = landlordId;
+        this.verifiedAt = at;
+    }
+
+    /**
+     * The landlord saying it did not arrive.
+     *
+     * <p>Rejected, never deleted: a tenant who wrote something down and found
+     * it gone would not know whether it was refused or lost, and the
+     * disagreement is itself worth keeping.
+     */
+    public void reject(UUID landlordId, java.time.Instant at, String why) {
+        this.status = PaymentStatus.REJECTED;
+        this.verifiedBy = landlordId;
+        this.verifiedAt = at;
+        if (why != null && !why.isBlank()) {
+            this.remarks = why.trim();
+        }
+    }
+
     public boolean isConfirmed() {
         return status == PaymentStatus.CONFIRMED;
     }

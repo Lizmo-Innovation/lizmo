@@ -225,6 +225,8 @@ class ApiClient {
           return MaintenanceRequest.fromJson(value);
         case 'NotificationResponse':
           return NotificationResponse.fromJson(value);
+        case 'PaymentResponse':
+          return PaymentResponse.fromJson(value);
         case 'PendingInvitation':
           return PendingInvitation.fromJson(value);
         case 'PlatformSettings':
@@ -235,6 +237,8 @@ class ApiClient {
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':
           return PropertyResponse.fromJson(value);
+        case 'RecordPaymentRequest':
+          return RecordPaymentRequest.fromJson(value);
         case 'RefreshRequest':
           return RefreshRequest.fromJson(value);
         case 'RentalRequestCreate':

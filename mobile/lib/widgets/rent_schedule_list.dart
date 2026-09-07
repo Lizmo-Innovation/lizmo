@@ -16,9 +16,15 @@ class RentScheduleList extends StatelessWidget {
     super.key,
     required this.periods,
     this.emptyDetail,
+    this.onTap,
   });
 
   final List<BillingPeriodResponse> periods;
+
+  /// What tapping a month does, if anything. Null on a read-only list rather
+  /// than a no-op callback: a row that looks tappable and is not is worse than
+  /// one that plainly is not.
+  final void Function(BillingPeriodResponse)? onTap;
 
   /// What to say when a tenancy has no months yet, which happens for a lease
   /// that starts in the future.
@@ -41,15 +47,19 @@ class RentScheduleList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
       itemCount: newestFirst.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, index) => _MonthRow(period: newestFirst[index]),
+      itemBuilder: (_, index) => _MonthRow(
+        period: newestFirst[index],
+        onTap: onTap,
+      ),
     );
   }
 }
 
 class _MonthRow extends StatelessWidget {
-  const _MonthRow({required this.period});
+  const _MonthRow({required this.period, this.onTap});
 
   final BillingPeriodResponse period;
+  final void Function(BillingPeriodResponse)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +74,10 @@ class _MonthRow extends StatelessWidget {
             ? (LizmoColors.redBg, LizmoColors.red, 'Overdue')
             : (LizmoColors.white, LizmoColors.ink, 'Due');
 
-    return Container(
+    // A settled month has nothing to declare against it.
+    final tappable = onTap != null && !paid;
+
+    final card = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: background,
@@ -119,11 +132,22 @@ class _MonthRow extends StatelessWidget {
           Text(
             paid
                 ? 'Settled'
-                : 'Due ${_readable(period.dueDate)}',
+                : tappable
+                    ? 'Due ${_readable(period.dueDate)} · Tap if you have paid'
+                    : 'Due ${_readable(period.dueDate)}',
             style: LizmoType.rowSub.copyWith(fontSize: 11, color: ink),
           ),
         ],
       ),
+    );
+
+    if (!tappable) return card;
+
+    return InkWell(
+      key: ValueKey('month-${period.id}'),
+      onTap: () => onTap!(period),
+      borderRadius: BorderRadius.circular(14),
+      child: card,
     );
   }
 

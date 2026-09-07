@@ -29,12 +29,14 @@ doc/MaintenanceRequest.md
 doc/MyAccountApi.md
 doc/NotificationResponse.md
 doc/NotificationsApi.md
+doc/PaymentResponse.md
 doc/PendingInvitation.md
 doc/PlatformSettings.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
+doc/RecordPaymentRequest.md
 doc/RefreshRequest.md
 doc/RentApi.md
 doc/RentalRequestCreate.md
@@ -109,11 +111,13 @@ lib/model/lease_response.dart
 lib/model/login_request.dart
 lib/model/maintenance_request.dart
 lib/model/notification_response.dart
+lib/model/payment_response.dart
 lib/model/pending_invitation.dart
 lib/model/platform_settings.dart
 lib/model/property_by_code_response.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
+lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
 lib/model/rental_request_create.dart
 lib/model/rental_request_for_landlord.dart
@@ -138,5 +142,5 @@ lib/model/vacancy_floor.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/billing_period_response_test.dart
-test/rent_api_test.dart
+test/payment_response_test.dart
+test/record_payment_request_test.dart

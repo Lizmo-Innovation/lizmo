@@ -19,6 +19,7 @@ import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/tenant_home_screen.dart';
 import 'package:lizmo/screens/my_place_screen.dart';
 import 'package:lizmo/screens/tenant_detail_screen.dart';
+import 'package:lizmo/widgets/declare_payment_sheet.dart';
 import 'package:lizmo/widgets/end_tenancy_sheet.dart';
 import 'package:lizmo/widgets/notification_bell.dart';
 import 'package:lizmo/screens/tenants_screen.dart';
@@ -6333,6 +6334,261 @@ void _tenantLeaseTests() {
 
       expect(find.text('Nothing due yet'), findsOneWidget);
       expect(find.textContaining('once the tenancy has started'), findsOneWidget);
+    });
+  });
+
+  group('recording rent', () {
+    BillingPeriodResponse month({
+      String id = 'b1',
+      num due = 2500,
+      num paid = 0,
+      BillingPeriodResponseStatusEnum status =
+          BillingPeriodResponseStatusEnum.UNPAID,
+    }) => BillingPeriodResponse(
+      id: id,
+      label: 'October 2026',
+      periodStart: DateTime.utc(2026, 10, 3),
+      periodEnd: DateTime.utc(2026, 11, 2),
+      dueDate: DateTime.utc(2026, 10, 5),
+      amountDue: due,
+      amountPaid: paid,
+      outstanding: due - paid,
+      status: status,
+      overdue: false,
+    );
+
+    PaymentResponse waiting({String id = 'p1', num amount = 2500}) =>
+        PaymentResponse(
+          id: id,
+          billingPeriodId: 'b1',
+          periodLabel: 'October 2026',
+          amountPaid: amount,
+          paymentDate: DateTime.utc(2026, 10, 4),
+          paymentMethod: PaymentResponsePaymentMethodEnum.GCASH,
+          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+          proofUrlExpiresInSeconds: 600,
+        );
+
+    // ---- the tenant's side ------------------------------------------------
+
+    Widget tenantApp(List<BillingPeriodResponse> months) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => [
+              LeaseResponse(
+                id: 'l1',
+                tenantId: 't1',
+                propertyName: 'Sunrise Apartments',
+                unitNumber: '2B',
+                rentAmount: 2500,
+                dueDateDay: 5,
+                status: LeaseResponseStatusEnum.ACTIVE,
+              ),
+            ]),
+        myLeaseDocumentsProvider('l1').overrideWith(
+          (ref) async => const <LeaseDocumentResponse>[],
+        ),
+        myBillingProvider('l1').overrideWith((ref) async => months),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openPayments(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('an unpaid month invites the tenant to say they paid',
+        (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.textContaining('Tap if you have paid'), findsOneWidget);
+    });
+
+    /// A settled month has nothing to declare against it, and a row that looks
+    /// tappable and is not is worse than one that plainly is not.
+    testWidgets('a settled month is not tappable', (tester) async {
+      await tester.pumpWidget(tenantApp([
+        month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.textContaining('Tap if you have paid'), findsNothing);
+      expect(find.byKey(const ValueKey('month-b1')), findsNothing);
+    });
+
+    /// Said before anything is typed. A tenant who taps this and watches the
+    /// month stay unpaid would think the app had lost it.
+    testWidgets('the sheet says the landlord has to confirm it',
+        (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DeclarePaymentSheet), findsOneWidget);
+      expect(find.textContaining('only counts as paid once they do'),
+          findsOneWidget);
+    });
+
+    testWidgets('the amount is prefilled with what is left', (tester) async {
+      await tester.pumpWidget(tenantApp([
+        month(paid: 1000, status: BillingPeriodResponseStatusEnum.PARTIALLY_PAID),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextFormField>(
+          find.byKey(const ValueKey('payment-amount')));
+      expect(field.controller?.text, '1500');
+    });
+
+    testWidgets('proof is offered, not demanded', (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('attach-proof')), findsOneWidget);
+      expect(find.textContaining('Optional'), findsOneWidget);
+    });
+
+    // ---- the landlord's side ----------------------------------------------
+
+    Widget landlordApp({
+      List<BillingPeriodResponse> months = const [],
+      List<PaymentResponse> payments = const [],
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myTenantsProvider.overrideWith((ref) async => [
+              LeaseResponse(
+                id: 'l1',
+                tenantId: 't1',
+                tenantName: 'Ana Reyes',
+                propertyId: 'p1',
+                unitId: 'u1',
+                unitNumber: '2B',
+                rentAmount: 2500,
+                status: LeaseResponseStatusEnum.ACTIVE,
+              ),
+            ]),
+        leaseTenantProvider('l1').overrideWith(
+          (ref) async => TenantForLandlord(
+            leaseId: 'l1',
+            tenantId: 't1',
+            name: 'Ana Reyes',
+          ),
+        ),
+        leaseTenantDocumentsProvider('l1').overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        leaseDocumentsProvider('l1').overrideWith(
+          (ref) async => const <LeaseDocumentResponse>[],
+        ),
+        leaseBillingProvider('l1').overrideWith((ref) async => months),
+        leasePaymentsProvider('l1').overrideWith((ref) async => payments),
+      ],
+      child: const MaterialApp(home: TenantDetailScreen(leaseId: 'l1')),
+    );
+
+    Future<void> reachRent(WidgetTester tester) async {
+      await tester.scrollUntilVisible(
+        find.text('Rent'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the landlord sees what is outstanding', (tester) async {
+      await tester.pumpWidget(landlordApp(months: [month(), month(id: 'b2')]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.text('Outstanding'), findsOneWidget);
+      expect(find.text('₱5000'), findsOneWidget);
+    });
+
+    /// A tenant who said they paid three days ago and has heard nothing is the
+    /// failure this whole feature exists to avoid.
+    testWidgets('a waiting payment is put in front of them', (tester) async {
+      await tester.pumpWidget(
+          landlordApp(months: [month()], payments: [waiting()]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.text('One payment is waiting on you'), findsOneWidget);
+      expect(find.textContaining('₱2500 for October 2026'), findsOneWidget);
+      expect(find.text('Paid by GCash'), findsOneWidget);
+      expect(find.byKey(const ValueKey('confirm-p1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('reject-p1')), findsOneWidget);
+    });
+
+    testWidgets('nothing waiting means no prompt', (tester) async {
+      await tester.pumpWidget(landlordApp(months: [month()]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.textContaining('waiting on you'), findsNothing);
+    });
+
+    /// The tenant is told the answer, and "not confirmed" with no reason is
+    /// how a disagreement becomes a row.
+    testWidgets('refusing asks why first', (tester) async {
+      await tester.pumpWidget(
+          landlordApp(months: [month()], payments: [waiting()]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      await tester.tap(find.byKey(const ValueKey('reject-p1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Say it did not arrive?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('reject-reason')), findsOneWidget);
+      expect(find.textContaining('Your tenant sees this'), findsOneWidget);
+    });
+
+    testWidgets('backing out of the reason refuses nothing', (tester) async {
+      await tester.pumpWidget(
+          landlordApp(months: [month()], payments: [waiting()]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      await tester.tap(find.byKey(const ValueKey('reject-p1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('One payment is waiting on you'), findsOneWidget);
     });
   });
 }

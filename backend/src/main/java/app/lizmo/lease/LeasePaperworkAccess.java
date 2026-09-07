@@ -33,12 +33,17 @@ public class LeasePaperworkAccess {
     private final LeaseRepository leases;
     private final UnitRepository units;
     private final PropertyAccess access;
+    private final app.lizmo.property.PropertyRepository properties;
 
     public LeasePaperworkAccess(
-            LeaseRepository leases, UnitRepository units, PropertyAccess access) {
+            LeaseRepository leases,
+            UnitRepository units,
+            PropertyAccess access,
+            app.lizmo.property.PropertyRepository properties) {
         this.leases = leases;
         this.units = units;
         this.access = access;
+        this.properties = properties;
     }
 
     /**
@@ -73,6 +78,21 @@ public class LeasePaperworkAccess {
         return leases.findById(leaseId)
                 .filter(lease -> lease.getTenantId().equals(tenantId))
                 .orElseThrow(LeasePaperworkAccess::notFound);
+    }
+
+    /**
+     * Who owns the property this lease sits on.
+     *
+     * <p>Here rather than in each caller, so that "the landlord of a tenancy"
+     * is worked out one way -- through the unit and its property, which is the
+     * only place that relationship is recorded.
+     */
+    @Transactional(readOnly = true)
+    public UUID landlordOf(Lease lease) {
+        return units.findById(lease.getUnitId())
+                .flatMap(unit -> properties.findById(unit.getPropertyId()))
+                .map(app.lizmo.property.Property::getLandlordId)
+                .orElse(null);
     }
 
     private static ApiException notFound() {

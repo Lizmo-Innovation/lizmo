@@ -10,5 +10,13 @@ public enum DocumentOwnerType {
     PROPERTY,
     UNIT,
     LEASE,
-    TENANT
+    TENANT,
+
+    /**
+     * Proof that money moved: a GCash screenshot, a deposit slip.
+     *
+     * <p>Attached to the payment rather than the lease, so that deleting a
+     * rejected payment takes its evidence with it.
+     */
+    PAYMENT
 }

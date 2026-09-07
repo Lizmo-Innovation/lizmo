@@ -1189,6 +1189,293 @@
                 }
             }
         },
+        "/api/v1/me/leases/{leaseId}/payments": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "What I have paid",
+                "description": "Including anything still waiting to be confirmed, and anything the landlord refused.",
+                "operationId": "listMyPayments",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The payments",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PaymentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Say I have paid",
+                "description": "Waits for the landlord to confirm; nothing about the balance moves until they do. A screenshot is optional -- cash is real, and a required field nobody can satisfy becomes one people lie in. Any photograph is re-encoded, so no EXIF or location leaves the phone.",
+                "operationId": "declarePayment",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "payment"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "payment": {
+                                        "$ref": "#/components/schemas/RecordPaymentRequest"
+                                    },
+                                    "proof": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The declared payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease, or no such month",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/payments": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Payments on this tenancy",
+                "description": "Newest first, whatever their state. A rejected payment stays in the list: the disagreement is worth keeping.",
+                "operationId": "listLeasePayments",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The payments",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PaymentResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Record money I received",
+                "description": "Confirmed immediately: the landlord received it, so there is nobody for them to disagree with. The month's balance moves at once and the tenant is told.",
+                "operationId": "recordPayment",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordPaymentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The recorded payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your lease, or no such month",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/payments/{paymentId}/reject": {
+            "post": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Say it did not arrive",
+                "description": "Rejected rather than deleted: a tenant who wrote something down and found it gone would not know whether it was refused or lost. Nothing is credited.",
+                "operationId": "rejectPayment",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "paymentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "remarks",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The rejected payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/payments/{paymentId}/confirm": {
+            "post": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Agree the money arrived",
+                "description": "The only thing that moves a balance for a payment a tenant declared. Answering twice is refused, which is the one way this could quietly invent money.",
+                "operationId": "confirmPayment",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "paymentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The confirmed payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Already answered",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{leaseId}/documents": {
             "get": {
                 "tags": [
@@ -3540,6 +3827,102 @@
                     }
                 },
                 "description": "A request a tenant has sent"
+            },
+            "RecordPaymentRequest": {
+                "required": [
+                    "amountPaid",
+                    "billingPeriodId"
+                ],
+                "type": "object",
+                "properties": {
+                    "billingPeriodId": {
+                        "type": "string",
+                        "description": "Which month this pays for",
+                        "format": "uuid"
+                    },
+                    "amountPaid": {
+                        "type": "number",
+                        "example": 2500.0
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-05"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "description": "Defaults to OTHER",
+                        "example": "GCASH",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "remarks": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sent from my mother's number"
+                    }
+                },
+                "description": "Recording a rent payment"
+            },
+            "PaymentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "billingPeriodId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "periodLabel": {
+                        "type": "string"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING_VERIFICATION",
+                            "CONFIRMED",
+                            "REJECTED"
+                        ]
+                    },
+                    "remarks": {
+                        "type": "string"
+                    },
+                    "proofUrl": {
+                        "type": "string"
+                    },
+                    "proofUrlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "A recorded rent payment"
             },
             "LeaseDocumentResponse": {
                 "type": "object",

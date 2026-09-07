@@ -257,3 +257,24 @@ final myBillingProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// Payments recorded against one tenancy, as the landlord sees them.
+final leasePaymentsProvider = FutureProvider.autoDispose
+    .family<List<PaymentResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(rentApiProvider).listLeasePayments(leaseId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
+/// The same payments as the tenant sees them, including anything still waiting
+/// and anything the landlord refused.
+final myPaymentsProvider = FutureProvider.autoDispose
+    .family<List<PaymentResponse>, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(rentApiProvider).listMyPayments(leaseId) ?? const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

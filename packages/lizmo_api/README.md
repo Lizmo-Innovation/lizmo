@@ -102,8 +102,14 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
+*RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
+*RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 *RentApi* | [**listLeaseBilling**](doc//RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
+*RentApi* | [**listLeasePayments**](doc//RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
 *RentApi* | [**listMyBilling**](doc//RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
+*RentApi* | [**listMyPayments**](doc//RentApi.md#listmypayments) | **GET** /api/v1/me/leases/{leaseId}/payments | What I have paid
+*RentApi* | [**recordPayment**](doc//RentApi.md#recordpayment) | **POST** /api/v1/leases/{leaseId}/payments | Record money I received
+*RentApi* | [**rejectPayment**](doc//RentApi.md#rejectpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/reject | Say it did not arrive
 *RequestsToAnswerApi* | [**acceptRentalRequest**](doc//RequestsToAnswerApi.md#acceptrentalrequest) | **POST** /api/v1/rental-requests/{id}/accept | Say yes, and create the lease
 *RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 *RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
@@ -152,11 +158,13 @@ Class | Method | HTTP request | Description
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [NotificationResponse](doc//NotificationResponse.md)
+ - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
  - [PlatformSettings](doc//PlatformSettings.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
+ - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RentalRequestCreate](doc//RentalRequestCreate.md)
  - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
