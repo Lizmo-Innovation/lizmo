@@ -6863,7 +6863,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();
 
-      expect(find.text('Going begging'), findsOneWidget);
+      expect(find.text('Potential earnings'), findsOneWidget);
       expect(find.text('₱7500'), findsOneWidget);
     });
 
@@ -6889,7 +6889,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Add a room or a unit'), findsOneWidget);
-      expect(find.text('Going begging'), findsNothing);
+      expect(find.text('Potential earnings'), findsNothing);
     });
 
     testWidgets('where the space is, and how much it is worth',

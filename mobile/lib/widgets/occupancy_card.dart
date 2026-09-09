@@ -114,7 +114,16 @@ class _Figures extends StatelessWidget {
               child: _Figure(
                 // The figure that turns "three beds free" into a reason to do
                 // something about it.
-                label: 'Going begging',
+                //
+                // Ariel's wording. It was "going begging", a British idiom for
+                // unclaimed that reads oddly to a Filipino landlord -- possibly
+                // as something to do with begging, which is a strange thing to
+                // put beside a figure about their income.
+                //
+                // Kept beside the empty count on purpose: alone, "potential
+                // earnings" invites reading as the whole portfolio's potential
+                // rather than the empty part of it.
+                label: 'Potential earnings',
                 value: '₱${emptyRent.toStringAsFixed(0)}',
                 ink: empty > 0 ? LizmoColors.ink : LizmoColors.teal900,
               ),

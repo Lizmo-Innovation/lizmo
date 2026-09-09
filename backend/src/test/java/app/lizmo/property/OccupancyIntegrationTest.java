@@ -173,7 +173,7 @@ class OccupancyIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void a_property_with_space_says_how_much_is_going_begging()
+    void a_property_with_space_says_how_much_it_is_not_earning()
             throws Exception {
         addUnit("""
                 {"unitNumber":"2B","floor":"2","rentalMode":"BEDSPACE",
