@@ -65,6 +65,9 @@ Widget _app(
   List<LandlordSummary>? landlords,
   LandlordDetail? landlord,
   List<PendingInvitation>? invitations,
+  List<PlatformPaymentForAdmin>? payments,
+  List<PlatformInvoiceResponse>? invoices,
+  AdminApi? api,
 }) =>
     ProviderScope(
       overrides: [
@@ -73,6 +76,10 @@ Widget _app(
         landlordsProvider.overrideWith((ref) async => landlords ?? const []),
         invitationsProvider.overrideWith((ref) async => invitations ?? const []),
         landlordProvider.overrideWith((ref, id) async => landlord),
+        platformPaymentsProvider.overrideWith((ref) async => payments ?? const []),
+        landlordInvoicesProvider
+            .overrideWith((ref, id) async => invoices ?? const []),
+        if (api != null) adminApiProvider.overrideWithValue(api),
       ],
       child: const LizmoAdminApp(),
     );
@@ -102,6 +109,47 @@ AuthSignedIn _signedIn(Set<LizmoProfile> profiles) => AuthSignedIn(
         profiles: profiles,
         accessToken: 'token',
       ),
+    );
+
+/// Keeps what the Payments queue asked of the API.
+class _FakeAdminApi extends AdminApi {
+  final confirmed = <String>[];
+  final rejected = <(String, String?)>[];
+
+  @override
+  Future<PlatformPaymentForAdmin?> confirmPlatformPayment(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    confirmed.add(id);
+    return null;
+  }
+
+  @override
+  Future<PlatformPaymentForAdmin?> rejectPlatformPayment(
+    String id, {
+    PlatformPaymentRejection? platformPaymentRejection,
+    Future<void>? abortTrigger,
+  }) async {
+    rejected.add((id, platformPaymentRejection?.remarks));
+    return null;
+  }
+}
+
+PlatformPaymentForAdmin _sentToLizmo() => PlatformPaymentForAdmin(
+      id: 'pp1',
+      invoiceId: 'i1',
+      landlordId: 'l1',
+      landlordName: 'Elena Bautista',
+      propertyName: 'Sunrise Apartments',
+      invoiceLabel: 'September 2026',
+      invoiceAmountDue: 450,
+      invoiceOutstanding: 450,
+      amountPaid: 450,
+      paymentDate: DateTime.utc(2026, 9, 3),
+      paymentMethod: PlatformPaymentForAdminPaymentMethodEnum.fromJson('GCASH'),
+      status: PlatformPaymentForAdminStatusEnum.fromJson('PENDING_VERIFICATION'),
+      remarks: 'Ref 4012',
     );
 
 void _desktop(WidgetTester tester) {
@@ -720,6 +768,133 @@ void main() {
       // Tokens are held in memory only, so this is behaviour worth stating
       // rather than letting admins discover it.
       expect(find.textContaining('Sessions end'), findsOneWidget);
+    });
+  });
+
+  group('checking payments to Lizmo', () {
+    Future<void> openPayments(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(InkWell, 'Payments'));
+      await tester.pumpAndSettle();
+    }
+
+    /// Enough on the row to decide without opening anything else.
+    testWidgets('a payment waiting says who, for what, and how much',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin}),
+          payments: [_sentToLizmo()]));
+      await openPayments(tester);
+
+      expect(find.text('Elena Bautista · Sunrise Apartments'), findsOneWidget);
+      expect(find.text('₱450'), findsOneWidget);
+      expect(find.textContaining('for September 2026'), findsOneWidget);
+      expect(find.textContaining('"Ref 4012"'), findsOneWidget);
+      expect(find.text('To check'), findsOneWidget);
+    });
+
+    testWidgets('confirming it is sent to Lizmo', (tester) async {
+      _desktop(tester);
+      final api = _FakeAdminApi();
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin}),
+          payments: [_sentToLizmo()], api: api));
+      await openPayments(tester);
+
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+
+      expect(api.confirmed, ['pp1']);
+    });
+
+    /// The landlord is told the reason, so it is asked for.
+    testWidgets('refusing it asks why, and passes the reason on',
+        (tester) async {
+      _desktop(tester);
+      final api = _FakeAdminApi();
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin}),
+          payments: [_sentToLizmo()], api: api));
+      await openPayments(tester);
+
+      await tester.tap(find.text('Reject'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('reject-platform-reason')),
+          'Nothing arrived.');
+      await tester.tap(find.byKey(const ValueKey('reject-platform-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.rejected, [('pp1', 'Nothing arrived.')]);
+    });
+
+    testWidgets('backing out of the reason refuses nothing', (tester) async {
+      _desktop(tester);
+      final api = _FakeAdminApi();
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.admin}),
+          payments: [_sentToLizmo()], api: api));
+      await openPayments(tester);
+
+      await tester.tap(find.text('Reject'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(api.rejected, isEmpty);
+    });
+  });
+
+  group('a landlord\'s invoices', () {
+    PlatformInvoiceResponse invoice({String status = 'UNPAID', bool overdue = false}) =>
+        PlatformInvoiceResponse(
+          id: 'i1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          label: 'September 2026',
+          occupiedBeds: 9,
+          occupiedUnits: 1,
+          amountDue: 600,
+          amountPaid: status == 'PAID' ? 600 : 0,
+          outstanding: status == 'PAID' ? 0 : 600,
+          status: PlatformInvoiceResponseStatusEnum.fromJson(status),
+          overdue: overdue,
+          lockedByThis: false,
+          payments: const [],
+        );
+
+    Future<void> openLandlord(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Elena Bautista'));
+      await tester.pumpAndSettle();
+    }
+
+    /// Where a note said nothing raised an invoice yet.
+    testWidgets('a landlord page lists what Lizmo invoiced',
+        (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord()],
+        landlord: LandlordDetail(landlord: _landlord(), properties: [_property()]),
+        invoices: [invoice(overdue: true)],
+      ));
+      await openLandlord(tester);
+
+      expect(find.text('Invoices'), findsOneWidget);
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('9 beds · 1 units'), findsOneWidget);
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.textContaining('Nothing raises a billing cycle'), findsNothing);
+    });
+
+    testWidgets('no invoices says how they come about', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord()],
+        landlord: LandlordDetail(landlord: _landlord(), properties: [_property()]),
+      ));
+      await openLandlord(tester);
+
+      expect(find.textContaining('invoices each property on the 1st'),
+          findsOneWidget);
     });
   });
 }

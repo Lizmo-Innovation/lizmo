@@ -86,7 +86,7 @@ variable "billing_snapshot_cron" {
 }
 
 variable "billing_enforcement_cron" {
-  description = "Daily sweep for overdue cycles and the 7-day lockout."
+  description = "Daily sweep: warn about overdue invoices, and lock a property 30 days after its due date."
   type        = string
   default     = "0 2 * * *"
 }

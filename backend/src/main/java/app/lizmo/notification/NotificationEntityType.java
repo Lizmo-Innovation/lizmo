@@ -8,5 +8,6 @@ public enum NotificationEntityType {
     PAYMENT,
     MAINTENANCE_REQUEST,
     NOTICE,
-    STAFF_ASSIGNMENT
+    STAFF_ASSIGNMENT,
+    PLATFORM_INVOICE
 }

@@ -6,12 +6,9 @@
 # Both authenticate with an OIDC token. The API must reject these paths for any
 # other caller; being on /internal/ is not itself protection.
 #
-# CREATED PAUSED, and they stay that way until those endpoints exist. Neither
-# /internal/jobs/* path is implemented: unpaused, these would POST into a 404
-# every night, retry three times, and file the failures somewhere nobody reads
-# -- so the first thing anybody learns from this alerting is to ignore it.
-#
-# To start them, once the endpoints are built and verify the OIDC token:
+# CREATED PAUSED. Both endpoints now exist and verify the OIDC token, but
+# starting them is a business decision -- the first run bills every landlord
+# with a let slot -- so it is made by hand, not by an apply:
 #
 #   gcloud scheduler jobs resume lizmo-platform-billing-snapshot --location=asia-southeast1
 #   gcloud scheduler jobs resume lizmo-platform-billing-enforcement --location=asia-southeast1
@@ -55,7 +52,7 @@ resource "google_cloud_scheduler_job" "billing_enforcement" {
   project     = var.project_id
   region      = var.region
   name        = "lizmo-platform-billing-enforcement"
-  description = "Daily: flip passed-due cycles to OVERDUE, then LOCK accounts 7 days on."
+  description = "Daily: warn about overdue invoices once, then lock the property 30 days on."
   schedule    = var.billing_enforcement_cron
   time_zone   = var.scheduler_timezone
 

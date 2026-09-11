@@ -23,6 +23,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
+  final _instructions = TextEditingController();
 
   bool _seeded = false;
   bool _saving = false;
@@ -32,6 +33,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void dispose() {
     _email.dispose();
+    _instructions.dispose();
     super.dispose();
   }
 
@@ -46,7 +48,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       await ref.read(adminApiProvider).updatePlatformSettings(
-            PlatformSettings(supportEmail: _email.text.trim()),
+            PlatformSettings(
+              supportEmail: _email.text.trim(),
+              paymentInstructions: _instructions.text.trim(),
+            ),
           );
       ref.invalidate(platformSettingsProvider);
       ref.invalidate(supportContactProvider);
@@ -66,6 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       switch (settings) {
         case AsyncData(:final value):
           _email.text = value?.supportEmail ?? '';
+          _instructions.text = value?.paymentInstructions ?? '';
           _seeded = true;
         case AsyncError(:final error):
           return AdminShell(
@@ -162,6 +168,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            key: const ValueKey('payment-instructions-card'),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: LizmoColors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE3E8E6)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('How landlords pay Lizmo', style: LizmoType.sectionHeading),
+                const SizedBox(height: 4),
+                Text(
+                  'Shown to landlords beside every Lizmo invoice. Say where the '
+                  'money goes -- a GCash number, a bank account -- and whose name '
+                  'is on it, so a landlord can check before sending.',
+                  style: LizmoType.rowSub,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  key: const ValueKey('payment-instructions'),
+                  controller: _instructions,
+                  maxLines: 4,
+                  maxLength: 1000,
+                  style: LizmoType.rowName,
+                  decoration: _field('GCash 0917 123 4567 (Lizmo Innovation)')
+                      .copyWith(counterText: ''),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 120,
+                    height: 46,
+                    child: _saving
+                        ? const Center(
+                            child: SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : PrimaryActionButton(
+                            key: const ValueKey('save-payment-instructions'),
+                            label: 'Save',
+                            onPressed: _save,
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

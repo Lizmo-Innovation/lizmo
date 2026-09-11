@@ -56,3 +56,16 @@ final supportContactProvider = FutureProvider<String?>((ref) async {
 final platformSettingsProvider = FutureProvider<PlatformSettings?>((ref) async {
   return ref.watch(adminApiProvider).getPlatformSettings();
 });
+
+/// Payments landlords have sent Lizmo, waiting to be checked, oldest first.
+final platformPaymentsProvider =
+    FutureProvider<List<PlatformPaymentForAdmin>>((ref) async {
+  return await ref.watch(adminApiProvider).listPlatformPaymentsToReview() ??
+      const [];
+});
+
+/// What Lizmo has invoiced one landlord, newest month first.
+final landlordInvoicesProvider =
+    FutureProvider.family<List<PlatformInvoiceResponse>, String>((ref, id) async {
+  return await ref.watch(adminApiProvider).listLandlordInvoices(id) ?? const [];
+});

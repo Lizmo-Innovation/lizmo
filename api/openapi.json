@@ -24,6 +24,10 @@
             "description": "Units and the beds within them"
         },
         {
+            "name": "Lizmo billing",
+            "description": "What a landlord owes Lizmo"
+        },
+        {
             "name": "Leases",
             "description": "Who is living where"
         },
@@ -1150,6 +1154,80 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RentalRequestResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/platform-invoices/{id}/payments": {
+            "post": {
+                "tags": [
+                    "Lizmo billing"
+                ],
+                "summary": "Say I have paid Lizmo",
+                "description": "Waits for a Lizmo admin to confirm it. Proof is required. The photograph is re-encoded, so no EXIF or location leaves the phone.",
+                "operationId": "payPlatformInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "payment"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "payment": {
+                                        "$ref": "#/components/schemas/PlatformPaymentRequest"
+                                    },
+                                    "proof": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The invoice, with the payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlatformInvoiceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No proof, no amount, or already paid",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your invoice",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -2397,6 +2475,81 @@
                 }
             }
         },
+        "/api/v1/admin/platform-payments/{id}/reject": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "It did not arrive",
+                "description": "The landlord is told, with the reason.",
+                "operationId": "rejectPlatformPayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlatformPaymentRejection"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlatformPaymentForAdmin"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/platform-payments/{id}/confirm": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "The money arrived",
+                "description": "Credits the invoice. Paying it in full lifts the lock it caused.",
+                "operationId": "confirmPlatformPayment",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The payment",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlatformPaymentForAdmin"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/landlord-invitations": {
             "get": {
                 "tags": [
@@ -2882,6 +3035,53 @@
                 }
             }
         },
+        "/api/v1/me/platform-payment-instructions": {
+            "get": {
+                "tags": [
+                    "Lizmo billing"
+                ],
+                "summary": "How to pay Lizmo",
+                "description": "As an admin wrote it in the console. Empty until one has.",
+                "operationId": "getPlatformPaymentInstructions",
+                "responses": {
+                    "200": {
+                        "description": "The instructions",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentInstructions"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/platform-invoices": {
+            "get": {
+                "tags": [
+                    "Lizmo billing"
+                ],
+                "summary": "My Lizmo invoices",
+                "description": "One per property per month, newest first, with what has been sent against each.",
+                "operationId": "listMyPlatformInvoices",
+                "responses": {
+                    "200": {
+                        "description": "The invoices",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PlatformInvoiceResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/occupancy": {
             "get": {
                 "tags": [
@@ -3358,6 +3558,31 @@
                 }
             }
         },
+        "/api/v1/admin/platform-payments": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Payments waiting to be checked",
+                "description": "Across every landlord, oldest first.",
+                "operationId": "listPlatformPaymentsToReview",
+                "responses": {
+                    "200": {
+                        "description": "The queue",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PlatformPaymentForAdmin"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/landlords": {
             "get": {
                 "tags": [
@@ -3429,6 +3654,41 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/landlords/{id}/invoices": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "One landlord's invoices",
+                "operationId": "listLandlordInvoices",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The invoices",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PlatformInvoiceResponse"
+                                    }
                                 }
                             }
                         }
@@ -3669,30 +3929,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -3731,6 +3967,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -4028,6 +4288,12 @@
                         "minLength": 0,
                         "type": "string",
                         "example": "lizmodev@gmail.com"
+                    },
+                    "paymentInstructions": {
+                        "maxLength": 1000,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "GCash 0917 123 4567 (Lizmo Innovation)"
                     }
                 },
                 "description": "Settings the console owns"
@@ -4337,6 +4603,167 @@
                     }
                 },
                 "description": "A request a tenant has sent"
+            },
+            "PlatformPaymentRequest": {
+                "required": [
+                    "amountPaid"
+                ],
+                "type": "object",
+                "properties": {
+                    "amountPaid": {
+                        "type": "number",
+                        "example": 450.0
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-09-03"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "example": "GCASH",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "remarks": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Reference 4012 8876 1123"
+                    }
+                },
+                "description": "Paying a Lizmo invoice"
+            },
+            "PlatformInvoiceResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "billingDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "occupiedUnits": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupiedBeds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "unitRate": {
+                        "type": "number"
+                    },
+                    "bedRate": {
+                        "type": "number"
+                    },
+                    "amountDue": {
+                        "type": "number"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "UNPAID",
+                            "PARTIALLY_PAID",
+                            "PAID"
+                        ]
+                    },
+                    "overdue": {
+                        "type": "boolean"
+                    },
+                    "locksOn": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "lockedByThis": {
+                        "type": "boolean"
+                    },
+                    "payments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlatformPaymentResponse"
+                        }
+                    }
+                },
+                "description": "What one property owes Lizmo for one month"
+            },
+            "PlatformPaymentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING_VERIFICATION",
+                            "CONFIRMED",
+                            "REJECTED"
+                        ]
+                    },
+                    "remarks": {
+                        "type": "string"
+                    },
+                    "proofUrl": {
+                        "type": "string"
+                    },
+                    "proofUrlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "submittedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A payment sent to Lizmo"
             },
             "ReportProblemRequest": {
                 "required": [
@@ -4869,6 +5296,91 @@
                 },
                 "description": "A property, as the console lists them"
             },
+            "PlatformPaymentRejection": {
+                "type": "object",
+                "properties": {
+                    "remarks": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Nothing arrived under that reference."
+                    }
+                },
+                "description": "Why a payment was refused"
+            },
+            "PlatformPaymentForAdmin": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "invoiceId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "landlordId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "landlordName": {
+                        "type": "string"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "invoiceLabel": {
+                        "type": "string"
+                    },
+                    "invoiceAmountDue": {
+                        "type": "number"
+                    },
+                    "invoiceOutstanding": {
+                        "type": "number"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING_VERIFICATION",
+                            "CONFIRMED",
+                            "REJECTED"
+                        ]
+                    },
+                    "remarks": {
+                        "type": "string"
+                    },
+                    "proofUrl": {
+                        "type": "string"
+                    },
+                    "proofUrlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "submittedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A landlord's payment to Lizmo, for an admin to review"
+            },
             "InviteLandlordRequest": {
                 "required": [
                     "email"
@@ -5184,6 +5696,16 @@
                 },
                 "description": "A payment waiting for the landlord to confirm it"
             },
+            "PaymentInstructions": {
+                "type": "object",
+                "properties": {
+                    "instructions": {
+                        "type": "string",
+                        "example": "GCash 0917 123 4567 (Lizmo Innovation)"
+                    }
+                },
+                "description": "How to pay Lizmo"
+            },
             "OccupancySummary": {
                 "type": "object",
                 "properties": {
@@ -5267,6 +5789,11 @@
                             "PAYMENT_REJECTED",
                             "MAINTENANCE_REPORTED",
                             "MAINTENANCE_STATUS_CHANGED",
+                            "PLATFORM_INVOICE_ISSUED",
+                            "PLATFORM_INVOICE_OVERDUE",
+                            "PLATFORM_PROPERTY_LOCKED",
+                            "PLATFORM_PAYMENT_CONFIRMED",
+                            "PLATFORM_PAYMENT_REJECTED",
                             "NEW_NOTICE_POSTED",
                             "LEASE_EXPIRING",
                             "STAFF_ASSIGNED"
@@ -5290,7 +5817,8 @@
                             "PAYMENT",
                             "MAINTENANCE_REQUEST",
                             "NOTICE",
-                            "STAFF_ASSIGNMENT"
+                            "STAFF_ASSIGNMENT",
+                            "PLATFORM_INVOICE"
                         ]
                     },
                     "relatedEntityId": {

@@ -16,6 +16,64 @@ class AdminApi {
 
   final ApiClient apiClient;
 
+  /// The money arrived
+  ///
+  /// Credits the invoice. Paying it in full lifts the lock it caused.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> confirmPlatformPaymentWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/platform-payments/{id}/confirm'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// The money arrived
+  ///
+  /// Credits the invoice. Paying it in full lifts the lock it caused.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<PlatformPaymentForAdmin?> confirmPlatformPayment(String id, { Future<void>? abortTrigger, }) async {
+    final response = await confirmPlatformPaymentWithHttpInfo(id, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformPaymentForAdmin',) as PlatformPaymentForAdmin;
+    
+    }
+    return null;
+  }
+
   /// One landlord and their properties
   ///
   /// Each property carries its own status, because each carries its own invoice.
@@ -277,6 +335,63 @@ class AdminApi {
     return null;
   }
 
+  /// One landlord's invoices
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> listLandlordInvoicesWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/landlords/{id}/invoices'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// One landlord's invoices
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<List<PlatformInvoiceResponse>?> listLandlordInvoices(String id, { Future<void>? abortTrigger, }) async {
+    final response = await listLandlordInvoicesWithHttpInfo(id, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformInvoiceResponse>') as List)
+        .cast<PlatformInvoiceResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
   /// Every landlord
   ///
   /// With their property count, how many are locked, and how many slots are occupied. Counts only — no tenant is named.
@@ -323,6 +438,58 @@ class AdminApi {
       final responseBody = await _decodeBodyBytes(response);
       return (await apiClient.deserializeAsync(responseBody, 'List<LandlordSummary>') as List)
         .cast<LandlordSummary>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
+  /// Payments waiting to be checked
+  ///
+  /// Across every landlord, oldest first.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> listPlatformPaymentsToReviewWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/platform-payments';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Payments waiting to be checked
+  ///
+  /// Across every landlord, oldest first.
+  Future<List<PlatformPaymentForAdmin>?> listPlatformPaymentsToReview({ Future<void>? abortTrigger, }) async {
+    final response = await listPlatformPaymentsToReviewWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformPaymentForAdmin>') as List)
+        .cast<PlatformPaymentForAdmin>()
         .toList(growable: false);
 
     }
@@ -382,6 +549,68 @@ class AdminApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AdminPropertySummary',) as AdminPropertySummary;
+    
+    }
+    return null;
+  }
+
+  /// It did not arrive
+  ///
+  /// The landlord is told, with the reason.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PlatformPaymentRejection] platformPaymentRejection:
+  Future<Response> rejectPlatformPaymentWithHttpInfo(String id, { PlatformPaymentRejection? platformPaymentRejection, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/admin/platform-payments/{id}/reject'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = platformPaymentRejection;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// It did not arrive
+  ///
+  /// The landlord is told, with the reason.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PlatformPaymentRejection] platformPaymentRejection:
+  Future<PlatformPaymentForAdmin?> rejectPlatformPayment(String id, { PlatformPaymentRejection? platformPaymentRejection, Future<void>? abortTrigger, }) async {
+    final response = await rejectPlatformPaymentWithHttpInfo(id, platformPaymentRejection: platformPaymentRejection, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformPaymentForAdmin',) as PlatformPaymentForAdmin;
     
     }
     return null;

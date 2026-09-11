@@ -146,6 +146,24 @@ void main() {
     });
   });
 
+  /// Whatever happened to an invoice, it is paid from the billing screen.
+  test('news about a Lizmo invoice opens billing for a landlord', () {
+    expect(
+      destinationOf(
+        NotificationResponse(
+          id: 'n1',
+          type: NotificationResponseTypeEnum.PLATFORM_INVOICE_OVERDUE,
+          relatedEntityType:
+              NotificationResponseRelatedEntityTypeEnum.PLATFORM_INVOICE,
+          relatedEntityId: 'i1',
+        ),
+        LizmoProfile.landlord,
+      ),
+      isA<OpenDetail>()
+          .having((d) => d.detail, 'detail', Detail.lizmoBilling),
+    );
+  });
+
   test('an account on neither side is sent nowhere', () {
     expect(
       destinationOf(

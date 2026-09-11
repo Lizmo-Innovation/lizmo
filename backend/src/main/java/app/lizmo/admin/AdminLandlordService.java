@@ -5,6 +5,7 @@ import app.lizmo.admin.dto.LandlordDetail;
 import app.lizmo.admin.dto.LandlordSummary;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
+import app.lizmo.platform.billing.BillableSlots;
 import app.lizmo.property.Bed;
 import app.lizmo.property.BedRepository;
 import app.lizmo.property.BedStatus;
@@ -41,18 +42,21 @@ public class AdminLandlordService {
     private final PropertyRepository properties;
     private final UnitRepository units;
     private final BedRepository beds;
+    private final BillableSlots slots;
 
     public AdminLandlordService(
             LandlordProfileRepository landlords,
             UserRepository users,
             PropertyRepository properties,
             UnitRepository units,
-            BedRepository beds) {
+            BedRepository beds,
+            BillableSlots slots) {
         this.landlords = landlords;
         this.users = users;
         this.properties = properties;
         this.units = units;
         this.beds = beds;
+        this.slots = slots;
     }
 
     /** Every landlord, with enough to decide who needs chasing. */
@@ -172,22 +176,8 @@ public class AdminLandlordService {
      * unit as well as its beds, or the landlord pays twice for one room.
      */
     private Occupancy occupancyOf(UUID propertyId) {
-        int occupiedUnits = 0;
-        int occupiedBeds = 0;
-
-        for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(propertyId)) {
-            List<Bed> unitBeds = beds.findByUnitIdOrderByBedLabelAsc(unit.getId());
-            if (unitBeds.isEmpty()) {
-                if (unit.getStatus() == UnitStatus.OCCUPIED) {
-                    occupiedUnits++;
-                }
-            } else {
-                occupiedBeds += (int) unitBeds.stream()
-                        .filter(bed -> bed.getStatus() == BedStatus.OCCUPIED)
-                        .count();
-            }
-        }
-        return new Occupancy(occupiedUnits, occupiedBeds);
+        BillableSlots.Count count = slots.of(propertyId);
+        return new Occupancy(count.units(), count.beds());
     }
 
     private record Occupancy(int occupiedUnits, int occupiedBeds) {

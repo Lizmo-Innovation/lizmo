@@ -9,17 +9,64 @@ All URIs are relative to *http://localhost:8082*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**confirmPlatformPayment**](AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
 [**getLandlord**](AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 [**getPlatformSettings**](AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 [**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
 [**inviteLandlord**](AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 [**listInvitations**](AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
+[**listLandlordInvoices**](AdminApi.md#listlandlordinvoices) | **GET** /api/v1/admin/landlords/{id}/invoices | One landlord's invoices
 [**listLandlords**](AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
+[**listPlatformPaymentsToReview**](AdminApi.md#listplatformpaymentstoreview) | **GET** /api/v1/admin/platform-payments | Payments waiting to be checked
 [**lockProperty**](AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
+[**rejectPlatformPayment**](AdminApi.md#rejectplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/reject | It did not arrive
 [**revokeInvitation**](AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
 [**unlockProperty**](AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
 [**updatePlatformSettings**](AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
 
+
+# **confirmPlatformPayment**
+> PlatformPaymentForAdmin confirmPlatformPayment(id)
+
+The money arrived
+
+Credits the invoice. Paying it in full lifts the lock it caused.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.confirmPlatformPayment(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->confirmPlatformPayment: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**PlatformPaymentForAdmin**](PlatformPaymentForAdmin.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **getLandlord**
 > LandlordDetail getLandlord(id)
@@ -222,6 +269,47 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listLandlordInvoices**
+> List<PlatformInvoiceResponse> listLandlordInvoices(id)
+
+One landlord's invoices
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.listLandlordInvoices(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->listLandlordInvoices: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**List<PlatformInvoiceResponse>**](PlatformInvoiceResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listLandlords**
 > List<LandlordSummary> listLandlords()
 
@@ -249,6 +337,45 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**List<LandlordSummary>**](LandlordSummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listPlatformPaymentsToReview**
+> List<PlatformPaymentForAdmin> listPlatformPaymentsToReview()
+
+Payments waiting to be checked
+
+Across every landlord, oldest first.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+
+try {
+    final result = api_instance.listPlatformPaymentsToReview();
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->listPlatformPaymentsToReview: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<PlatformPaymentForAdmin>**](PlatformPaymentForAdmin.md)
 
 ### Authorization
 
@@ -300,6 +427,51 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **rejectPlatformPayment**
+> PlatformPaymentForAdmin rejectPlatformPayment(id, platformPaymentRejection)
+
+It did not arrive
+
+The landlord is told, with the reason.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final platformPaymentRejection = PlatformPaymentRejection(); // PlatformPaymentRejection | 
+
+try {
+    final result = api_instance.rejectPlatformPayment(id, platformPaymentRejection);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->rejectPlatformPayment: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **platformPaymentRejection** | [**PlatformPaymentRejection**](PlatformPaymentRejection.md)|  | [optional] 
+
+### Return type
+
+[**PlatformPaymentForAdmin**](PlatformPaymentForAdmin.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

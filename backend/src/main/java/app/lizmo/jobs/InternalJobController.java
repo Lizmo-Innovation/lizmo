@@ -1,5 +1,6 @@
 package app.lizmo.jobs;
 
+import app.lizmo.platform.billing.PlatformBillingService;
 import app.lizmo.billing.RentReminderService;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,11 +25,15 @@ public class InternalJobController {
 
     private final JobAuthoriser authoriser;
     private final RentReminderService reminders;
+    private final PlatformBillingService platformBilling;
 
     public InternalJobController(
-            JobAuthoriser authoriser, RentReminderService reminders) {
+            JobAuthoriser authoriser,
+            RentReminderService reminders,
+            PlatformBillingService platformBilling) {
         this.authoriser = authoriser;
         this.reminders = reminders;
+        this.platformBilling = platformBilling;
     }
 
     /**
@@ -41,5 +46,27 @@ public class InternalJobController {
     public Map<String, Integer> rentReminders(HttpServletRequest request) {
         authoriser.requireScheduler(request);
         return Map.of("sent", reminders.run());
+    }
+
+    /**
+     * Monthly, on the 1st: raises each property's Lizmo invoice.
+     *
+     * @return how many were raised
+     */
+    @PostMapping("/platform-billing-snapshot")
+    public Map<String, Integer> platformBillingSnapshot(HttpServletRequest request) {
+        authoriser.requireScheduler(request);
+        return Map.of("raised", platformBilling.snapshot());
+    }
+
+    /**
+     * Daily: warns about overdue invoices, and locks properties thirty days on.
+     *
+     * @return how many were warned and locked
+     */
+    @PostMapping("/platform-billing-enforcement")
+    public Map<String, Integer> platformBillingEnforcement(HttpServletRequest request) {
+        authoriser.requireScheduler(request);
+        return platformBilling.enforce();
     }
 }

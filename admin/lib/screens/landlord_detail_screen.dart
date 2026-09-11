@@ -114,7 +114,7 @@ class _Detail extends ConsumerWidget {
             ],
           ),
         const SizedBox(height: 24),
-        const _BillingNotYet(),
+        _Invoices(landlordId: landlord.userId ?? ''),
       ],
     );
   }
@@ -277,36 +277,94 @@ class _LockButtonState extends ConsumerState<_LockButton> {
   }
 }
 
-/// Says why there is no billing on this page yet.
+/// What Lizmo has invoiced this landlord, newest month first.
 ///
-/// An admin looking for an invoice and finding nothing should learn that none
-/// exists, not conclude the page is broken.
-class _BillingNotYet extends StatelessWidget {
-  const _BillingNotYet();
+/// Where a placeholder said nothing raised an invoice yet. One row per property
+/// per month, so an admin chasing a landlord can see which building is behind.
+class _Invoices extends ConsumerWidget {
+  const _Invoices({required this.landlordId});
+
+  final String landlordId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invoices = ref.watch(landlordInvoicesProvider(landlordId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Invoices', style: LizmoType.sectionHeading),
+        const SizedBox(height: 10),
+        invoices.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          error: (error, _) => Text(ApiFailure.from(error).message,
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+          data: (rows) => rows.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'No invoices yet. Lizmo invoices each property on the 1st '
+                    'for the beds and units let that day.',
+                    style: LizmoType.rowSub,
+                  ),
+                )
+              : ConsoleTable(
+                  columns: const [
+                    ConsoleColumn('Month', width: 140),
+                    ConsoleColumn('Property'),
+                    ConsoleColumn('Let', width: 140),
+                    ConsoleColumn('Due', width: 96),
+                    ConsoleColumn('Paid', width: 96),
+                    ConsoleColumn('Status', width: 120),
+                  ],
+                  rows: [
+                    for (final invoice in rows)
+                      ConsoleRow(cells: [
+                        Text(invoice.label ?? '', style: LizmoType.rowName),
+                        Text(invoice.propertyName ?? '',
+                            style: LizmoType.rowName),
+                        Text(
+                          '${invoice.occupiedBeds ?? 0} beds · '
+                          '${invoice.occupiedUnits ?? 0} units',
+                          style: LizmoType.rowSub,
+                        ),
+                        Text('₱${(invoice.amountDue ?? 0).toStringAsFixed(0)}',
+                            style: LizmoType.dataMedium),
+                        Text('₱${(invoice.amountPaid ?? 0).toStringAsFixed(0)}',
+                            style: LizmoType.dataMedium),
+                        _InvoiceStatus(invoice: invoice),
+                      ]),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InvoiceStatus extends StatelessWidget {
+  const _InvoiceStatus({required this.invoice});
+
+  final PlatformInvoiceResponse invoice;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LizmoColors.amberBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline, size: 18, color: LizmoColors.amberText),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'No invoices yet. Nothing raises a billing cycle, so balances and '
-              'payment history will stay empty until the monthly snapshot job '
-              'exists. Locking already works, and is what enforcement will use.',
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
-            ),
-          ),
-        ],
-      ),
-    );
+    final status = invoice.status?.toJson();
+    if (status == 'PAID') {
+      return const StatusChip(status: LizmoStatus.paid, label: 'Paid');
+    }
+    if (invoice.lockedByThis == true) {
+      return const StatusChip(status: LizmoStatus.overdue, label: 'Locked');
+    }
+    if (invoice.overdue == true) {
+      return const StatusChip(status: LizmoStatus.overdue, label: 'Overdue');
+    }
+    if (status == 'PARTIALLY_PAID') {
+      return const StatusChip(status: LizmoStatus.pending, label: 'Partly paid');
+    }
+    return const StatusChip(status: LizmoStatus.vacant, label: 'Unpaid');
   }
 }

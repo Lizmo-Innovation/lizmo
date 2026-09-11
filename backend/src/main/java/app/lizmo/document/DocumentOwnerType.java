@@ -19,5 +19,6 @@ public enum DocumentOwnerType {
      * rejected payment takes its evidence with it.
      */
     PAYMENT,
-    MAINTENANCE_REQUEST
+    MAINTENANCE_REQUEST,
+    PLATFORM_PAYMENT
 }

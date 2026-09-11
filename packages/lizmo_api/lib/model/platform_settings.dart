@@ -14,25 +14,41 @@ class PlatformSettings {
   /// Returns a new [PlatformSettings] instance.
   PlatformSettings({
     required this.supportEmail,
+    this.paymentInstructions,
   });
 
   String supportEmail;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? paymentInstructions;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlatformSettings &&
-    other.supportEmail == supportEmail;
+    other.supportEmail == supportEmail &&
+    other.paymentInstructions == paymentInstructions;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (supportEmail.hashCode);
+    (supportEmail.hashCode) +
+    (paymentInstructions == null ? 0 : paymentInstructions!.hashCode);
 
   @override
-  String toString() => 'PlatformSettings[supportEmail=$supportEmail]';
+  String toString() => 'PlatformSettings[supportEmail=$supportEmail, paymentInstructions=$paymentInstructions]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'supportEmail'] = this.supportEmail;
+    if (this.paymentInstructions != null) {
+      json[r'paymentInstructions'] = this.paymentInstructions;
+    } else {
+      json[r'paymentInstructions'] = null;
+    }
     return json;
   }
 
@@ -54,6 +70,7 @@ class PlatformSettings {
 
       return PlatformSettings(
         supportEmail: mapValueOfType<String>(json, r'supportEmail')!,
+        paymentInstructions: mapValueOfType<String>(json, r'paymentInstructions'),
       );
     }
     return null;

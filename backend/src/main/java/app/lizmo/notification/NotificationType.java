@@ -45,6 +45,21 @@ public enum NotificationType {
 
     /** Everything after the report, to whichever side did not make the change. */
     MAINTENANCE_STATUS_CHANGED,
+
+    /** To the landlord: this month's Lizmo invoice for a property. */
+    PLATFORM_INVOICE_ISSUED,
+
+    /** To the landlord, once: the invoice is past due, and when the property locks. */
+    PLATFORM_INVOICE_OVERDUE,
+
+    /** To the landlord: the invoice went unpaid long enough to lock the property. */
+    PLATFORM_PROPERTY_LOCKED,
+
+    /** To the landlord: an admin confirmed their payment. */
+    PLATFORM_PAYMENT_CONFIRMED,
+
+    /** To the landlord: an admin refused their payment, and why. */
+    PLATFORM_PAYMENT_REJECTED,
     NEW_NOTICE_POSTED,
     LEASE_EXPIRING,
     STAFF_ASSIGNED

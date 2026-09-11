@@ -49,7 +49,7 @@ public class PlatformSettingsController {
     @GetMapping("/api/v1/admin/settings")
     @Operation(operationId = "getPlatformSettings", summary = "Settings the console owns")
     public PlatformSettings read() {
-        return new PlatformSettings(settings.supportEmail());
+        return new PlatformSettings(settings.supportEmail(), settings.paymentInstructions());
     }
 
     @PutMapping("/api/v1/admin/settings")
@@ -58,8 +58,14 @@ public class PlatformSettingsController {
                     + "stranger is told to write to, so it is validated and who changed "
                     + "it is recorded.")
     public PlatformSettings update(@Valid @RequestBody PlatformSettings body) {
-        return new PlatformSettings(
-                settings.changeSupportEmail(body.supportEmail(), currentUser.requireId()));
+        String email = settings.changeSupportEmail(body.supportEmail(), currentUser.requireId());
+        // Left alone when not sent, so a console that only saves the address
+        // cannot wipe the payment details by omission.
+        String instructions = body.paymentInstructions() == null
+                ? settings.paymentInstructions()
+                : settings.changePaymentInstructions(
+                        body.paymentInstructions(), currentUser.requireId());
+        return new PlatformSettings(email, instructions);
     }
 
     @Schema(description = "Where to write to Lizmo")
@@ -68,5 +74,8 @@ public class PlatformSettingsController {
     @Schema(description = "Settings the console owns")
     public record PlatformSettings(
             @NotBlank @Size(max = 255)
-            @Schema(example = "lizmodev@gmail.com") String supportEmail) {}
+            @Schema(example = "lizmodev@gmail.com") String supportEmail,
+            @Size(max = 1000)
+            @Schema(example = "GCash 0917 123 4567 (Lizmo Innovation)")
+            String paymentInstructions) {}
 }

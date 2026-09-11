@@ -54,4 +54,30 @@ public class PlatformSettingsService {
         settings.save(setting);
         return email;
     }
+
+    /** Where a landlord sends money to Lizmo: a GCash number, a bank account. */
+    public static final String PAYMENT_INSTRUCTIONS = "payment_instructions";
+
+    /** Null until an admin has written some. There is no sensible default. */
+    @Transactional(readOnly = true)
+    public String paymentInstructions() {
+        return settings.findById(PAYMENT_INSTRUCTIONS)
+                .map(PlatformSetting::getValue)
+                .filter(StringUtils::hasText)
+                .orElse(null);
+    }
+
+    @Transactional
+    public String changePaymentInstructions(String value, UUID admin) {
+        String text = value == null ? "" : value.trim();
+        if (text.length() > 1000) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Keep the payment details under 1000 characters.");
+        }
+        PlatformSetting setting = settings.findById(PAYMENT_INSTRUCTIONS)
+                .orElseGet(() -> new PlatformSetting(PAYMENT_INSTRUCTIONS, text, admin));
+        setting.change(text, admin);
+        settings.save(setting);
+        return text.isEmpty() ? null : text;
+    }
 }

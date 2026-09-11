@@ -266,6 +266,11 @@ enum NotificationResponseTypeEnum {
   PAYMENT_REJECTED._(r'PAYMENT_REJECTED'),
   MAINTENANCE_REPORTED._(r'MAINTENANCE_REPORTED'),
   MAINTENANCE_STATUS_CHANGED._(r'MAINTENANCE_STATUS_CHANGED'),
+  PLATFORM_INVOICE_ISSUED._(r'PLATFORM_INVOICE_ISSUED'),
+  PLATFORM_INVOICE_OVERDUE._(r'PLATFORM_INVOICE_OVERDUE'),
+  PLATFORM_PROPERTY_LOCKED._(r'PLATFORM_PROPERTY_LOCKED'),
+  PLATFORM_PAYMENT_CONFIRMED._(r'PLATFORM_PAYMENT_CONFIRMED'),
+  PLATFORM_PAYMENT_REJECTED._(r'PLATFORM_PAYMENT_REJECTED'),
   NEW_NOTICE_POSTED._(r'NEW_NOTICE_POSTED'),
   LEASE_EXPIRING._(r'LEASE_EXPIRING'),
   STAFF_ASSIGNED._(r'STAFF_ASSIGNED'),
@@ -338,6 +343,11 @@ class NotificationResponseTypeEnumTypeTransformer {
         case r'PAYMENT_REJECTED': return NotificationResponseTypeEnum.PAYMENT_REJECTED;
         case r'MAINTENANCE_REPORTED': return NotificationResponseTypeEnum.MAINTENANCE_REPORTED;
         case r'MAINTENANCE_STATUS_CHANGED': return NotificationResponseTypeEnum.MAINTENANCE_STATUS_CHANGED;
+        case r'PLATFORM_INVOICE_ISSUED': return NotificationResponseTypeEnum.PLATFORM_INVOICE_ISSUED;
+        case r'PLATFORM_INVOICE_OVERDUE': return NotificationResponseTypeEnum.PLATFORM_INVOICE_OVERDUE;
+        case r'PLATFORM_PROPERTY_LOCKED': return NotificationResponseTypeEnum.PLATFORM_PROPERTY_LOCKED;
+        case r'PLATFORM_PAYMENT_CONFIRMED': return NotificationResponseTypeEnum.PLATFORM_PAYMENT_CONFIRMED;
+        case r'PLATFORM_PAYMENT_REJECTED': return NotificationResponseTypeEnum.PLATFORM_PAYMENT_REJECTED;
         case r'NEW_NOTICE_POSTED': return NotificationResponseTypeEnum.NEW_NOTICE_POSTED;
         case r'LEASE_EXPIRING': return NotificationResponseTypeEnum.LEASE_EXPIRING;
         case r'STAFF_ASSIGNED': return NotificationResponseTypeEnum.STAFF_ASSIGNED;
@@ -364,6 +374,7 @@ enum NotificationResponseRelatedEntityTypeEnum {
   MAINTENANCE_REQUEST._(r'MAINTENANCE_REQUEST'),
   NOTICE._(r'NOTICE'),
   STAFF_ASSIGNMENT._(r'STAFF_ASSIGNMENT'),
+  PLATFORM_INVOICE._(r'PLATFORM_INVOICE'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -429,6 +440,7 @@ class NotificationResponseRelatedEntityTypeEnumTypeTransformer {
         case r'MAINTENANCE_REQUEST': return NotificationResponseRelatedEntityTypeEnum.MAINTENANCE_REQUEST;
         case r'NOTICE': return NotificationResponseRelatedEntityTypeEnum.NOTICE;
         case r'STAFF_ASSIGNMENT': return NotificationResponseRelatedEntityTypeEnum.STAFF_ASSIGNMENT;
+        case r'PLATFORM_INVOICE': return NotificationResponseRelatedEntityTypeEnum.PLATFORM_INVOICE;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

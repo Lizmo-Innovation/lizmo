@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../platform/lizmo_billing_providers.dart';
 import '../property/property_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/collections_card.dart';
+import '../widgets/lizmo_invoice_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/occupancy_card.dart';
 import '../widgets/role_switcher.dart';
@@ -35,6 +37,7 @@ class LandlordHomeScreen extends ConsumerWidget {
     };
     final requests = ref.watch(requestsToAnswerProvider).valueOrNull;
     final rent = ref.watch(collectionsProvider).valueOrNull;
+    final lizmo = ref.watch(myLizmoInvoicesProvider).valueOrNull;
 
     // Only once every answer is in. Unknown is not nothing, and "nothing
     // needs you" over a queue that failed to load would be a lie told at the
@@ -43,7 +46,9 @@ class LandlordHomeScreen extends ConsumerWidget {
         requests.isEmpty &&
         rent != null &&
         (rent.awaitingConfirmation ?? 0) == 0 &&
-        rent.inArrears.isEmpty;
+        rent.inArrears.isEmpty &&
+        lizmo != null &&
+        !lizmo.any(lizmoInvoiceNeedsPaying);
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -83,6 +88,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(collectionsProvider);
                 ref.invalidate(occupancyProvider);
                 ref.invalidate(requestsToAnswerProvider);
+                ref.invalidate(myLizmoInvoicesProvider);
               },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -94,6 +100,9 @@ class LandlordHomeScreen extends ConsumerWidget {
                   const RequestsCard(),
                   const ConfirmPaymentsCard(),
                   const ArrearsCard(),
+                  // Last of the four: nobody is standing at the door over it,
+                  // but left alone it locks a property.
+                  const LizmoInvoiceCard(),
                   if (caughtUp) const _AllCaughtUp(),
                   const SizedBox(height: 8),
                   const _SectionLabel('At a glance'),

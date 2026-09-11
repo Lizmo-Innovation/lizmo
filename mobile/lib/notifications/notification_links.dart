@@ -54,6 +54,11 @@ NotificationDestination? _forLandlord(
   String? type,
   NotificationResponse notification,
 ) {
+  // Anything about a Lizmo invoice opens the billing screen, where it is paid.
+  if (notification.relatedEntityType?.toJson() == 'PLATFORM_INVOICE') {
+    return const OpenDetail(Detail.lizmoBilling);
+  }
+
   // A report opens itself, whichever step of it the news was about.
   if (notification.relatedEntityType?.toJson() == 'MAINTENANCE_REQUEST') {
     final report = notification.relatedEntityId;

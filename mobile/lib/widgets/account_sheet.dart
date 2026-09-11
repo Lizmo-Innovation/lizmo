@@ -75,6 +75,19 @@ class AccountSheet extends ConsumerWidget {
                 },
               ),
 
+            // Where a landlord sees what they owe Lizmo, and pays it. On Today
+            // too when something is owed; here for the history.
+            if (session?.isLandlord ?? false)
+              _SheetAction(
+                icon: Icons.receipt_long_outlined,
+                label: 'Lizmo billing',
+                colour: LizmoColors.ink,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.openInTab(Detail.lizmoBilling);
+                },
+              ),
+
             // Not buried, deliberately. An app that makes leaving hard is an
             // app people leave badly -- by uninstalling, which deletes nothing
             // and leaves their ID photographs where they were.

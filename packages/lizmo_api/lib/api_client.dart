@@ -237,10 +237,22 @@ class ApiClient {
           return NotificationResponse.fromJson(value);
         case 'OccupancySummary':
           return OccupancySummary.fromJson(value);
+        case 'PaymentInstructions':
+          return PaymentInstructions.fromJson(value);
         case 'PaymentResponse':
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':
           return PendingInvitation.fromJson(value);
+        case 'PlatformInvoiceResponse':
+          return PlatformInvoiceResponse.fromJson(value);
+        case 'PlatformPaymentForAdmin':
+          return PlatformPaymentForAdmin.fromJson(value);
+        case 'PlatformPaymentRejection':
+          return PlatformPaymentRejection.fromJson(value);
+        case 'PlatformPaymentRequest':
+          return PlatformPaymentRequest.fromJson(value);
+        case 'PlatformPaymentResponse':
+          return PlatformPaymentResponse.fromJson(value);
         case 'PlatformSettings':
           return PlatformSettings.fromJson(value);
         case 'PropertyByCodeResponse':
