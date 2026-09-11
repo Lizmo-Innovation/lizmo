@@ -145,6 +145,7 @@ Class | Method | HTTP request | Description
  - [ApiError](doc//ApiError.md)
  - [ArrearsRow](doc//ArrearsRow.md)
  - [AuthResponse](doc//AuthResponse.md)
+ - [AwaitingRow](doc//AwaitingRow.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
  - [BillingPeriodResponse](doc//BillingPeriodResponse.md)

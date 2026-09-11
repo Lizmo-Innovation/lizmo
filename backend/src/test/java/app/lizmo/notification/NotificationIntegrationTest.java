@@ -36,6 +36,7 @@ class NotificationIntegrationTest extends IntegrationTest {
     private String anaToken;
     private String beaToken;
 
+    private String propertyId;
     private String unitId;
     private String bed1;
 
@@ -54,7 +55,7 @@ class NotificationIntegrationTest extends IntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        String propertyId = json.readTree(property).get("id").asText();
+        propertyId = json.readTree(property).get("id").asText();
 
         String unit = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -89,6 +90,20 @@ class NotificationIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].type").value("REQUEST_RECEIVED"))
                 .andExpect(jsonPath("$[0].unread").value(true))
                 .andExpect(jsonPath("$[0].relatedEntityType").value("RENTAL_REQUEST"));
+    }
+
+    /**
+     * A request is answered on its property, and the notification only knew
+     * the request. Without the property, tapping it could open nothing.
+     */
+    @Test
+    void a_request_leads_the_landlord_to_its_property() throws Exception {
+        ask(anaToken);
+
+        mvc.perform(get("/api/v1/me/notifications")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].propertyId").value(propertyId))
+                .andExpect(jsonPath("$[0].leaseId").isEmpty());
     }
 
     /**
@@ -134,6 +149,7 @@ class NotificationIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].type").value("REQUEST_ACCEPTED"))
                 .andExpect(jsonPath("$[0].relatedEntityType").value("LEASE"))
+                .andExpect(jsonPath("$[0].leaseId").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
 
         // The rent may not be the one they were looking at when they asked, so

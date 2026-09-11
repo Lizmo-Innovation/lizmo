@@ -24,6 +24,9 @@ import java.util.List;
  * @param awaitingConfirmation how many tenant claims are waiting on the
  *                             landlord. The one figure that is about their own
  *                             behaviour rather than their tenants'.
+ * @param awaiting those claims, one row each, oldest first. The count alone
+ *                 told a landlord somebody was waiting and gave them no way to
+ *                 find out who.
  */
 @Schema(description = "Rent across every property, this month")
 public record CollectionsSummary(
@@ -32,7 +35,8 @@ public record CollectionsSummary(
         BigDecimal outstandingAllTime,
         int awaitingConfirmation,
         int tenanciesInArrears,
-        List<ArrearsRow> inArrears) {
+        List<ArrearsRow> inArrears,
+        List<AwaitingRow> awaiting) {
 
     /**
      * One tenant who is behind.
@@ -51,5 +55,22 @@ public record CollectionsSummary(
             BigDecimal outstanding,
             int monthsLate,
             java.time.LocalDate oldestDueDate) {
+    }
+
+    /**
+     * One payment a tenant says they have made, waiting on the landlord.
+     *
+     * @param paidOn the date the tenant gave, not the date they told the app.
+     */
+    @Schema(description = "A payment waiting for the landlord to confirm it")
+    public record AwaitingRow(
+            java.util.UUID leaseId,
+            java.util.UUID paymentId,
+            String tenantName,
+            String propertyName,
+            String unitNumber,
+            String bedLabel,
+            BigDecimal amount,
+            java.time.LocalDate paidOn) {
     }
 }

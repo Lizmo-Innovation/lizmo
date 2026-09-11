@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -144,6 +143,12 @@ class _Figures extends StatelessWidget {
               ],
             ),
           ),
+          // Who, and the way to them. The banner used to be the end of the
+          // road: it said somebody was waiting and could not be tapped.
+          if (rent.awaiting.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final row in rent.awaiting) _WaitingRow(row: row),
+          ],
         ],
 
         if (arrears.isNotEmpty) ...[
@@ -156,6 +161,75 @@ class _Figures extends StatelessWidget {
           for (final row in arrears) _ArrearsRow(row: row),
         ],
       ],
+    );
+  }
+}
+
+/// One payment a tenant says they have made, waiting on the landlord.
+class _WaitingRow extends StatelessWidget {
+  const _WaitingRow({required this.row});
+
+  final AwaitingRow row;
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final where = row.bedLabel == null
+        ? 'Unit ${row.unitNumber}'
+        : '${row.bedLabel}, ${row.unitNumber}';
+    final paidOn = row.paidOn;
+    final when = paidOn == null
+        ? ''
+        : ' · paid ${paidOn.day} ${_months[paidOn.month - 1]}';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        key: ValueKey('awaiting-${row.paymentId}'),
+        // To the tenant, where Confirm is. Opens inside Today, so Back comes
+        // straight back here to the next one.
+        onTap: () => context.openInTab(Detail.tenancy(row.leaseId!)),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: LizmoColors.canvas,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.tenantName ?? 'A tenant',
+                      style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$where$when',
+                      style: LizmoType.rowSub.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '₱${(row.amount ?? 0).toStringAsFixed(0)}',
+                style: LizmoType.dataMedium
+                    .copyWith(color: LizmoColors.amberText),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right,
+                  size: 18, color: LizmoColors.slate),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -178,7 +252,7 @@ class _ArrearsRow extends StatelessWidget {
         key: ValueKey('arrears-${row.leaseId}'),
         // Straight to the tenant, because seeing who is behind and then having
         // to go and find them is the half of this that wastes the time.
-        onTap: () => context.go(Routes.tenantDetailFor(row.leaseId!)),
+        onTap: () => context.openInTab(Detail.tenancy(row.leaseId!)),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12),

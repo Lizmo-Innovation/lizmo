@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -194,7 +193,7 @@ class _VacancyRow extends StatelessWidget {
         key: ValueKey('vacancy-${row.propertyId}'),
         // Straight to the property, because the next thing a landlord wants is
         // the room list they are about to advertise from.
-        onTap: () => context.go(Routes.propertyDetail(row.propertyId!)),
+        onTap: () => context.openInTab(Detail.property(row.propertyId!)),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12),

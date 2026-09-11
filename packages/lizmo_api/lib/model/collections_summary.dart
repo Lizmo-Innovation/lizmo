@@ -19,6 +19,7 @@ class CollectionsSummary {
     this.awaitingConfirmation,
     this.tenanciesInArrears,
     this.inArrears = const [],
+    this.awaiting = const [],
   });
 
   ///
@@ -63,6 +64,8 @@ class CollectionsSummary {
 
   List<ArrearsRow> inArrears;
 
+  List<AwaitingRow> awaiting;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is CollectionsSummary &&
     other.dueThisMonth == dueThisMonth &&
@@ -70,7 +73,8 @@ class CollectionsSummary {
     other.outstandingAllTime == outstandingAllTime &&
     other.awaitingConfirmation == awaitingConfirmation &&
     other.tenanciesInArrears == tenanciesInArrears &&
-    _deepEquality.equals(other.inArrears, inArrears);
+    _deepEquality.equals(other.inArrears, inArrears) &&
+    _deepEquality.equals(other.awaiting, awaiting);
 
   @override
   int get hashCode =>
@@ -80,10 +84,11 @@ class CollectionsSummary {
     (outstandingAllTime == null ? 0 : outstandingAllTime!.hashCode) +
     (awaitingConfirmation == null ? 0 : awaitingConfirmation!.hashCode) +
     (tenanciesInArrears == null ? 0 : tenanciesInArrears!.hashCode) +
-    (inArrears.hashCode);
+    (inArrears.hashCode) +
+    (awaiting.hashCode);
 
   @override
-  String toString() => 'CollectionsSummary[dueThisMonth=$dueThisMonth, collectedThisMonth=$collectedThisMonth, outstandingAllTime=$outstandingAllTime, awaitingConfirmation=$awaitingConfirmation, tenanciesInArrears=$tenanciesInArrears, inArrears=$inArrears]';
+  String toString() => 'CollectionsSummary[dueThisMonth=$dueThisMonth, collectedThisMonth=$collectedThisMonth, outstandingAllTime=$outstandingAllTime, awaitingConfirmation=$awaitingConfirmation, tenanciesInArrears=$tenanciesInArrears, inArrears=$inArrears, awaiting=$awaiting]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -113,6 +118,7 @@ class CollectionsSummary {
       json[r'tenanciesInArrears'] = null;
     }
       json[r'inArrears'] = this.inArrears;
+      json[r'awaiting'] = this.awaiting;
     return json;
   }
 
@@ -143,6 +149,7 @@ class CollectionsSummary {
         awaitingConfirmation: mapValueOfType<int>(json, r'awaitingConfirmation'),
         tenanciesInArrears: mapValueOfType<int>(json, r'tenanciesInArrears'),
         inArrears: ArrearsRow.listFromJson(json[r'inArrears']),
+        awaiting: AwaitingRow.listFromJson(json[r'awaiting']),
       );
     }
     return null;

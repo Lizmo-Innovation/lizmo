@@ -122,6 +122,25 @@ class CollectionsIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.awaitingConfirmation").value(1));
     }
 
+    /**
+     * The count alone told a landlord somebody was waiting and gave them no
+     * way to find out who. Each claim names the tenancy to open.
+     */
+    @Test
+    void a_waiting_claim_says_whose_it_is() throws Exception {
+        String lease = let(anaToken, 0, LocalDate.now(clock));
+        String payment = declare(lease, 2500);
+
+        collections()
+                .andExpect(jsonPath("$.awaiting.length()").value(1))
+                .andExpect(jsonPath("$.awaiting[0].leaseId").value(lease))
+                .andExpect(jsonPath("$.awaiting[0].paymentId").value(payment))
+                .andExpect(jsonPath("$.awaiting[0].tenantName").isNotEmpty())
+                .andExpect(jsonPath("$.awaiting[0].unitNumber").value("2B"))
+                .andExpect(jsonPath("$.awaiting[0].bedLabel").value("Bed 1"))
+                .andExpect(jsonPath("$.awaiting[0].amount").value(2500.00));
+    }
+
     @Test
     void confirming_moves_it_into_collected() throws Exception {
         String lease = let(anaToken, 0, LocalDate.now(clock));
@@ -134,7 +153,8 @@ class CollectionsIntegrationTest extends IntegrationTest {
         collections()
                 .andExpect(jsonPath("$.collectedThisMonth").value(2500.00))
                 .andExpect(jsonPath("$.outstandingAllTime").value(0))
-                .andExpect(jsonPath("$.awaitingConfirmation").value(0));
+                .andExpect(jsonPath("$.awaitingConfirmation").value(0))
+                .andExpect(jsonPath("$.awaiting.length()").value(0));
     }
 
     // ---- who is behind -----------------------------------------------------

@@ -120,7 +120,11 @@ class _NavigationRail extends ConsumerWidget {
           for (final destination in _destinations)
             _NavItem(
               destination: destination,
-              selected: current == destination.route,
+              // A prefix, not equality: one landlord's page is
+              // /landlords/<id>, and it is still the Landlords section.
+              // Matching exactly left the rail with nothing lit.
+              selected: current == destination.route ||
+                  current.startsWith('${destination.route}/'),
               showLabel: showLabels,
             ),
           const Spacer(),

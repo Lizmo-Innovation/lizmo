@@ -10,6 +10,7 @@ doc/ArrearsRow.md
 doc/AskingForARoomApi.md
 doc/AuthApi.md
 doc/AuthResponse.md
+doc/AwaitingRow.md
 doc/BedRequest.md
 doc/BedResponse.md
 doc/BillingPeriodResponse.md
@@ -100,6 +101,7 @@ lib/model/admin_property_summary.dart
 lib/model/api_error.dart
 lib/model/arrears_row.dart
 lib/model/auth_response.dart
+lib/model/awaiting_row.dart
 lib/model/bed_request.dart
 lib/model/bed_response.dart
 lib/model/billing_period_response.dart
@@ -150,5 +152,4 @@ lib/model/vacancy_row.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/occupancy_summary_test.dart
-test/vacancy_row_test.dart
+test/awaiting_row_test.dart

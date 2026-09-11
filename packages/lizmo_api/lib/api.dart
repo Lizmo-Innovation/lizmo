@@ -49,6 +49,7 @@ part 'model/admin_property_summary.dart';
 part 'model/api_error.dart';
 part 'model/arrears_row.dart';
 part 'model/auth_response.dart';
+part 'model/awaiting_row.dart';
 part 'model/bed_request.dart';
 part 'model/bed_response.dart';
 part 'model/billing_period_response.dart';

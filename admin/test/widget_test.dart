@@ -294,6 +294,33 @@ void main() {
       expect(find.byType(LandlordDetailScreen), findsOneWidget);
       expect(find.text('Sunrise Apartments'), findsOneWidget);
     });
+
+    /// One landlord's page is still the Landlords section. The rail compared
+    /// the address exactly, so on /landlords/<id> nothing in it was lit.
+    testWidgets('the rail still marks Landlords on one landlord', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(_app(
+        _signedIn({LizmoProfile.admin}),
+        landlords: [_landlord()],
+        landlord: LandlordDetail(
+          landlord: _landlord(),
+          properties: [_property()],
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Elena Bautista'));
+      await tester.pumpAndSettle();
+
+      final lit = find.descendant(
+        of: find.widgetWithText(InkWell, 'Landlords'),
+        matching: find.byWidgetPredicate((widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).color == LizmoColors.tealBg),
+      );
+      expect(lit, findsOneWidget);
+    });
   });
 
   group('one landlord', () {

@@ -6,7 +6,6 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
-import '../router.dart';
 import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
 import '../widgets/end_tenancy_sheet.dart';
@@ -56,6 +55,14 @@ class TenantDetailScreen extends ConsumerWidget {
         data: (person) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
+            // First. Money is what a landlord opens a tenant to check, and a
+            // payment waiting on them is the one thing here with somebody on
+            // the other end wondering. It sat below Contact, the emergency
+            // contact, the deposit and the ID -- four scrolls from the
+            // Confirm button the dashboard had just sent them for.
+            TenantRentCard(leaseId: leaseId),
+            const SizedBox(height: 12),
+
             _Section(
               title: 'Contact',
               rows: [
@@ -97,11 +104,6 @@ class TenantDetailScreen extends ConsumerWidget {
                 _Fact('Number', person.idNumber),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Above the paperwork: money is what a landlord opens a tenant
-            // to check, and anything waiting on them belongs near the top.
-            TenantRentCard(leaseId: leaseId),
             const SizedBox(height: 12),
 
             _Documents(leaseId: leaseId),
@@ -179,9 +181,11 @@ class _EndTenancyState extends ConsumerState<_EndTenancy> {
       }
 
       // The tenant screen is addressed by a lease that is no longer live, so
-      // staying here would show a not-found. Back to the list, which is now
-      // one shorter.
-      if (mounted) context.go(Routes.tenants);
+      // staying here would show a not-found. Back to wherever the landlord
+      // came from -- the tenant list, or the dashboard. It used to go to the
+      // tenant list regardless, which from the dashboard meant being thrown
+      // into another tab.
+      if (mounted) context.pop();
     } catch (error) {
       if (mounted) setState(() => _error = ApiFailure.from(error).message);
     } finally {

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../auth/active_role.dart';
+import '../notifications/notification_links.dart';
 import '../notifications/notification_providers.dart';
+import '../router.dart';
 
 /// What the app has told this person, newest first.
 ///
@@ -47,12 +51,15 @@ class _Row extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = notification.unread == true;
+    final destination =
+        destinationOf(notification, ref.watch(activeRoleProvider));
 
     return InkWell(
-      onTap: unread
-          ? () => ref
-              .read(notificationReaderProvider)
-              .one(notification.id!)
+      key: ValueKey('notification-${notification.id}'),
+      // Read or not, a row that leads somewhere stays tappable: going back to
+      // a payment you were told about yesterday is a normal thing to do.
+      onTap: unread || destination != null
+          ? () => _open(context, ref, destination)
           : null,
       borderRadius: BorderRadius.circular(14),
       child: Container(
@@ -106,10 +113,44 @@ class _Row extends ConsumerWidget {
                 ],
               ),
             ),
+            if (destination != null)
+              const Padding(
+                padding: EdgeInsets.only(left: 6, top: 2),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: LizmoColors.slate,
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  void _open(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationDestination? destination,
+  ) {
+    if (notification.unread == true) {
+      // Not awaited. Somebody who taps a card wants the thing it is about, and
+      // the reader already swallows a failed mark-read.
+      ref.read(notificationReaderProvider).one(notification.id!);
+    }
+
+    switch (destination) {
+      case OpenDetail(:final detail):
+        context.openInTab(detail);
+      case SwitchTab(:final tab):
+        // Close the notifications before switching. Left open they would
+        // still be sitting in this tab the next time the tenant came back.
+        final router = GoRouter.of(context);
+        router.pop();
+        router.go(tab);
+      case null:
+        break;
+    }
   }
 
   /// How long ago, in the words a person would use.

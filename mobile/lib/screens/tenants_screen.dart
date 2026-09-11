@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -94,7 +93,7 @@ class _TenantRow extends StatelessWidget {
     return InkWell(
       key: ValueKey('tenant-${lease.id}'),
       borderRadius: BorderRadius.circular(14),
-      onTap: () => context.go(Routes.tenantDetailFor(lease.id!)),
+      onTap: () => context.openInTab(Detail.tenancy(lease.id!)),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

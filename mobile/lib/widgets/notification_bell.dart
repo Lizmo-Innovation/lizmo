@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../notifications/notification_providers.dart';
@@ -28,7 +27,7 @@ class NotificationBell extends ConsumerWidget {
       children: [
         IconButton(
           key: const ValueKey('notification-bell'),
-          onPressed: () => context.push(Routes.notifications),
+          onPressed: () => context.openInTab(Detail.notifications),
           icon: const Icon(Icons.notifications_none),
           color: LizmoColors.white,
           iconSize: 24,

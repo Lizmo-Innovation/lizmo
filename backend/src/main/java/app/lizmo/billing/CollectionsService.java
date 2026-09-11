@@ -123,12 +123,17 @@ public class CollectionsService {
             }
         }
 
+        List<Waiting> waiting = waitingOn(live);
+
         // Bed labels for every row at once. A landlord with forty beds in
         // arrears would otherwise make forty queries to render one screen.
         Map<UUID, String> bedLabels = new HashMap<>();
-        List<UUID> bedIds = behind.stream()
-                .map(row -> row.lease().getBedId())
+        List<UUID> bedIds = java.util.stream.Stream.concat(
+                        behind.stream().map(Behind::lease),
+                        waiting.stream().map(Waiting::lease))
+                .map(Lease::getBedId)
                 .filter(java.util.Objects::nonNull)
+                .distinct()
                 .toList();
         if (!bedIds.isEmpty()) {
             beds.findAllById(bedIds).forEach(
@@ -147,32 +152,67 @@ public class CollectionsService {
                 .thenComparing(CollectionsSummary.ArrearsRow::outstanding,
                         Comparator.reverseOrder()));
 
+        List<CollectionsSummary.AwaitingRow> awaiting = new ArrayList<>();
+        for (Waiting row : waiting) {
+            awaiting.add(awaitingRow(row, bedLabels));
+        }
+
+        // Oldest first: the tenant who has waited longest for an answer is the
+        // one most likely to be wondering whether they were believed.
+        awaiting.sort(Comparator.comparing(
+                CollectionsSummary.AwaitingRow::paidOn,
+                Comparator.nullsLast(Comparator.naturalOrder())));
+
         return new CollectionsSummary(
                 dueThisMonth,
                 collectedThisMonth,
                 outstanding,
-                waitingOn(live),
+                awaiting.size(),
                 arrears.size(),
-                arrears);
+                arrears,
+                awaiting);
     }
 
     /**
-     * How many tenant claims are waiting for this landlord to answer.
+     * Tenant claims waiting for this landlord to answer.
      *
-     * <p>The one figure on the dashboard about the landlord's own behaviour
+     * <p>The one part of the dashboard about the landlord's own behaviour
      * rather than their tenants'.
      */
-    private int waitingOn(List<Lease> live) {
-        int waiting = 0;
+    private List<Waiting> waitingOn(List<Lease> live) {
+        List<Waiting> waiting = new ArrayList<>();
         for (Lease lease : live) {
             for (Payment payment : payments.findByLeaseIdOrderByPaymentDateDesc(
                     lease.getId())) {
                 if (payment.getStatus() == PaymentStatus.PENDING_VERIFICATION) {
-                    waiting++;
+                    waiting.add(new Waiting(lease, payment));
                 }
             }
         }
         return waiting;
+    }
+
+    /** A claim waiting on the landlord, before it has been dressed up. */
+    private record Waiting(Lease lease, Payment payment) {
+    }
+
+    private CollectionsSummary.AwaitingRow awaitingRow(
+            Waiting row, Map<UUID, String> bedLabels) {
+
+        Lease lease = row.lease();
+        Unit unit = units.findById(lease.getUnitId()).orElse(null);
+        Property property = unit == null ? null
+                : properties.findById(unit.getPropertyId()).orElse(null);
+
+        return new CollectionsSummary.AwaitingRow(
+                lease.getId(),
+                row.payment().getId(),
+                users.findById(lease.getTenantId()).map(user -> user.getName()).orElse(null),
+                property == null ? null : property.getName(),
+                unit == null ? null : unit.getUnitNumber(),
+                lease.getBedId() == null ? null : bedLabels.get(lease.getBedId()),
+                row.payment().getAmountPaid(),
+                row.payment().getPaymentDate());
     }
 
     /**

@@ -1,10 +1,15 @@
 package app.lizmo.notification;
 
+import app.lizmo.billing.BillingPeriodRepository;
+import app.lizmo.billing.PaymentRepository;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.notification.dto.NotificationResponse;
+import app.lizmo.rental.RentalRequestRepository;
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +31,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final NotificationRepository notifications;
+    private final PaymentRepository payments;
+    private final BillingPeriodRepository periods;
+    private final RentalRequestRepository requests;
     private final Clock clock;
 
-    public NotificationService(NotificationRepository notifications, Clock clock) {
+    public NotificationService(
+            NotificationRepository notifications,
+            PaymentRepository payments,
+            BillingPeriodRepository periods,
+            RentalRequestRepository requests,
+            Clock clock) {
         this.notifications = notifications;
+        this.payments = payments;
+        this.periods = periods;
+        this.requests = requests;
         this.clock = clock;
     }
 
@@ -56,10 +72,56 @@ public class NotificationService {
                 recipient, type, title, message, entityType, entityId, clock.instant()));
     }
 
+    /**
+     * Everything this person has been told, each with the tenancy or property
+     * it leads to.
+     *
+     * <p>Resolved as it is read rather than stored when raised, so that the
+     * notifications written before tapping one opened anything lead somewhere
+     * too. One query per kind of thing, not per row: a feed of forty payments
+     * is still three lookups.
+     */
     @Transactional(readOnly = true)
     public List<NotificationResponse> mine(UUID userId) {
-        return notifications.findByRecipientUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(NotificationResponse::of)
+        List<Notification> rows =
+                notifications.findByRecipientUserIdOrderByCreatedAtDesc(userId);
+
+        Map<UUID, UUID> leaseOfPayment = new HashMap<>();
+        payments.findAllById(idsOf(rows, NotificationEntityType.PAYMENT))
+                .forEach(payment -> leaseOfPayment.put(payment.getId(), payment.getLeaseId()));
+
+        Map<UUID, UUID> leaseOfPeriod = new HashMap<>();
+        periods.findAllById(idsOf(rows, NotificationEntityType.BILLING_PERIOD))
+                .forEach(period -> leaseOfPeriod.put(period.getId(), period.getLeaseId()));
+
+        Map<UUID, UUID> propertyOfRequest = new HashMap<>();
+        requests.findAllById(idsOf(rows, NotificationEntityType.RENTAL_REQUEST))
+                .forEach(request -> propertyOfRequest.put(request.getId(), request.getPropertyId()));
+
+        return rows.stream()
+                .map(row -> {
+                    UUID about = row.getRelatedEntityId();
+                    NotificationEntityType kind = row.getRelatedEntityType();
+                    UUID lease = kind == null ? null : switch (kind) {
+                        case LEASE -> about;
+                        case PAYMENT -> leaseOfPayment.get(about);
+                        case BILLING_PERIOD -> leaseOfPeriod.get(about);
+                        default -> null;
+                    };
+                    UUID property = kind == NotificationEntityType.RENTAL_REQUEST
+                            ? propertyOfRequest.get(about)
+                            : null;
+                    return NotificationResponse.of(row, lease, property);
+                })
+                .toList();
+    }
+
+    private static List<UUID> idsOf(List<Notification> rows, NotificationEntityType kind) {
+        return rows.stream()
+                .filter(row -> row.getRelatedEntityType() == kind)
+                .map(Notification::getRelatedEntityId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
                 .toList();
     }
 

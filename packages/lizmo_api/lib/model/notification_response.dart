@@ -20,6 +20,8 @@ class NotificationResponse {
     this.unread,
     this.relatedEntityType,
     this.relatedEntityId,
+    this.leaseId,
+    this.propertyId,
     this.createdAt,
   });
 
@@ -73,6 +75,22 @@ class NotificationResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
+  String? leaseId;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? propertyId;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
   DateTime? createdAt;
 
   @override
@@ -84,6 +102,8 @@ class NotificationResponse {
     other.unread == unread &&
     other.relatedEntityType == relatedEntityType &&
     other.relatedEntityId == relatedEntityId &&
+    other.leaseId == leaseId &&
+    other.propertyId == propertyId &&
     other.createdAt == createdAt;
 
   @override
@@ -96,10 +116,12 @@ class NotificationResponse {
     (unread == null ? 0 : unread!.hashCode) +
     (relatedEntityType == null ? 0 : relatedEntityType!.hashCode) +
     (relatedEntityId == null ? 0 : relatedEntityId!.hashCode) +
+    (leaseId == null ? 0 : leaseId!.hashCode) +
+    (propertyId == null ? 0 : propertyId!.hashCode) +
     (createdAt == null ? 0 : createdAt!.hashCode);
 
   @override
-  String toString() => 'NotificationResponse[id=$id, type=$type, title=$title, message=$message, unread=$unread, relatedEntityType=$relatedEntityType, relatedEntityId=$relatedEntityId, createdAt=$createdAt]';
+  String toString() => 'NotificationResponse[id=$id, type=$type, title=$title, message=$message, unread=$unread, relatedEntityType=$relatedEntityType, relatedEntityId=$relatedEntityId, leaseId=$leaseId, propertyId=$propertyId, createdAt=$createdAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -138,6 +160,16 @@ class NotificationResponse {
     } else {
       json[r'relatedEntityId'] = null;
     }
+    if (this.leaseId != null) {
+      json[r'leaseId'] = this.leaseId;
+    } else {
+      json[r'leaseId'] = null;
+    }
+    if (this.propertyId != null) {
+      json[r'propertyId'] = this.propertyId;
+    } else {
+      json[r'propertyId'] = null;
+    }
     if (this.createdAt != null) {
       json[r'createdAt'] = this.createdAt!.toUtc().toIso8601String();
     } else {
@@ -168,6 +200,8 @@ class NotificationResponse {
         unread: mapValueOfType<bool>(json, r'unread'),
         relatedEntityType: NotificationResponseRelatedEntityTypeEnum.fromJson(json[r'relatedEntityType']),
         relatedEntityId: mapValueOfType<String>(json, r'relatedEntityId'),
+        leaseId: mapValueOfType<String>(json, r'leaseId'),
+        propertyId: mapValueOfType<String>(json, r'propertyId'),
         createdAt: mapDateTime(json, r'createdAt', r''),
       );
     }

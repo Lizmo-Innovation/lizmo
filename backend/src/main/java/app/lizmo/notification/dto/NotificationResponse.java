@@ -8,9 +8,16 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * @param relatedEntityId what to open when it is tapped. The app decides how,
- *                        from the entity type — a notification that cannot be
- *                        acted on is a notification somebody dismisses.
+ * @param relatedEntityId what the notification is about, exactly as it was
+ *                        raised.
+ * @param leaseId         the tenancy it concerns, where it concerns one. The
+ *                        app opens this rather than [relatedEntityId]: a
+ *                        payment or a month of rent cannot be opened on its
+ *                        own, and nothing answers "which tenancy is this
+ *                        payment on" -- so without this, a landlord told a
+ *                        tenant has paid had no way to get to the tenant.
+ * @param propertyId      the property it concerns, for a request about a
+ *                        room, whose answers live on the property.
  */
 @Schema(description = "Something waiting to be read")
 public record NotificationResponse(
@@ -21,9 +28,16 @@ public record NotificationResponse(
         boolean unread,
         NotificationEntityType relatedEntityType,
         UUID relatedEntityId,
+        UUID leaseId,
+        UUID propertyId,
         Instant createdAt) {
 
     public static NotificationResponse of(Notification notification) {
+        return of(notification, null, null);
+    }
+
+    public static NotificationResponse of(
+            Notification notification, UUID leaseId, UUID propertyId) {
         return new NotificationResponse(
                 notification.getId(),
                 notification.getType(),
@@ -32,6 +46,8 @@ public record NotificationResponse(
                 notification.isUnread(),
                 notification.getRelatedEntityType(),
                 notification.getRelatedEntityId(),
+                leaseId,
+                propertyId,
                 notification.getCreatedAt());
     }
 }

@@ -33,6 +33,12 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
+import 'package:lizmo/screens/delete_account_screen.dart';
+import 'package:lizmo/screens/notifications_screen.dart';
+import 'package:lizmo/screens/rental_requests_screen.dart';
+import 'package:lizmo/screens/tenant_payments_screen.dart';
+import 'package:lizmo/screens/tenant_profile_screen.dart';
+import 'package:lizmo/widgets/section_tab_bar.dart';
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -429,6 +435,28 @@ class _FakeBedsApi extends UnitsApi {
 /// A landlord now lands on Today, so every test that starts by tapping a
 /// property has to get to the list first. Keyed rather than found by label,
 /// because "Properties" is also a stat on the home screen.
+/// Which tab is lit.
+int _tabIndex(WidgetTester tester) =>
+    tester.widget<SectionTabBar>(find.byType(SectionTabBar)).index;
+
+/// Everything tenancy l1's screen reads, pinned, for tests that arrive at it
+/// from somewhere other than the tenant list.
+List<Override> _tenancyL1() => [
+      myTenantsProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+      leaseTenantProvider('l1').overrideWith(
+        (ref) async =>
+            TenantForLandlord(leaseId: 'l1', tenantId: 't1', name: 'Ana Reyes'),
+      ),
+      leaseTenantDocumentsProvider('l1')
+          .overrideWith((ref) async => const <TenantDocumentResponse>[]),
+      leaseDocumentsProvider('l1')
+          .overrideWith((ref) async => const <LeaseDocumentResponse>[]),
+      leaseBillingProvider('l1')
+          .overrideWith((ref) async => const <BillingPeriodResponse>[]),
+      leasePaymentsProvider('l1')
+          .overrideWith((ref) async => const <PaymentResponse>[]),
+    ];
+
 Future<void> _openProperties(WidgetTester tester) async {
   final tab = find.byKey(const ValueKey('tab-properties'));
   if (tab.evaluate().isEmpty) return;
@@ -954,6 +982,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    /// It lived under /tenant, and the tenant guard sends an account with no
+    /// tenant profile straight back to its dashboard.
+    testWidgets('a landlord can reach account deletion', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+          canDeleteMyAccountProvider.overrideWith((ref) async {}),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete my account'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DeleteAccountScreen), findsOneWidget);
+      // A task, so it covers the tabs rather than opening inside one.
+      expect(find.byType(SectionTabBar), findsNothing);
+    });
+
+    /// A form covers the tabs, and Back lands on the tab it was opened over.
+    /// The profile used to live under Home, so opening it from Payments threw
+    /// the tenant across to Home to fill it in.
+    testWidgets('the profile covers whichever tab it was opened from',
+        (tester) async {
+      await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('My profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantProfileScreen), findsOneWidget);
+      expect(find.byType(SectionTabBar), findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantPaymentsScreen), findsOneWidget);
+      expect(_tabIndex(tester), 2);
     });
 
     testWidgets('the sheet names which roles the account holds', (tester) async {
@@ -5167,6 +5245,100 @@ void _tenantLeaseTests() {
       // Being told what happened is not a tenant feature.
       expect(find.text('Somebody has asked'), findsOneWidget);
     });
+
+    /// Tapping news used to only mark it read. News about rent opens the rent,
+    /// and the notifications close on the way rather than staying in Home.
+    testWidgets('news about rent opens the rent', (tester) async {
+      await tester.pumpWidget(appWith([
+        NotificationResponse(
+          id: 'n1',
+          type: NotificationResponseTypeEnum.RENT_OVERDUE,
+          title: 'Rent is late',
+          message: 'October is overdue.',
+          unread: false,
+          leaseId: 'l1',
+          createdAt: DateTime.now(),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await openTheBell(tester);
+
+      await tester.tap(find.text('Rent is late'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantPaymentsScreen), findsOneWidget);
+      expect(_tabIndex(tester), 2);
+
+      await tester.tap(find.byKey(const ValueKey('tab-home')));
+      await tester.pumpAndSettle();
+      expect(find.byType(NotificationsScreen), findsNothing);
+    });
+
+    Widget landlordWith(NotificationResponse news) => ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+            ),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesProvider.overrideWith(
+              (ref) async => const <PropertyResponse>[],
+            ),
+            myNotificationsProvider.overrideWith((ref) async => [news]),
+            pendingRequestsProvider('p1').overrideWith(
+              (ref) async => const <RentalRequestForLandlord>[],
+            ),
+            ..._tenancyL1(),
+          ],
+          child: const LizmoApp(),
+        );
+
+    /// The dead end this was built for: told a tenant had paid, with no way
+    /// to the tenant. It opens inside Today, and Back returns to the news.
+    testWidgets('a landlord told somebody paid is taken to the tenant',
+        (tester) async {
+      await tester.pumpWidget(landlordWith(NotificationResponse(
+        id: 'n1',
+        type: NotificationResponseTypeEnum.PAYMENT_CONFIRMED,
+        title: 'A tenant says they have paid',
+        message: 'P2500 is waiting for you to confirm.',
+        unread: false,
+        leaseId: 'l1',
+        createdAt: DateTime.now(),
+      )));
+      await tester.pumpAndSettle();
+      await openTheBell(tester);
+
+      await tester.tap(find.text('A tenant says they have paid'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+      expect(_tabIndex(tester), 0);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(NotificationsScreen), findsOneWidget);
+    });
+
+    testWidgets('a landlord told somebody is asking is taken to the requests',
+        (tester) async {
+      await tester.pumpWidget(landlordWith(NotificationResponse(
+        id: 'n1',
+        type: NotificationResponseTypeEnum.REQUEST_RECEIVED,
+        title: 'Somebody wants a room',
+        message: 'Bed 1 in 2B.',
+        unread: false,
+        propertyId: 'p1',
+        createdAt: DateTime.now(),
+      )));
+      await tester.pumpAndSettle();
+      await openTheBell(tester);
+
+      await tester.tap(find.text('Somebody wants a room'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RentalRequestsScreen), findsOneWidget);
+      expect(_tabIndex(tester), 0);
+    });
   });
 
   group('the landlord looking at a tenant', () {
@@ -6614,6 +6786,18 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('reject-p1')), findsOneWidget);
     });
 
+    /// Rent comes first now. It sat below the contact details, the emergency
+    /// contact, the deposit and the ID, so the Confirm button the dashboard
+    /// had sent the landlord for was a long scroll away.
+    testWidgets('Confirm is on screen without scrolling', (tester) async {
+      await tester.pumpWidget(
+          landlordApp(months: [month()], payments: [waiting()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('confirm-p1')).hitTestable(),
+          findsOneWidget);
+    });
+
     testWidgets('the landlord reads the note while deciding', (tester) async {
       await tester.pumpWidget(landlordApp(
         months: [month()],
@@ -6696,6 +6880,7 @@ void _tenantLeaseTests() {
       num outstanding = 7500,
       int waiting = 0,
       List<ArrearsRow> arrears = const [],
+      List<AwaitingRow> awaiting = const [],
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -6713,7 +6898,9 @@ void _tenantLeaseTests() {
               awaitingConfirmation: waiting,
               tenanciesInArrears: arrears.length,
               inArrears: arrears,
+              awaiting: awaiting,
             )),
+        ..._tenancyL1(),
       ],
       child: const LizmoApp(),
     );
@@ -6781,11 +6968,51 @@ void _tenantLeaseTests() {
 
     /// Seeing who is behind and then having to go and find them is the half
     /// of this that wastes the time.
-    testWidgets('tapping one opens that tenant', (tester) async {
+    testWidgets('tapping one opens that tenant, inside Today', (tester) async {
       await tester.pumpWidget(appWith(arrears: [behind()]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('arrears-l1')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('arrears-l1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+      // Still Today. It used to switch to the Tenants tab.
+      expect(_tabIndex(tester), 0);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      // And Back comes here, not to a tenant list never looked at.
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
+      expect(find.byType(TenantsScreen), findsNothing);
+    });
+
+    /// The banner said somebody was waiting and could not be tapped. Each
+    /// waiting payment is now a row naming whose it is.
+    testWidgets('each waiting payment is named, and opens its tenant',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: 1, awaiting: [
+        AwaitingRow(
+          leaseId: 'l1',
+          paymentId: 'pay1',
+          tenantName: 'Ana Reyes',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          amount: 2500,
+          paidOn: DateTime.utc(2026, 9, 3),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('Bed 1, 2B · paid 3 Sep'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('awaiting-pay1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+      expect(_tabIndex(tester), 0);
     });
 
     testWidgets('nobody behind means no list', (tester) async {
@@ -6844,6 +7071,9 @@ void _tenantLeaseTests() {
               emptyRent: emptyRent,
               vacancies: vacancies,
             )),
+        unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        pendingRequestsProvider('p1')
+            .overrideWith((ref) async => const <RentalRequestForLandlord>[]),
       ],
       child: const LizmoApp(),
     );
@@ -6912,11 +7142,20 @@ void _tenantLeaseTests() {
 
     /// The next thing a landlord wants is the room list they will advertise
     /// from.
-    testWidgets('a vacancy row leads to the property', (tester) async {
+    testWidgets('a vacancy row leads to the property, inside Today',
+        (tester) async {
       await tester.pumpWidget(appWith(vacancies: [vacancy()]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('vacancy-p1')), findsOneWidget);
+      final row = find.byKey(const ValueKey('vacancy-p1'));
+      await tester.scrollUntilVisible(row, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PropertyDetailScreen), findsOneWidget);
+      // It used to switch to the Properties tab.
+      expect(_tabIndex(tester), 0);
     });
   });
 }

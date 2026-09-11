@@ -254,7 +254,7 @@ class _WaitingRequests extends ConsumerWidget {
         color: LizmoColors.amberBg,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: () => context.push(Routes.propertyRequests(propertyId)),
+          onTap: () => context.openInTab(Detail.requests(propertyId)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
@@ -296,7 +296,7 @@ class _ShareButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () => context.push(Routes.propertyShare(propertyId)),
+      onPressed: () => context.openInTab(Detail.share(propertyId)),
       icon: const Icon(Icons.qr_code_2_outlined),
       color: LizmoColors.white,
       iconSize: 20,
@@ -371,7 +371,7 @@ class _UnitCard extends StatelessWidget {
         child: InkWell(
           onTap: unit.id == null
               ? null
-              : () => context.push(Routes.unitDetail(propertyId, unit.id!)),
+              : () => context.openInTab(Detail.unit(propertyId, unit.id!)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),

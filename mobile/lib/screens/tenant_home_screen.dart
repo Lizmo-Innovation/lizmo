@@ -145,7 +145,7 @@ class _FinishYourProfile extends StatelessWidget {
       detail: 'A landlord needs your ID and an emergency contact before they '
           'can accept you.',
       actionLabel: 'Open my profile',
-      onAction: (context) => context.go(Routes.tenantProfile),
+      onAction: (context) => context.push(Routes.tenantProfile),
     );
   }
 }

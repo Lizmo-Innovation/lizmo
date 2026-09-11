@@ -194,7 +194,7 @@ class _PropertyCard extends StatelessWidget {
         child: InkWell(
           onTap: property.id == null
               ? null
-              : () => context.push(Routes.propertyDetail(property.id!)),
+              : () => context.openInTab(Detail.property(property.id!)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),

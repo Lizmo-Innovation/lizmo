@@ -195,6 +195,8 @@ class ApiClient {
           return ArrearsRow.fromJson(value);
         case 'AuthResponse':
           return AuthResponse.fromJson(value);
+        case 'AwaitingRow':
+          return AwaitingRow.fromJson(value);
         case 'BedRequest':
           return BedRequest.fromJson(value);
         case 'BedResponse':

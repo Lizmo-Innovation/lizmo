@@ -223,6 +223,25 @@ class PaymentIntegrationTest extends IntegrationTest {
                 .contains("waiting for you to confirm");
     }
 
+    /**
+     * A payment cannot be opened on its own. The landlord told a tenant has
+     * paid is led to the tenancy, which is where Confirm is.
+     */
+    @Test
+    void that_notification_leads_to_the_tenancy() throws Exception {
+        declare(2500, null).andExpect(status().isCreated());
+
+        var feed = json.readTree(mvc.perform(get("/api/v1/me/notifications")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString());
+
+        var claim = java.util.stream.StreamSupport.stream(feed.spliterator(), false)
+                .filter(row -> "PAYMENT".equals(row.path("relatedEntityType").asText()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(claim.get("leaseId").asText()).isEqualTo(leaseId);
+    }
+
     // ---- proof -------------------------------------------------------------
 
     @Test

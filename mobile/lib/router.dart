@@ -53,13 +53,19 @@ abstract final class Routes {
   static const tenantPayments = '/tenant/payments';
   static const tenantMaintenance = '/tenant/maintenance';
 
-  /// The tenant's own profile. Under /tenant, so the role guard already
-  /// covers it.
-  static const tenantProfile = '/tenant/home/profile';
+  /// The tenant's own profile.
+  ///
+  /// A form, so it covers the tabs rather than opening inside one. It lived
+  /// under Home, so opening it from the account sheet on any other tab threw
+  /// the tenant across to Home to fill it in.
+  static const tenantProfile = '/tenant/profile';
 
-  /// Closing the account. Under Home, so it is reachable from the account
-  /// sheet on any tenant screen.
-  static const deleteAccount = '/tenant/home/delete-account';
+  /// Closing the account.
+  ///
+  /// Outside both sections, because both sides have an account to close.
+  /// Under /tenant, the tenant guard sent a landlord-only account straight
+  /// back to its dashboard.
+  static const deleteAccount = '/delete-account';
 
   /// Where a tenant starts looking for somewhere to live. Under My place,
   /// because that is the tab the question belongs to.
@@ -85,32 +91,19 @@ abstract final class Routes {
   static const landlordHome = '/landlord/home';
   static const properties = '/landlord/properties';
   static const tenants = '/landlord/tenants';
+
+  // Forms. Each covers the tabs until it is saved or abandoned: a half-filled
+  // form left behind in another tab is one nobody comes back to. Things to
+  // look at are not here -- they open inside the current tab. See [Detail].
+
   static const propertyNew = '/landlord/properties/new';
-
-  /// Addressed by lease, not by tenant, because the API is. There is no
-  /// route that takes a person -- the question the app can ask is "who is
-  /// living in my room", and it stops having an answer when they leave.
-  static String tenantDetailFor(String leaseId) =>
-      '/landlord/tenants/$leaseId';
-
-  /// Detail and unit routes take the property id, so they are functions
-  /// rather than constants — a typo in the path becomes a compile error.
-  static String propertyDetail(String id) => '/landlord/properties/$id';
-  static String unitNew(String id) => '/landlord/properties/$id/units/new';
-  static String propertyEdit(String id) => '/landlord/properties/$id/edit';
-  static String propertyShare(String id) => '/landlord/properties/$id/share';
-  static String propertyRequests(String id) =>
-      '/landlord/properties/$id/requests';
+  static String propertyEdit(String id) => '/landlord/property/$id/edit';
+  static String unitNew(String propertyId) =>
+      '/landlord/property/$propertyId/units/new';
   static String unitEdit(String propertyId, String unitId) =>
-      '/landlord/properties/$propertyId/units/$unitId/edit';
-  static String unitDetail(String propertyId, String unitId) =>
-      '/landlord/properties/$propertyId/units/$unitId';
+      '/landlord/property/$propertyId/unit/$unitId/edit';
   static String unitUtilities(String propertyId, String unitId) =>
-      '/landlord/properties/$propertyId/units/$unitId/utilities';
-  /// Pushed over whichever shell is showing rather than living in a branch:
-  /// it is reached from the header on both sides, and it belongs on top of
-  /// wherever you were rather than switching you to a tab.
-  static const notifications = '/notifications';
+      '/landlord/property/$propertyId/unit/$unitId/utilities';
 
   static const forgotPassword = '/forgot-password';
 
@@ -118,6 +111,55 @@ abstract final class Routes {
 
   /// Reachable without a session. Anything else redirects to login.
   static const signedOutAllowed = {login, register, forgotPassword};
+
+  /// The root of every tab, on both sides.
+  static const tabRoots = [
+    landlordHome,
+    properties,
+    tenants,
+    tenantHome,
+    tenantPlace,
+    tenantPayments,
+    tenantMaintenance,
+  ];
+
+  /// The tab [location] sits inside.
+  static String tabRootOf(String location) {
+    for (final root in tabRoots) {
+      if (location == root || location.startsWith('$root/')) return root;
+    }
+    return location.startsWith(tenant) ? tenantHome : landlordHome;
+  }
+}
+
+/// Things to look at, as paths relative to whichever tab is showing.
+///
+/// The same screen is reachable from several tabs -- a tenant from Today, from
+/// Tenants, and from a notification -- and it opens inside the tab you were
+/// in, with that tab still lit and Back returning to where you started. Each
+/// used to live in one tab only, so reaching it from anywhere else threw you
+/// into that tab, and Back took you to a list you had never looked at.
+///
+/// Open one with [OpenInTab.openInTab] rather than a hand-built path.
+abstract final class Detail {
+  static const notifications = 'notifications';
+  static String tenancy(String leaseId) => 'lease/$leaseId';
+  static String property(String id) => 'property/$id';
+  static String requests(String propertyId) => 'property/$propertyId/requests';
+  static String share(String propertyId) => 'property/$propertyId/share';
+  static String unit(String propertyId, String unitId) =>
+      'property/$propertyId/unit/$unitId';
+}
+
+extension OpenInTab on BuildContext {
+  /// Opens [detail] inside the tab that is showing.
+  ///
+  /// The tab is read from the router rather than from this widget's route, so
+  /// a card deep inside a screen needs no idea where its screen was mounted.
+  Future<T?> openInTab<T extends Object?>(String detail) {
+    final here = GoRouter.of(this).routerDelegate.currentConfiguration.uri.path;
+    return push<T>('${Routes.tabRootOf(here)}/$detail');
+  }
 }
 
 /// Holds the splash for a moment at launch.
@@ -225,6 +267,49 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
+
+      // Forms and tasks. Top-level rather than inside a tab, so each is pushed
+      // over whichever tab is showing and covers it, tab bar and all, until it
+      // is finished or abandoned.
+      GoRoute(
+        path: Routes.tenantProfile,
+        builder: (context, state) => const TenantProfileScreen(),
+      ),
+      GoRoute(
+        path: Routes.deleteAccount,
+        builder: (context, state) => const DeleteAccountScreen(),
+      ),
+      GoRoute(
+        path: Routes.propertyNew,
+        builder: (context, state) => const CreatePropertyScreen(),
+      ),
+      GoRoute(
+        path: '/landlord/property/:propertyId/edit',
+        builder: (context, state) => CreatePropertyScreen(
+          propertyId: state.pathParameters['propertyId'],
+        ),
+      ),
+      GoRoute(
+        path: '/landlord/property/:propertyId/units/new',
+        builder: (context, state) => CreateUnitScreen(
+          propertyId: state.pathParameters['propertyId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/landlord/property/:propertyId/unit/:unitId/edit',
+        builder: (context, state) => CreateUnitScreen(
+          propertyId: state.pathParameters['propertyId']!,
+          unitId: state.pathParameters['unitId'],
+        ),
+      ),
+      GoRoute(
+        path: '/landlord/property/:propertyId/unit/:unitId/utilities',
+        builder: (context, state) => UnitUtilitiesScreen(
+          propertyId: state.pathParameters['propertyId']!,
+          unitId: state.pathParameters['unitId']!,
+        ),
+      ),
+
       // Four sections, each with its own navigation stack. What needs me, my
       // room, my money, my problems — organised around what a tenant thinks
       // about rather than around what the app can currently do.
@@ -236,16 +321,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenantHome,
                 builder: (context, state) => const TenantHomeScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'profile',
-                    builder: (context, state) => const TenantProfileScreen(),
-                  ),
-                  GoRoute(
-                    path: 'delete-account',
-                    builder: (context, state) => const DeleteAccountScreen(),
-                  ),
-                ],
+                routes: _tenantDetails(),
               ),
             ],
           ),
@@ -271,6 +347,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                     ],
                   ),
+                  ..._tenantDetails(),
                 ],
               ),
             ],
@@ -280,6 +357,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenantPayments,
                 builder: (context, state) => const TenantPaymentsScreen(),
+                routes: _tenantDetails(),
               ),
             ],
           ),
@@ -288,6 +366,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenantMaintenance,
                 builder: (context, state) => const MaintenanceScreen(),
+                routes: _tenantDetails(),
               ),
             ],
           ),
@@ -304,6 +383,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.landlordHome,
                 builder: (context, state) => const LandlordHomeScreen(),
+                routes: _landlordDetails(),
               ),
             ],
           ),
@@ -312,69 +392,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.properties,
                 builder: (context, state) => const PropertyListScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'new',
-                    builder: (context, state) => const CreatePropertyScreen(),
-                  ),
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) => PropertyDetailScreen(
-                      propertyId: state.pathParameters['id']!,
-                    ),
-                    routes: [
-                      GoRoute(
-                        path: 'units/new',
-                        builder: (context, state) => CreateUnitScreen(
-                          propertyId: state.pathParameters['id']!,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'edit',
-                        builder: (context, state) => CreatePropertyScreen(
-                          propertyId: state.pathParameters['id'],
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'requests',
-                        builder: (context, state) => RentalRequestsScreen(
-                          propertyId: state.pathParameters['id']!,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'share',
-                        builder: (context, state) => PropertyShareScreen(
-                          propertyId: state.pathParameters['id']!,
-                        ),
-                      ),
-                      GoRoute(
-                        // Declared after units/new, which would otherwise match with
-                        // unitId = "new".
-                        path: 'units/:unitId/edit',
-                        builder: (context, state) => CreateUnitScreen(
-                          propertyId: state.pathParameters['id']!,
-                          unitId: state.pathParameters['unitId'],
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'units/:unitId/utilities',
-                        builder: (context, state) => UnitUtilitiesScreen(
-                          propertyId: state.pathParameters['id']!,
-                          unitId: state.pathParameters['unitId']!,
-                        ),
-                      ),
-                      GoRoute(
-                        // Last of the unit routes: 'units/:unitId' would otherwise
-                        // swallow the more specific ones above it.
-                        path: 'units/:unitId',
-                        builder: (context, state) => UnitDetailScreen(
-                          propertyId: state.pathParameters['id']!,
-                          unitId: state.pathParameters['unitId']!,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                routes: _landlordDetails(),
               ),
             ],
           ),
@@ -383,22 +401,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenants,
                 builder: (context, state) => const TenantsScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':leaseId',
-                    builder: (context, state) => TenantDetailScreen(
-                      leaseId: state.pathParameters['leaseId']!,
-                    ),
-                  ),
-                ],
+                routes: _landlordDetails(),
               ),
             ],
           ),
         ],
-      ),
-      GoRoute(
-        path: Routes.notifications,
-        builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
         path: Routes.noProfile,
@@ -408,6 +415,58 @@ final routerProvider = Provider<GoRouter>((ref) {
     errorBuilder: (_, state) => NotFoundScreen(location: state.uri.toString()),
   );
 });
+
+/// What a tenant can look at from any of their tabs, mounted under each.
+List<RouteBase> _tenantDetails() => [
+      GoRoute(
+        path: Detail.notifications,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+    ];
+
+/// What a landlord can look at from any of their tabs, mounted under each.
+///
+/// So the same tenant or property opens inside whichever tab it was reached
+/// from. The paths mirror [Detail], which is how screens ask for them.
+List<RouteBase> _landlordDetails() => [
+      GoRoute(
+        path: Detail.notifications,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: 'lease/:leaseId',
+        builder: (context, state) => TenantDetailScreen(
+          leaseId: state.pathParameters['leaseId']!,
+        ),
+      ),
+      GoRoute(
+        path: 'property/:propertyId',
+        builder: (context, state) => PropertyDetailScreen(
+          propertyId: state.pathParameters['propertyId']!,
+        ),
+        routes: [
+          GoRoute(
+            path: 'requests',
+            builder: (context, state) => RentalRequestsScreen(
+              propertyId: state.pathParameters['propertyId']!,
+            ),
+          ),
+          GoRoute(
+            path: 'share',
+            builder: (context, state) => PropertyShareScreen(
+              propertyId: state.pathParameters['propertyId']!,
+            ),
+          ),
+          GoRoute(
+            path: 'unit/:unitId',
+            builder: (context, state) => UnitDetailScreen(
+              propertyId: state.pathParameters['propertyId']!,
+              unitId: state.pathParameters['unitId']!,
+            ),
+          ),
+        ],
+      ),
+    ];
 
 /// Where a signed-in user belongs.
 ///

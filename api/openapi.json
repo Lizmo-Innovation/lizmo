@@ -4584,6 +4584,14 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
@@ -4679,6 +4687,39 @@
                 },
                 "description": "A tenant who is behind"
             },
+            "AwaitingRow": {
+                "type": "object",
+                "properties": {
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "paymentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "paidOn": {
+                        "type": "string",
+                        "format": "date"
+                    }
+                },
+                "description": "A payment waiting for the landlord to confirm it"
+            },
             "CollectionsSummary": {
                 "type": "object",
                 "properties": {
@@ -4703,6 +4744,12 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ArrearsRow"
+                        }
+                    },
+                    "awaiting": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AwaitingRow"
                         }
                     }
                 },
