@@ -4,7 +4,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../widgets/section_tab_bar.dart';
 
-/// The landlord's four sections, and the bar that switches between them.
+/// The landlord's five sections, and the bar that switches between them.
 ///
 /// Each tab keeps its own navigation stack: pushing a property, then a unit,
 /// then a bed, and switching to Tenants and back returns to the bed rather than
@@ -38,6 +38,14 @@ class LandlordShell extends StatelessWidget {
       key: ValueKey('tab-tenants'),
       icon: Icons.people_outline,
       label: 'Tenants',
+    ),
+    // Its own tab, at Ariel's choice over a card on Today: a landlord with a
+    // building of bedspaces fields reports every week, and wants the list of
+    // them rather than the latest one.
+    SectionTab(
+      key: ValueKey('tab-maintenance'),
+      icon: Icons.build_outlined,
+      label: 'Maintenance',
     ),
   ];
 

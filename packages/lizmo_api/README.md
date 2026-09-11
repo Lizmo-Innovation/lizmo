@@ -89,6 +89,16 @@ Class | Method | HTTP request | Description
 *LeasesApi* | [**listTenantDocumentsForLease**](doc//LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
 *LeasesApi* | [**updateLeaseDocument**](doc//LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
 *LeasesApi* | [**uploadLeaseDocument**](doc//LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
+*MaintenanceApi* | [**addMaintenancePhoto**](doc//MaintenanceApi.md#addmaintenancephoto) | **POST** /api/v1/me/maintenance/{id}/photos | Add a photo to my report
+*MaintenanceApi* | [**confirmMaintenanceFixed**](doc//MaintenanceApi.md#confirmmaintenancefixed) | **POST** /api/v1/me/maintenance/{id}/fixed | Say it is fixed
+*MaintenanceApi* | [**listMyMaintenanceReports**](doc//MaintenanceApi.md#listmymaintenancereports) | **GET** /api/v1/me/maintenance | What I have reported
+*MaintenanceApi* | [**reopenMaintenanceReport**](doc//MaintenanceApi.md#reopenmaintenancereport) | **POST** /api/v1/me/maintenance/{id}/reopen | Say it is still broken
+*MaintenanceApi* | [**reportProblem**](doc//MaintenanceApi.md#reportproblem) | **POST** /api/v1/me/maintenance | Report something broken
+*MaintenanceApi* | [**withdrawMaintenanceReport**](doc//MaintenanceApi.md#withdrawmaintenancereport) | **POST** /api/v1/me/maintenance/{id}/withdraw | Take my report back
+*MaintenanceToHandleApi* | [**getMaintenanceReport**](doc//MaintenanceToHandleApi.md#getmaintenancereport) | **GET** /api/v1/maintenance/{id} | One report in full
+*MaintenanceToHandleApi* | [**listMaintenanceReports**](doc//MaintenanceToHandleApi.md#listmaintenancereports) | **GET** /api/v1/maintenance | Everything reported on my properties
+*MaintenanceToHandleApi* | [**resolveMaintenance**](doc//MaintenanceToHandleApi.md#resolvemaintenance) | **POST** /api/v1/maintenance/{id}/resolve | Say it is fixed
+*MaintenanceToHandleApi* | [**startMaintenance**](doc//MaintenanceToHandleApi.md#startmaintenance) | **POST** /api/v1/maintenance/{id}/start | Start on it
 *MyAccountApi* | [**checkAccountDeletable**](doc//MyAccountApi.md#checkaccountdeletable) | **GET** /api/v1/me/deletable | Whether this account can be closed
 *MyAccountApi* | [**deleteMyAccount**](doc//MyAccountApi.md#deletemyaccount) | **DELETE** /api/v1/me | Close my account
 *NotificationsApi* | [**countUnreadNotifications**](doc//NotificationsApi.md#countunreadnotifications) | **GET** /api/v1/me/notifications/unread-count | How many are unread
@@ -163,6 +173,8 @@ Class | Method | HTTP request | Description
  - [LeaseDocumentResponse](doc//LeaseDocumentResponse.md)
  - [LeaseResponse](doc//LeaseResponse.md)
  - [LoginRequest](doc//LoginRequest.md)
+ - [MaintenanceNote](doc//MaintenanceNote.md)
+ - [MaintenanceReportResponse](doc//MaintenanceReportResponse.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [NotificationResponse](doc//NotificationResponse.md)
  - [OccupancySummary](doc//OccupancySummary.md)
@@ -179,6 +191,7 @@ Class | Method | HTTP request | Description
  - [RentalRequestCreate](doc//RentalRequestCreate.md)
  - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
  - [RentalRequestResponse](doc//RentalRequestResponse.md)
+ - [ReportProblemRequest](doc//ReportProblemRequest.md)
  - [StartPasswordResetRequest](doc//StartPasswordResetRequest.md)
  - [StartPasswordResetResponse](doc//StartPasswordResetResponse.md)
  - [StartRegistrationRequest](doc//StartRegistrationRequest.md)

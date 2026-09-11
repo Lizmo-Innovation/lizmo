@@ -18,5 +18,6 @@ public enum DocumentOwnerType {
      * <p>Attached to the payment rather than the lease, so that deleting a
      * rejected payment takes its evidence with it.
      */
-    PAYMENT
+    PAYMENT,
+    MAINTENANCE_REQUEST
 }

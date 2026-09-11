@@ -40,6 +40,10 @@ import 'package:lizmo/screens/tenant_payments_screen.dart';
 import 'package:lizmo/screens/tenant_profile_screen.dart';
 import 'package:lizmo/widgets/section_tab_bar.dart';
 import 'package:lizmo/screens/rent_roll_screen.dart';
+import 'package:lizmo/maintenance/maintenance_providers.dart';
+import 'package:lizmo/screens/maintenance_inbox_screen.dart';
+import 'package:lizmo/screens/maintenance_report_screen.dart';
+import 'package:http/http.dart' show MultipartFile;
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -492,6 +496,91 @@ class _FakeRentApi extends RentApi {
     Future<void>? abortTrigger,
   }) async {
     recorded.add(recordPaymentRequest);
+    return null;
+  }
+}
+
+/// Keeps what the tenant's Maintenance tab asked of the API.
+class _FakeMaintenanceApi extends MaintenanceApi {
+  _FakeMaintenanceApi(this.answer);
+
+  final MaintenanceReportResponse answer;
+  final reported = <String>[];
+  final photos = <String>[];
+  final withdrawn = <String>[];
+  final fixed = <String>[];
+  final reopened = <(String, String?)>[];
+
+  @override
+  Future<MaintenanceReportResponse?> reportProblem(
+    ReportProblemRequest reportProblemRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    reported.add(reportProblemRequest.description);
+    return answer;
+  }
+
+  @override
+  Future<MaintenanceReportResponse?> addMaintenancePhoto(
+    String id,
+    MultipartFile photo, {
+    Future<void>? abortTrigger,
+  }) async {
+    photos.add(id);
+    return answer;
+  }
+
+  @override
+  Future<MaintenanceReportResponse?> withdrawMaintenanceReport(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    withdrawn.add(id);
+    return answer;
+  }
+
+  @override
+  Future<MaintenanceReportResponse?> confirmMaintenanceFixed(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    fixed.add(id);
+    return answer;
+  }
+
+  @override
+  Future<MaintenanceReportResponse?> reopenMaintenanceReport(
+    String id,
+    MaintenanceNote maintenanceNote, {
+    Future<void>? abortTrigger,
+  }) async {
+    reopened.add((id, maintenanceNote.text));
+    return answer;
+  }
+}
+
+/// Keeps what the landlord's report screen asked of the API.
+class _FakeMaintenanceToHandleApi extends MaintenanceToHandleApi {
+  final started = <(String, String?)>[];
+  final resolved = <(String, String?)>[];
+
+  @override
+  Future<MaintenanceReportResponse?> startMaintenance(
+    String id, {
+    MaintenanceNote? maintenanceNote,
+    Future<void>? abortTrigger,
+  }) async {
+    started.add((id, maintenanceNote?.text));
+    return null;
+  }
+
+  @override
+  Future<MaintenanceReportResponse?> resolveMaintenance(
+    String id, {
+    MaintenanceNote? maintenanceNote,
+    Future<void>? abortTrigger,
+  }) async {
+    resolved.add((id, maintenanceNote?.text));
     return null;
   }
 }
@@ -2343,7 +2432,13 @@ void main() {
 
       expect(find.text('Occupied'), findsOneWidget);
       expect(find.text('Vacant'), findsOneWidget);
-      expect(find.text('Maintenance'), findsOneWidget);
+      // The bed's own chip. "Maintenance" is also the landlord's fifth tab,
+      // which is a different thing that happens to share the word.
+      expect(
+        find.descendant(
+            of: find.byType(StatusChip), matching: find.text('Maintenance')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a bed can be renamed', (tester) async {
@@ -2464,7 +2559,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.lastMaintenance!.underMaintenance, isTrue);
-      expect(find.text('Maintenance'), findsOneWidget);
+      // The bed's own chip. "Maintenance" is also the landlord's fifth tab,
+      // which is a different thing that happens to share the word.
+      expect(
+        find.descendant(
+            of: find.byType(StatusChip), matching: find.text('Maintenance')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a bed out of service can be returned to it', (tester) async {
@@ -3486,7 +3587,7 @@ void main() {
           child: const LizmoApp(),
         );
 
-    testWidgets('four sections, opening on Today', (tester) async {
+    testWidgets('five sections, opening on Today', (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
 
@@ -3494,6 +3595,7 @@ void main() {
       expect(find.byKey(const ValueKey('tab-rent')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-properties')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-tenants')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-maintenance')), findsOneWidget);
       expect(find.byType(LandlordHomeScreen), findsOneWidget);
     });
 
@@ -5200,14 +5302,16 @@ void _tenantLeaseTests() {
       expect(find.textContaining('cannot record payments'), findsNothing);
     });
 
-    testWidgets('maintenance still says plainly that it is empty',
-        (tester) async {
+    /// It said "Not built yet" and told tenants to tell their landlord the
+    /// way they normally would.
+    testWidgets('maintenance lets a tenant report a problem', (tester) async {
       await tester.pumpWidget(appWith([lease()]));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
       await tester.pumpAndSettle();
-      expect(find.text('Not built yet'), findsOneWidget);
+      expect(find.byKey(const ValueKey('report-problem')), findsOneWidget);
+      expect(find.text('Not built yet'), findsNothing);
     });
 
     testWidgets('each tab keeps its own stack', (tester) async {
@@ -7769,6 +7873,362 @@ void _tenantLeaseTests() {
       await openRent(tester);
 
       expect(find.text('No rent due in ${monthName(thisMonth)}'), findsOneWidget);
+    });
+  });
+
+  MaintenanceReportResponse maintenanceReport({
+    String id = 'm1',
+    String status = 'SUBMITTED',
+    bool reopened = false,
+    String? remarks,
+    String? reopenReason,
+  }) => MaintenanceReportResponse(
+    id: id,
+    leaseId: 'l1',
+    propertyId: 'p1',
+    propertyName: 'Sunrise Apartments',
+    unitNumber: '2B',
+    bedLabel: 'Bed 1',
+    tenantName: 'Ana Reyes',
+    description: 'The tap will not stop dripping.',
+    status: MaintenanceReportResponseStatusEnum.fromJson(status),
+    landlordRemarks: remarks,
+    reopened: reopened,
+    reopenReason: reopenReason,
+    submittedAt: DateTime.utc(2026, 9, 3, 4),
+    photoUrls: const [],
+  );
+
+  group('maintenance, as the tenant', () {
+    Widget appWith({
+      List<MaintenanceReportResponse> reports = const [],
+      _FakeMaintenanceApi? api,
+      bool renting = true,
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myTenantProfileProvider.overrideWith(
+          (ref) async => TenantProfileResponse(readyForALease: true),
+        ),
+        myTenantDocumentsProvider.overrideWith(
+          (ref) async => const <TenantDocumentResponse>[],
+        ),
+        myRentalRequestsProvider.overrideWith(
+          (ref) async => const <RentalRequestResponse>[],
+        ),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        myLeasesProvider.overrideWith((ref) async => renting
+            ? [
+                LeaseResponse(
+                  id: 'l1',
+                  tenantId: 't1',
+                  propertyName: 'Sunrise Apartments',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 1',
+                  rentAmount: 2500,
+                  dueDateDay: 5,
+                  status: LeaseResponseStatusEnum.ACTIVE,
+                ),
+              ]
+            : const <LeaseResponse>[]),
+        myMaintenanceProvider.overrideWith((ref) async => reports),
+        if (api != null) maintenanceApiProvider.overrideWithValue(api),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openMaintenance(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('nothing reported yet offers the way to report',
+        (tester) async {
+      await tester.pumpWidget(appWith());
+      await openMaintenance(tester);
+
+      expect(find.byKey(const ValueKey('report-problem')), findsOneWidget);
+      expect(find.text('Nothing reported'), findsOneWidget);
+    });
+
+    /// A report belongs to a tenancy: there is nothing to report about a room
+    /// you do not live in.
+    testWidgets('somebody not renting is told why they cannot report',
+        (tester) async {
+      await tester.pumpWidget(appWith(renting: false));
+      await openMaintenance(tester);
+
+      expect(find.text('Nothing to report yet'), findsOneWidget);
+      expect(find.byKey(const ValueKey('report-problem')), findsNothing);
+    });
+
+    testWidgets('reporting sends what was written to the landlord',
+        (tester) async {
+      final api = _FakeMaintenanceApi(maintenanceReport());
+      await tester.pumpWidget(appWith(api: api));
+      await openMaintenance(tester);
+
+      await tester.tap(find.byKey(const ValueKey('report-problem')));
+      await tester.pumpAndSettle();
+      expect(find.text('Report a problem'), findsWidgets);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('problem-description')), 'The tap drips.');
+      final send = find.byKey(const ValueKey('send-report'));
+      await tester.ensureVisible(send);
+      await tester.tap(send);
+      await tester.pumpAndSettle();
+
+      expect(api.reported, ['The tap drips.']);
+      expect(api.photos, isEmpty);
+      expect(find.text('Sent to your landlord.'), findsOneWidget);
+    });
+
+    testWidgets('a report has to say something', (tester) async {
+      final api = _FakeMaintenanceApi(maintenanceReport());
+      await tester.pumpWidget(appWith(api: api));
+      await openMaintenance(tester);
+
+      await tester.tap(find.byKey(const ValueKey('report-problem')));
+      await tester.pumpAndSettle();
+      final send = find.byKey(const ValueKey('send-report'));
+      await tester.ensureVisible(send);
+      await tester.tap(send);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Say what is broken'), findsOneWidget);
+      expect(api.reported, isEmpty);
+    });
+
+    testWidgets('a report shows where it has got to, and what was said',
+        (tester) async {
+      await tester.pumpWidget(appWith(reports: [
+        maintenanceReport(
+            status: 'IN_PROGRESS', remarks: 'The plumber comes Saturday.'),
+      ]));
+      await openMaintenance(tester);
+
+      expect(find.text('The tap will not stop dripping.'), findsOneWidget);
+      expect(find.text('In progress'), findsOneWidget);
+      expect(find.text('Your landlord'), findsOneWidget);
+      expect(find.text('The plumber comes Saturday.'), findsOneWidget);
+    });
+
+    testWidgets('a report nobody has started on can be taken back',
+        (tester) async {
+      final api = _FakeMaintenanceApi(maintenanceReport());
+      await tester.pumpWidget(appWith(reports: [maintenanceReport()], api: api));
+      await openMaintenance(tester);
+
+      await tester.tap(find.byKey(const ValueKey('withdraw-m1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('withdraw-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.withdrawn, ['m1']);
+    });
+
+    /// Somebody may already have bought the part.
+    testWidgets('once work has started there is nothing to take back',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith(reports: [maintenanceReport(status: 'IN_PROGRESS')]));
+      await openMaintenance(tester);
+
+      expect(find.byKey(const ValueKey('withdraw-m1')), findsNothing);
+    });
+
+    /// A landlord saying it is fixed and it being fixed are different things.
+    testWidgets('the tenant has the last word on fixed', (tester) async {
+      final api = _FakeMaintenanceApi(maintenanceReport());
+      await tester.pumpWidget(appWith(
+          reports: [maintenanceReport(status: 'RESOLVED')], api: api));
+      await openMaintenance(tester);
+
+      expect(find.text('Your landlord says this is fixed. Is it?'),
+          findsOneWidget);
+      expect(find.text('Is it fixed?'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('fixed-m1')));
+      await tester.pumpAndSettle();
+
+      expect(api.fixed, ['m1']);
+    });
+
+    testWidgets('still broken asks why, and will not send without it',
+        (tester) async {
+      final api = _FakeMaintenanceApi(maintenanceReport());
+      await tester.pumpWidget(appWith(
+          reports: [maintenanceReport(status: 'RESOLVED')], api: api));
+      await openMaintenance(tester);
+
+      await tester.tap(find.byKey(const ValueKey('reopen-m1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('reopen-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Say what is still wrong'), findsOneWidget);
+      expect(api.reopened, isEmpty);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('reopen-reason')), 'Dripping again.');
+      await tester.tap(find.byKey(const ValueKey('reopen-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.reopened, [('m1', 'Dripping again.')]);
+    });
+
+    testWidgets('a reopened report says so', (tester) async {
+      await tester.pumpWidget(appWith(reports: [
+        maintenanceReport(reopened: true, reopenReason: 'Dripping again.'),
+      ]));
+      await openMaintenance(tester);
+
+      expect(find.text('Reopened'), findsOneWidget);
+      expect(find.text('You said it was still broken'), findsOneWidget);
+    });
+  });
+
+  group('maintenance, as the landlord', () {
+    Widget appWith({
+      List<MaintenanceReportResponse> reports = const [],
+      _FakeMaintenanceToHandleApi? api,
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        maintenanceToHandleProvider.overrideWith((ref) async => reports),
+        for (final report in reports)
+          maintenanceReportProvider(report.id!).overrideWith((ref) async => report),
+        if (api != null) maintenanceToHandleApiProvider.overrideWithValue(api),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openMaintenance(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Maintenance is the fifth tab', (tester) async {
+      await tester.pumpWidget(appWith());
+      await openMaintenance(tester);
+
+      expect(find.byType(MaintenanceInboxScreen), findsOneWidget);
+      expect(_tabIndex(tester), 4);
+      expect(find.text('Nothing reported'), findsOneWidget);
+    });
+
+    /// The question a landlord opens this with is whose move it is.
+    testWidgets('reports are grouped by whose move it is', (tester) async {
+      await tester.pumpWidget(appWith(reports: [
+        maintenanceReport(id: 'm1'),
+        maintenanceReport(id: 'm2', status: 'IN_PROGRESS'),
+        maintenanceReport(id: 'm3', status: 'RESOLVED'),
+        maintenanceReport(id: 'm4', status: 'CLOSED'),
+      ]));
+      await openMaintenance(tester);
+
+      expect(find.text('Needs you'), findsOneWidget);
+      expect(find.text('Waiting for the tenant to confirm'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(LatticeHeader), matching: find.text('1')),
+          findsNWidgets(3));
+    });
+
+    testWidgets('a report opens inside Maintenance, saying where and who',
+        (tester) async {
+      await tester.pumpWidget(appWith(reports: [maintenanceReport()]));
+      await openMaintenance(tester);
+
+      await tester.tap(find.byKey(const ValueKey('maintenance-m1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceReportScreen), findsOneWidget);
+      expect(_tabIndex(tester), 4);
+      expect(find.text('Bed 1, 2B · Sunrise Apartments'), findsOneWidget);
+      expect(find.text('Reported by Ana Reyes on 3 Sep'), findsOneWidget);
+    });
+
+    testWidgets('starting on it passes the remark on', (tester) async {
+      final api = _FakeMaintenanceToHandleApi();
+      await tester.pumpWidget(appWith(reports: [maintenanceReport()], api: api));
+      await openMaintenance(tester);
+      await tester.tap(find.byKey(const ValueKey('maintenance-m1')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-maintenance')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('maintenance-remark')), 'Plumber Saturday.');
+      await tester.tap(find.byKey(const ValueKey('remark-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.started, [('m1', 'Plumber Saturday.')]);
+    });
+
+    /// The tenant is told either way; saying nothing sends nothing.
+    testWidgets('marking fixed without a remark sends none', (tester) async {
+      final api = _FakeMaintenanceToHandleApi();
+      await tester.pumpWidget(appWith(reports: [maintenanceReport()], api: api));
+      await openMaintenance(tester);
+      await tester.tap(find.byKey(const ValueKey('maintenance-m1')));
+      await tester.pumpAndSettle();
+
+      final resolve = find.byKey(const ValueKey('resolve-maintenance'));
+      await tester.ensureVisible(resolve);
+      await tester.tap(resolve);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('remark-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.resolved, [('m1', null)]);
+    });
+
+    /// A reopened report looks exactly like a new one otherwise, and is not.
+    testWidgets('a reopened report says why, before anything else',
+        (tester) async {
+      await tester.pumpWidget(appWith(reports: [
+        maintenanceReport(reopened: true, reopenReason: 'Dripping again.'),
+      ]));
+      await openMaintenance(tester);
+
+      expect(find.text('Reopened'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('maintenance-m1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your tenant says it is still broken'), findsOneWidget);
+      expect(find.text('Dripping again.'), findsOneWidget);
+    });
+
+    testWidgets('once marked fixed, the move is the tenant\'s',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith(reports: [maintenanceReport(status: 'RESOLVED')]));
+      await openMaintenance(tester);
+      await tester.tap(find.byKey(const ValueKey('maintenance-m1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waiting for your tenant to confirm it is fixed.'),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('start-maintenance')), findsNothing);
+      expect(find.byKey(const ValueKey('resolve-maintenance')), findsNothing);
     });
   });
 }

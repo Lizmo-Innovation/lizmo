@@ -54,6 +54,12 @@ NotificationDestination? _forLandlord(
   String? type,
   NotificationResponse notification,
 ) {
+  // A report opens itself, whichever step of it the news was about.
+  if (notification.relatedEntityType?.toJson() == 'MAINTENANCE_REQUEST') {
+    final report = notification.relatedEntityId;
+    return report == null ? null : OpenDetail(Detail.maintenance(report));
+  }
+
   // A request is answered on its property, among any others for it.
   if (type == 'REQUEST_RECEIVED') {
     final property = notification.propertyId;
@@ -79,5 +85,6 @@ NotificationDestination? _forTenant(String? type) => switch (type) {
       'PAYMENT_CONFIRMED' ||
       'PAYMENT_REJECTED' =>
         const SwitchTab(Routes.tenantPayments),
+      'MAINTENANCE_STATUS_CHANGED' => const SwitchTab(Routes.tenantMaintenance),
       _ => null,
     };

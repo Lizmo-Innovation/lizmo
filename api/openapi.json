@@ -16,6 +16,10 @@
             "description": "What is waiting for a landlord"
         },
         {
+            "name": "Maintenance to handle",
+            "description": "What tenants have reported"
+        },
+        {
             "name": "Units",
             "description": "Units and the beds within them"
         },
@@ -46,6 +50,10 @@
         {
             "name": "Tenant documents",
             "description": "A tenant's own photographs"
+        },
+        {
+            "name": "Maintenance",
+            "description": "Reporting something broken"
         },
         {
             "name": "My account",
@@ -1189,6 +1197,241 @@
                 }
             }
         },
+        "/api/v1/me/maintenance": {
+            "get": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "What I have reported",
+                "description": "Newest first, whatever became of each.",
+                "operationId": "listMyMaintenanceReports",
+                "responses": {
+                    "200": {
+                        "description": "The reports",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "Report something broken",
+                "description": "Against the tenancy the caller is living under now. The landlord is told. Photos are added afterwards, one at a time.",
+                "operationId": "reportProblem",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReportProblemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No tenancy, or nothing described",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/maintenance/{id}/withdraw": {
+            "post": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "Take my report back",
+                "description": "Only while nobody has started on it. Kept, not deleted.",
+                "operationId": "withdrawMaintenanceReport",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The withdrawn report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/maintenance/{id}/reopen": {
+            "post": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "Say it is still broken",
+                "description": "On a report the landlord has marked resolved. A reason is required: it is the whole of what the landlord needs to hear.",
+                "operationId": "reopenMaintenanceReport",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MaintenanceNote"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The reopened report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/maintenance/{id}/photos": {
+            "post": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "Add a photo to my report",
+                "description": "Up to three, while nobody has started on it. Re-encoded, so no EXIF or location leaves the phone.",
+                "operationId": "addMaintenancePhoto",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "photo"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "photo": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The report, with the photo",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Three already, or work has started",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/maintenance/{id}/fixed": {
+            "post": {
+                "tags": [
+                    "Maintenance"
+                ],
+                "summary": "Say it is fixed",
+                "description": "Closes a report the landlord has marked resolved.",
+                "operationId": "confirmMaintenanceFixed",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The closed report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/leases/{leaseId}/payments": {
             "get": {
                 "tags": [
@@ -1280,6 +1523,90 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}/start": {
+            "post": {
+                "tags": [
+                    "Maintenance to handle"
+                ],
+                "summary": "Start on it",
+                "description": "The tenant is told, with the remark if there is one.",
+                "operationId": "startMaintenance",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MaintenanceNote"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}/resolve": {
+            "post": {
+                "tags": [
+                    "Maintenance to handle"
+                ],
+                "summary": "Say it is fixed",
+                "description": "The tenant is asked to confirm, or to say it is still broken.",
+                "operationId": "resolveMaintenance",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MaintenanceNote"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
                                 }
                             }
                         }
@@ -2787,6 +3114,73 @@
                 }
             }
         },
+        "/api/v1/maintenance": {
+            "get": {
+                "tags": [
+                    "Maintenance to handle"
+                ],
+                "summary": "Everything reported on my properties",
+                "description": "Newest first, across every property, whatever became of each.",
+                "operationId": "listMaintenanceReports",
+                "responses": {
+                    "200": {
+                        "description": "The reports",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}": {
+            "get": {
+                "tags": [
+                    "Maintenance to handle"
+                ],
+                "summary": "One report in full",
+                "operationId": "getMaintenanceReport",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The report",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MaintenanceReportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not on your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{leaseId}/tenant": {
             "get": {
                 "tags": [
@@ -3275,6 +3669,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -3313,30 +3731,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -3943,6 +4337,111 @@
                     }
                 },
                 "description": "A request a tenant has sent"
+            },
+            "ReportProblemRequest": {
+                "required": [
+                    "description"
+                ],
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "The tap in the shared bathroom will not stop dripping."
+                    }
+                },
+                "description": "Reporting something broken"
+            },
+            "MaintenanceReportResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "SUBMITTED",
+                            "IN_PROGRESS",
+                            "RESOLVED",
+                            "CLOSED",
+                            "WITHDRAWN"
+                        ]
+                    },
+                    "landlordRemarks": {
+                        "type": "string"
+                    },
+                    "reopened": {
+                        "type": "boolean"
+                    },
+                    "reopenReason": {
+                        "type": "string"
+                    },
+                    "submittedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "resolvedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "closedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "photoUrls": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "photoUrlsExpireInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "Something broken, and what has happened since"
+            },
+            "MaintenanceNote": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "maxLength": 1000,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "The plumber is coming on Saturday morning."
+                    }
+                },
+                "description": "Something said alongside a change"
             },
             "RecordPaymentRequest": {
                 "required": [
@@ -4766,6 +5265,7 @@
                             "RENT_OVERDUE",
                             "PAYMENT_CONFIRMED",
                             "PAYMENT_REJECTED",
+                            "MAINTENANCE_REPORTED",
                             "MAINTENANCE_STATUS_CHANGED",
                             "NEW_NOTICE_POSTED",
                             "LEASE_EXPIRING",

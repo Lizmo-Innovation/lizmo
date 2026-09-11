@@ -264,6 +264,7 @@ enum NotificationResponseTypeEnum {
   RENT_OVERDUE._(r'RENT_OVERDUE'),
   PAYMENT_CONFIRMED._(r'PAYMENT_CONFIRMED'),
   PAYMENT_REJECTED._(r'PAYMENT_REJECTED'),
+  MAINTENANCE_REPORTED._(r'MAINTENANCE_REPORTED'),
   MAINTENANCE_STATUS_CHANGED._(r'MAINTENANCE_STATUS_CHANGED'),
   NEW_NOTICE_POSTED._(r'NEW_NOTICE_POSTED'),
   LEASE_EXPIRING._(r'LEASE_EXPIRING'),
@@ -335,6 +336,7 @@ class NotificationResponseTypeEnumTypeTransformer {
         case r'RENT_OVERDUE': return NotificationResponseTypeEnum.RENT_OVERDUE;
         case r'PAYMENT_CONFIRMED': return NotificationResponseTypeEnum.PAYMENT_CONFIRMED;
         case r'PAYMENT_REJECTED': return NotificationResponseTypeEnum.PAYMENT_REJECTED;
+        case r'MAINTENANCE_REPORTED': return NotificationResponseTypeEnum.MAINTENANCE_REPORTED;
         case r'MAINTENANCE_STATUS_CHANGED': return NotificationResponseTypeEnum.MAINTENANCE_STATUS_CHANGED;
         case r'NEW_NOTICE_POSTED': return NotificationResponseTypeEnum.NEW_NOTICE_POSTED;
         case r'LEASE_EXPIRING': return NotificationResponseTypeEnum.LEASE_EXPIRING;

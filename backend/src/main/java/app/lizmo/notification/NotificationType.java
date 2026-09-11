@@ -40,6 +40,10 @@ public enum NotificationType {
     RENT_OVERDUE,
     PAYMENT_CONFIRMED,
     PAYMENT_REJECTED,
+    /** To the landlord: a tenant says something is broken. */
+    MAINTENANCE_REPORTED,
+
+    /** Everything after the report, to whichever side did not make the change. */
     MAINTENANCE_STATUS_CHANGED,
     NEW_NOTICE_POSTED,
     LEASE_EXPIRING,

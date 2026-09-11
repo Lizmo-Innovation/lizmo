@@ -30,6 +30,8 @@ import 'screens/tenant_home_screen.dart';
 import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
 import 'screens/delete_account_screen.dart';
+import 'screens/maintenance_inbox_screen.dart';
+import 'screens/maintenance_report_screen.dart';
 import 'screens/maintenance_screen.dart';
 import 'screens/my_place_screen.dart';
 import 'screens/tenant_payments_screen.dart';
@@ -97,6 +99,9 @@ abstract final class Routes {
   static const properties = '/landlord/properties';
   static const tenants = '/landlord/tenants';
 
+  /// Everything tenants have reported, across every property.
+  static const maintenanceInbox = '/landlord/maintenance';
+
   // Forms. Each covers the tabs until it is saved or abandoned: a half-filled
   // form left behind in another tab is one nobody comes back to. Things to
   // look at are not here -- they open inside the current tab. See [Detail].
@@ -123,6 +128,7 @@ abstract final class Routes {
     rent,
     properties,
     tenants,
+    maintenanceInbox,
     tenantHome,
     tenantPlace,
     tenantPayments,
@@ -155,6 +161,7 @@ abstract final class Detail {
   static String share(String propertyId) => 'property/$propertyId/share';
   static String unit(String propertyId, String unitId) =>
       'property/$propertyId/unit/$unitId';
+  static String maintenance(String reportId) => 'maintenance/$reportId';
 }
 
 extension OpenInTab on BuildContext {
@@ -379,7 +386,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // Four sections, each with its own navigation stack. Pushing a
+      // Five sections, each with its own navigation stack. Pushing a
       // property, a unit and a bed, switching to Tenants and coming back
       // returns to the bed — which is what a tab bar is for.
       StatefulShellRoute.indexedStack(
@@ -421,6 +428,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.maintenanceInbox,
+                builder: (context, state) => const MaintenanceInboxScreen(),
+                routes: _landlordDetails(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -448,6 +464,12 @@ List<RouteBase> _landlordDetails() => [
       GoRoute(
         path: Detail.notifications,
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: 'maintenance/:reportId',
+        builder: (context, state) => MaintenanceReportScreen(
+          reportId: state.pathParameters['reportId']!,
+        ),
       ),
       GoRoute(
         path: 'lease/:leaseId',

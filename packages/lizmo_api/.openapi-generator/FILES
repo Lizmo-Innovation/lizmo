@@ -28,7 +28,11 @@ doc/LeaseDocumentResponse.md
 doc/LeaseResponse.md
 doc/LeasesApi.md
 doc/LoginRequest.md
+doc/MaintenanceApi.md
+doc/MaintenanceNote.md
+doc/MaintenanceReportResponse.md
 doc/MaintenanceRequest.md
+doc/MaintenanceToHandleApi.md
 doc/MyAccountApi.md
 doc/NotificationResponse.md
 doc/NotificationsApi.md
@@ -48,6 +52,7 @@ doc/RentRollRow.md
 doc/RentalRequestCreate.md
 doc/RentalRequestForLandlord.md
 doc/RentalRequestResponse.md
+doc/ReportProblemRequest.md
 doc/RequestsToAnswerApi.md
 doc/SigningUpApi.md
 doc/StartPasswordResetRequest.md
@@ -81,6 +86,8 @@ lib/api/asking_for_a_room_api.dart
 lib/api/auth_api.dart
 lib/api/finding_a_place_api.dart
 lib/api/leases_api.dart
+lib/api/maintenance_api.dart
+lib/api/maintenance_to_handle_api.dart
 lib/api/my_account_api.dart
 lib/api/notifications_api.dart
 lib/api/properties_api.dart
@@ -120,6 +127,8 @@ lib/model/landlord_summary.dart
 lib/model/lease_document_response.dart
 lib/model/lease_response.dart
 lib/model/login_request.dart
+lib/model/maintenance_note.dart
+lib/model/maintenance_report_response.dart
 lib/model/maintenance_request.dart
 lib/model/notification_response.dart
 lib/model/occupancy_summary.dart
@@ -136,6 +145,7 @@ lib/model/rent_roll_row.dart
 lib/model/rental_request_create.dart
 lib/model/rental_request_for_landlord.dart
 lib/model/rental_request_response.dart
+lib/model/report_problem_request.dart
 lib/model/start_password_reset_request.dart
 lib/model/start_password_reset_response.dart
 lib/model/start_registration_request.dart
@@ -158,6 +168,8 @@ lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
-test/rent_roll_row_test.dart
-test/rent_roll_test.dart
-test/waiting_payment_test.dart
+test/maintenance_api_test.dart
+test/maintenance_note_test.dart
+test/maintenance_report_response_test.dart
+test/maintenance_to_handle_api_test.dart
+test/report_problem_request_test.dart

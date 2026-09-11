@@ -227,6 +227,10 @@ class ApiClient {
           return LeaseResponse.fromJson(value);
         case 'LoginRequest':
           return LoginRequest.fromJson(value);
+        case 'MaintenanceNote':
+          return MaintenanceNote.fromJson(value);
+        case 'MaintenanceReportResponse':
+          return MaintenanceReportResponse.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
         case 'NotificationResponse':
@@ -259,6 +263,8 @@ class ApiClient {
           return RentalRequestForLandlord.fromJson(value);
         case 'RentalRequestResponse':
           return RentalRequestResponse.fromJson(value);
+        case 'ReportProblemRequest':
+          return ReportProblemRequest.fromJson(value);
         case 'StartPasswordResetRequest':
           return StartPasswordResetRequest.fromJson(value);
         case 'StartPasswordResetResponse':

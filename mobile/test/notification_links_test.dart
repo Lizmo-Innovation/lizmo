@@ -110,6 +110,42 @@ void main() {
     });
   });
 
+  group('maintenance', () {
+    NotificationResponse aboutReport(NotificationResponseTypeEnum type) =>
+        NotificationResponse(
+          id: 'n1',
+          type: type,
+          relatedEntityType:
+              NotificationResponseRelatedEntityTypeEnum.MAINTENANCE_REQUEST,
+          relatedEntityId: 'm1',
+        );
+
+    /// Whichever step the news was about, the landlord opens the report.
+    for (final type in [
+      NotificationResponseTypeEnum.MAINTENANCE_REPORTED,
+      NotificationResponseTypeEnum.MAINTENANCE_STATUS_CHANGED,
+    ]) {
+      test('${type.toJson()} opens the report for a landlord', () {
+        expect(
+          destinationOf(aboutReport(type), LizmoProfile.landlord),
+          isA<OpenDetail>()
+              .having((d) => d.detail, 'detail', Detail.maintenance('m1')),
+        );
+      });
+    }
+
+    test('a change to their report opens Maintenance for a tenant', () {
+      expect(
+        destinationOf(
+          aboutReport(NotificationResponseTypeEnum.MAINTENANCE_STATUS_CHANGED),
+          LizmoProfile.tenant,
+        ),
+        isA<SwitchTab>()
+            .having((d) => d.tab, 'tab', Routes.tenantMaintenance),
+      );
+    });
+  });
+
   test('an account on neither side is sent nowhere', () {
     expect(
       destinationOf(
