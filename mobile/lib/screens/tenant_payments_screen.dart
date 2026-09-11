@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -9,14 +8,14 @@ import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/declare_payment_sheet.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/rent_schedule_list.dart';
 import '../widgets/role_switcher.dart';
 
-/// Rent: what is coming, and what has been paid.
+/// Rent: what is owed, month by month, and saying it has been paid.
 ///
-/// Empty, and says so. Nothing raises a rent period yet — billing_periods and
-/// payments exist in the schema and no endpoint writes to either — so there is
-/// no history to show and no balance to compute.
+/// Called Rent rather than Payments, as on the landlord's side: it holds what
+/// is owed as much as what was paid.
 ///
 /// This screen used to be three invented rows on the home screen saying 2,500
 /// pesos was overdue. A tenant who had just signed up was told they owed money
@@ -35,10 +34,17 @@ class TenantPaymentsScreen extends ConsumerWidget {
         children: [
           const LatticeHeader(
             eyebrow: 'Lizmo',
-            title: 'Payments',
+            title: 'Rent',
+            // With the bell, like Home. News about rent is read here as often
+            // as anywhere.
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
             ),
           ),
           Expanded(
@@ -60,8 +66,8 @@ class TenantPaymentsScreen extends ConsumerWidget {
 /// The months of rent on this tenancy.
 ///
 /// This screen used to say Lizmo could not record payments and that the tenant
-/// should keep their own receipts. It can now record what is owed; recording
-/// what has been handed over comes next.
+/// should keep their own receipts. Tapping a month that is still owed now
+/// tells the landlord it has been paid.
 class _Rent extends ConsumerStatefulWidget {
   const _Rent({required this.leaseId});
 
@@ -83,37 +89,15 @@ class _RentState extends ConsumerState<_Rent> {
     if (said == null || !mounted) return;
 
     setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(rentApiProvider).declarePayment(
-            widget.leaseId,
-            RecordPaymentRequest(
-              billingPeriodId: period.id!,
-              amountPaid: said.amount,
-              paymentMethod: said.method,
-              remarks: said.note,
-            ),
-            proof: said.proof == null
-                ? null
-                : http.MultipartFile.fromBytes(
-                    'proof',
-                    await said.proof!.readAsBytes(),
-                    filename: said.proof!.name,
-                  ),
-          );
-      ref.invalidate(myBillingProvider(widget.leaseId));
-      ref.invalidate(myPaymentsProvider(widget.leaseId));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Told your landlord. They will confirm it.'),
-        ));
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ApiFailure.from(error).message),
-        ));
-      }
+      await sendDeclaration(ref,
+          leaseId: widget.leaseId, period: period, said: said);
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Told your landlord. They will confirm it.'),
+      ));
+    } on ApiFailure catch (failure) {
+      messenger.showSnackBar(SnackBar(content: Text(failure.message)));
     } finally {
       if (mounted) setState(() => _sending = false);
     }

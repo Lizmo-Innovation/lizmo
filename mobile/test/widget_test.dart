@@ -1055,7 +1055,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(_app(_signedIn({LizmoProfile.tenant})));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Account'));
@@ -1070,7 +1070,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TenantPaymentsScreen), findsOneWidget);
-      expect(_tabIndex(tester), 2);
+      expect(_tabIndex(tester), 1);
     });
 
     testWidgets('the sheet names which roles the account holds', (tester) async {
@@ -5193,7 +5193,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith([lease()]));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
       await tester.pumpAndSettle();
 
       expect(find.text('Nothing due yet'), findsOneWidget);
@@ -5219,7 +5219,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       expect(find.byType(FindPropertyScreen), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tab-place')));
       await tester.pumpAndSettle();
@@ -5383,7 +5383,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TenantPaymentsScreen), findsOneWidget);
-      expect(_tabIndex(tester), 2);
+      expect(_tabIndex(tester), 1);
 
       await tester.tap(find.byKey(const ValueKey('tab-home')));
       await tester.pumpAndSettle();
@@ -6517,7 +6517,10 @@ void _tenantLeaseTests() {
       overdue: overdue,
     );
 
-    Widget appWith(List<BillingPeriodResponse> periods) => ProviderScope(
+    Widget appWith(
+      List<BillingPeriodResponse> periods, {
+      List<PaymentResponse> payments = const [],
+    }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
@@ -6552,14 +6555,125 @@ void _tenantLeaseTests() {
           (ref) async => const <LeaseDocumentResponse>[],
         ),
         myBillingProvider('l1').overrideWith((ref) async => periods),
+        myPaymentsProvider('l1').overrideWith((ref) async => payments),
       ],
       child: const LizmoApp(),
     );
 
     Future<void> openPayments(WidgetTester tester) async {
-      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
       await tester.pumpAndSettle();
     }
+
+    // ---- Home says what is due ------------------------------------------
+
+    Finder dueCard(Finder finder) => find.descendant(
+          of: find.byKey(const ValueKey('rent-due')),
+          matching: finder,
+        );
+
+    /// Home said nothing about rent beyond the monthly figure. Somebody who
+    /// opens the app on the 4th wants to know whether it is due tomorrow.
+    testWidgets('Home says what is due, and when', (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.text('₱2500 due on 5 Oct')), findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsOneWidget);
+    });
+
+    testWidgets('late rent on Home is called late', (tester) async {
+      await tester.pumpWidget(appWith([month(overdue: true)]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.text('₱2500 is late')), findsOneWidget);
+      expect(dueCard(find.text('October 2026 was due on 5 Oct.')), findsOneWidget);
+    });
+
+    testWidgets('saying you paid from Home opens the same sheet',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(dueCard(find.text('I have paid')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tell your landlord you have paid'), findsOneWidget);
+    });
+
+    /// Offered "I have paid" a second time, somebody would reasonably think
+    /// the first one had been lost.
+    testWidgets('a payment already said is not asked for again',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()], payments: [
+        PaymentResponse(
+          id: 'p1',
+          billingPeriodId: 'b1',
+          amountPaid: 2500,
+          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.text('Waiting for your landlord')), findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsNothing);
+    });
+
+    testWidgets('nothing owed says so', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.text('You are paid up')), findsOneWidget);
+      expect(dueCard(find.textContaining('due on the 5th')), findsOneWidget);
+    });
+
+    /// It showed the monthly rent, from before payments were recorded.
+    testWidgets('the header shows what is owed', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(),
+        month(id: 'b2', label: 'November 2026', paid: 1000,
+            status: BillingPeriodResponseStatusEnum.PARTIALLY_PAID),
+      ]));
+      await tester.pumpAndSettle();
+
+      final header = find.byType(LatticeHeader);
+      expect(find.descendant(of: header, matching: find.text('Owed')),
+          findsOneWidget);
+      expect(find.descendant(of: header, matching: find.text('₱4000')),
+          findsOneWidget);
+      expect(find.text('Monthly rent'), findsNothing);
+    });
+
+    /// The tab was a bell, under the bell in the header.
+    testWidgets('Home is a house, not a second bell', (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+
+      final homeTab = find.byKey(const ValueKey('tab-home'));
+      expect(find.descendant(of: homeTab, matching: find.byIcon(Icons.home_outlined)),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: homeTab, matching: find.byIcon(Icons.notifications_none)),
+          findsNothing);
+    });
+
+    testWidgets('Rent is the second tab', (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantPaymentsScreen), findsOneWidget);
+      expect(_tabIndex(tester), 1);
+      expect(
+          find.descendant(
+              of: find.byType(LatticeHeader), matching: find.text('Rent')),
+          findsOneWidget);
+    });
 
     testWidgets('a month shows what is owed and what came in', (tester) async {
       await tester.pumpWidget(appWith([month()]));
@@ -6724,7 +6838,7 @@ void _tenantLeaseTests() {
     );
 
     Future<void> openPayments(WidgetTester tester) async {
-      await tester.tap(find.byKey(const ValueKey('tab-payments')));
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
       await tester.pumpAndSettle();
     }
 

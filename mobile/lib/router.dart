@@ -317,8 +317,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // Four sections, each with its own navigation stack. What needs me, my
-      // room, my money, my problems — organised around what a tenant thinks
-      // about rather than around what the app can currently do.
+      // money, my room, my problems — organised around what a tenant thinks
+      // about rather than around what the app can currently do. In the same
+      // order as the tabs: a branch's position is its tab.
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => TenantShell(shell: shell),
         branches: [
@@ -327,6 +328,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.tenantHome,
                 builder: (context, state) => const TenantHomeScreen(),
+                routes: _tenantDetails(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.tenantPayments,
+                builder: (context, state) => const TenantPaymentsScreen(),
                 routes: _tenantDetails(),
               ),
             ],
@@ -355,15 +365,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   ..._tenantDetails(),
                 ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.tenantPayments,
-                builder: (context, state) => const TenantPaymentsScreen(),
-                routes: _tenantDetails(),
               ),
             ],
           ),

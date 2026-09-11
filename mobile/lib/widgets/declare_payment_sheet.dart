@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:lizmo_api/api.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
+
+import '../property/property_providers.dart';
 
 /// A tenant saying they have paid.
 ///
@@ -285,4 +290,41 @@ class _Label extends StatelessWidget {
         text,
         style: LizmoType.rowName.copyWith(fontSize: 13),
       );
+}
+
+/// Sends what the tenant said, and refreshes everything that reads it.
+///
+/// Shared by Home and the Rent tab, so saying you paid is the same act from
+/// either -- the same request, the same screenshot, the same refresh.
+///
+/// Throws [ApiFailure]; the caller says what went wrong where it was asked.
+Future<void> sendDeclaration(
+  WidgetRef ref, {
+  required String leaseId,
+  required BillingPeriodResponse period,
+  required Declared said,
+}) async {
+  try {
+    await ref.read(rentApiProvider).declarePayment(
+          leaseId,
+          RecordPaymentRequest(
+            billingPeriodId: period.id!,
+            amountPaid: said.amount,
+            paymentMethod: said.method,
+            remarks: said.note,
+          ),
+          proof: said.proof == null
+              ? null
+              : http.MultipartFile.fromBytes(
+                  'proof',
+                  await said.proof!.readAsBytes(),
+                  filename: said.proof!.name,
+                ),
+        );
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+
+  ref.invalidate(myBillingProvider(leaseId));
+  ref.invalidate(myPaymentsProvider(leaseId));
 }
