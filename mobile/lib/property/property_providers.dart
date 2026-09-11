@@ -122,6 +122,20 @@ final pendingRequestsProvider = FutureProvider.autoDispose
   }
 });
 
+/// Everybody waiting on this landlord, across every property they own.
+///
+/// autoDispose for the same reason as one property's queue: somebody may have
+/// withdrawn since it was last read.
+final requestsToAnswerProvider =
+    FutureProvider.autoDispose<List<RentalRequestForLandlord>>((ref) async {
+  try {
+    return await ref.watch(requestsToAnswerApiProvider).listRentalRequestsToAnswer() ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 /// Who is currently living in one property.
 final propertyLeasesProvider = FutureProvider.autoDispose
     .family<List<LeaseResponse>, String>((ref, propertyId) async {

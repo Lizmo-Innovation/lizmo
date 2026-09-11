@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | [optional] 
 **propertyId** | **String** |  | [optional] 
+**propertyName** | **String** |  | [optional] 
 **unitId** | **String** |  | [optional] 
 **unitNumber** | **String** |  | [optional] 
 **bedId** | **String** |  | [optional] 

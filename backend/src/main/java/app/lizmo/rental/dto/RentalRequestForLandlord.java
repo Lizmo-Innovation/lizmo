@@ -32,6 +32,8 @@ import java.util.UUID;
  * yet. What the landlord does need is the applicant's own number, to arrange a
  * viewing, and that is here.
  *
+ * @param propertyName which building. Needed once requests are read across a
+ *                     whole portfolio rather than one property at a time.
  * @param tenantName who they are, from the account rather than the profile: a
  *                   landlord recognises a person by name, and it is the one
  *                   thing every account has.
@@ -48,6 +50,7 @@ import java.util.UUID;
 public record RentalRequestForLandlord(
         UUID id,
         UUID propertyId,
+        String propertyName,
         UUID unitId,
         String unitNumber,
         UUID bedId,
@@ -68,6 +71,7 @@ public record RentalRequestForLandlord(
 
     public static RentalRequestForLandlord of(
             RentalRequest request,
+            String propertyName,
             User tenant,
             TenantProfile profile,
             String unitNumber,
@@ -77,6 +81,7 @@ public record RentalRequestForLandlord(
         return new RentalRequestForLandlord(
                 request.getId(),
                 request.getPropertyId(),
+                propertyName,
                 request.getUnitId(),
                 unitNumber,
                 request.getBedId(),

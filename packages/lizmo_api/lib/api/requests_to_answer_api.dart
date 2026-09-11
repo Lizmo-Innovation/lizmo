@@ -258,4 +258,56 @@ class RequestsToAnswerApi {
     }
     return null;
   }
+
+  /// Everybody waiting on this landlord, across every property
+  ///
+  /// Pending only, oldest first across every property the caller owns. Empty for an account that owns none.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> listRentalRequestsToAnswerWithHttpInfo({ Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/rental-requests';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Everybody waiting on this landlord, across every property
+  ///
+  /// Pending only, oldest first across every property the caller owns. Empty for an account that owns none.
+  Future<List<RentalRequestForLandlord>?> listRentalRequestsToAnswer({ Future<void>? abortTrigger, }) async {
+    final response = await listRentalRequestsToAnswerWithHttpInfo(abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<RentalRequestForLandlord>') as List)
+        .cast<RentalRequestForLandlord>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
 }

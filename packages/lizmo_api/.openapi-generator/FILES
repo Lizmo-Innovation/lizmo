@@ -152,4 +152,3 @@ lib/model/vacancy_row.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 pubspec.yaml
-test/awaiting_row_test.dart

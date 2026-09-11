@@ -2255,6 +2255,31 @@
                 }
             }
         },
+        "/api/v1/rental-requests": {
+            "get": {
+                "tags": [
+                    "Requests to answer"
+                ],
+                "summary": "Everybody waiting on this landlord, across every property",
+                "description": "Pending only, oldest first across every property the caller owns. Empty for an account that owns none.",
+                "operationId": "listRentalRequestsToAnswer",
+                "responses": {
+                    "200": {
+                        "description": "The requests",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RentalRequestForLandlord"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/rental-requests/{id}": {
             "get": {
                 "tags": [
@@ -3579,6 +3604,9 @@
                     "propertyId": {
                         "type": "string",
                         "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
                     },
                     "unitId": {
                         "type": "string",

@@ -13,6 +13,7 @@ Method | HTTP request | Description
 [**declineRentalRequest**](RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 [**getRentalRequest**](RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
 [**listRentalRequestsForProperty**](RequestsToAnswerApi.md#listrentalrequestsforproperty) | **GET** /api/v1/properties/{propertyId}/rental-requests | Who has asked about this property
+[**listRentalRequestsToAnswer**](RequestsToAnswerApi.md#listrentalrequeststoanswer) | **GET** /api/v1/rental-requests | Everybody waiting on this landlord, across every property
 
 
 # **acceptRentalRequest**
@@ -173,6 +174,45 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **propertyId** | **String**|  | 
  **pendingOnly** | **bool**|  | [optional] [default to true]
+
+### Return type
+
+[**List<RentalRequestForLandlord>**](RentalRequestForLandlord.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listRentalRequestsToAnswer**
+> List<RentalRequestForLandlord> listRentalRequestsToAnswer()
+
+Everybody waiting on this landlord, across every property
+
+Pending only, oldest first across every property the caller owns. Empty for an account that owns none.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = RequestsToAnswerApi();
+
+try {
+    final result = api_instance.listRentalRequestsToAnswer();
+    print(result);
+} catch (e) {
+    print('Exception when calling RequestsToAnswerApi->listRentalRequestsToAnswer: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
 
 ### Return type
 

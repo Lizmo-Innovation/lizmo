@@ -4661,9 +4661,11 @@ void _landlordRequestTests() {
     }) => RentalRequestForLandlord(
       id: id,
       propertyId: 'p1',
+      propertyName: 'Sunrise Apartments',
       unitId: 'u1',
       unitNumber: '2B',
       bedId: bedLabel == null ? null : 'b1',
+      createdAt: DateTime.now().subtract(const Duration(days: 3)),
       bedLabel: bedLabel,
       status: RentalRequestForLandlordStatusEnum.PENDING,
       tenantId: 't1',
@@ -4689,6 +4691,7 @@ void _landlordRequestTests() {
         propertyProvider('p1').overrideWith((ref) async => property()),
         unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
         pendingRequestsProvider('p1').overrideWith((ref) async => waiting),
+        requestsToAnswerProvider.overrideWith((ref) async => waiting),
         propertyLeasesProvider('p1').overrideWith((ref) async => const <LeaseResponse>[]),
         if (answering != null)
           requestsToAnswerApiProvider.overrideWithValue(answering),
@@ -4717,6 +4720,73 @@ void _landlordRequestTests() {
       await openProperty(tester);
 
       expect(find.text('Somebody is asking about a room'), findsOneWidget);
+    });
+
+    Finder inCard(Finder finder) => find.descendant(
+          of: find.byKey(const ValueKey('requests-card')),
+          matching: finder,
+        );
+
+    /// The queue lived inside each property, so a landlord had to open every
+    /// building to find out whether anybody was asking.
+    testWidgets('Today lists everybody waiting, and where', (tester) async {
+      await tester.pumpWidget(appWith(waiting: [
+        request(),
+        request(id: 'r2', name: 'Bea Santos', bedLabel: null),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('requests-card')), findsOneWidget);
+      expect(inCard(find.text('2 waiting for your answer')), findsOneWidget);
+      expect(inCard(find.text('Ana Reyes')), findsOneWidget);
+      expect(inCard(find.text('Bed 1, 2B · Sunrise Apartments')), findsOneWidget);
+      expect(inCard(find.text('Unit 2B · Sunrise Apartments')), findsOneWidget);
+      // How long, which is what makes one of these urgent.
+      expect(inCard(find.text('3 days')), findsNWidgets(2));
+    });
+
+    /// A card that permanently reads "nobody waiting" is one a landlord learns
+    /// to stop seeing.
+    testWidgets('nobody waiting leaves the card off Today', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LandlordHomeScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('requests-card')), findsNothing);
+    });
+
+    testWidgets('a person waiting opens that property\'s queue, inside Today',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: [request()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('request-r1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RentalRequestsScreen), findsOneWidget);
+      expect(_tabIndex(tester), 0);
+      // Where the answering happens.
+      expect(find.text('Accept'), findsOneWidget);
+    });
+
+    /// Hidden, a failure would read as nobody waiting.
+    testWidgets('a queue that cannot be read says so', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+          ),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          requestsToAnswerProvider.overrideWith((ref) async => throw const ApiFailure(
+              code: 'NETWORK_UNAVAILABLE', message: 'no signal')),
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inCard(find.text('Requests')), findsOneWidget);
+      expect(inCard(find.text('no signal')), findsOneWidget);
     });
 
     testWidgets('several are counted', (tester) async {
@@ -4757,6 +4827,7 @@ void _landlordRequestTests() {
           propertyLeasesProvider('p1')
               .overrideWith((ref) async => const <LeaseResponse>[]),
           pendingRequestsProvider('p1').overrideWith((ref) async => waiting),
+          requestsToAnswerProvider.overrideWith((ref) async => waiting),
           requestsToAnswerApiProvider.overrideWithValue(_FakeAnsweringApi()),
         ],
         child: const LizmoApp(),

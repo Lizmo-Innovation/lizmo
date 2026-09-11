@@ -27,6 +27,13 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, UU
     List<RentalRequest> findByPropertyIdAndStatusOrderByCreatedAtAsc(
             UUID propertyId, RentalRequestStatus status);
 
+    /**
+     * Every property's queue at once, oldest first across all of them, for a
+     * landlord who should not have to open each building to see who is asking.
+     */
+    List<RentalRequest> findByPropertyIdInAndStatusOrderByCreatedAtAsc(
+            java.util.Collection<UUID> propertyIds, RentalRequestStatus status);
+
     /** Everything ever asked about one property, newest first. */
     List<RentalRequest> findByPropertyIdOrderByCreatedAtDesc(UUID propertyId);
 }

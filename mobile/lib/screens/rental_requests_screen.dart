@@ -95,6 +95,8 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
       // The queue and everything the acceptance moved: the unit's occupancy,
       // the property's figures, and who is living there.
       ref.invalidate(pendingRequestsProvider(widget.propertyId));
+      // And the queue on Today, which this request was also sitting in.
+      ref.invalidate(requestsToAnswerProvider);
       ref.invalidate(propertyLeasesProvider(widget.propertyId));
       ref.invalidate(unitsProvider(widget.propertyId));
       ref.invalidate(propertiesProvider);
@@ -111,6 +113,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
         // Whatever went wrong, the queue on screen is now suspect — most
         // likely somebody else took the bed while this was open.
         ref.invalidate(pendingRequestsProvider(widget.propertyId));
+        ref.invalidate(requestsToAnswerProvider);
       }
     } finally {
       if (mounted) setState(() => _working = false);

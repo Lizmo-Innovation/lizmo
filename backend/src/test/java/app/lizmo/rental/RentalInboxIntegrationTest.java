@@ -169,6 +169,124 @@ class RentalInboxIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].status").value("WITHDRAWN"));
     }
 
+    // ---- across every property ---------------------------------------------
+
+    /**
+     * The queue used to exist one property at a time, so a landlord with more
+     * than one building had to open each to find out whether anybody was
+     * asking.
+     */
+    @Test
+    void every_property_is_asked_about_at_once() throws Exception {
+        String[] elsewhere = secondProperty();
+        makeReadyForALease(tenantToken);
+        makeReadyForALease(otherTenantToken);
+        ask(tenantToken);
+        askFor(otherTenantToken, elsewhere[0], elsewhere[1]);
+
+        mvc.perform(get("/api/v1/rental-requests")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                // Each names its building, which one property's queue never
+                // needed to.
+                .andExpect(jsonPath("$[*].propertyName").value(
+                        org.hamcrest.Matchers.containsInAnyOrder(
+                                "Sunrise Apartments", "Sunset Residences")));
+    }
+
+    @Test
+    void only_what_still_needs_an_answer() throws Exception {
+        makeReadyForALease(tenantToken);
+        String request = ask(tenantToken);
+
+        mvc.perform(post("/api/v1/rental-requests/" + request + "/decline")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/rental-requests")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    /** Ownership is by construction: only the caller's own properties are asked. */
+    @Test
+    void another_landlords_people_are_not_among_them() throws Exception {
+        makeReadyForALease(tenantToken);
+        ask(tenantToken);
+
+        mvc.perform(get("/api/v1/rental-requests")
+                        .header("Authorization", "Bearer " + otherLandlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void a_tenant_has_nobody_waiting_on_them() throws Exception {
+        makeReadyForALease(tenantToken);
+        ask(tenantToken);
+
+        mvc.perform(get("/api/v1/rental-requests")
+                        .header("Authorization", "Bearer " + tenantToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void one_propertys_queue_names_its_building_too() throws Exception {
+        makeReadyForALease(tenantToken);
+        ask(tenantToken);
+
+        mvc.perform(get("/api/v1/properties/" + propertyId + "/rental-requests")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].propertyName").value("Sunrise Apartments"));
+    }
+
+    @Test
+    void the_whole_queue_requires_signing_in() throws Exception {
+        mvc.perform(get("/api/v1/rental-requests"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** @return the second property's unit id and first bed id */
+    private String[] secondProperty() throws Exception {
+        String property = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunset Residences","address":"48 Rizal Ave",
+                                 "type":"BOARDING_HOUSE","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String unit = mvc.perform(post("/api/v1/properties/"
+                        + json.readTree(property).get("id").asText() + "/units")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","floor":"1","rentalMode":"BEDSPACE",
+                                 "capacity":2,"rent":2000.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String unitIdThere = json.readTree(unit).get("id").asText();
+
+        String beds = mvc.perform(get("/api/v1/units/" + unitIdThere + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        return new String[] {unitIdThere, json.readTree(beds).get(0).get("id").asText()};
+    }
+
+    private void askFor(String token, String unit, String bed) throws Exception {
+        mvc.perform(post("/api/v1/me/rental-requests")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
+                                .formatted(unit, bed)))
+                .andExpect(status().isCreated());
+    }
+
     // ---- what the landlord is told about a stranger -----------------------
 
     @Test

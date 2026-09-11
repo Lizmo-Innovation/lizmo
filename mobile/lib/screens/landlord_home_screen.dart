@@ -10,6 +10,7 @@ import '../widgets/collections_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/occupancy_card.dart';
 import '../widgets/role_switcher.dart';
+import '../widgets/requests_card.dart';
 
 /// The landlord's dashboard.
 ///
@@ -73,10 +74,15 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(propertiesProvider);
                 ref.invalidate(collectionsProvider);
                 ref.invalidate(occupancyProvider);
+                ref.invalidate(requestsToAnswerProvider);
               },
               child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
               children: const [
+                // First: people waiting on an answer are the most perishable
+                // thing here. Somebody told nothing for a week has found a
+                // room elsewhere. Renders nothing when nobody is waiting.
+                RequestsCard(),
                 // Was a placeholder reading "Needs leases and billing" from
                 // the first day this screen existed. Both now exist.
                 CollectionsCard(),

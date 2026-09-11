@@ -46,6 +46,18 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        requestsToAnswerProvider.overrideWith((ref) async => [
+              RentalRequestForLandlord(
+                id: 'r1',
+                propertyId: 'p1',
+                propertyName: 'Sunrise Apartments',
+                unitId: 'u1',
+                unitNumber: '2B',
+                bedLabel: 'Bed 3',
+                tenantName: 'Miguel Cruz',
+                createdAt: DateTime.now().subtract(const Duration(days: 2)),
+              ),
+            ]),
         // Pinned so the bell renders a known state. Left alone it depends
         // on a real request failing, which is not a thing to rest a golden on.
         myNotificationsProvider.overrideWith(
@@ -131,6 +143,18 @@ Widget _detailApp() => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        requestsToAnswerProvider.overrideWith((ref) async => [
+              RentalRequestForLandlord(
+                id: 'r1',
+                propertyId: 'p1',
+                propertyName: 'Sunrise Apartments',
+                unitId: 'u1',
+                unitNumber: '2B',
+                bedLabel: 'Bed 3',
+                tenantName: 'Miguel Cruz',
+                createdAt: DateTime.now().subtract(const Duration(days: 2)),
+              ),
+            ]),
         // Pinned so the bell renders a known state. Left alone it depends
         // on a real request failing, which is not a thing to rest a golden on.
         myNotificationsProvider.overrideWith(

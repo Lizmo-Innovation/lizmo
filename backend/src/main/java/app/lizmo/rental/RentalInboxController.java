@@ -53,6 +53,18 @@ public class RentalInboxController {
         return inbox.forProperty(propertyId, currentUser.requireId(), pendingOnly);
     }
 
+    @GetMapping("/rental-requests")
+    @Operation(operationId = "listRentalRequestsToAnswer",
+            summary = "Everybody waiting on this landlord, across every property",
+            description = "Pending only, oldest first across every property the caller "
+                    + "owns. Empty for an account that owns none.")
+    @ApiResponse(responseCode = "200", description = "The requests",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = RentalRequestForLandlord.class))))
+    public List<RentalRequestForLandlord> waitingOnMe() {
+        return inbox.waitingOn(currentUser.requireId());
+    }
+
     @GetMapping("/rental-requests/{id}")
     @Operation(operationId = "getRentalRequest", summary = "One request in full")
     @ApiResponse(responseCode = "200", description = "The request",

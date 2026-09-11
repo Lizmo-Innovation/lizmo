@@ -4,7 +4,9 @@ import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.property.Bed;
 import app.lizmo.property.BedRepository;
+import app.lizmo.property.Property;
 import app.lizmo.property.PropertyAccess;
+import app.lizmo.property.PropertyRepository;
 import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
 import app.lizmo.rental.dto.RentalRequestForLandlord;
@@ -15,7 +17,9 @@ import app.lizmo.user.UserRepository;
 import java.util.ArrayList;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +27,15 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * What is waiting for a landlord to answer.
  *
- * <p>Scoped to one property at a time, through PropertyAccess, so reading an
- * inbox can only ever return requests for somewhere the caller owns.
+ * <p>Only ever returns requests for somewhere the caller owns: one property
+ * through PropertyAccess, or every property looked up by owner.
  */
 @Service
 public class RentalInboxService {
 
     private final RentalRequestRepository requests;
     private final PropertyAccess access;
+    private final PropertyRepository properties;
     private final UnitRepository units;
     private final BedRepository beds;
     private final UserRepository users;
@@ -42,6 +47,7 @@ public class RentalInboxService {
     public RentalInboxService(
             RentalRequestRepository requests,
             PropertyAccess access,
+            PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
             UserRepository users,
@@ -49,6 +55,7 @@ public class RentalInboxService {
             Clock clock) {
         this.requests = requests;
         this.access = access;
+        this.properties = properties;
         this.units = units;
         this.beds = beds;
         this.users = users;
@@ -69,7 +76,7 @@ public class RentalInboxService {
 
         // Throws if this is not their property. Checked before anything is
         // read, so a wrong id never returns somebody else's queue.
-        access.readable(propertyId, landlordId);
+        Property property = access.readable(propertyId, landlordId);
 
         List<RentalRequest> found = pendingOnly
                 ? requests.findByPropertyIdAndStatusOrderByCreatedAtAsc(
@@ -78,7 +85,36 @@ public class RentalInboxService {
 
         List<RentalRequestForLandlord> described = new ArrayList<>();
         for (RentalRequest request : found) {
-            described.add(describe(request));
+            described.add(describe(request, property.getName()));
+        }
+        return described;
+    }
+
+    /**
+     * Everybody waiting on this landlord, across every property they own.
+     *
+     * <p>The queue used to exist one property at a time, so a landlord with
+     * three buildings had to open each to find out whether anybody was
+     * asking. Oldest first across all of them, for the reason each queue is:
+     * whoever has waited longest is answered first.
+     *
+     * <p>Ownership is by construction: only properties found by this owner
+     * are asked about. An account with none -- a tenant -- gets an empty list.
+     */
+    @Transactional(readOnly = true)
+    public List<RentalRequestForLandlord> waitingOn(UUID landlordId) {
+        Map<UUID, String> names = new HashMap<>();
+        for (Property property : properties.findByLandlordIdOrderByNameAsc(landlordId)) {
+            names.put(property.getId(), property.getName());
+        }
+        if (names.isEmpty()) {
+            return List.of();
+        }
+
+        List<RentalRequestForLandlord> described = new ArrayList<>();
+        for (RentalRequest request : requests.findByPropertyIdInAndStatusOrderByCreatedAtAsc(
+                names.keySet(), RentalRequestStatus.PENDING)) {
+            described.add(describe(request, names.get(request.getPropertyId())));
         }
         return described;
     }
@@ -91,12 +127,12 @@ public class RentalInboxService {
 
         // The same check as the list. Without it, a request id from anywhere
         // would hand a stranger's details to whoever held it.
-        access.readable(request.getPropertyId(), landlordId);
+        Property property = access.readable(request.getPropertyId(), landlordId);
 
-        return describe(request);
+        return describe(request, property.getName());
     }
 
-    private RentalRequestForLandlord describe(RentalRequest request) {
+    private RentalRequestForLandlord describe(RentalRequest request, String propertyName) {
         User tenant = users.findById(request.getTenantId()).orElse(null);
         TenantProfile profile = profiles.findById(request.getTenantId()).orElse(null);
 
@@ -107,6 +143,7 @@ public class RentalInboxService {
 
         return RentalRequestForLandlord.of(
                 request,
+                propertyName,
                 tenant,
                 profile,
                 unit == null ? null : unit.getUnitNumber(),

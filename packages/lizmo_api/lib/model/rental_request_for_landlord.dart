@@ -15,6 +15,7 @@ class RentalRequestForLandlord {
   RentalRequestForLandlord({
     this.id,
     this.propertyId,
+    this.propertyName,
     this.unitId,
     this.unitNumber,
     this.bedId,
@@ -48,6 +49,14 @@ class RentalRequestForLandlord {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? propertyId;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? propertyName;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -169,6 +178,7 @@ class RentalRequestForLandlord {
   bool operator ==(Object other) => identical(this, other) || other is RentalRequestForLandlord &&
     other.id == id &&
     other.propertyId == propertyId &&
+    other.propertyName == propertyName &&
     other.unitId == unitId &&
     other.unitNumber == unitNumber &&
     other.bedId == bedId &&
@@ -191,6 +201,7 @@ class RentalRequestForLandlord {
     // ignore: unnecessary_parenthesis
     (id == null ? 0 : id!.hashCode) +
     (propertyId == null ? 0 : propertyId!.hashCode) +
+    (propertyName == null ? 0 : propertyName!.hashCode) +
     (unitId == null ? 0 : unitId!.hashCode) +
     (unitNumber == null ? 0 : unitNumber!.hashCode) +
     (bedId == null ? 0 : bedId!.hashCode) +
@@ -209,7 +220,7 @@ class RentalRequestForLandlord {
     (askingRent == null ? 0 : askingRent!.hashCode);
 
   @override
-  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, age=$age, idType=$idType, askingRent=$askingRent]';
+  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, age=$age, idType=$idType, askingRent=$askingRent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -222,6 +233,11 @@ class RentalRequestForLandlord {
       json[r'propertyId'] = this.propertyId;
     } else {
       json[r'propertyId'] = null;
+    }
+    if (this.propertyName != null) {
+      json[r'propertyName'] = this.propertyName;
+    } else {
+      json[r'propertyName'] = null;
     }
     if (this.unitId != null) {
       json[r'unitId'] = this.unitId;
@@ -323,6 +339,7 @@ class RentalRequestForLandlord {
       return RentalRequestForLandlord(
         id: mapValueOfType<String>(json, r'id'),
         propertyId: mapValueOfType<String>(json, r'propertyId'),
+        propertyName: mapValueOfType<String>(json, r'propertyName'),
         unitId: mapValueOfType<String>(json, r'unitId'),
         unitNumber: mapValueOfType<String>(json, r'unitNumber'),
         bedId: mapValueOfType<String>(json, r'bedId'),

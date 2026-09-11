@@ -116,6 +116,7 @@ Class | Method | HTTP request | Description
 *RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
 *RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
 *RequestsToAnswerApi* | [**listRentalRequestsForProperty**](doc//RequestsToAnswerApi.md#listrentalrequestsforproperty) | **GET** /api/v1/properties/{propertyId}/rental-requests | Who has asked about this property
+*RequestsToAnswerApi* | [**listRentalRequestsToAnswer**](doc//RequestsToAnswerApi.md#listrentalrequeststoanswer) | **GET** /api/v1/rental-requests | Everybody waiting on this landlord, across every property
 *SigningUpApi* | [**acceptInvitation**](doc//SigningUpApi.md#acceptinvitation) | **POST** /api/v1/auth/invitations/accept | Become a landlord
 *SigningUpApi* | [**completeRegistration**](doc//SigningUpApi.md#completeregistration) | **POST** /api/v1/auth/register/complete | Finish signing up
 *SigningUpApi* | [**getInvitation**](doc//SigningUpApi.md#getinvitation) | **GET** /api/v1/auth/invitations/{token} | What this invitation is for
