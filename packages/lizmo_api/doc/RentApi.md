@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**confirmPayment**](RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 [**declarePayment**](RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 [**getCollections**](RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
+[**getRentRoll**](RentApi.md#getrentroll) | **GET** /api/v1/me/rent-roll | Every tenancy's rent for one month
 [**listLeaseBilling**](RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 [**listLeasePayments**](RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
 [**listMyBilling**](RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
@@ -139,6 +140,49 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**CollectionsSummary**](CollectionsSummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getRentRoll**
+> RentRoll getRentRoll(month)
+
+Every tenancy's rent for one month
+
+A month's rent belongs to the month it falls due in, as on the dashboard. Tenancies that have since ended still appear for the months they owed. Asking brings live schedules up to date first.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = RentApi();
+final month = 2026-09; // String | As 2026-09. This month when left out.
+
+try {
+    final result = api_instance.getRentRoll(month);
+    print(result);
+} catch (e) {
+    print('Exception when calling RentApi->getRentRoll: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **month** | **String**| As 2026-09. This month when left out. | [optional] 
+
+### Return type
+
+[**RentRoll**](RentRoll.md)
 
 ### Authorization
 

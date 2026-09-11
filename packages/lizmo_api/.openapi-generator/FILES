@@ -43,6 +43,8 @@ doc/PropertyResponse.md
 doc/RecordPaymentRequest.md
 doc/RefreshRequest.md
 doc/RentApi.md
+doc/RentRoll.md
+doc/RentRollRow.md
 doc/RentalRequestCreate.md
 doc/RentalRequestForLandlord.md
 doc/RentalRequestResponse.md
@@ -71,6 +73,7 @@ doc/VacancyFloor.md
 doc/VacancyRow.md
 doc/VacantBed.md
 doc/VacantUnit.md
+doc/WaitingPayment.md
 git_push.sh
 lib/api.dart
 lib/api/admin_api.dart
@@ -128,6 +131,8 @@ lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
+lib/model/rent_roll.dart
+lib/model/rent_roll_row.dart
 lib/model/rental_request_create.dart
 lib/model/rental_request_for_landlord.dart
 lib/model/rental_request_response.dart
@@ -151,4 +156,8 @@ lib/model/vacancy_floor.dart
 lib/model/vacancy_row.dart
 lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
+lib/model/waiting_payment.dart
 pubspec.yaml
+test/rent_roll_row_test.dart
+test/rent_roll_test.dart
+test/waiting_payment_test.dart

@@ -15,6 +15,7 @@ import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_share_screen.dart';
 import 'screens/rental_requests_screen.dart';
+import 'screens/rent_roll_screen.dart';
 import 'screens/landlord_home_screen.dart';
 import 'screens/landlord_shell.dart';
 import 'screens/property_list_screen.dart';
@@ -89,6 +90,10 @@ abstract final class Routes {
   static const landlord = '/landlord';
 
   static const landlordHome = '/landlord/home';
+
+  /// Rent month by month, across every property.
+  static const rent = '/landlord/rent';
+
   static const properties = '/landlord/properties';
   static const tenants = '/landlord/tenants';
 
@@ -115,6 +120,7 @@ abstract final class Routes {
   /// The root of every tab, on both sides.
   static const tabRoots = [
     landlordHome,
+    rent,
     properties,
     tenants,
     tenantHome,
@@ -372,7 +378,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // Three sections, each with its own navigation stack. Pushing a
+      // Four sections, each with its own navigation stack. Pushing a
       // property, a unit and a bed, switching to Tenants and coming back
       // returns to the bed — which is what a tab bar is for.
       StatefulShellRoute.indexedStack(
@@ -383,6 +389,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.landlordHome,
                 builder: (context, state) => const LandlordHomeScreen(),
+                routes: _landlordDetails(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.rent,
+                builder: (context, state) => const RentRollScreen(),
                 routes: _landlordDetails(),
               ),
             ],

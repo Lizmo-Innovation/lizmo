@@ -39,6 +39,7 @@ import 'package:lizmo/screens/rental_requests_screen.dart';
 import 'package:lizmo/screens/tenant_payments_screen.dart';
 import 'package:lizmo/screens/tenant_profile_screen.dart';
 import 'package:lizmo/widgets/section_tab_bar.dart';
+import 'package:lizmo/screens/rent_roll_screen.dart';
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -456,6 +457,44 @@ List<Override> _tenancyL1() => [
       leasePaymentsProvider('l1')
           .overrideWith((ref) async => const <PaymentResponse>[]),
     ];
+
+/// Keeps what the Rent tab asked of the API, without a network.
+class _FakeRentApi extends RentApi {
+  final confirmed = <String>[];
+  final refused = <(String, String?)>[];
+  final recorded = <RecordPaymentRequest>[];
+
+  @override
+  Future<PaymentResponse?> confirmPayment(
+    String leaseId,
+    String paymentId, {
+    Future<void>? abortTrigger,
+  }) async {
+    confirmed.add(paymentId);
+    return null;
+  }
+
+  @override
+  Future<PaymentResponse?> rejectPayment(
+    String leaseId,
+    String paymentId, {
+    String? remarks,
+    Future<void>? abortTrigger,
+  }) async {
+    refused.add((paymentId, remarks));
+    return null;
+  }
+
+  @override
+  Future<PaymentResponse?> recordPayment(
+    String leaseId,
+    RecordPaymentRequest recordPaymentRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    recorded.add(recordPaymentRequest);
+    return null;
+  }
+}
 
 Future<void> _openProperties(WidgetTester tester) async {
   final tab = find.byKey(const ValueKey('tab-properties'));
@@ -3447,11 +3486,12 @@ void main() {
           child: const LizmoApp(),
         );
 
-    testWidgets('three sections, opening on Today', (tester) async {
+    testWidgets('four sections, opening on Today', (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('tab-today')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-rent')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-properties')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-tenants')), findsOneWidget);
       expect(find.byType(LandlordHomeScreen), findsOneWidget);
@@ -7311,6 +7351,310 @@ void _tenantLeaseTests() {
       expect(find.byType(PropertyDetailScreen), findsOneWidget);
       // It used to switch to the Properties tab.
       expect(_tabIndex(tester), 0);
+    });
+  });
+
+  group('the Rent tab', () {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final lastMonth = DateTime(now.year, now.month - 1);
+
+    BillingPeriodResponse period({
+      String id = 'b1',
+      num due = 2500,
+      num paid = 0,
+      bool overdue = false,
+      BillingPeriodResponseStatusEnum status =
+          BillingPeriodResponseStatusEnum.UNPAID,
+    }) => BillingPeriodResponse(
+      id: id,
+      label: 'September 2026',
+      periodStart: DateTime.utc(2026, 9, 5),
+      periodEnd: DateTime.utc(2026, 10, 4),
+      dueDate: DateTime.utc(2026, 9, 5),
+      amountDue: due,
+      amountPaid: paid,
+      outstanding: due - paid < 0 ? 0 : due - paid,
+      status: status,
+      overdue: overdue,
+    );
+
+    RentRollRow row({
+      String lease = 'l1',
+      String tenant = 'Miguel Cruz',
+      String propertyId = 'p1',
+      String propertyName = 'Sunrise Apartments',
+      String? bed = 'Bed 1',
+      bool current = true,
+      BillingPeriodResponse? month,
+      List<WaitingPayment> waiting = const [],
+    }) => RentRollRow(
+      propertyId: propertyId,
+      propertyName: propertyName,
+      leaseId: lease,
+      current: current,
+      tenantName: tenant,
+      unitNumber: '2B',
+      bedLabel: bed,
+      period: month ?? period(),
+      waiting: waiting,
+    );
+
+    WaitingPayment claim() => WaitingPayment(
+      paymentId: 'pay1',
+      amount: 2500,
+      paidOn: DateTime.utc(2026, 9, 3),
+      method: WaitingPaymentMethodEnum.GCASH,
+      note: 'Sent from my sister’s number.',
+    );
+
+    RentRoll roll(
+      List<RentRollRow> rows, {
+      String? earliest,
+      num due = 2500,
+      num collected = 0,
+      num outstanding = 2500,
+    }) => RentRoll(
+      month: monthKey(thisMonth),
+      earliestMonth: earliest ?? monthKey(thisMonth),
+      due: due,
+      collected: collected,
+      outstanding: outstanding,
+      rows: rows,
+    );
+
+    Widget appWith(
+      RentRoll current, {
+      RentRoll? previous,
+      _FakeRentApi? api,
+    }) => ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        rentRollProvider(monthKey(thisMonth)).overrideWith((ref) async => current),
+        rentRollProvider(monthKey(lastMonth)).overrideWith(
+          (ref) async => previous ?? roll(const [], due: 0, outstanding: 0),
+        ),
+        ..._tenancyL1(),
+        if (api != null) rentApiProvider.overrideWithValue(api),
+      ],
+      child: const LizmoApp(),
+    );
+
+    Future<void> openRent(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+    }
+
+    Finder inHeader(Finder finder) =>
+        find.descendant(of: find.byType(LatticeHeader), matching: finder);
+
+    testWidgets('Rent is a tab of its own, beside Today', (tester) async {
+      await tester.pumpWidget(appWith(roll([row()])));
+      await openRent(tester);
+
+      expect(find.byType(RentRollScreen), findsOneWidget);
+      expect(_tabIndex(tester), 1);
+      expect(find.text(monthName(thisMonth)), findsOneWidget);
+    });
+
+    /// A section per building, a room per row, and where each stands.
+    testWidgets('every room says what it owes and where it stands',
+        (tester) async {
+      await tester.pumpWidget(appWith(roll([
+        row(),
+        row(
+          lease: 'l3',
+          tenant: 'Carlo Reyes',
+          bed: 'Bed 2',
+          month: period(id: 'b3', overdue: true),
+        ),
+        row(
+          lease: 'l2',
+          tenant: 'Bea Santos',
+          propertyId: 'p2',
+          propertyName: 'Sunset Residences',
+          bed: null,
+          month: period(
+            id: 'b2',
+            paid: 2500,
+            status: BillingPeriodResponseStatusEnum.PAID,
+          ),
+        ),
+      ])));
+      await openRent(tester);
+
+      expect(find.text('Sunrise Apartments'), findsOneWidget);
+      expect(find.text('Sunset Residences'), findsOneWidget);
+      expect(find.text('Bed 1, 2B · due 5 Sep'), findsOneWidget);
+      expect(find.text('Unpaid'), findsOneWidget);
+      expect(find.text('Late'), findsOneWidget);
+      expect(find.text('Paid'), findsOneWidget);
+    });
+
+    testWidgets('the month\'s figures sit in the header', (tester) async {
+      await tester.pumpWidget(appWith(
+        roll([row()], due: 7500, collected: 2500, outstanding: 5000),
+      ));
+      await openRent(tester);
+
+      expect(inHeader(find.text('₱7500')), findsOneWidget);
+      expect(inHeader(find.text('₱2500')), findsOneWidget);
+      expect(inHeader(find.text('₱5000')), findsOneWidget);
+    });
+
+    /// Answered where it is read, rather than a tenant's screen away.
+    testWidgets('a payment the tenant declared is confirmed on the row',
+        (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(appWith(roll([row(waiting: [claim()])]), api: api));
+      await openRent(tester);
+
+      expect(find.text('Says they paid ₱2500 by GCash on 3 Sep'), findsOneWidget);
+      expect(find.text('Sent from my sister’s number.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('confirm-pay1')));
+      await tester.pumpAndSettle();
+
+      expect(api.confirmed, ['pay1']);
+      expect(find.text('Confirmed.'), findsOneWidget);
+    });
+
+    testWidgets('refusing one asks why, and passes the reason on',
+        (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(appWith(roll([row(waiting: [claim()])]), api: api));
+      await openRent(tester);
+
+      await tester.tap(find.byKey(const ValueKey('reject-pay1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Say it did not arrive?'), findsOneWidget);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('reject-reason')), 'Nothing arrived');
+      await tester.tap(find.byKey(const ValueKey('reject-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.refused, [('pay1', 'Nothing arrived')]);
+    });
+
+    /// Cash handed over at the door had nowhere to go.
+    testWidgets('cash can be written down, and counts straight away',
+        (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(appWith(roll([row()]), api: api));
+      await openRent(tester);
+
+      await tester.tap(find.byKey(const ValueKey('record-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Record a payment'), findsOneWidget);
+      expect(find.textContaining('It counts straight away'), findsOneWidget);
+
+      final submit = find.byKey(const ValueKey('record-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(api.recorded, hasLength(1));
+      final written = api.recorded.single;
+      expect(written.billingPeriodId, 'b1');
+      // What was left, unless the landlord typed something else.
+      expect(written.amountPaid, 2500);
+      expect(written.paymentMethod, RecordPaymentRequestPaymentMethodEnum.CASH);
+      expect(written.paymentDate, DateTime.utc(now.year, now.month, now.day));
+    });
+
+    testWidgets('a payment with no amount is not recorded', (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(appWith(roll([row()]), api: api));
+      await openRent(tester);
+
+      await tester.tap(find.byKey(const ValueKey('record-b1')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('record-amount')), '');
+
+      final submit = find.byKey(const ValueKey('record-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(find.text('How much did you receive?'), findsOneWidget);
+      expect(api.recorded, isEmpty);
+    });
+
+    testWidgets('a settled month offers nothing to record', (tester) async {
+      await tester.pumpWidget(appWith(roll([
+        row(
+          month: period(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
+        ),
+      ])));
+      await openRent(tester);
+
+      expect(find.byKey(const ValueKey('record-b1')), findsNothing);
+    });
+
+    /// Still listed for the month they owed, and said so, so a landlord does
+    /// not go looking for them in Tenants.
+    testWidgets('somebody who moved out is listed, and says so',
+        (tester) async {
+      await tester.pumpWidget(appWith(roll([row(current: false)])));
+      await openRent(tester);
+
+      expect(find.textContaining('moved out'), findsOneWidget);
+
+      // There is no tenant screen to open once a tenancy has ended.
+      await tester.tap(find.text('Miguel Cruz'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TenantDetailScreen), findsNothing);
+    });
+
+    testWidgets('a room opens its tenant, inside Rent', (tester) async {
+      await tester.pumpWidget(appWith(roll([row()])));
+      await openRent(tester);
+
+      await tester.tap(find.text('Miguel Cruz'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+      expect(_tabIndex(tester), 1);
+    });
+
+    testWidgets('months go back as far as there was rent, and no further',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        roll([row()], earliest: monthKey(lastMonth)),
+        previous: roll([row(tenant: 'Bea Santos')], earliest: monthKey(lastMonth)),
+      ));
+      await openRent(tester);
+
+      IconButton arrow(String key) =>
+          tester.widget<IconButton>(find.byKey(ValueKey(key)));
+
+      // Never forward past this month: nothing is due in a month not begun.
+      expect(arrow('month-forward').onPressed, isNull);
+
+      await tester.tap(find.byKey(const ValueKey('month-back')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(monthName(lastMonth)), findsOneWidget);
+      expect(find.text('Bea Santos'), findsOneWidget);
+      expect(arrow('month-back').onPressed, isNull);
+      expect(arrow('month-forward').onPressed, isNotNull);
+    });
+
+    testWidgets('a month with nothing due says so', (tester) async {
+      await tester.pumpWidget(appWith(roll(const [], due: 0, outstanding: 0)));
+      await openRent(tester);
+
+      expect(find.text('No rent due in ${monthName(thisMonth)}'), findsOneWidget);
     });
   });
 }

@@ -76,6 +76,8 @@ part 'model/property_request.dart';
 part 'model/property_response.dart';
 part 'model/record_payment_request.dart';
 part 'model/refresh_request.dart';
+part 'model/rent_roll.dart';
+part 'model/rent_roll_row.dart';
 part 'model/rental_request_create.dart';
 part 'model/rental_request_for_landlord.dart';
 part 'model/rental_request_response.dart';
@@ -99,6 +101,7 @@ part 'model/vacancy_floor.dart';
 part 'model/vacancy_row.dart';
 part 'model/vacant_bed.dart';
 part 'model/vacant_unit.dart';
+part 'model/waiting_payment.dart';
 
 
 /// An [ApiClient] instance that uses the default values obtained from

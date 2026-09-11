@@ -106,6 +106,7 @@ Class | Method | HTTP request | Description
 *RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 *RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 *RentApi* | [**getCollections**](doc//RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
+*RentApi* | [**getRentRoll**](doc//RentApi.md#getrentroll) | **GET** /api/v1/me/rent-roll | Every tenancy's rent for one month
 *RentApi* | [**listLeaseBilling**](doc//RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 *RentApi* | [**listLeasePayments**](doc//RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
 *RentApi* | [**listMyBilling**](doc//RentApi.md#listmybilling) | **GET** /api/v1/me/leases/{leaseId}/billing | My rent
@@ -173,6 +174,8 @@ Class | Method | HTTP request | Description
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)
+ - [RentRoll](doc//RentRoll.md)
+ - [RentRollRow](doc//RentRollRow.md)
  - [RentalRequestCreate](doc//RentalRequestCreate.md)
  - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
  - [RentalRequestResponse](doc//RentalRequestResponse.md)
@@ -196,6 +199,7 @@ Class | Method | HTTP request | Description
  - [VacancyRow](doc//VacancyRow.md)
  - [VacantBed](doc//VacantBed.md)
  - [VacantUnit](doc//VacantUnit.md)
+ - [WaitingPayment](doc//WaitingPayment.md)
 
 
 ## Documentation For Authorization

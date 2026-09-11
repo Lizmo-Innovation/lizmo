@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import 'not_received_dialog.dart';
 
 /// Rent on one tenancy, as the landlord deals with it.
 ///
@@ -26,7 +27,7 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
 
   Future<void> _answer(PaymentResponse payment, {required bool agreed}) async {
     if (!agreed) {
-      final why = await _WhyNot.ask(context);
+      final why = await NotReceivedDialog.ask(context);
       // Null means they backed out of the dialog, which is not a rejection.
       if (why == null || !mounted) return;
       await _send(() => ref.read(rentApiProvider).rejectPayment(
@@ -239,75 +240,6 @@ class _Waiting extends StatelessWidget {
       'ADVANCE' => 'Advance rent',
       _ => 'Paid some other way',
     };
-  }
-}
-
-/// Why a payment was refused.
-///
-/// Asked rather than assumed, because the tenant is told the answer and
-/// "not confirmed" with no reason is how a disagreement becomes a row.
-class _WhyNot extends StatefulWidget {
-  const _WhyNot();
-
-  static Future<String?> ask(BuildContext context) {
-    return showDialog<String>(
-      context: context,
-      builder: (_) => const _WhyNot(),
-    );
-  }
-
-  @override
-  State<_WhyNot> createState() => _WhyNotState();
-}
-
-class _WhyNotState extends State<_WhyNot> {
-  final _why = TextEditingController();
-
-  @override
-  void dispose() {
-    _why.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Say it did not arrive?'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Your tenant sees this, so a line about what happened saves a '
-            'conversation.',
-            style: LizmoType.rowSub,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('reject-reason'),
-            controller: _why,
-            maxLength: 500,
-            decoration: const InputDecoration(
-              hintText: 'Nothing arrived in my GCash.',
-              counterText: '',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          key: const ValueKey('reject-confirm'),
-          onPressed: () => Navigator.of(context).pop(_why.text.trim()),
-          child: Text('Not received',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
-        ),
-      ],
-    );
   }
 }
 

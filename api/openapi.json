@@ -2511,6 +2511,50 @@
                 }
             }
         },
+        "/api/v1/me/rent-roll": {
+            "get": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Every tenancy's rent for one month",
+                "description": "A month's rent belongs to the month it falls due in, as on the dashboard. Tenancies that have since ended still appear for the months they owed. Asking brings live schedules up to date first.",
+                "operationId": "getRentRoll",
+                "parameters": [
+                    {
+                        "name": "month",
+                        "in": "query",
+                        "description": "As 2026-09. This month when left out.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "2026-09"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The month",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RentRoll"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Not a month",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RentRoll"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/occupancy": {
             "get": {
                 "tags": [
@@ -4500,6 +4544,147 @@
                 },
                 "description": "Where to write to Lizmo"
             },
+            "BillingPeriodResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "periodStart": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "periodEnd": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "amountDue": {
+                        "type": "number"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "UNPAID",
+                            "PARTIALLY_PAID",
+                            "PAID"
+                        ]
+                    },
+                    "overdue": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "One month of rent"
+            },
+            "RentRoll": {
+                "type": "object",
+                "properties": {
+                    "month": {
+                        "type": "string"
+                    },
+                    "earliestMonth": {
+                        "type": "string"
+                    },
+                    "due": {
+                        "type": "number"
+                    },
+                    "collected": {
+                        "type": "number"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RentRollRow"
+                        }
+                    }
+                },
+                "description": "Every tenancy's rent for one month"
+            },
+            "RentRollRow": {
+                "type": "object",
+                "properties": {
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "current": {
+                        "type": "boolean"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "bedLabel": {
+                        "type": "string"
+                    },
+                    "period": {
+                        "$ref": "#/components/schemas/BillingPeriodResponse"
+                    },
+                    "waiting": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WaitingPayment"
+                        }
+                    }
+                },
+                "description": "One tenancy's rent for the month"
+            },
+            "WaitingPayment": {
+                "type": "object",
+                "properties": {
+                    "paymentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "paidOn": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "method": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "note": {
+                        "type": "string"
+                    }
+                },
+                "description": "A payment waiting for the landlord to confirm it"
+            },
             "OccupancySummary": {
                 "type": "object",
                 "properties": {
@@ -4636,51 +4821,6 @@
                     }
                 },
                 "description": "How many notifications are unread"
-            },
-            "BillingPeriodResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "periodStart": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "periodEnd": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "dueDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "amountDue": {
-                        "type": "number"
-                    },
-                    "amountPaid": {
-                        "type": "number"
-                    },
-                    "outstanding": {
-                        "type": "number"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "UNPAID",
-                            "PARTIALLY_PAID",
-                            "PAID"
-                        ]
-                    },
-                    "overdue": {
-                        "type": "boolean"
-                    }
-                },
-                "description": "One month of rent"
             },
             "ArrearsRow": {
                 "type": "object",

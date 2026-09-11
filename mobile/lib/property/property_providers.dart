@@ -293,6 +293,26 @@ final myPaymentsProvider = FutureProvider.autoDispose
   }
 });
 
+/// Every tenancy's rent for one month, named as `2026-09`.
+///
+/// Keyed by month, and autoDispose: a month left and come back to is read
+/// again, since somebody may have paid in the meantime.
+final rentRollProvider =
+    FutureProvider.autoDispose.family<RentRoll, String>((ref, month) async {
+  try {
+    final roll = await ref.watch(rentApiProvider).getRentRoll(month: month);
+    if (roll == null) {
+      throw const ApiFailure(
+        code: 'UNKNOWN',
+        message: 'Could not read the rent for that month.',
+      );
+    }
+    return roll;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 /// Rent across every property this landlord owns.
 ///
 /// Reading this also brings every tenancy's schedule up to date, so a

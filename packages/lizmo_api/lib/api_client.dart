@@ -249,6 +249,10 @@ class ApiClient {
           return RecordPaymentRequest.fromJson(value);
         case 'RefreshRequest':
           return RefreshRequest.fromJson(value);
+        case 'RentRoll':
+          return RentRoll.fromJson(value);
+        case 'RentRollRow':
+          return RentRollRow.fromJson(value);
         case 'RentalRequestCreate':
           return RentalRequestCreate.fromJson(value);
         case 'RentalRequestForLandlord':
@@ -295,6 +299,8 @@ class ApiClient {
           return VacantBed.fromJson(value);
         case 'VacantUnit':
           return VacantUnit.fromJson(value);
+        case 'WaitingPayment':
+          return WaitingPayment.fromJson(value);
         default:
           dynamic match;
           if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {
