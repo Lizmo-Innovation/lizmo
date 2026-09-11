@@ -3460,20 +3460,25 @@ void main() {
     /// Collections was a placeholder reading "Needs leases and billing" from
     /// the first day this screen existed. Both now exist, so the promise is
     /// gone -- while the parts genuinely unbuilt still say so.
-    testWidgets('the dashboard says which parts are not built', (tester) async {
+    testWidgets('Today counts what is waiting, not what is owned',
+        (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
 
-      // Real figures where they exist, and named dependencies where they do
-      // not. Fake numbers would be a lie about the state of the product.
-      expect(find.text('₱10000'), findsOneWidget);
-      expect(find.text('Needs leases and billing'), findsNothing);
+      expect(find.text('To answer'), findsOneWidget);
+      expect(find.text('To confirm'), findsOneWidget);
+      expect(find.text('Behind'), findsOneWidget);
+
+      // The Properties tab's own figures are no longer repeated here.
+      expect(find.text('Per month'), findsNothing);
+      expect(find.text('₱10000'), findsNothing);
+
+      // And the last placeholder, from before leases existed, is gone.
+      expect(find.text('Coming up'), findsNothing);
+      expect(find.text('Needs leases'), findsNothing);
+
       expect(find.text('Collections'), findsOneWidget);
       expect(find.text('Occupancy'), findsOneWidget);
-
-      // Only "Coming up" is still waiting on something, and it still says so.
-      expect(find.text('Needs leases'), findsOneWidget);
-      expect(find.text('Coming up'), findsOneWidget);
     });
 
     testWidgets('tenants is empty for a reason it explains', (tester) async {
@@ -6952,6 +6957,7 @@ void _tenantLeaseTests() {
       int waiting = 0,
       List<ArrearsRow> arrears = const [],
       List<AwaitingRow> awaiting = const [],
+      List<RentalRequestForLandlord>? requests,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -6971,6 +6977,8 @@ void _tenantLeaseTests() {
               inArrears: arrears,
               awaiting: awaiting,
             )),
+        if (requests != null)
+          requestsToAnswerProvider.overrideWith((ref) async => requests),
         ..._tenancyL1(),
       ],
       child: const LizmoApp(),
@@ -7007,15 +7015,15 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith(waiting: 2));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('2 payments are waiting for you'),
-          findsOneWidget);
+      expect(find.byKey(const ValueKey('confirm-card')), findsOneWidget);
+      expect(find.text('2 waiting for you to confirm'), findsOneWidget);
     });
 
     testWidgets('nothing waiting means no prompt', (tester) async {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('waiting for you'), findsNothing);
+      expect(find.byKey(const ValueKey('confirm-card')), findsNothing);
     });
 
     testWidgets('a tenant behind is named, with how far and how much',
@@ -7023,7 +7031,8 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith(arrears: [behind()]));
       await tester.pumpAndSettle();
 
-      expect(find.text('One tenant is behind'), findsOneWidget);
+      expect(find.text('Behind on rent'), findsOneWidget);
+      expect(find.text('One tenant'), findsOneWidget);
       expect(find.text('Ana Reyes'), findsOneWidget);
       expect(find.textContaining('Bed 1, 2B · 2 months late'), findsOneWidget);
       expect(find.text('₱5000'), findsWidgets);
@@ -7090,7 +7099,82 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('behind'), findsNothing);
+      expect(find.byKey(const ValueKey('arrears-card')), findsNothing);
+    });
+
+    // ---- Today as a to-do list ------------------------------------------
+
+    RentalRequestForLandlord asking() => RentalRequestForLandlord(
+          id: 'r1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          tenantName: 'Miguel Cruz',
+          createdAt: DateTime.now(),
+        );
+
+    Finder inHeader(Finder finder) =>
+        find.descendant(of: find.byType(LatticeHeader), matching: finder);
+
+    /// "Do I need to do anything" answered before the first scroll.
+    testWidgets('the header counts what is waiting', (tester) async {
+      await tester.pumpWidget(appWith(
+        waiting: 2,
+        arrears: [behind()],
+        requests: [asking()],
+      ));
+      await tester.pumpAndSettle();
+
+      // One to answer and one behind; two to confirm.
+      expect(inHeader(find.text('1')), findsNWidgets(2));
+      expect(inHeader(find.text('2')), findsOneWidget);
+    });
+
+    /// A zero it has not earned would say nobody is waiting.
+    testWidgets('a count not yet known is a dash, not a zero', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      // The queue is not pinned here, so it never arrives.
+      expect(inHeader(find.text('—')), findsOneWidget);
+    });
+
+    testWidgets('nothing waiting says so outright', (tester) async {
+      await tester.pumpWidget(appWith(requests: const []));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('all-caught-up')), findsOneWidget);
+      expect(find.text('Nothing needs you'), findsOneWidget);
+    });
+
+    testWidgets('anything waiting means no all-clear', (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], waiting: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
+    });
+
+    /// Unknown is not nothing. An all-clear over a queue that never loaded
+    /// would be a lie told at the worst moment.
+    testWidgets('an unread queue is not an all-clear', (tester) async {
+      await tester.pumpWidget(appWith());
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
+    });
+
+    testWidgets('what needs you comes before the figures', (tester) async {
+      await tester.pumpWidget(appWith(arrears: [behind()], requests: [asking()]));
+      await tester.pumpAndSettle();
+
+      final requestsTop =
+          tester.getTopLeft(find.byKey(const ValueKey('requests-card'))).dy;
+      final arrearsTop =
+          tester.getTopLeft(find.byKey(const ValueKey('arrears-card'))).dy;
+      final figuresTop = tester.getTopLeft(find.text('Collections')).dy;
+
+      expect(requestsTop, lessThan(arrearsTop));
+      expect(arrearsTop, lessThan(figuresTop));
     });
   });
 

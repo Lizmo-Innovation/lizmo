@@ -7,15 +7,14 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
-/// How rent is going, across everything a landlord owns.
+/// How rent is going this month, across everything a landlord owns.
 ///
 /// Replaces a placeholder that read "Collections — Needs leases and billing"
 /// from the first day the dashboard existed. Both now exist.
 ///
-/// Three figures and a list, in the order the questions get asked: what fell
-/// due this month, what has come in, and who is behind. Anything waiting on
-/// the landlord themselves goes first — it is the only line here about their
-/// own behaviour rather than their tenants'.
+/// Figures only. The people behind them -- a payment to confirm, a tenant
+/// behind -- are their own cards at the top of Today, because they are things
+/// to do and these are things to know.
 class CollectionsCard extends ConsumerWidget {
   const CollectionsCard({super.key});
 
@@ -35,6 +34,9 @@ class CollectionsCard extends ConsumerWidget {
           padding: EdgeInsets.symmetric(vertical: 20),
           child: Center(child: CircularProgressIndicator()),
         ),
+        // Said here, and only here. The two cards above that read the same
+        // figures stay out of the way rather than repeat the failure three
+        // times.
         error: (error, _) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -59,12 +61,10 @@ class _Figures extends StatelessWidget {
     final due = rent.dueThisMonth ?? 0;
     final collected = rent.collectedThisMonth ?? 0;
     final outstanding = rent.outstandingAllTime ?? 0;
-    final waiting = rent.awaitingConfirmation ?? 0;
-    final arrears = rent.inArrears;
 
-    // Nothing let at all. Said plainly rather than as four zeroes, which read
-    // as a broken screen rather than an empty portfolio.
-    if (due == 0 && outstanding == 0 && arrears.isEmpty) {
+    // Nothing let at all. Said plainly rather than as zeroes, which read as a
+    // broken screen rather than an empty portfolio.
+    if (due == 0 && outstanding == 0) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -86,7 +86,6 @@ class _Figures extends StatelessWidget {
         const SizedBox(height: 4),
         Text('This month', style: LizmoType.rowSub),
         const SizedBox(height: 12),
-
         Row(
           children: [
             Expanded(
@@ -117,50 +116,112 @@ class _Figures extends StatelessWidget {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
 
-        if (waiting > 0) ...[
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: LizmoColors.amberBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
+/// Payments tenants say they have made, waiting on the landlord.
+///
+/// The one thing on Today about the landlord's own behaviour rather than
+/// their tenants': somebody who said they paid three days ago and has heard
+/// nothing is the failure the whole payments feature exists to avoid.
+///
+/// Nothing at all when nothing is waiting, or while the figures are loading
+/// or failed -- [CollectionsCard] says that.
+class ConfirmPaymentsCard extends ConsumerWidget {
+  const ConfirmPaymentsCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rent = ref.watch(collectionsProvider).valueOrNull;
+    final waiting = rent?.awaitingConfirmation ?? 0;
+    if (rent == null || waiting == 0) return const SizedBox.shrink();
+
+    return _TodoCard(
+      key: const ValueKey('confirm-card'),
+      title: 'Payments',
+      count: waiting == 1
+          ? '1 waiting for you to confirm'
+          : '$waiting waiting for you to confirm',
+      countInk: LizmoColors.amberText,
+      rows: [for (final row in rent.awaiting) _WaitingRow(row: row)],
+    );
+  }
+}
+
+/// Tenants who are behind on rent, worst first.
+class ArrearsCard extends ConsumerWidget {
+  const ArrearsCard({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rent = ref.watch(collectionsProvider).valueOrNull;
+    final arrears = rent?.inArrears ?? const <ArrearsRow>[];
+    if (arrears.isEmpty) return const SizedBox.shrink();
+
+    return _TodoCard(
+      key: const ValueKey('arrears-card'),
+      title: 'Behind on rent',
+      count: arrears.length == 1 ? 'One tenant' : '${arrears.length} tenants',
+      countInk: LizmoColors.red,
+      rows: [for (final row in arrears) _ArrearsRow(row: row)],
+    );
+  }
+}
+
+/// A card of things to do: a heading, how many, and a row for each.
+///
+/// Carries its own space below, so a card with nothing to say leaves no gap.
+class _TodoCard extends StatelessWidget {
+  const _TodoCard({
+    super.key,
+    required this.title,
+    required this.count,
+    required this.countInk,
+    required this.rows,
+  });
+
+  final String title;
+  final String count;
+  final Color countInk;
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: LizmoColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E8E6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Icon(Icons.hourglass_empty,
-                    size: 18, color: LizmoColors.amberText),
-                const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    waiting == 1
-                        ? 'One payment is waiting for you to confirm it'
-                        : '$waiting payments are waiting for you to confirm them',
-                    style: LizmoType.rowSub
-                        .copyWith(color: LizmoColors.amberText),
+                  child: Text(title, style: LizmoType.sectionHeading),
+                ),
+                Text(
+                  count,
+                  style: LizmoType.rowSub.copyWith(
+                    color: countInk,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-          ),
-          // Who, and the way to them. The banner used to be the end of the
-          // road: it said somebody was waiting and could not be tapped.
-          if (rent.awaiting.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            for (final row in rent.awaiting) _WaitingRow(row: row),
+            if (rows.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ...rows,
+            ],
           ],
-        ],
-
-        if (arrears.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            arrears.length == 1 ? 'One tenant is behind' : 'Behind on rent',
-            style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
-          ),
-          const SizedBox(height: 8),
-          for (final row in arrears) _ArrearsRow(row: row),
-        ],
-      ],
+        ),
+      ),
     );
   }
 }

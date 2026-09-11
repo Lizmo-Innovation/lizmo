@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
@@ -12,27 +11,39 @@ import '../widgets/occupancy_card.dart';
 import '../widgets/role_switcher.dart';
 import '../widgets/requests_card.dart';
 
-/// The landlord's dashboard.
+/// The landlord's day: what needs them, then how things stand.
 ///
-/// Deliberately half-built, and honest about which half. The figures a landlord
-/// opens an app for — collected against expected, who is late, what is empty —
-/// all need leases and billing, and neither exists yet. Rather than invent
-/// them, the sections that cannot be filled say what they are waiting for.
+/// A to-do list first. Everything under "Needs you" has somebody on the other
+/// end waiting -- a stranger asking for a room, a tenant who says they have
+/// paid, a tenant who has not -- and every row opens the one screen where it
+/// gets dealt with. Below that are the figures, which nobody is waiting on.
 ///
-/// What is real here is real: the portfolio totals come from the same figures
-/// the property list shows, so the two can never disagree.
+/// The header used to repeat the Properties tab's own three figures, rent,
+/// properties and units, on a different tab. It counts what is waiting instead,
+/// so "do I need to do anything" is answered before the first scroll.
+///
+/// It also used to end on "Coming up — Needs leases", a placeholder from before
+/// leases existed. Nothing here is a promise any more.
 class LandlordHomeScreen extends ConsumerWidget {
   const LandlordHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final properties = ref.watch(propertiesProvider);
     final session = switch (ref.watch(authControllerProvider)) {
       AuthSignedIn(:final session) => session,
       _ => null,
     };
+    final requests = ref.watch(requestsToAnswerProvider).valueOrNull;
+    final rent = ref.watch(collectionsProvider).valueOrNull;
 
-    final rows = properties.valueOrNull;
+    // Only once every answer is in. Unknown is not nothing, and "nothing
+    // needs you" over a queue that failed to load would be a lie told at the
+    // worst possible moment.
+    final caughtUp = requests != null &&
+        requests.isEmpty &&
+        rent != null &&
+        (rent.awaitingConfirmation ?? 0) == 0 &&
+        rent.inArrears.isEmpty;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -52,19 +63,16 @@ class LandlordHomeScreen extends ConsumerWidget {
             ),
             stats: [
               LatticeHeaderStat(
-                value: _portfolioRent(rows),
-                label: 'Per month',
+                value: _count(requests?.length),
+                label: 'To answer',
               ),
               LatticeHeaderStat(
-                value: rows?.length.toString() ?? '—',
-                label: 'Properties',
+                value: _count(rent?.awaitingConfirmation),
+                label: 'To confirm',
               ),
               LatticeHeaderStat(
-                value: rows
-                        ?.fold<int>(0, (sum, p) => sum + (p.unitCount ?? 0))
-                        .toString() ??
-                    '—',
-                label: 'Units',
+                value: _count(rent?.tenanciesInArrears),
+                label: 'Behind',
               ),
             ],
           ),
@@ -77,27 +85,22 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(requestsToAnswerProvider);
               },
               child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
-              children: const [
-                // First: people waiting on an answer are the most perishable
-                // thing here. Somebody told nothing for a week has found a
-                // room elsewhere. Renders nothing when nobody is waiting.
-                RequestsCard(),
-                // Was a placeholder reading "Needs leases and billing" from
-                // the first day this screen existed. Both now exist.
-                CollectionsCard(),
-                SizedBox(height: 10),
-                // The second placeholder this screen carried. It read "Needs
-                // leases", which stopped being true the day leases were built.
-                OccupancyCard(),
-                SizedBox(height: 10),
-                _Awaiting(
-                  icon: Icons.event_outlined,
-                  title: 'Coming up',
-                  detail: 'Move-ins, move-outs and leases about to end.',
-                  needs: 'Needs leases',
-                ),
-              ],
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                children: [
+                  const _SectionLabel('Needs you'),
+                  // People asking come first: they are the most perishable.
+                  // Somebody told nothing for a week has found a room
+                  // elsewhere. Each card renders nothing when it has nothing.
+                  const RequestsCard(),
+                  const ConfirmPaymentsCard(),
+                  const ArrearsCard(),
+                  if (caughtUp) const _AllCaughtUp(),
+                  const SizedBox(height: 8),
+                  const _SectionLabel('At a glance'),
+                  const CollectionsCard(),
+                  const SizedBox(height: 10),
+                  const OccupancyCard(),
+                ],
               ),
             ),
           ),
@@ -105,81 +108,76 @@ class LandlordHomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// A count, or a dash while it is not known. Never a zero it has not earned.
+  static String _count(int? count) => count?.toString() ?? '—';
 }
 
-/// A section that cannot be filled yet, saying so plainly.
-///
-/// Not a spinner and not fake numbers: either would be a lie about the state of
-/// the product. Naming what each one is waiting for also makes the build order
-/// visible to anyone holding the app.
-class _Awaiting extends StatelessWidget {
-  const _Awaiting({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.needs,
-  });
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
 
-  final IconData icon;
-  final String title;
-  final String detail;
-  final String needs;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LizmoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [LizmoColors.cardShadow],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: LizmoColors.slate),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: LizmoType.rowName),
-                const SizedBox(height: 2),
-                Text(detail, style: LizmoType.rowSub),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: LizmoColors.amberBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    needs,
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 0, 8),
+      child: Text(
+        text.toUpperCase(),
+        style: LizmoType.rowSub.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: LizmoColors.slate,
+        ),
       ),
     );
   }
 }
 
-/// What the whole portfolio brings in per month with everything let.
-String _portfolioRent(List<PropertyResponse>? properties) {
-  if (properties == null) return '—';
+/// Said when there is nothing to do, rather than leaving an empty space.
+///
+/// An empty "Needs you" reads as a section that failed to load. Saying it
+/// outright is the payoff for clearing the list.
+class _AllCaughtUp extends StatelessWidget {
+  const _AllCaughtUp();
 
-  num? total;
-  for (final property in properties) {
-    final rent = property.potentialMonthlyRent;
-    if (rent == null) continue;
-    total = (total ?? 0) + rent;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        key: const ValueKey('all-caught-up'),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: LizmoColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE3E8E6)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.check_circle_outline,
+                size: 20, color: LizmoColors.teal900),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Nothing needs you',
+                      style: LizmoType.rowName.copyWith(color: LizmoColors.ink)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Nobody is waiting for an answer, no payment is waiting '
+                    'to be confirmed, and no tenant is late.',
+                    style: LizmoType.rowSub,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  if (total == null) return '—';
-  final asDouble = total.toDouble();
-  final whole = asDouble == asDouble.roundToDouble();
-  return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
 }

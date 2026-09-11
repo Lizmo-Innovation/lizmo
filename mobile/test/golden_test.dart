@@ -89,6 +89,17 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
               outstandingAllTime: 7500,
               awaitingConfirmation: 1,
               tenanciesInArrears: 1,
+              awaiting: [
+                AwaitingRow(
+                  leaseId: 'l2',
+                  paymentId: 'pay1',
+                  tenantName: 'Jhun Santos',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 2',
+                  amount: 2500,
+                  paidOn: DateTime.utc(2026, 9, 3),
+                ),
+              ],
               inArrears: [
                 ArrearsRow(
                   leaseId: 'l1',
@@ -186,6 +197,17 @@ Widget _detailApp() => ProviderScope(
               outstandingAllTime: 7500,
               awaitingConfirmation: 1,
               tenanciesInArrears: 1,
+              awaiting: [
+                AwaitingRow(
+                  leaseId: 'l2',
+                  paymentId: 'pay1',
+                  tenantName: 'Jhun Santos',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 2',
+                  amount: 2500,
+                  paidOn: DateTime.utc(2026, 9, 3),
+                ),
+              ],
               inArrears: [
                 ArrearsRow(
                   leaseId: 'l1',
