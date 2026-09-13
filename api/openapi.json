@@ -663,6 +663,148 @@
                 }
             }
         },
+        "/api/v1/admin/platform-payment-channels/{id}": {
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Change a payment channel",
+                "description": "Visibility is left as it is when not sent.",
+                "operationId": "updatePaymentChannel",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentChannelRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The channel",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentChannelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Something left blank",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No such channel",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete a payment channel",
+                "description": "With its QR. Hide it instead to bring it back later.",
+                "operationId": "deletePaymentChannel",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "404": {
+                        "description": "No such channel",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/platform-payment-channels/order": {
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Put the channels in order",
+                "description": "Every channel exactly once, top to bottom.",
+                "operationId": "reorderPaymentChannels",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentChannelOrder"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The channels, in their new order",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PaymentChannelResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A channel missing or repeated",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/units/{id}/beds": {
             "get": {
                 "tags": [
@@ -2550,6 +2692,163 @@
                 }
             }
         },
+        "/api/v1/admin/platform-payment-channels": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Every payment channel",
+                "description": "Hidden ones included, in the order landlords see them.",
+                "operationId": "listPaymentChannels",
+                "responses": {
+                    "200": {
+                        "description": "The channels",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PaymentChannelResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Add a payment channel",
+                "description": "Added at the bottom, and shown to landlords unless visible is false.",
+                "operationId": "addPaymentChannel",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentChannelRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The channel",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentChannelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Something left blank",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/platform-payment-channels/{id}/qr": {
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Set a channel's QR",
+                "description": "Replaces any QR it had. Re-encoded, so no EXIF or location is kept.",
+                "operationId": "uploadPaymentChannelQr",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "qr"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "qr": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The channel, with its QR",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentChannelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Empty, too large, or not an image",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Remove a channel's QR",
+                "description": "The channel stays, with its name and number.",
+                "operationId": "removePaymentChannelQr",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The channel, without a QR",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentChannelResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/landlord-invitations": {
             "get": {
                 "tags": [
@@ -3075,6 +3374,28 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PaymentInstructions"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/platform-payment-details": {
+            "get": {
+                "tags": [
+                    "Lizmo billing"
+                ],
+                "summary": "How to pay Lizmo",
+                "description": "The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them.",
+                "operationId": "getPlatformPaymentDetails",
+                "responses": {
+                    "200": {
+                        "description": "The channels and note",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentDetails"
                                 }
                             }
                         }
@@ -3929,30 +4250,6 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
-            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -3991,6 +4288,30 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
+            },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -4297,6 +4618,87 @@
                     }
                 },
                 "description": "Settings the console owns"
+            },
+            "PaymentChannelRequest": {
+                "required": [
+                    "accountName",
+                    "accountNumber",
+                    "channel"
+                ],
+                "type": "object",
+                "properties": {
+                    "channel": {
+                        "maxLength": 40,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "GCash"
+                    },
+                    "accountName": {
+                        "maxLength": 120,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Ariel Asebias"
+                    },
+                    "accountNumber": {
+                        "maxLength": 60,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "09771231234"
+                    },
+                    "visible": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "A way to pay Lizmo, as an admin enters it"
+            },
+            "PaymentChannelResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "channel": {
+                        "type": "string"
+                    },
+                    "accountName": {
+                        "type": "string"
+                    },
+                    "accountNumber": {
+                        "type": "string"
+                    },
+                    "visible": {
+                        "type": "boolean"
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "qrUrl": {
+                        "type": "string"
+                    },
+                    "qrUrlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "A way to pay Lizmo, for an admin"
+            },
+            "PaymentChannelOrder": {
+                "required": [
+                    "ids"
+                ],
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "description": "The order channels are shown in"
             },
             "RentalRequestForLandlord": {
                 "type": "object",
@@ -5729,6 +6131,47 @@
                     "instructions": {
                         "type": "string",
                         "example": "GCash 0917 123 4567 (Lizmo Innovation)"
+                    }
+                },
+                "description": "How to pay Lizmo"
+            },
+            "PaymentChannelForLandlord": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "channel": {
+                        "type": "string"
+                    },
+                    "accountName": {
+                        "type": "string"
+                    },
+                    "accountNumber": {
+                        "type": "string"
+                    },
+                    "qrUrl": {
+                        "type": "string"
+                    },
+                    "qrUrlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "description": "A way to pay Lizmo"
+            },
+            "PaymentDetails": {
+                "type": "object",
+                "properties": {
+                    "channels": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PaymentChannelForLandlord"
+                        }
+                    },
+                    "note": {
+                        "type": "string"
                     }
                 },
                 "description": "How to pay Lizmo"

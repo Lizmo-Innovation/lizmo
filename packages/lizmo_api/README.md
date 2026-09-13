@@ -42,13 +42,13 @@ import 'package:lizmo_api/api.dart';
 
 
 final api_instance = AdminApi();
-final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final paymentChannelRequest = PaymentChannelRequest(); // PaymentChannelRequest | 
 
 try {
-    final result = api_instance.confirmPlatformPayment(id);
+    final result = api_instance.addPaymentChannel(paymentChannelRequest);
     print(result);
 } catch (e) {
-    print('Exception when calling AdminApi->confirmPlatformPayment: $e\n');
+    print('Exception when calling AdminApi->addPaymentChannel: $e\n');
 }
 
 ```
@@ -59,7 +59,9 @@ All URIs are relative to *http://localhost:8082*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AdminApi* | [**addPaymentChannel**](doc//AdminApi.md#addpaymentchannel) | **POST** /api/v1/admin/platform-payment-channels | Add a payment channel
 *AdminApi* | [**confirmPlatformPayment**](doc//AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
+*AdminApi* | [**deletePaymentChannel**](doc//AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
 *AdminApi* | [**getLandlord**](doc//AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 *AdminApi* | [**getPlatformSettings**](doc//AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 *AdminApi* | [**getSupportContact**](doc//AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -67,12 +69,17 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**listInvitations**](doc//AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
 *AdminApi* | [**listLandlordStatements**](doc//AdminApi.md#listlandlordstatements) | **GET** /api/v1/admin/landlords/{id}/statements | One landlord's statements
 *AdminApi* | [**listLandlords**](doc//AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
+*AdminApi* | [**listPaymentChannels**](doc//AdminApi.md#listpaymentchannels) | **GET** /api/v1/admin/platform-payment-channels | Every payment channel
 *AdminApi* | [**listPlatformPaymentsToReview**](doc//AdminApi.md#listplatformpaymentstoreview) | **GET** /api/v1/admin/platform-payments | Payments waiting to be checked
 *AdminApi* | [**lockProperty**](doc//AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
 *AdminApi* | [**rejectPlatformPayment**](doc//AdminApi.md#rejectplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/reject | It did not arrive
+*AdminApi* | [**removePaymentChannelQr**](doc//AdminApi.md#removepaymentchannelqr) | **DELETE** /api/v1/admin/platform-payment-channels/{id}/qr | Remove a channel's QR
+*AdminApi* | [**reorderPaymentChannels**](doc//AdminApi.md#reorderpaymentchannels) | **PUT** /api/v1/admin/platform-payment-channels/order | Put the channels in order
 *AdminApi* | [**revokeInvitation**](doc//AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
 *AdminApi* | [**unlockProperty**](doc//AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
+*AdminApi* | [**updatePaymentChannel**](doc//AdminApi.md#updatepaymentchannel) | **PUT** /api/v1/admin/platform-payment-channels/{id} | Change a payment channel
 *AdminApi* | [**updatePlatformSettings**](doc//AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
+*AdminApi* | [**uploadPaymentChannelQr**](doc//AdminApi.md#uploadpaymentchannelqr) | **POST** /api/v1/admin/platform-payment-channels/{id}/qr | Set a channel's QR
 *AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
 *AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
 *AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
@@ -93,6 +100,7 @@ Class | Method | HTTP request | Description
 *LeasesApi* | [**listTenantDocumentsForLease**](doc//LeasesApi.md#listtenantdocumentsforlease) | **GET** /api/v1/leases/{leaseId}/tenant-documents | The ID of the tenant living here
 *LeasesApi* | [**updateLeaseDocument**](doc//LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
 *LeasesApi* | [**uploadLeaseDocument**](doc//LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
+*LizmoBillingApi* | [**getPlatformPaymentDetails**](doc//LizmoBillingApi.md#getplatformpaymentdetails) | **GET** /api/v1/me/platform-payment-details | How to pay Lizmo
 *LizmoBillingApi* | [**getPlatformPaymentInstructions**](doc//LizmoBillingApi.md#getplatformpaymentinstructions) | **GET** /api/v1/me/platform-payment-instructions | How to pay Lizmo
 *LizmoBillingApi* | [**listMyPlatformStatements**](doc//LizmoBillingApi.md#listmyplatformstatements) | **GET** /api/v1/me/platform-statements | My Lizmo statements
 *LizmoBillingApi* | [**payPlatformStatement**](doc//LizmoBillingApi.md#payplatformstatement) | **POST** /api/v1/me/platform-statements/{id}/payments | Say I have paid Lizmo
@@ -185,6 +193,11 @@ Class | Method | HTTP request | Description
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [NotificationResponse](doc//NotificationResponse.md)
  - [OccupancySummary](doc//OccupancySummary.md)
+ - [PaymentChannelForLandlord](doc//PaymentChannelForLandlord.md)
+ - [PaymentChannelOrder](doc//PaymentChannelOrder.md)
+ - [PaymentChannelRequest](doc//PaymentChannelRequest.md)
+ - [PaymentChannelResponse](doc//PaymentChannelResponse.md)
+ - [PaymentDetails](doc//PaymentDetails.md)
  - [PaymentInstructions](doc//PaymentInstructions.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)

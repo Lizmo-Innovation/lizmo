@@ -9,7 +9,9 @@ All URIs are relative to *http://localhost:8082*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**addPaymentChannel**](AdminApi.md#addpaymentchannel) | **POST** /api/v1/admin/platform-payment-channels | Add a payment channel
 [**confirmPlatformPayment**](AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
+[**deletePaymentChannel**](AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
 [**getLandlord**](AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 [**getPlatformSettings**](AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 [**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -17,13 +19,61 @@ Method | HTTP request | Description
 [**listInvitations**](AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
 [**listLandlordStatements**](AdminApi.md#listlandlordstatements) | **GET** /api/v1/admin/landlords/{id}/statements | One landlord's statements
 [**listLandlords**](AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
+[**listPaymentChannels**](AdminApi.md#listpaymentchannels) | **GET** /api/v1/admin/platform-payment-channels | Every payment channel
 [**listPlatformPaymentsToReview**](AdminApi.md#listplatformpaymentstoreview) | **GET** /api/v1/admin/platform-payments | Payments waiting to be checked
 [**lockProperty**](AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
 [**rejectPlatformPayment**](AdminApi.md#rejectplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/reject | It did not arrive
+[**removePaymentChannelQr**](AdminApi.md#removepaymentchannelqr) | **DELETE** /api/v1/admin/platform-payment-channels/{id}/qr | Remove a channel's QR
+[**reorderPaymentChannels**](AdminApi.md#reorderpaymentchannels) | **PUT** /api/v1/admin/platform-payment-channels/order | Put the channels in order
 [**revokeInvitation**](AdminApi.md#revokeinvitation) | **DELETE** /api/v1/admin/landlord-invitations/{id} | Withdraw an invitation
 [**unlockProperty**](AdminApi.md#unlockproperty) | **POST** /api/v1/admin/properties/{id}/unlock | Let a property be managed again
+[**updatePaymentChannel**](AdminApi.md#updatepaymentchannel) | **PUT** /api/v1/admin/platform-payment-channels/{id} | Change a payment channel
 [**updatePlatformSettings**](AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
+[**uploadPaymentChannelQr**](AdminApi.md#uploadpaymentchannelqr) | **POST** /api/v1/admin/platform-payment-channels/{id}/qr | Set a channel's QR
 
+
+# **addPaymentChannel**
+> PaymentChannelResponse addPaymentChannel(paymentChannelRequest)
+
+Add a payment channel
+
+Added at the bottom, and shown to landlords unless visible is false.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final paymentChannelRequest = PaymentChannelRequest(); // PaymentChannelRequest | 
+
+try {
+    final result = api_instance.addPaymentChannel(paymentChannelRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->addPaymentChannel: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **paymentChannelRequest** | [**PaymentChannelRequest**](PaymentChannelRequest.md)|  | 
+
+### Return type
+
+[**PaymentChannelResponse**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **confirmPlatformPayment**
 > PlatformPaymentForAdmin confirmPlatformPayment(id)
@@ -56,6 +106,48 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**PlatformPaymentForAdmin**](PlatformPaymentForAdmin.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **deletePaymentChannel**
+> deletePaymentChannel(id)
+
+Delete a payment channel
+
+With its QR. Hide it instead to bring it back later.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    api_instance.deletePaymentChannel(id);
+} catch (e) {
+    print('Exception when calling AdminApi->deletePaymentChannel: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+void (empty response body)
 
 ### Authorization
 
@@ -349,6 +441,45 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listPaymentChannels**
+> List<PaymentChannelResponse> listPaymentChannels()
+
+Every payment channel
+
+Hidden ones included, in the order landlords see them.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+
+try {
+    final result = api_instance.listPaymentChannels();
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->listPaymentChannels: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List<PaymentChannelResponse>**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listPlatformPaymentsToReview**
 > List<PlatformPaymentForAdmin> listPlatformPaymentsToReview()
 
@@ -476,6 +607,92 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **removePaymentChannelQr**
+> PaymentChannelResponse removePaymentChannelQr(id)
+
+Remove a channel's QR
+
+The channel stays, with its name and number.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.removePaymentChannelQr(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->removePaymentChannelQr: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**PaymentChannelResponse**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **reorderPaymentChannels**
+> List<PaymentChannelResponse> reorderPaymentChannels(paymentChannelOrder)
+
+Put the channels in order
+
+Every channel exactly once, top to bottom.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final paymentChannelOrder = PaymentChannelOrder(); // PaymentChannelOrder | 
+
+try {
+    final result = api_instance.reorderPaymentChannels(paymentChannelOrder);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->reorderPaymentChannels: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **paymentChannelOrder** | [**PaymentChannelOrder**](PaymentChannelOrder.md)|  | 
+
+### Return type
+
+[**List<PaymentChannelResponse>**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **revokeInvitation**
 > revokeInvitation(id)
 
@@ -559,6 +776,51 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **updatePaymentChannel**
+> PaymentChannelResponse updatePaymentChannel(id, paymentChannelRequest)
+
+Change a payment channel
+
+Visibility is left as it is when not sent.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final paymentChannelRequest = PaymentChannelRequest(); // PaymentChannelRequest | 
+
+try {
+    final result = api_instance.updatePaymentChannel(id, paymentChannelRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->updatePaymentChannel: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **paymentChannelRequest** | [**PaymentChannelRequest**](PaymentChannelRequest.md)|  | 
+
+### Return type
+
+[**PaymentChannelResponse**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **updatePlatformSettings**
 > PlatformSettings updatePlatformSettings(platformSettings)
 
@@ -598,6 +860,51 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **uploadPaymentChannelQr**
+> PaymentChannelResponse uploadPaymentChannelQr(id, qr)
+
+Set a channel's QR
+
+Replaces any QR it had. Re-encoded, so no EXIF or location is kept.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final qr = BINARY_DATA_HERE; // MultipartFile | 
+
+try {
+    final result = api_instance.uploadPaymentChannelQr(id, qr);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->uploadPaymentChannelQr: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **qr** | **MultipartFile**|  | 
+
+### Return type
+
+[**PaymentChannelResponse**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
