@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -55,6 +58,29 @@ final supportContactProvider = FutureProvider<String?>((ref) async {
 /// The settings the console owns, for the screen that edits them.
 final platformSettingsProvider = FutureProvider<PlatformSettings?>((ref) async {
   return ref.watch(adminApiProvider).getPlatformSettings();
+});
+
+/// Where landlords send money to Lizmo, hidden channels included, in order.
+final paymentChannelsProvider =
+    FutureProvider<List<PaymentChannelResponse>>((ref) async {
+  return await ref.watch(adminApiProvider).listPaymentChannels() ?? const [];
+});
+
+/// An image an admin chose, as bytes: in a browser there is no file path.
+typedef PickedImage = ({String name, Uint8List bytes});
+
+/// Opens the browser's file chooser for one image.
+///
+/// A provider so tests can hand back bytes without a plugin or a browser.
+final pickImageProvider = Provider<Future<PickedImage?> Function()>((ref) {
+  return () async {
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, withData: true);
+    final file = result?.files.singleOrNull;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null) return null;
+    return (name: file.name, bytes: bytes);
+  };
 });
 
 /// Payments landlords have sent Lizmo, waiting to be checked, oldest first.

@@ -53,6 +53,15 @@ dependencies:
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
 
+  # Choosing a QR image for a payment channel. The console runs in a browser,
+  # where file_picker hands back bytes rather than a path. Same major as the
+  # mobile app, which is held at 8 by its Android build.
+  file_picker: ^8.1.2
+
+  # MultipartFile, for uploading that image through the generated client --
+  # which imports http but does not export it.
+  http: ^1.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

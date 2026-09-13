@@ -6,13 +6,17 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../admin_providers.dart';
 import '../widgets/admin_shell.dart';
+import '../widgets/payment_channels_card.dart';
 
 /// The handful of things an operator changes without a deploy.
 ///
-/// One so far: the address a stranger is told to write to when they want their
-/// account deleted and cannot use the app. It appears on a public page, which
-/// is exactly why it must be changeable here — a published address that can
-/// only be corrected by rebuilding and redeploying stays wrong for a week.
+/// The address a stranger is told to write to when they want their account
+/// deleted and cannot use the app. It appears on a public page, which is
+/// exactly why it must be changeable here — a published address that can only
+/// be corrected by rebuilding and redeploying stays wrong for a week.
+///
+/// And where landlords send money to Lizmo: a list of channels, each with an
+/// optional QR, and a note shown under them.
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -171,6 +175,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          const PaymentChannelsCard(),
+          const SizedBox(height: 16),
           Container(
             key: const ValueKey('payment-instructions-card'),
             padding: const EdgeInsets.all(16),
@@ -182,22 +188,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('How landlords pay Lizmo', style: LizmoType.sectionHeading),
+                Text('Note under the channels', style: LizmoType.sectionHeading),
                 const SizedBox(height: 4),
                 Text(
-                  'Shown to landlords beside every Lizmo invoice. Say where the '
-                  'money goes -- a GCash number, a bank account -- and whose name '
-                  'is on it, so a landlord can check before sending.',
+                  'Optional. Shown to landlords under the channels, for anything '
+                  'that is not an account — what to put in the reference, when '
+                  'a payment is checked.',
                   style: LizmoType.rowSub,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   key: const ValueKey('payment-instructions'),
                   controller: _instructions,
-                  maxLines: 4,
+                  maxLines: 3,
                   maxLength: 1000,
                   style: LizmoType.rowName,
-                  decoration: _field('GCash 0917 123 4567 (Lizmo Innovation)')
+                  decoration: _field('Anything a landlord should know before paying')
                       .copyWith(counterText: ''),
                 ),
                 const SizedBox(height: 12),

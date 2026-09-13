@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,8 @@ import 'package:lizmo_admin/screens/invitations_screen.dart';
 import 'package:lizmo_admin/screens/landlord_detail_screen.dart';
 import 'package:lizmo_admin/screens/landlords_screen.dart';
 import 'package:lizmo_admin/screens/platform_payments_screen.dart';
+import 'package:http/http.dart' show MultipartFile;
+import 'package:lizmo_admin/widgets/payment_channel_dialog.dart';
 import 'package:lizmo_admin/widgets/platform_payment_card.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -697,6 +701,7 @@ void main() {
           landlordProvider.overrideWith((ref, id) async => null),
           platformSettingsProvider.overrideWith(
               (ref) async => PlatformSettings(supportEmail: 'help@lizmo.test')),
+          paymentChannelsProvider.overrideWith((ref) async => const []),
         ],
         child: const LizmoAdminApp(),
       ));
@@ -707,6 +712,176 @@ void main() {
 
       expect(find.byType(SettingsScreen), findsOneWidget);
       expect(find.text('help@lizmo.test'), findsOneWidget);
+    });
+  });
+
+  group('payment channels', () {
+    Widget settings(
+      _FakeChannelsApi api, {
+      Future<PickedImage?> Function()? pick,
+    }) =>
+        ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.admin}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            landlordsProvider.overrideWith((ref) async => const []),
+            invitationsProvider.overrideWith((ref) async => const []),
+            landlordProvider.overrideWith((ref, id) async => null),
+            platformPaymentsProvider.overrideWith((ref) async => const []),
+            platformSettingsProvider.overrideWith((ref) async => PlatformSettings(
+                  supportEmail: 'help@lizmo.test',
+                  paymentInstructions: 'Put your property name in the reference.',
+                )),
+            // Not the channel provider: the real one reads this fake, so a
+            // change followed by a re-read is what gets tested.
+            adminApiProvider.overrideWithValue(api),
+            if (pick != null) pickImageProvider.overrideWithValue(pick),
+          ],
+          child: const LizmoAdminApp(),
+        );
+
+    Future<void> openSettings(WidgetTester tester) async {
+      _desktop(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(InkWell, 'Settings'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the channels are listed, and a hidden one says so', (tester) async {
+      await tester.pumpWidget(settings(_FakeChannelsApi([
+        _channel(),
+        _channel(id: 'c2', channel: 'Maya', number: '09170000000', visible: false),
+      ])));
+      await openSettings(tester);
+
+      expect(find.text('GCash'), findsOneWidget);
+      expect(find.text('Ariel Asebias \u00b7 09771231234'), findsOneWidget);
+      expect(find.text('Maya'), findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Hidden'), findsOneWidget);
+      // The old free text is still there, as the note.
+      expect(find.text('Put your property name in the reference.'), findsOneWidget);
+    });
+
+    testWidgets('no channels says landlords see only the note', (tester) async {
+      await tester.pumpWidget(settings(_FakeChannelsApi([])));
+      await openSettings(tester);
+
+      expect(find.textContaining('landlords see only the note'), findsOneWidget);
+    });
+
+    testWidgets('adding a channel sends its details, then the QR chosen',
+        (tester) async {
+      final api = _FakeChannelsApi([]);
+      await tester.pumpWidget(settings(api,
+          pick: () async => (name: 'gcash.png', bytes: Uint8List.fromList([1, 2, 3]))));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('add-payment-channel')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('channel-field')), 'GCash');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-name-field')), 'Ariel Asebias');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-number-field')), '09771231234');
+      await tester.tap(find.byKey(const ValueKey('pick-qr')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('save-channel')));
+      await tester.pumpAndSettle();
+
+      expect(api.added.single.channel, 'GCash');
+      expect(api.added.single.accountName, 'Ariel Asebias');
+      expect(api.added.single.accountNumber, '09771231234');
+      expect(api.uploaded, [('new', 3)]);
+      expect(find.byType(PaymentChannelDialog), findsNothing);
+      expect(find.text('Ariel Asebias \u00b7 09771231234'), findsOneWidget);
+    });
+
+    /// A channel with no number is a landlord told to pay and unable to.
+    testWidgets('a blank account number is refused before calling the API',
+        (tester) async {
+      final api = _FakeChannelsApi([]);
+      await tester.pumpWidget(settings(api));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('add-payment-channel')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('channel-field')), 'GCash');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-name-field')), 'Ariel Asebias');
+      await tester.tap(find.byKey(const ValueKey('save-channel')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter the account number'), findsOneWidget);
+      expect(api.added, isEmpty);
+    });
+
+    testWidgets('switching one off sends it hidden, with its details unchanged',
+        (tester) async {
+      final api = _FakeChannelsApi([_channel()]);
+      await tester.pumpWidget(settings(api));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('channel-visible-c1')));
+      await tester.pumpAndSettle();
+
+      expect(api.updated.single.$1, 'c1');
+      expect(api.updated.single.$2.visible, isFalse);
+      expect(api.updated.single.$2.accountNumber, '09771231234');
+      expect(find.widgetWithText(StatusChip, 'Hidden'), findsOneWidget);
+    });
+
+    testWidgets('moving one down sends the whole new order', (tester) async {
+      final api = _FakeChannelsApi([
+        _channel(),
+        _channel(id: 'c2', channel: 'Maya'),
+        _channel(id: 'c3', channel: 'BPI'),
+      ]);
+      await tester.pumpWidget(settings(api));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('channel-down-c1')));
+      await tester.pumpAndSettle();
+
+      expect(api.order, ['c2', 'c1', 'c3']);
+    });
+
+    testWidgets('deleting asks first, and backing out deletes nothing',
+        (tester) async {
+      final api = _FakeChannelsApi([_channel()]);
+      await tester.pumpWidget(settings(api));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('delete-channel-c1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(api.deleted, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('delete-channel-c1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('confirm-delete-channel')));
+      await tester.pumpAndSettle();
+
+      expect(api.deleted, ['c1']);
+      expect(find.text('GCash'), findsNothing);
+    });
+
+    testWidgets('editing a channel can take its QR away', (tester) async {
+      final api = _FakeChannelsApi([_channel(qrUrl: 'https://example.test/qr.jpg')]);
+      await tester.pumpWidget(settings(api));
+      await openSettings(tester);
+
+      await tester.tap(find.byKey(const ValueKey('edit-channel-c1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('remove-qr')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('save-channel')));
+      await tester.pumpAndSettle();
+
+      expect(api.updated.single.$1, 'c1');
+      expect(api.removedQr, ['c1']);
+      expect(api.uploaded, isEmpty);
     });
   });
 
@@ -952,4 +1127,112 @@ void main() {
       expect(find.textContaining('bills a landlord on the 1st'), findsOneWidget);
     });
   });
+}
+
+PaymentChannelResponse _channel({
+  String id = 'c1',
+  String? channel = 'GCash',
+  String? name = 'Ariel Asebias',
+  String? number = '09771231234',
+  bool visible = true,
+  String? qrUrl,
+}) =>
+    PaymentChannelResponse(
+      id: id,
+      channel: channel,
+      accountName: name,
+      accountNumber: number,
+      visible: visible,
+      sortOrder: 0,
+      qrUrl: qrUrl,
+      qrUrlExpiresInSeconds: 600,
+    );
+
+/// Plays the channel endpoints from a list in memory, and keeps what was asked.
+class _FakeChannelsApi extends AdminApi {
+  _FakeChannelsApi(List<PaymentChannelResponse> channels) : channels = [...channels];
+
+  final List<PaymentChannelResponse> channels;
+  final added = <PaymentChannelRequest>[];
+  final updated = <(String, PaymentChannelRequest)>[];
+  final deleted = <String>[];
+  final uploaded = <(String, int)>[];
+  final removedQr = <String>[];
+  List<String>? order;
+
+  @override
+  Future<List<PaymentChannelResponse>?> listPaymentChannels({
+    Future<void>? abortTrigger,
+  }) async =>
+      [...channels];
+
+  @override
+  Future<PaymentChannelResponse?> addPaymentChannel(
+    PaymentChannelRequest paymentChannelRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    added.add(paymentChannelRequest);
+    final created = _channel(
+      id: 'new',
+      channel: paymentChannelRequest.channel,
+      name: paymentChannelRequest.accountName,
+      number: paymentChannelRequest.accountNumber,
+    );
+    channels.add(created);
+    return created;
+  }
+
+  @override
+  Future<PaymentChannelResponse?> updatePaymentChannel(
+    String id,
+    PaymentChannelRequest paymentChannelRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    updated.add((id, paymentChannelRequest));
+    final at = channels.indexWhere((channel) => channel.id == id);
+    if (at < 0) return null;
+    final was = channels[at];
+    return channels[at] = _channel(
+      id: id,
+      channel: paymentChannelRequest.channel,
+      name: paymentChannelRequest.accountName,
+      number: paymentChannelRequest.accountNumber,
+      visible: paymentChannelRequest.visible ?? was.visible ?? true,
+      qrUrl: was.qrUrl,
+    );
+  }
+
+  @override
+  Future<void> deletePaymentChannel(String id, {Future<void>? abortTrigger}) async {
+    deleted.add(id);
+    channels.removeWhere((channel) => channel.id == id);
+  }
+
+  @override
+  Future<PaymentChannelResponse?> uploadPaymentChannelQr(
+    String id,
+    MultipartFile qr, {
+    Future<void>? abortTrigger,
+  }) async {
+    uploaded.add((id, qr.length));
+    return null;
+  }
+
+  @override
+  Future<PaymentChannelResponse?> removePaymentChannelQr(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    removedQr.add(id);
+    return null;
+  }
+
+  @override
+  Future<List<PaymentChannelResponse>?> reorderPaymentChannels(
+    PaymentChannelOrder paymentChannelOrder, {
+    Future<void>? abortTrigger,
+  }) async {
+    order = [...paymentChannelOrder.ids];
+    return channels;
+  }
 }
