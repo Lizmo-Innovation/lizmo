@@ -262,6 +262,7 @@ enum NotificationResponseTypeEnum {
   LEASE_ENDED._(r'LEASE_ENDED'),
   RENT_DUE_REMINDER._(r'RENT_DUE_REMINDER'),
   RENT_OVERDUE._(r'RENT_OVERDUE'),
+  PAYMENT_DECLARED._(r'PAYMENT_DECLARED'),
   PAYMENT_CONFIRMED._(r'PAYMENT_CONFIRMED'),
   PAYMENT_REJECTED._(r'PAYMENT_REJECTED'),
   MAINTENANCE_REPORTED._(r'MAINTENANCE_REPORTED'),
@@ -339,6 +340,7 @@ class NotificationResponseTypeEnumTypeTransformer {
         case r'LEASE_ENDED': return NotificationResponseTypeEnum.LEASE_ENDED;
         case r'RENT_DUE_REMINDER': return NotificationResponseTypeEnum.RENT_DUE_REMINDER;
         case r'RENT_OVERDUE': return NotificationResponseTypeEnum.RENT_OVERDUE;
+        case r'PAYMENT_DECLARED': return NotificationResponseTypeEnum.PAYMENT_DECLARED;
         case r'PAYMENT_CONFIRMED': return NotificationResponseTypeEnum.PAYMENT_CONFIRMED;
         case r'PAYMENT_REJECTED': return NotificationResponseTypeEnum.PAYMENT_REJECTED;
         case r'MAINTENANCE_REPORTED': return NotificationResponseTypeEnum.MAINTENANCE_REPORTED;

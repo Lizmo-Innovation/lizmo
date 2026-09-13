@@ -38,6 +38,15 @@ public enum NotificationType {
 
     RENT_DUE_REMINDER,
     RENT_OVERDUE,
+    /**
+     * To the landlord: a tenant says they have paid, and it is waiting on them.
+     *
+     * <p>Distinct from PAYMENT_CONFIRMED, which is the landlord agreeing money
+     * arrived. This was raised as that for a while: the words on the row were
+     * right and the type said the opposite of what had happened.
+     */
+    PAYMENT_DECLARED,
+
     PAYMENT_CONFIRMED,
     PAYMENT_REJECTED,
     /** To the landlord: a tenant says something is broken. */

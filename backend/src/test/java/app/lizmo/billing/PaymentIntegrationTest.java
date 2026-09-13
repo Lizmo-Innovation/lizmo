@@ -217,10 +217,19 @@ class PaymentIntegrationTest extends IntegrationTest {
     void the_landlord_is_told_somebody_claims_to_have_paid() throws Exception {
         declare(2500, null).andExpect(status().isCreated());
 
-        assertThat(mvc.perform(get("/api/v1/me/notifications")
+        String feed = mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + landlordToken))
-                .andReturn().getResponse().getContentAsString())
-                .contains("waiting for you to confirm");
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(feed).contains("waiting for you to confirm");
+        // Declared, not confirmed. It was raised as PAYMENT_CONFIRMED, which
+        // is the landlord agreeing money arrived -- the opposite event.
+        var claim = java.util.stream.StreamSupport
+                .stream(json.readTree(feed).spliterator(), false)
+                .filter(row -> "PAYMENT".equals(row.path("relatedEntityType").asText()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(claim.get("type").asText()).isEqualTo("PAYMENT_DECLARED");
     }
 
     /**

@@ -525,7 +525,10 @@ class _BedRow extends ConsumerWidget {
 
   String _statusLabel() => switch (bed.status) {
         BedResponseStatusEnum.OCCUPIED => 'Occupied',
-        BedResponseStatusEnum.MAINTENANCE => 'Maintenance',
+        // "Out of service", as the dashboard says it. It read "Maintenance",
+        // which is also the name of the tab where tenants report things
+        // broken -- two unrelated ideas sharing one word on one screen.
+        BedResponseStatusEnum.MAINTENANCE => 'Out of service',
         _ => 'Vacant',
       };
 }

@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 
 /// The people renting from this landlord.
@@ -38,7 +39,12 @@ class TenantsScreen extends ConsumerWidget {
             title: 'Tenants',
             trailing: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
             ),
             stats: [
               LatticeHeaderStat(

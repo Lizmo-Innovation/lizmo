@@ -177,7 +177,9 @@ class _Row extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$who · ${maintenanceDay(report.submittedAt)}',
+                      who,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: LizmoType.rowSub.copyWith(fontSize: 11),
                     ),
                   ],
@@ -188,6 +190,14 @@ class _Row extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   MaintenanceStatusChip(report: report, forTenant: false),
+                  // Under the chip rather than at the end of the line above,
+                  // where a long tenant name pushed it onto a line of its own
+                  // and split the date in half.
+                  const SizedBox(height: 6),
+                  Text(
+                    maintenanceDay(report.submittedAt),
+                    style: LizmoType.rowSub.copyWith(fontSize: 11),
+                  ),
                   if (report.photoUrls.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Row(

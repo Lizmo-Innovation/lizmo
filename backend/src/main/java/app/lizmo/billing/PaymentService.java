@@ -126,7 +126,9 @@ public class PaymentService {
 
         notifications.raise(
                 landlordOf(lease),
-                NotificationType.PAYMENT_CONFIRMED,
+                // Declared, not confirmed: nothing is confirmed until the
+                // landlord says so, which is the next thing they are asked.
+                NotificationType.PAYMENT_DECLARED,
                 "A tenant says they have paid",
                 "P%s for %s is waiting for you to confirm."
                         .formatted(plain(payment.getAmountPaid()), period.getPeriodLabel()),

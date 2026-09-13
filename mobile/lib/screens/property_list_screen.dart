@@ -9,6 +9,7 @@ import '../property/property_labels.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 
 /// A landlord's properties — the first screen backed by real data.
@@ -36,7 +37,12 @@ class PropertyListScreen extends ConsumerWidget {
             title: 'My properties',
             trailing: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
             ),
             stats: [
               LatticeHeaderStat(

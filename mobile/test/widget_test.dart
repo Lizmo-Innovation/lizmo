@@ -2434,11 +2434,11 @@ void main() {
 
       expect(find.text('Occupied'), findsOneWidget);
       expect(find.text('Vacant'), findsOneWidget);
-      // The bed's own chip. "Maintenance" is also the landlord's fifth tab,
-      // which is a different thing that happens to share the word.
+      // The bed's own chip, in the dashboard's words. It said "Maintenance",
+      // which is also the name of the tab where tenants report things broken.
       expect(
         find.descendant(
-            of: find.byType(StatusChip), matching: find.text('Maintenance')),
+            of: find.byType(StatusChip), matching: find.text('Out of service')),
         findsOneWidget,
       );
     });
@@ -2561,11 +2561,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.lastMaintenance!.underMaintenance, isTrue);
-      // The bed's own chip. "Maintenance" is also the landlord's fifth tab,
-      // which is a different thing that happens to share the word.
+      // The bed's own chip, in the dashboard's words. It said "Maintenance",
+      // which is also the name of the tab where tenants report things broken.
       expect(
         find.descendant(
-            of: find.byType(StatusChip), matching: find.text('Maintenance')),
+            of: find.byType(StatusChip), matching: find.text('Out of service')),
         findsOneWidget,
       );
     });
@@ -3599,6 +3599,26 @@ void main() {
       expect(find.byKey(const ValueKey('tab-tenants')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-maintenance')), findsOneWidget);
       expect(find.byType(LandlordHomeScreen), findsOneWidget);
+    });
+
+    /// It was on Today, Rent and Maintenance only, so news went unread on the
+    /// two tabs a landlord spends most of their time in.
+    testWidgets('every tab carries the bell', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      for (final tab in [
+        'tab-today',
+        'tab-rent',
+        'tab-properties',
+        'tab-tenants',
+        'tab-maintenance',
+      ]) {
+        await tester.tap(find.byKey(ValueKey(tab)));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('notification-bell')), findsOneWidget,
+            reason: 'no bell on $tab');
+      }
     });
 
     /// Collections was a placeholder reading "Needs leases and billing" from
@@ -5314,6 +5334,23 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('report-problem')), findsOneWidget);
       expect(find.text('Not built yet'), findsNothing);
+    });
+
+    testWidgets('every tab carries the bell', (tester) async {
+      await tester.pumpWidget(appWith([lease()]));
+      await tester.pumpAndSettle();
+
+      for (final tab in [
+        'tab-home',
+        'tab-rent',
+        'tab-place',
+        'tab-maintenance',
+      ]) {
+        await tester.tap(find.byKey(ValueKey(tab)));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('notification-bell')), findsOneWidget,
+            reason: 'no bell on $tab');
+      }
     });
 
     testWidgets('each tab keeps its own stack', (tester) async {

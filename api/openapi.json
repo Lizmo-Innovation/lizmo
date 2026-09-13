@@ -3929,6 +3929,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -3967,30 +3991,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -5785,6 +5785,7 @@
                             "LEASE_ENDED",
                             "RENT_DUE_REMINDER",
                             "RENT_OVERDUE",
+                            "PAYMENT_DECLARED",
                             "PAYMENT_CONFIRMED",
                             "PAYMENT_REJECTED",
                             "MAINTENANCE_REPORTED",

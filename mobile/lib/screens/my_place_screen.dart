@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 import '../widgets/shared_lease_documents.dart';
 
@@ -33,7 +34,12 @@ class MyPlaceScreen extends ConsumerWidget {
             title: lease == null ? 'My place' : _where(lease),
             trailing: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: [RoleSwitcher(), SizedBox(width: 4), AccountButton()],
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
             ),
           ),
           Expanded(
