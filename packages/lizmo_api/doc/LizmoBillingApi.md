@@ -10,8 +10,8 @@ All URIs are relative to *http://localhost:8082*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**getPlatformPaymentInstructions**](LizmoBillingApi.md#getplatformpaymentinstructions) | **GET** /api/v1/me/platform-payment-instructions | How to pay Lizmo
-[**listMyPlatformInvoices**](LizmoBillingApi.md#listmyplatforminvoices) | **GET** /api/v1/me/platform-invoices | My Lizmo invoices
-[**payPlatformInvoice**](LizmoBillingApi.md#payplatforminvoice) | **POST** /api/v1/me/platform-invoices/{id}/payments | Say I have paid Lizmo
+[**listMyPlatformStatements**](LizmoBillingApi.md#listmyplatformstatements) | **GET** /api/v1/me/platform-statements | My Lizmo statements
+[**payPlatformStatement**](LizmoBillingApi.md#payplatformstatement) | **POST** /api/v1/me/platform-statements/{id}/payments | Say I have paid Lizmo
 
 
 # **getPlatformPaymentInstructions**
@@ -53,12 +53,12 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **listMyPlatformInvoices**
-> List<PlatformInvoiceResponse> listMyPlatformInvoices()
+# **listMyPlatformStatements**
+> List<PlatformStatementResponse> listMyPlatformStatements()
 
-My Lizmo invoices
+My Lizmo statements
 
-One per property per month, newest first, with what has been sent against each.
+One a month, newest first, itemised by property, with what has been sent against each. A line carries an invoice number once the statement is paid.
 
 ### Example
 ```dart
@@ -67,10 +67,10 @@ import 'package:lizmo_api/api.dart';
 final api_instance = LizmoBillingApi();
 
 try {
-    final result = api_instance.listMyPlatformInvoices();
+    final result = api_instance.listMyPlatformStatements();
     print(result);
 } catch (e) {
-    print('Exception when calling LizmoBillingApi->listMyPlatformInvoices: $e\n');
+    print('Exception when calling LizmoBillingApi->listMyPlatformStatements: $e\n');
 }
 ```
 
@@ -79,7 +79,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List<PlatformInvoiceResponse>**](PlatformInvoiceResponse.md)
+[**List<PlatformStatementResponse>**](PlatformStatementResponse.md)
 
 ### Authorization
 
@@ -92,8 +92,8 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **payPlatformInvoice**
-> PlatformInvoiceResponse payPlatformInvoice(id, payment, proof)
+# **payPlatformStatement**
+> PlatformStatementResponse payPlatformStatement(id, payment, proof)
 
 Say I have paid Lizmo
 
@@ -109,10 +109,10 @@ final payment = ; // PlatformPaymentRequest |
 final proof = BINARY_DATA_HERE; // MultipartFile | 
 
 try {
-    final result = api_instance.payPlatformInvoice(id, payment, proof);
+    final result = api_instance.payPlatformStatement(id, payment, proof);
     print(result);
 } catch (e) {
-    print('Exception when calling LizmoBillingApi->payPlatformInvoice: $e\n');
+    print('Exception when calling LizmoBillingApi->payPlatformStatement: $e\n');
 }
 ```
 
@@ -126,7 +126,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**PlatformInvoiceResponse**](PlatformInvoiceResponse.md)
+[**PlatformStatementResponse**](PlatformStatementResponse.md)
 
 ### Authorization
 

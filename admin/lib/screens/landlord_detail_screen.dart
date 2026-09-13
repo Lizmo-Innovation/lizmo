@@ -114,7 +114,7 @@ class _Detail extends ConsumerWidget {
             ],
           ),
         const SizedBox(height: 24),
-        _Invoices(landlordId: landlord.userId ?? ''),
+        _Statements(landlordId: landlord.userId ?? ''),
       ],
     );
   }
@@ -277,25 +277,26 @@ class _LockButtonState extends ConsumerState<_LockButton> {
   }
 }
 
-/// What Lizmo has invoiced this landlord, newest month first.
+/// What Lizmo has billed this landlord, newest month first.
 ///
-/// Where a placeholder said nothing raised an invoice yet. One row per property
-/// per month, so an admin chasing a landlord can see which building is behind.
-class _Invoices extends ConsumerWidget {
-  const _Invoices({required this.landlordId});
+/// One row a month for the whole account, itemised inside it -- an admin
+/// chasing a landlord can see which buildings the figure is made of, and the
+/// invoice numbers once it has been paid.
+class _Statements extends ConsumerWidget {
+  const _Statements({required this.landlordId});
 
   final String landlordId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final invoices = ref.watch(landlordInvoicesProvider(landlordId));
+    final statements = ref.watch(landlordStatementsProvider(landlordId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Invoices', style: LizmoType.sectionHeading),
+        Text('Statements', style: LizmoType.sectionHeading),
         const SizedBox(height: 10),
-        invoices.when(
+        statements.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -306,36 +307,36 @@ class _Invoices extends ConsumerWidget {
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    'No invoices yet. Lizmo invoices each property on the 1st '
-                    'for the beds and units let that day.',
+                    'No statements yet. Lizmo bills a landlord on the 1st for '
+                    'the beds and units let that day, across all their '
+                    'properties.',
                     style: LizmoType.rowSub,
                   ),
                 )
               : ConsoleTable(
                   columns: const [
                     ConsoleColumn('Month', width: 140),
-                    ConsoleColumn('Property'),
-                    ConsoleColumn('Let', width: 140),
+                    ConsoleColumn('Properties'),
                     ConsoleColumn('Due', width: 96),
                     ConsoleColumn('Paid', width: 96),
                     ConsoleColumn('Status', width: 120),
                   ],
                   rows: [
-                    for (final invoice in rows)
+                    for (final statement in rows)
                       ConsoleRow(cells: [
-                        Text(invoice.label ?? '', style: LizmoType.rowName),
-                        Text(invoice.propertyName ?? '',
-                            style: LizmoType.rowName),
-                        Text(
-                          '${invoice.occupiedBeds ?? 0} beds · '
-                          '${invoice.occupiedUnits ?? 0} units',
-                          style: LizmoType.rowSub,
+                        Text(statement.label ?? '', style: LizmoType.rowName),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final line in statement.lines)
+                              _Line(line: line),
+                          ],
                         ),
-                        Text('₱${(invoice.amountDue ?? 0).toStringAsFixed(0)}',
+                        Text('₱${(statement.amountDue ?? 0).toStringAsFixed(0)}',
                             style: LizmoType.dataMedium),
-                        Text('₱${(invoice.amountPaid ?? 0).toStringAsFixed(0)}',
+                        Text('₱${(statement.amountPaid ?? 0).toStringAsFixed(0)}',
                             style: LizmoType.dataMedium),
-                        _InvoiceStatus(invoice: invoice),
+                        _StatementStatus(statement: statement),
                       ]),
                   ],
                 ),
@@ -345,21 +346,50 @@ class _Invoices extends ConsumerWidget {
   }
 }
 
-class _InvoiceStatus extends StatelessWidget {
-  const _InvoiceStatus({required this.invoice});
+/// One property on a statement: what it was billed for, and its invoice if the
+/// statement has been paid.
+class _Line extends StatelessWidget {
+  const _Line({required this.line});
 
-  final PlatformInvoiceResponse invoice;
+  final PlatformInvoiceLine line;
 
   @override
   Widget build(BuildContext context) {
-    final status = invoice.status?.toJson();
+    final invoice = line.invoiceNumber;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(line.propertyName ?? 'A property', style: LizmoType.rowName),
+          Text(
+            '${line.occupiedBeds ?? 0} beds · ${line.occupiedUnits ?? 0} units '
+            '· ₱${(line.amountDue ?? 0).toStringAsFixed(0)}'
+            "${invoice == null ? '' : ' · $invoice'}",
+            style: LizmoType.rowSub,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatementStatus extends StatelessWidget {
+  const _StatementStatus({required this.statement});
+
+  final PlatformStatementResponse statement;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = statement.status?.toJson();
     if (status == 'PAID') {
       return const StatusChip(status: LizmoStatus.paid, label: 'Paid');
     }
-    if (invoice.lockedByThis == true) {
+    if (statement.locked == true) {
       return const StatusChip(status: LizmoStatus.overdue, label: 'Locked');
     }
-    if (invoice.overdue == true) {
+    if (statement.overdue == true) {
       return const StatusChip(status: LizmoStatus.overdue, label: 'Overdue');
     }
     if (status == 'PARTIALLY_PAID') {

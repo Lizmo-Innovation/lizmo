@@ -9,13 +9,13 @@ import 'package:lizmo_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | [optional] 
-**invoiceId** | **String** |  | [optional] 
+**statementId** | **String** |  | [optional] 
 **landlordId** | **String** |  | [optional] 
 **landlordName** | **String** |  | [optional] 
-**propertyName** | **String** |  | [optional] 
-**invoiceLabel** | **String** |  | [optional] 
-**invoiceAmountDue** | **num** |  | [optional] 
-**invoiceOutstanding** | **num** |  | [optional] 
+**statementLabel** | **String** |  | [optional] 
+**properties** | **int** |  | [optional] 
+**statementAmountDue** | **num** |  | [optional] 
+**statementOutstanding** | **num** |  | [optional] 
 **amountPaid** | **num** |  | [optional] 
 **paymentDate** | [**DateTime**](DateTime.md) |  | [optional] 
 **paymentMethod** | **String** |  | [optional] 

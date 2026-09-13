@@ -64,8 +64,10 @@ final platformPaymentsProvider =
       const [];
 });
 
-/// What Lizmo has invoiced one landlord, newest month first.
-final landlordInvoicesProvider =
-    FutureProvider.family<List<PlatformInvoiceResponse>, String>((ref, id) async {
-  return await ref.watch(adminApiProvider).listLandlordInvoices(id) ?? const [];
+/// What Lizmo has billed one landlord, newest month first.
+///
+/// One statement a month for the whole account, with a line per property.
+final landlordStatementsProvider =
+    FutureProvider.family<List<PlatformStatementResponse>, String>((ref, id) async {
+  return await ref.watch(adminApiProvider).listLandlordStatements(id) ?? const [];
 });

@@ -20,7 +20,10 @@ import java.util.UUID;
  *
  * <p>The same shape as a tenant paying rent, because it is the same event one
  * level up: money moved outside the app, proof uploaded, somebody on the
- * receiving end agrees or does not. Only agreement moves the invoice.
+ * receiving end agrees or does not. Only agreement moves the statement.
+ *
+ * <p>Against the statement, never one property: a landlord pays once for the
+ * month, whatever it covers.
  */
 @Entity
 @Table(name = "platform_payments")
@@ -30,8 +33,8 @@ public class PlatformPayment {
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "billing_cycle_id", nullable = false, updatable = false)
-    private UUID invoiceId;
+    @Column(name = "statement_id", nullable = false, updatable = false)
+    private UUID statementId;
 
     @Column(name = "amount_paid", nullable = false, updatable = false)
     private BigDecimal amountPaid;
@@ -66,13 +69,13 @@ public class PlatformPayment {
     }
 
     public PlatformPayment(
-            UUID invoiceId,
+            UUID statementId,
             BigDecimal amountPaid,
             LocalDate paymentDate,
             PaymentMethod paymentMethod,
             UUID submittedBy,
             String remarks) {
-        this.invoiceId = invoiceId;
+        this.statementId = statementId;
         this.amountPaid = amountPaid;
         this.paymentDate = paymentDate;
         this.paymentMethod = paymentMethod;
@@ -117,8 +120,8 @@ public class PlatformPayment {
         return id;
     }
 
-    public UUID getInvoiceId() {
-        return invoiceId;
+    public UUID getStatementId() {
+        return statementId;
     }
 
     public BigDecimal getAmountPaid() {

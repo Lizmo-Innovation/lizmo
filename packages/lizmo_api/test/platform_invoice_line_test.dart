@@ -11,11 +11,11 @@
 import 'package:lizmo_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for PlatformInvoiceResponse
+// tests for PlatformInvoiceLine
 void main() {
-  // final instance = PlatformInvoiceResponse();
+  // final instance = PlatformInvoiceLine();
 
-  group('test PlatformInvoiceResponse', () {
+  group('test PlatformInvoiceLine', () {
     // String id
     test('to test the property `id`', () async {
       // TODO
@@ -28,21 +28,6 @@ void main() {
 
     // String propertyName
     test('to test the property `propertyName`', () async {
-      // TODO
-    });
-
-    // String label
-    test('to test the property `label`', () async {
-      // TODO
-    });
-
-    // DateTime billingDate
-    test('to test the property `billingDate`', () async {
-      // TODO
-    });
-
-    // DateTime dueDate
-    test('to test the property `dueDate`', () async {
       // TODO
     });
 
@@ -71,38 +56,13 @@ void main() {
       // TODO
     });
 
-    // num amountPaid
-    test('to test the property `amountPaid`', () async {
+    // String invoiceNumber
+    test('to test the property `invoiceNumber`', () async {
       // TODO
     });
 
-    // num outstanding
-    test('to test the property `outstanding`', () async {
-      // TODO
-    });
-
-    // String status
-    test('to test the property `status`', () async {
-      // TODO
-    });
-
-    // bool overdue
-    test('to test the property `overdue`', () async {
-      // TODO
-    });
-
-    // DateTime locksOn
-    test('to test the property `locksOn`', () async {
-      // TODO
-    });
-
-    // bool lockedByThis
-    test('to test the property `lockedByThis`', () async {
-      // TODO
-    });
-
-    // List<PlatformPaymentResponse> payments (default value: const [])
-    test('to test the property `payments`', () async {
+    // DateTime issuedAt
+    test('to test the property `issuedAt`', () async {
       // TODO
     });
 

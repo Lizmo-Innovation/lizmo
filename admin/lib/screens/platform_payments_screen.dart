@@ -14,8 +14,12 @@ import '../widgets/platform_payment_card.dart';
 /// time: checking proofs of payment is a batch job done at one sitting. Oldest
 /// first, so whoever has waited longest is answered first.
 ///
+/// A payment is against a statement, never one property: the landlord pays once
+/// for the month. Confirming the last of it issues an invoice for each property
+/// on it, which is why the row says how many there are.
+///
 /// This screen once rendered five hardcoded rows with buttons wired to nothing,
-/// and then said honestly that nothing could arrive. Invoices are raised now,
+/// and then said honestly that nothing could arrive. Statements are raised now,
 /// so payments do.
 class PlatformPaymentsScreen extends ConsumerWidget {
   const PlatformPaymentsScreen({super.key});
@@ -42,7 +46,7 @@ class PlatformPaymentsScreen extends ConsumerWidget {
                 icon: Icons.receipt_long_outlined,
                 title: 'Nothing to review',
                 detail: 'Payments appear here when a landlord sends proof '
-                    'against a Lizmo invoice.',
+                    'against a Lizmo statement.',
               )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
@@ -92,7 +96,7 @@ class _ReviewState extends ConsumerState<_Review> {
       ref.invalidate(platformPaymentsProvider);
       final landlord = payment.landlordId;
       if (landlord != null) {
-        ref.invalidate(landlordInvoicesProvider(landlord));
+        ref.invalidate(landlordStatementsProvider(landlord));
         ref.invalidate(landlordProvider(landlord));
       }
       ref.invalidate(landlordsProvider);
@@ -156,16 +160,19 @@ class _ReviewState extends ConsumerState<_Review> {
     final paid = date == null ? '' : ' · paid ${date.day} ${_months[date.month - 1]}';
     final method = _methods[payment.paymentMethod?.toJson()] ?? 'Other';
     final note = payment.remarks;
+    // How many properties the statement covers, which is why the figure is
+    // what it is -- and how many invoices confirming it will issue.
+    final properties = payment.properties ?? 0;
+    final covers = properties == 1 ? '1 property' : '$properties properties';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlatformPaymentCard(
           key: ValueKey('platform-payment-${payment.id}'),
-          landlord:
-              '${payment.landlordName ?? 'A landlord'} · ${payment.propertyName ?? ''}',
-          subtitle: '$method$paid · for ${payment.invoiceLabel ?? 'an invoice'}, '
-              '₱${(payment.invoiceOutstanding ?? 0).toStringAsFixed(0)} owed'
+          landlord: '${payment.landlordName ?? 'A landlord'} · $covers',
+          subtitle: '$method$paid · for ${payment.statementLabel ?? 'a statement'}, '
+              '₱${(payment.statementOutstanding ?? 0).toStringAsFixed(0)} owed'
               '${note == null || note.isEmpty ? '' : ' · "$note"'}',
           amount: '₱${(payment.amountPaid ?? 0).toStringAsFixed(0)}',
           status: LizmoStatus.pending,

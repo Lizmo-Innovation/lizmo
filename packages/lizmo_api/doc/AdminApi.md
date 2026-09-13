@@ -15,7 +15,7 @@ Method | HTTP request | Description
 [**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
 [**inviteLandlord**](AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 [**listInvitations**](AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
-[**listLandlordInvoices**](AdminApi.md#listlandlordinvoices) | **GET** /api/v1/admin/landlords/{id}/invoices | One landlord's invoices
+[**listLandlordStatements**](AdminApi.md#listlandlordstatements) | **GET** /api/v1/admin/landlords/{id}/statements | One landlord's statements
 [**listLandlords**](AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
 [**listPlatformPaymentsToReview**](AdminApi.md#listplatformpaymentstoreview) | **GET** /api/v1/admin/platform-payments | Payments waiting to be checked
 [**lockProperty**](AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
@@ -30,7 +30,7 @@ Method | HTTP request | Description
 
 The money arrived
 
-Credits the invoice. Paying it in full lifts the lock it caused.
+Credits the statement. Settling it in full issues an invoice for each property and lifts the locks it caused.
 
 ### Example
 ```dart
@@ -269,10 +269,10 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **listLandlordInvoices**
-> List<PlatformInvoiceResponse> listLandlordInvoices(id)
+# **listLandlordStatements**
+> List<PlatformStatementResponse> listLandlordStatements(id)
 
-One landlord's invoices
+One landlord's statements
 
 ### Example
 ```dart
@@ -282,10 +282,10 @@ final api_instance = AdminApi();
 final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final result = api_instance.listLandlordInvoices(id);
+    final result = api_instance.listLandlordStatements(id);
     print(result);
 } catch (e) {
-    print('Exception when calling AdminApi->listLandlordInvoices: $e\n');
+    print('Exception when calling AdminApi->listLandlordStatements: $e\n');
 }
 ```
 
@@ -297,7 +297,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List<PlatformInvoiceResponse>**](PlatformInvoiceResponse.md)
+[**List<PlatformStatementResponse>**](PlatformStatementResponse.md)
 
 ### Authorization
 

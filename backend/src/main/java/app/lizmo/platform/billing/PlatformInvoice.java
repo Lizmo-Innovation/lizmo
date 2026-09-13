@@ -2,8 +2,6 @@ package app.lizmo.platform.billing;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
@@ -11,19 +9,22 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * What one property owes Lizmo for one month.
+ * One property's share of a month, before and after it is paid for.
  *
- * <p>An invoice in the code; a billing cycle in the table, which keeps its
- * original name. Per property rather than per landlord since V16, so a
- * landlord can check each invoice against that building's own income.
+ * <p>Two lives, one row. While the statement is unpaid this is a line on it:
+ * what this property let, at what rates, for how much. When the statement is
+ * settled in full the same row becomes an invoice -- numbered and dated -- and
+ * that is what a landlord files against the building.
  *
- * <p>A snapshot, not a running meter. It counts the slots let on the day it was
- * raised, at the rates of that day, and both are stored on it: an invoice from
- * March must still explain itself in September.
+ * <p>Nothing here tracks payment. Money arrives against the statement, which
+ * is the only place a balance lives, so there is no second answer to disagree
+ * with it.
+ *
+ * <p>Keeps the platform_billing_cycles table, which has held the per-property
+ * figures since V1.
  */
 @Entity
 @Table(name = "platform_billing_cycles")
@@ -33,14 +34,11 @@ public class PlatformInvoice {
     @GeneratedValue
     private UUID id;
 
+    @Column(name = "statement_id", nullable = false, updatable = false)
+    private UUID statementId;
+
     @Column(name = "property_id", nullable = false, updatable = false)
     private UUID propertyId;
-
-    @Column(name = "billing_date", nullable = false, updatable = false)
-    private LocalDate billingDate;
-
-    @Column(name = "due_date", nullable = false, updatable = false)
-    private LocalDate dueDate;
 
     @Column(name = "occupied_units_count", nullable = false, updatable = false)
     private int occupiedUnits;
@@ -57,18 +55,11 @@ public class PlatformInvoice {
     @Column(name = "amount_due", nullable = false, updatable = false)
     private BigDecimal amountDue;
 
-    @Column(name = "amount_paid", nullable = false)
-    private BigDecimal amountPaid = BigDecimal.ZERO;
+    @Column(name = "invoice_number")
+    private String invoiceNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PlatformInvoiceStatus status = PlatformInvoiceStatus.UNPAID;
-
-    @Column(name = "overdue_warned_at")
-    private Instant overdueWarnedAt;
-
-    @Column(name = "locked_at")
-    private Instant lockedAt;
+    @Column(name = "issued_at")
+    private Instant issuedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -80,17 +71,14 @@ public class PlatformInvoice {
     }
 
     public PlatformInvoice(
+            UUID statementId,
             UUID propertyId,
-            LocalDate billingDate,
             int occupiedUnits,
             int occupiedBeds,
             BigDecimal unitRate,
             BigDecimal bedRate) {
+        this.statementId = statementId;
         this.propertyId = propertyId;
-        this.billingDate = billingDate;
-        // Due on the day it is raised, as the spec has it. The grace period is
-        // counted from here.
-        this.dueDate = billingDate;
         this.occupiedUnits = occupiedUnits;
         this.occupiedBeds = occupiedBeds;
         this.unitRate = unitRate;
@@ -100,45 +88,21 @@ public class PlatformInvoice {
     }
 
     /**
-     * Money an admin has confirmed arrived.
+     * The line becomes an invoice, because the statement has been paid.
      *
-     * <p>The only thing that moves a balance. A landlord saying they paid is a
-     * claim until then.
+     * <p>Named and dated once. An invoice that could be reissued with a new
+     * number is not a document anybody can quote back.
      */
-    public void credit(BigDecimal amount) {
-        this.amountPaid = this.amountPaid.add(amount);
-        this.status = amountPaid.compareTo(amountDue) >= 0
-                ? PlatformInvoiceStatus.PAID
-                : PlatformInvoiceStatus.PARTIALLY_PAID;
+    public void issue(String number, Instant at) {
+        if (isIssued()) {
+            return;
+        }
+        this.invoiceNumber = number;
+        this.issuedAt = at;
     }
 
-    /** What is still owed. Never negative: paying a little over creates no credit. */
-    public BigDecimal outstanding() {
-        BigDecimal left = amountDue.subtract(amountPaid);
-        return left.signum() < 0 ? BigDecimal.ZERO : left;
-    }
-
-    public boolean isPaid() {
-        return status == PlatformInvoiceStatus.PAID;
-    }
-
-    /** Past its due date with something still owed. */
-    public boolean isOverdue(LocalDate today) {
-        return !isPaid() && today.isAfter(dueDate);
-    }
-
-    public void markOverdueWarned(Instant at) {
-        this.overdueWarnedAt = at;
-    }
-
-    /** Enforcement locked the property over this invoice. */
-    public void markLocked(Instant at) {
-        this.lockedAt = at;
-    }
-
-    /** The lock this invoice caused is lifted. */
-    public void clearLock() {
-        this.lockedAt = null;
+    public boolean isIssued() {
+        return invoiceNumber != null;
     }
 
     @PrePersist
@@ -155,16 +119,12 @@ public class PlatformInvoice {
         return id;
     }
 
+    public UUID getStatementId() {
+        return statementId;
+    }
+
     public UUID getPropertyId() {
         return propertyId;
-    }
-
-    public LocalDate getBillingDate() {
-        return billingDate;
-    }
-
-    public LocalDate getDueDate() {
-        return dueDate;
     }
 
     public int getOccupiedUnits() {
@@ -187,23 +147,11 @@ public class PlatformInvoice {
         return amountDue;
     }
 
-    public BigDecimal getAmountPaid() {
-        return amountPaid;
+    public String getInvoiceNumber() {
+        return invoiceNumber;
     }
 
-    public PlatformInvoiceStatus getStatus() {
-        return status;
-    }
-
-    public Instant getOverdueWarnedAt() {
-        return overdueWarnedAt;
-    }
-
-    public Instant getLockedAt() {
-        return lockedAt;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
+    public Instant getIssuedAt() {
+        return issuedAt;
     }
 }

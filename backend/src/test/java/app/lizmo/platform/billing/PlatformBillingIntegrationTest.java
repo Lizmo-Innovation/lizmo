@@ -12,12 +12,15 @@ import app.lizmo.support.Accounts;
 import app.lizmo.support.IntegrationTest;
 import app.lizmo.support.MutableClock;
 import app.lizmo.support.TestJobAuthoriser;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,10 +33,13 @@ import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequ
 /**
  * Lizmo billing landlords, and being paid.
  *
- * <p>Every test that runs the snapshot bills every property in the shared
- * database, not only this class's. So nothing here counts invoices globally:
- * each assertion is about Elena's own properties, read back through her own
- * endpoint, or about one payment by id.
+ * <p>One statement a month per landlord, itemised by property. The invoices are
+ * the statement's lines, and only carry a number once it is settled.
+ *
+ * <p>Every test that runs the snapshot bills every landlord in the shared
+ * database, not only this class's. So nothing here counts globally: each
+ * assertion is about Elena's own statement, read back through her own endpoint,
+ * or about one payment by id.
  */
 class PlatformBillingIntegrationTest extends IntegrationTest {
 
@@ -47,9 +53,10 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     private String anaToken;
     private String beaToken;
 
-    private String propertyId;
+    private String sunriseId;
     private String bedUnitId;
-    private String wholeUnitId;
+    private String seaviewId;
+    private String seaviewUnitId;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -62,53 +69,90 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         anaToken = accounts.tenant("ana").token();
         beaToken = accounts.tenant("bea").token();
 
-        propertyId = createProperty("Sunrise Apartments");
-        bedUnitId = createUnit(propertyId, """
+        sunriseId = createProperty("Sunrise Apartments");
+        bedUnitId = createUnit(sunriseId, """
                 {"unitNumber":"2B","floor":"2","rentalMode":"BEDSPACE","capacity":3,"rent":2500.00}
                 """);
-        wholeUnitId = createUnit(propertyId, """
+        // Left empty on purpose: what is vacant is never billed.
+        createUnit(sunriseId, """
                 {"unitNumber":"1A","floor":"1","rentalMode":"WHOLE_UNIT","capacity":1,"rent":7000.00}
+                """);
+
+        // A second building, empty until a test lets something in it, because a
+        // statement covering more than one property is the point of all this.
+        seaviewId = createProperty("Seaview Lodge");
+        seaviewUnitId = createUnit(seaviewId, """
+                {"unitNumber":"G","floor":"G","rentalMode":"WHOLE_UNIT","capacity":1,"rent":9000.00}
                 """);
 
         makeReadyForALease(anaToken);
         makeReadyForALease(beaToken);
     }
 
-    // ---- the snapshot -----------------------------------------------------------------
+    // ---- the statement ----------------------------------------------------------------
 
-    /** P50 a let bed, P150 a let whole unit, and nothing for what is empty. */
+    /** One bill for the month, a line per property: P50 a let bed, P150 a let whole unit. */
     @Test
-    void a_property_is_billed_for_what_it_has_let() throws Exception {
+    void one_statement_covers_every_property_the_landlord_has_let() throws Exception {
         letBed(anaToken, 0);
-        letWholeUnit(beaToken);
+        letWholeUnit(beaToken, seaviewUnitId);
 
         snapshot();
 
         mine()
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].propertyName").value("Sunrise Apartments"))
-                .andExpect(jsonPath("$[0].occupiedBeds").value(1))
-                .andExpect(jsonPath("$[0].occupiedUnits").value(1))
-                .andExpect(jsonPath("$[0].unitRate").value(150.00))
-                .andExpect(jsonPath("$[0].bedRate").value(50.00))
+                .andExpect(jsonPath("$[0].label").value(label()))
                 .andExpect(jsonPath("$[0].amountDue").value(200.00))
+                .andExpect(jsonPath("$[0].outstanding").value(200.00))
                 .andExpect(jsonPath("$[0].status").value("UNPAID"))
                 .andExpect(jsonPath("$[0].billingDate").value(firstOfMonth().toString()))
-                .andExpect(jsonPath("$[0].dueDate").value(firstOfMonth().toString()));
+                .andExpect(jsonPath("$[0].dueDate").value(firstOfMonth().toString()))
+                .andExpect(jsonPath("$[0].lines.length()").value(2))
+                .andExpect(jsonPath("$[0].lines[0].propertyName").value("Seaview Lodge"))
+                .andExpect(jsonPath("$[0].lines[0].occupiedUnits").value(1))
+                .andExpect(jsonPath("$[0].lines[0].occupiedBeds").value(0))
+                .andExpect(jsonPath("$[0].lines[0].unitRate").value(150.00))
+                .andExpect(jsonPath("$[0].lines[0].amountDue").value(150.00))
+                .andExpect(jsonPath("$[0].lines[1].propertyName").value("Sunrise Apartments"))
+                .andExpect(jsonPath("$[0].lines[1].occupiedBeds").value(1))
+                // Its whole unit stands empty, so it is not on the bill.
+                .andExpect(jsonPath("$[0].lines[1].occupiedUnits").value(0))
+                .andExpect(jsonPath("$[0].lines[1].bedRate").value(50.00))
+                .andExpect(jsonPath("$[0].lines[1].amountDue").value(50.00));
     }
 
-    /** Vacant inventory costs nothing, and an invoice for nothing is noise. */
+    /** Nothing is invoiced until the statement is paid, so no line has a number yet. */
     @Test
-    void a_property_with_nothing_let_gets_no_invoice() throws Exception {
-        createProperty("Empty House");
+    void an_unpaid_statement_has_no_invoice_numbers() throws Exception {
+        letBed(anaToken, 0);
+        snapshot();
+
+        mine()
+                .andExpect(jsonPath("$[0].lines[0].invoiceNumber").doesNotExist())
+                .andExpect(jsonPath("$[0].lines[0].issuedAt").doesNotExist());
+    }
+
+    /** Vacant inventory costs nothing, and a line for nothing is noise. */
+    @Test
+    void a_property_with_nothing_let_is_not_on_the_statement() throws Exception {
         letBed(anaToken, 0);
 
         snapshot();
 
         mine()
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].propertyName").value("Sunrise Apartments"));
+                .andExpect(jsonPath("$[0].lines.length()").value(1))
+                .andExpect(jsonPath("$[0].lines[0].propertyName").value("Sunrise Apartments"))
+                .andExpect(jsonPath("$[0].amountDue").value(50.00));
+    }
+
+    @Test
+    void a_landlord_with_nothing_let_gets_no_statement() throws Exception {
+        letBed(anaToken, 0);
+
+        snapshot();
+
+        statements(otherLandlordToken).andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -118,22 +162,24 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         snapshot();
         snapshot();
 
-        mine().andExpect(jsonPath("$.length()").value(1));
+        mine()
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].lines.length()").value(1));
     }
 
     @Test
-    void the_landlord_is_told_an_invoice_arrived() throws Exception {
+    void the_landlord_is_told_a_statement_arrived() throws Exception {
         letBed(anaToken, 0);
         snapshot();
 
-        assertThat(notificationsAbout(landlordToken, invoiceId(), "PLATFORM_INVOICE_ISSUED"))
+        assertThat(notificationsAbout(landlordToken, statementId(), "PLATFORM_INVOICE_ISSUED"))
                 .isEqualTo(1);
     }
 
     // ---- enforcement --------------------------------------------------------------------
 
     @Test
-    void an_overdue_invoice_is_warned_about_once() throws Exception {
+    void an_overdue_statement_is_warned_about_once() throws Exception {
         letBed(anaToken, 0);
         snapshot();
         clock.advanceDays(1);
@@ -141,14 +187,17 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         enforce();
         enforce();
 
-        assertThat(notificationsAbout(landlordToken, invoiceId(), "PLATFORM_INVOICE_OVERDUE"))
+        assertThat(notificationsAbout(landlordToken, statementId(), "PLATFORM_INVOICE_OVERDUE"))
                 .isEqualTo(1);
         mine().andExpect(jsonPath("$[0].overdue").value(true));
     }
 
-    /** Ariel's thirty days, not the spec's seven. */
+    /**
+     * Ariel's thirty days, not the spec's seven — and the whole account, not
+     * only what is on the statement: the debt is the landlord's.
+     */
     @Test
-    void the_property_locks_thirty_days_after_the_due_date_and_not_before() throws Exception {
+    void every_property_locks_thirty_days_after_the_due_date_and_not_before() throws Exception {
         letBed(anaToken, 0);
         snapshot();
 
@@ -156,17 +205,18 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         if (days > 0) {
             clock.advanceDays(days - 1);
             enforce();
-            propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("ACTIVE"));
+            assertThat(accountStatuses()).containsOnly("ACTIVE");
             clock.advanceDays(1);
         }
 
         enforce();
 
-        propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("LOCKED"));
+        // Seaview has nothing let and is not on the statement, and locks anyway.
+        assertThat(accountStatuses()).containsOnly("LOCKED");
         mine()
-                .andExpect(jsonPath("$[0].lockedByThis").value(true))
-                .andExpect(jsonPath("$[0].locksOn").isEmpty());
-        assertThat(notificationsAbout(landlordToken, invoiceId(), "PLATFORM_PROPERTY_LOCKED"))
+                .andExpect(jsonPath("$[0].locked").value(true))
+                .andExpect(jsonPath("$[0].locksOn").doesNotExist());
+        assertThat(notificationsAbout(landlordToken, statementId(), "PLATFORM_PROPERTY_LOCKED"))
                 .isEqualTo(1);
     }
 
@@ -177,7 +227,7 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         letBed(anaToken, 0);
         snapshot();
 
-        pay(landlordToken, invoiceId(), 50, true)
+        pay(landlordToken, statementId(), 50, true)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.payments.length()").value(1))
                 .andExpect(jsonPath("$.payments[0].status").value("PENDING_VERIFICATION"))
@@ -192,41 +242,53 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         letBed(anaToken, 0);
         snapshot();
 
-        pay(landlordToken, invoiceId(), 50, false).andExpect(status().isBadRequest());
+        pay(landlordToken, statementId(), 50, false).andExpect(status().isBadRequest());
     }
 
     @Test
     void another_landlord_can_neither_see_nor_pay_it() throws Exception {
         letBed(anaToken, 0);
         snapshot();
-        String invoice = invoiceId();
+        String statement = statementId();
 
-        mvc.perform(get("/api/v1/me/platform-invoices")
-                        .header("Authorization", "Bearer " + otherLandlordToken))
-                .andExpect(jsonPath("$.length()").value(0));
-        pay(otherLandlordToken, invoice, 50, true).andExpect(status().isNotFound());
+        statements(otherLandlordToken).andExpect(jsonPath("$.length()").value(0));
+        pay(otherLandlordToken, statement, 50, true).andExpect(status().isNotFound());
     }
 
     // ---- an admin checking it -------------------------------------------------------------
 
+    /** Paying in full is the moment each property gets an invoice of its own. */
     @Test
-    void confirming_pays_the_invoice_and_tells_the_landlord() throws Exception {
+    void confirming_the_last_of_it_issues_an_invoice_for_each_property() throws Exception {
         letBed(anaToken, 0);
+        letWholeUnit(beaToken, seaviewUnitId);
         snapshot();
-        String invoice = invoiceId();
-        String payment = paymentId(pay(landlordToken, invoice, 50, true));
+        String statement = statementId();
+        String payment = paymentId(pay(landlordToken, statement, 200, true));
 
         admin(payment, "confirm", null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.landlordName").value("elena"))
-                .andExpect(jsonPath("$.propertyName").value("Sunrise Apartments"));
+                .andExpect(jsonPath("$.statementLabel").value(label()))
+                .andExpect(jsonPath("$.properties").value(2))
+                .andExpect(jsonPath("$.statementOutstanding").value(0));
 
         mine()
                 .andExpect(jsonPath("$[0].status").value("PAID"))
-                .andExpect(jsonPath("$[0].amountPaid").value(50.00))
+                .andExpect(jsonPath("$[0].amountPaid").value(200.00))
                 .andExpect(jsonPath("$[0].outstanding").value(0));
-        assertThat(notificationsAbout(landlordToken, invoice, "PLATFORM_PAYMENT_CONFIRMED"))
+
+        List<String> numbers = new ArrayList<>();
+        for (JsonNode line : lines()) {
+            assertThat(line.path("issuedAt").isNull()).isFalse();
+            numbers.add(line.path("invoiceNumber").asText());
+        }
+        // One number each, none shared, and each readable on paper.
+        assertThat(numbers).hasSize(2).doesNotHaveDuplicates()
+                .allMatch(number -> number.matches(
+                        "LZM-%s-\\d{4}".formatted(YearMonth.now(clock))));
+        assertThat(notificationsAbout(landlordToken, statement, "PLATFORM_PAYMENT_CONFIRMED"))
                 .isEqualTo(1);
     }
 
@@ -234,7 +296,7 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     void the_queue_shows_what_is_waiting_and_not_what_was_answered() throws Exception {
         letBed(anaToken, 0);
         snapshot();
-        String payment = paymentId(pay(landlordToken, invoiceId(), 50, true));
+        String payment = paymentId(pay(landlordToken, statementId(), 50, true));
 
         assertThat(queueHas(payment)).isTrue();
         admin(payment, "confirm", null).andExpect(status().isOk());
@@ -245,33 +307,43 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     void a_payment_is_answered_once() throws Exception {
         letBed(anaToken, 0);
         snapshot();
-        String payment = paymentId(pay(landlordToken, invoiceId(), 50, true));
+        String payment = paymentId(pay(landlordToken, statementId(), 50, true));
 
         admin(payment, "confirm", null).andExpect(status().isOk());
         admin(payment, "confirm", null).andExpect(status().isBadRequest());
         admin(payment, "reject", "Too late.").andExpect(status().isBadRequest());
     }
 
+    /** Half a statement is not an invoice, so nothing is issued until the rest lands. */
     @Test
-    void part_of_it_leaves_the_rest_owed() throws Exception {
+    void part_of_it_leaves_the_rest_owed_and_issues_nothing() throws Exception {
         letBed(anaToken, 0);
         letBed(beaToken, 1);
         snapshot();
-        String payment = paymentId(pay(landlordToken, invoiceId(), 40, true));
+        String statement = statementId();
+        String payment = paymentId(pay(landlordToken, statement, 40, true));
 
         admin(payment, "confirm", null).andExpect(status().isOk());
 
         mine()
                 .andExpect(jsonPath("$[0].status").value("PARTIALLY_PAID"))
-                .andExpect(jsonPath("$[0].outstanding").value(60.00));
+                .andExpect(jsonPath("$[0].outstanding").value(60.00))
+                .andExpect(jsonPath("$[0].lines[0].invoiceNumber").doesNotExist());
+
+        // And the rest of it finishes the job.
+        String second = paymentId(pay(landlordToken, statement, 60, true));
+        admin(second, "confirm", null).andExpect(status().isOk());
+        mine()
+                .andExpect(jsonPath("$[0].status").value("PAID"))
+                .andExpect(jsonPath("$[0].lines[0].invoiceNumber").isNotEmpty());
     }
 
     @Test
     void refusing_one_tells_the_landlord_why_and_moves_nothing() throws Exception {
         letBed(anaToken, 0);
         snapshot();
-        String invoice = invoiceId();
-        String payment = paymentId(pay(landlordToken, invoice, 50, true));
+        String statement = statementId();
+        String payment = paymentId(pay(landlordToken, statement, 50, true));
 
         admin(payment, "reject", "Nothing arrived under that reference.")
                 .andExpect(status().isOk())
@@ -290,47 +362,48 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     // ---- the lock lifting ---------------------------------------------------------------------
 
     @Test
-    void paying_in_full_lifts_the_lock_the_invoice_caused() throws Exception {
+    void paying_in_full_lifts_every_lock_the_statement_caused() throws Exception {
         letBed(anaToken, 0);
         snapshot();
         clock.advanceDays(45);
         enforce();
-        propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("LOCKED"));
+        assertThat(accountStatuses()).containsOnly("LOCKED");
 
-        String payment = paymentId(pay(landlordToken, invoiceId(), 50, true));
+        String payment = paymentId(pay(landlordToken, statementId(), 50, true));
         admin(payment, "confirm", null).andExpect(status().isOk());
 
-        propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("ACTIVE"));
+        assertThat(accountStatuses()).containsOnly("ACTIVE");
     }
 
     @Test
-    void paying_part_of_it_leaves_the_property_locked() throws Exception {
+    void paying_part_of_it_leaves_the_properties_locked() throws Exception {
         letBed(anaToken, 0);
         snapshot();
         clock.advanceDays(45);
         enforce();
 
-        String payment = paymentId(pay(landlordToken, invoiceId(), 20, true));
+        String payment = paymentId(pay(landlordToken, statementId(), 20, true));
         admin(payment, "confirm", null).andExpect(status().isOk());
 
-        propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("LOCKED"));
+        assertThat(accountStatuses()).containsOnly("LOCKED");
     }
 
-    /** A lock placed by hand is an admin's decision, and paying an invoice does not undo it. */
+    /** A lock placed by hand is an admin's decision, and paying does not undo it. */
     @Test
     void a_lock_an_admin_placed_is_not_lifted_by_paying() throws Exception {
         letBed(anaToken, 0);
         snapshot();
-        mvc.perform(post("/api/v1/admin/properties/" + propertyId + "/lock")
+        mvc.perform(post("/api/v1/admin/properties/" + sunriseId + "/lock")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
         clock.advanceDays(45);
         enforce();
 
-        String payment = paymentId(pay(landlordToken, invoiceId(), 50, true));
+        String payment = paymentId(pay(landlordToken, statementId(), 50, true));
         admin(payment, "confirm", null).andExpect(status().isOk());
 
-        propertyStatus().andExpect(jsonPath("$.properties[0].accountStatus").value("LOCKED"));
+        assertThat(statusOf(sunriseId)).isEqualTo("LOCKED");
+        assertThat(statusOf(seaviewId)).isEqualTo("ACTIVE");
     }
 
     // ---- who may do what --------------------------------------------------------------------
@@ -352,15 +425,17 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void the_admin_sees_a_landlords_invoices() throws Exception {
+    void the_admin_sees_a_landlords_statements() throws Exception {
         letBed(anaToken, 0);
         snapshot();
 
-        mvc.perform(get("/api/v1/admin/landlords/" + elena.id() + "/invoices")
+        mvc.perform(get("/api/v1/admin/landlords/" + elena.id() + "/statements")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].amountDue").value(50.00));
+                .andExpect(jsonPath("$[0].amountDue").value(50.00))
+                .andExpect(jsonPath("$[0].lines[0].propertyName")
+                        .value("Sunrise Apartments"));
     }
 
     @Test
@@ -385,6 +460,13 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         return YearMonth.now(clock).atDay(1);
     }
 
+    /** "September 2026", as the statement labels itself. */
+    private String label() {
+        return java.time.format.DateTimeFormatter
+                .ofPattern("MMMM yyyy", java.util.Locale.ENGLISH)
+                .format(firstOfMonth());
+    }
+
     private void snapshot() throws Exception {
         mvc.perform(post("/internal/jobs/platform-billing-snapshot")
                         .header("Authorization", "Bearer " + TestJobAuthoriser.PASSWORD))
@@ -398,24 +480,53 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
     }
 
     private ResultActions mine() throws Exception {
-        return mvc.perform(get("/api/v1/me/platform-invoices")
-                .header("Authorization", "Bearer " + landlordToken));
+        return statements(landlordToken);
     }
 
-    private String invoiceId() throws Exception {
+    private ResultActions statements(String token) throws Exception {
+        return mvc.perform(get("/api/v1/me/platform-statements")
+                .header("Authorization", "Bearer " + token));
+    }
+
+    private String statementId() throws Exception {
         String body = mine().andReturn().getResponse().getContentAsString();
         return json.readTree(body).get(0).get("id").asText();
     }
 
-    private ResultActions propertyStatus() throws Exception {
-        return mvc.perform(get("/api/v1/admin/landlords/" + elena.id())
-                .header("Authorization", "Bearer " + adminToken));
+    private JsonNode lines() throws Exception {
+        String body = mine().andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get(0).get("lines");
     }
 
-    private ResultActions pay(String token, String invoice, int amount, boolean withProof)
+    /** What the admin console shows for each of Elena's properties. */
+    private List<String> accountStatuses() throws Exception {
+        List<String> statuses = new ArrayList<>();
+        for (JsonNode property : landlordDetail().path("properties")) {
+            statuses.add(property.path("accountStatus").asText());
+        }
+        assertThat(statuses).hasSize(2);
+        return statuses;
+    }
+
+    private String statusOf(String propertyId) throws Exception {
+        for (JsonNode property : landlordDetail().path("properties")) {
+            if (propertyId.equals(property.path("id").asText())) {
+                return property.path("accountStatus").asText();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode landlordDetail() throws Exception {
+        return json.readTree(mvc.perform(get("/api/v1/admin/landlords/" + elena.id())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private ResultActions pay(String token, String statement, int amount, boolean withProof)
             throws Exception {
         MockMultipartHttpServletRequestBuilder call =
-                multipart("/api/v1/me/platform-invoices/" + invoice + "/payments");
+                multipart("/api/v1/me/platform-statements/" + statement + "/payments");
         call.file(new MockMultipartFile("payment", "", "application/json",
                 "{\"amountPaid\":%d.00,\"paymentMethod\":\"GCASH\"}".formatted(amount).getBytes()));
         if (withProof) {
@@ -424,9 +535,10 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         return mvc.perform(call.header("Authorization", "Bearer " + token));
     }
 
-    /** The newest payment on the invoice that came back. */
+    /** The newest payment on the statement that came back. */
     private String paymentId(ResultActions paid) throws Exception {
-        String body = paid.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String body =
+                paid.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         var sent = json.readTree(body).get("payments");
         return sent.get(sent.size() - 1).get("id").asText();
     }
@@ -497,8 +609,8 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
         accept(ask(tenantToken, "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(bedUnitId, bed)));
     }
 
-    private void letWholeUnit(String tenantToken) throws Exception {
-        accept(ask(tenantToken, "{\"unitId\":\"%s\"}".formatted(wholeUnitId)));
+    private void letWholeUnit(String tenantToken, String unitId) throws Exception {
+        accept(ask(tenantToken, "{\"unitId\":\"%s\"}".formatted(unitId)));
     }
 
     private String ask(String tenantToken, String body) throws Exception {

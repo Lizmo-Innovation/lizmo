@@ -21,26 +21,29 @@ class LizmoPayment {
   final Uint8List proofBytes;
 }
 
-/// Telling Lizmo an invoice has been paid.
+/// Telling Lizmo a statement has been paid.
 ///
 /// Proof is required, unlike rent: nobody pays Lizmo in cash at the door, and
 /// the person checking needs something to match the transfer against.
 class PayLizmoSheet extends StatefulWidget {
   const PayLizmoSheet({
     super.key,
-    required this.propertyName,
     required this.label,
+    required this.covers,
     required this.outstanding,
   });
 
-  final String propertyName;
   final String label;
+
+  /// "2 properties", so the landlord can see what the figure is for.
+  final String covers;
+
   final num outstanding;
 
   static Future<LizmoPayment?> show(
     BuildContext context, {
-    required String propertyName,
     required String label,
+    required String covers,
     required num outstanding,
   }) {
     return showModalBottomSheet<LizmoPayment>(
@@ -51,8 +54,8 @@ class PayLizmoSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => PayLizmoSheet(
-        propertyName: propertyName,
         label: label,
+        covers: covers,
         outstanding: outstanding,
       ),
     );
@@ -152,8 +155,8 @@ class _PayLizmoSheetState extends State<PayLizmoSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${widget.propertyName}, ${widget.label}. Lizmo checks it, and '
-                'the invoice counts as paid once they do.',
+                '${widget.label}, ${widget.covers}. Lizmo checks it, and the '
+                'statement counts as paid once they do.',
                 style: LizmoType.rowSub,
               ),
               const SizedBox(height: 20),

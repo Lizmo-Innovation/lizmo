@@ -18,7 +18,7 @@ class AdminApi {
 
   /// The money arrived
   ///
-  /// Credits the invoice. Paying it in full lifts the lock it caused.
+  /// Credits the statement. Settling it in full issues an invoice for each property and lifts the locks it caused.
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -54,7 +54,7 @@ class AdminApi {
 
   /// The money arrived
   ///
-  /// Credits the invoice. Paying it in full lifts the lock it caused.
+  /// Credits the statement. Settling it in full issues an invoice for each property and lifts the locks it caused.
   ///
   /// Parameters:
   ///
@@ -335,16 +335,16 @@ class AdminApi {
     return null;
   }
 
-  /// One landlord's invoices
+  /// One landlord's statements
   ///
   /// Note: This method returns the HTTP [Response].
   ///
   /// Parameters:
   ///
   /// * [String] id (required):
-  Future<Response> listLandlordInvoicesWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
+  Future<Response> listLandlordStatementsWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/api/v1/admin/landlords/{id}/invoices'
+    final path = r'/api/v1/admin/landlords/{id}/statements'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -369,13 +369,13 @@ class AdminApi {
     );
   }
 
-  /// One landlord's invoices
+  /// One landlord's statements
   ///
   /// Parameters:
   ///
   /// * [String] id (required):
-  Future<List<PlatformInvoiceResponse>?> listLandlordInvoices(String id, { Future<void>? abortTrigger, }) async {
-    final response = await listLandlordInvoicesWithHttpInfo(id, abortTrigger: abortTrigger,);
+  Future<List<PlatformStatementResponse>?> listLandlordStatements(String id, { Future<void>? abortTrigger, }) async {
+    final response = await listLandlordStatementsWithHttpInfo(id, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -384,8 +384,8 @@ class AdminApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       final responseBody = await _decodeBodyBytes(response);
-      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformInvoiceResponse>') as List)
-        .cast<PlatformInvoiceResponse>()
+      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformStatementResponse>') as List)
+        .cast<PlatformStatementResponse>()
         .toList(growable: false);
 
     }

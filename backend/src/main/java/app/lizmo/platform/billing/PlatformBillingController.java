@@ -3,10 +3,10 @@ package app.lizmo.platform.billing;
 import app.lizmo.common.ApiError;
 import app.lizmo.platform.PlatformSettingsService;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PaymentInstructions;
-import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformInvoiceResponse;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentForAdmin;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRejection;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRequest;
+import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformStatementResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -31,6 +31,10 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * What a landlord owes Lizmo, paying it, and Lizmo's admins checking it.
  *
+ * <p>A landlord is billed by the month, not by the building: one statement
+ * covering every property, which is what they pay. The per-property invoices
+ * are the statement's lines, and are only numbered once it is settled.
+ *
  * <p>The admin half sits under /api/v1/admin, which the security config closes
  * to anybody without the ADMIN role as a whole.
  */
@@ -52,32 +56,33 @@ public class PlatformBillingController {
 
     // ---- the landlord --------------------------------------------------------
 
-    @GetMapping("/api/v1/me/platform-invoices")
+    @GetMapping("/api/v1/me/platform-statements")
     @Tag(name = "Lizmo billing", description = "What a landlord owes Lizmo")
-    @Operation(operationId = "listMyPlatformInvoices", summary = "My Lizmo invoices",
-            description = "One per property per month, newest first, with what has been "
-                    + "sent against each.")
-    @ApiResponse(responseCode = "200", description = "The invoices",
+    @Operation(operationId = "listMyPlatformStatements", summary = "My Lizmo statements",
+            description = "One a month, newest first, itemised by property, with what has "
+                    + "been sent against each. A line carries an invoice number once the "
+                    + "statement is paid.")
+    @ApiResponse(responseCode = "200", description = "The statements",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = PlatformInvoiceResponse.class))))
-    public List<PlatformInvoiceResponse> mine() {
+                    schema = @Schema(implementation = PlatformStatementResponse.class))))
+    public List<PlatformStatementResponse> mine() {
         return billing.forLandlord(currentUser.requireId());
     }
 
-    @PostMapping(path = "/api/v1/me/platform-invoices/{id}/payments",
+    @PostMapping(path = "/api/v1/me/platform-statements/{id}/payments",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @Tag(name = "Lizmo billing", description = "What a landlord owes Lizmo")
-    @Operation(operationId = "payPlatformInvoice", summary = "Say I have paid Lizmo",
+    @Operation(operationId = "payPlatformStatement", summary = "Say I have paid Lizmo",
             description = "Waits for a Lizmo admin to confirm it. Proof is required. The "
                     + "photograph is re-encoded, so no EXIF or location leaves the phone.")
-    @ApiResponse(responseCode = "201", description = "The invoice, with the payment",
-            content = @Content(schema = @Schema(implementation = PlatformInvoiceResponse.class)))
+    @ApiResponse(responseCode = "201", description = "The statement, with the payment",
+            content = @Content(schema = @Schema(implementation = PlatformStatementResponse.class)))
     @ApiResponse(responseCode = "400", description = "No proof, no amount, or already paid",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(responseCode = "404", description = "Not your invoice",
+    @ApiResponse(responseCode = "404", description = "Not your statement",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    public PlatformInvoiceResponse pay(
+    public PlatformStatementResponse pay(
             @PathVariable UUID id,
             @Valid @RequestPart("payment") PlatformPaymentRequest request,
             @RequestPart(value = "proof", required = false) MultipartFile proof) {
@@ -98,7 +103,8 @@ public class PlatformBillingController {
 
     @GetMapping("/api/v1/admin/platform-payments")
     @Tag(name = "Admin", description = "Lizmo's own staff")
-    @Operation(operationId = "listPlatformPaymentsToReview", summary = "Payments waiting to be checked",
+    @Operation(operationId = "listPlatformPaymentsToReview",
+            summary = "Payments waiting to be checked",
             description = "Across every landlord, oldest first.")
     @ApiResponse(responseCode = "200", description = "The queue",
             content = @Content(array = @ArraySchema(
@@ -110,7 +116,8 @@ public class PlatformBillingController {
     @PostMapping("/api/v1/admin/platform-payments/{id}/confirm")
     @Tag(name = "Admin", description = "Lizmo's own staff")
     @Operation(operationId = "confirmPlatformPayment", summary = "The money arrived",
-            description = "Credits the invoice. Paying it in full lifts the lock it caused.")
+            description = "Credits the statement. Settling it in full issues an invoice for "
+                    + "each property and lifts the locks it caused.")
     @ApiResponse(responseCode = "200", description = "The payment",
             content = @Content(schema = @Schema(implementation = PlatformPaymentForAdmin.class)))
     public PlatformPaymentForAdmin confirm(@PathVariable UUID id) {
@@ -126,16 +133,17 @@ public class PlatformBillingController {
     public PlatformPaymentForAdmin reject(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) PlatformPaymentRejection reason) {
-        return billing.reject(id, currentUser.requireId(), reason == null ? null : reason.remarks());
+        return billing.reject(
+                id, currentUser.requireId(), reason == null ? null : reason.remarks());
     }
 
-    @GetMapping("/api/v1/admin/landlords/{id}/invoices")
+    @GetMapping("/api/v1/admin/landlords/{id}/statements")
     @Tag(name = "Admin", description = "Lizmo's own staff")
-    @Operation(operationId = "listLandlordInvoices", summary = "One landlord's invoices")
-    @ApiResponse(responseCode = "200", description = "The invoices",
+    @Operation(operationId = "listLandlordStatements", summary = "One landlord's statements")
+    @ApiResponse(responseCode = "200", description = "The statements",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = PlatformInvoiceResponse.class))))
-    public List<PlatformInvoiceResponse> landlordInvoices(@PathVariable UUID id) {
+                    schema = @Schema(implementation = PlatformStatementResponse.class))))
+    public List<PlatformStatementResponse> landlordStatements(@PathVariable UUID id) {
         return billing.forLandlord(id);
     }
 }

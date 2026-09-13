@@ -23,5 +23,8 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
     /** Whether this landlord has any locked property — the create-property guard. */
     boolean existsByLandlordIdAndAccountStatus(UUID landlordId, PropertyAccountStatus status);
 
+    /** What one statement locked, so settling it can let them go again. */
+    List<Property> findByLockedByStatementId(UUID statementId);
+
     long countByLandlordId(UUID landlordId);
 }

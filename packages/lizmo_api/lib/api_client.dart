@@ -243,8 +243,8 @@ class ApiClient {
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':
           return PendingInvitation.fromJson(value);
-        case 'PlatformInvoiceResponse':
-          return PlatformInvoiceResponse.fromJson(value);
+        case 'PlatformInvoiceLine':
+          return PlatformInvoiceLine.fromJson(value);
         case 'PlatformPaymentForAdmin':
           return PlatformPaymentForAdmin.fromJson(value);
         case 'PlatformPaymentRejection':
@@ -255,6 +255,8 @@ class ApiClient {
           return PlatformPaymentResponse.fromJson(value);
         case 'PlatformSettings':
           return PlatformSettings.fromJson(value);
+        case 'PlatformStatementResponse':
+          return PlatformStatementResponse.fromJson(value);
         case 'PropertyByCodeResponse':
           return PropertyByCodeResponse.fromJson(value);
         case 'PropertyRequest':

@@ -14,13 +14,13 @@ class PlatformPaymentForAdmin {
   /// Returns a new [PlatformPaymentForAdmin] instance.
   PlatformPaymentForAdmin({
     this.id,
-    this.invoiceId,
+    this.statementId,
     this.landlordId,
     this.landlordName,
-    this.propertyName,
-    this.invoiceLabel,
-    this.invoiceAmountDue,
-    this.invoiceOutstanding,
+    this.statementLabel,
+    this.properties,
+    this.statementAmountDue,
+    this.statementOutstanding,
     this.amountPaid,
     this.paymentDate,
     this.paymentMethod,
@@ -45,7 +45,7 @@ class PlatformPaymentForAdmin {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? invoiceId;
+  String? statementId;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -69,7 +69,7 @@ class PlatformPaymentForAdmin {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? propertyName;
+  String? statementLabel;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -77,7 +77,7 @@ class PlatformPaymentForAdmin {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? invoiceLabel;
+  int? properties;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -85,7 +85,7 @@ class PlatformPaymentForAdmin {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  num? invoiceAmountDue;
+  num? statementAmountDue;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -93,7 +93,7 @@ class PlatformPaymentForAdmin {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  num? invoiceOutstanding;
+  num? statementOutstanding;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -150,13 +150,13 @@ class PlatformPaymentForAdmin {
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlatformPaymentForAdmin &&
     other.id == id &&
-    other.invoiceId == invoiceId &&
+    other.statementId == statementId &&
     other.landlordId == landlordId &&
     other.landlordName == landlordName &&
-    other.propertyName == propertyName &&
-    other.invoiceLabel == invoiceLabel &&
-    other.invoiceAmountDue == invoiceAmountDue &&
-    other.invoiceOutstanding == invoiceOutstanding &&
+    other.statementLabel == statementLabel &&
+    other.properties == properties &&
+    other.statementAmountDue == statementAmountDue &&
+    other.statementOutstanding == statementOutstanding &&
     other.amountPaid == amountPaid &&
     other.paymentDate == paymentDate &&
     other.paymentMethod == paymentMethod &&
@@ -170,13 +170,13 @@ class PlatformPaymentForAdmin {
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (id == null ? 0 : id!.hashCode) +
-    (invoiceId == null ? 0 : invoiceId!.hashCode) +
+    (statementId == null ? 0 : statementId!.hashCode) +
     (landlordId == null ? 0 : landlordId!.hashCode) +
     (landlordName == null ? 0 : landlordName!.hashCode) +
-    (propertyName == null ? 0 : propertyName!.hashCode) +
-    (invoiceLabel == null ? 0 : invoiceLabel!.hashCode) +
-    (invoiceAmountDue == null ? 0 : invoiceAmountDue!.hashCode) +
-    (invoiceOutstanding == null ? 0 : invoiceOutstanding!.hashCode) +
+    (statementLabel == null ? 0 : statementLabel!.hashCode) +
+    (properties == null ? 0 : properties!.hashCode) +
+    (statementAmountDue == null ? 0 : statementAmountDue!.hashCode) +
+    (statementOutstanding == null ? 0 : statementOutstanding!.hashCode) +
     (amountPaid == null ? 0 : amountPaid!.hashCode) +
     (paymentDate == null ? 0 : paymentDate!.hashCode) +
     (paymentMethod == null ? 0 : paymentMethod!.hashCode) +
@@ -187,7 +187,7 @@ class PlatformPaymentForAdmin {
     (submittedAt == null ? 0 : submittedAt!.hashCode);
 
   @override
-  String toString() => 'PlatformPaymentForAdmin[id=$id, invoiceId=$invoiceId, landlordId=$landlordId, landlordName=$landlordName, propertyName=$propertyName, invoiceLabel=$invoiceLabel, invoiceAmountDue=$invoiceAmountDue, invoiceOutstanding=$invoiceOutstanding, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, status=$status, remarks=$remarks, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds, submittedAt=$submittedAt]';
+  String toString() => 'PlatformPaymentForAdmin[id=$id, statementId=$statementId, landlordId=$landlordId, landlordName=$landlordName, statementLabel=$statementLabel, properties=$properties, statementAmountDue=$statementAmountDue, statementOutstanding=$statementOutstanding, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, status=$status, remarks=$remarks, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds, submittedAt=$submittedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -196,10 +196,10 @@ class PlatformPaymentForAdmin {
     } else {
       json[r'id'] = null;
     }
-    if (this.invoiceId != null) {
-      json[r'invoiceId'] = this.invoiceId;
+    if (this.statementId != null) {
+      json[r'statementId'] = this.statementId;
     } else {
-      json[r'invoiceId'] = null;
+      json[r'statementId'] = null;
     }
     if (this.landlordId != null) {
       json[r'landlordId'] = this.landlordId;
@@ -211,25 +211,25 @@ class PlatformPaymentForAdmin {
     } else {
       json[r'landlordName'] = null;
     }
-    if (this.propertyName != null) {
-      json[r'propertyName'] = this.propertyName;
+    if (this.statementLabel != null) {
+      json[r'statementLabel'] = this.statementLabel;
     } else {
-      json[r'propertyName'] = null;
+      json[r'statementLabel'] = null;
     }
-    if (this.invoiceLabel != null) {
-      json[r'invoiceLabel'] = this.invoiceLabel;
+    if (this.properties != null) {
+      json[r'properties'] = this.properties;
     } else {
-      json[r'invoiceLabel'] = null;
+      json[r'properties'] = null;
     }
-    if (this.invoiceAmountDue != null) {
-      json[r'invoiceAmountDue'] = this.invoiceAmountDue;
+    if (this.statementAmountDue != null) {
+      json[r'statementAmountDue'] = this.statementAmountDue;
     } else {
-      json[r'invoiceAmountDue'] = null;
+      json[r'statementAmountDue'] = null;
     }
-    if (this.invoiceOutstanding != null) {
-      json[r'invoiceOutstanding'] = this.invoiceOutstanding;
+    if (this.statementOutstanding != null) {
+      json[r'statementOutstanding'] = this.statementOutstanding;
     } else {
-      json[r'invoiceOutstanding'] = null;
+      json[r'statementOutstanding'] = null;
     }
     if (this.amountPaid != null) {
       json[r'amountPaid'] = this.amountPaid;
@@ -290,17 +290,17 @@ class PlatformPaymentForAdmin {
 
       return PlatformPaymentForAdmin(
         id: mapValueOfType<String>(json, r'id'),
-        invoiceId: mapValueOfType<String>(json, r'invoiceId'),
+        statementId: mapValueOfType<String>(json, r'statementId'),
         landlordId: mapValueOfType<String>(json, r'landlordId'),
         landlordName: mapValueOfType<String>(json, r'landlordName'),
-        propertyName: mapValueOfType<String>(json, r'propertyName'),
-        invoiceLabel: mapValueOfType<String>(json, r'invoiceLabel'),
-        invoiceAmountDue: json[r'invoiceAmountDue'] == null
+        statementLabel: mapValueOfType<String>(json, r'statementLabel'),
+        properties: mapValueOfType<int>(json, r'properties'),
+        statementAmountDue: json[r'statementAmountDue'] == null
             ? null
-            : num.parse('${json[r'invoiceAmountDue']}'),
-        invoiceOutstanding: json[r'invoiceOutstanding'] == null
+            : num.parse('${json[r'statementAmountDue']}'),
+        statementOutstanding: json[r'statementOutstanding'] == null
             ? null
-            : num.parse('${json[r'invoiceOutstanding']}'),
+            : num.parse('${json[r'statementOutstanding']}'),
         amountPaid: json[r'amountPaid'] == null
             ? null
             : num.parse('${json[r'amountPaid']}'),

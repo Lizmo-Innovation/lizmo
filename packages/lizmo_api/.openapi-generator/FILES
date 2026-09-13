@@ -41,12 +41,13 @@ doc/OccupancySummary.md
 doc/PaymentInstructions.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
-doc/PlatformInvoiceResponse.md
+doc/PlatformInvoiceLine.md
 doc/PlatformPaymentForAdmin.md
 doc/PlatformPaymentRejection.md
 doc/PlatformPaymentRequest.md
 doc/PlatformPaymentResponse.md
 doc/PlatformSettings.md
+doc/PlatformStatementResponse.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
 doc/PropertyRequest.md
@@ -143,12 +144,13 @@ lib/model/occupancy_summary.dart
 lib/model/payment_instructions.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
-lib/model/platform_invoice_response.dart
+lib/model/platform_invoice_line.dart
 lib/model/platform_payment_for_admin.dart
 lib/model/platform_payment_rejection.dart
 lib/model/platform_payment_request.dart
 lib/model/platform_payment_response.dart
 lib/model/platform_settings.dart
+lib/model/platform_statement_response.dart
 lib/model/property_by_code_response.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
@@ -182,3 +184,5 @@ lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
+test/platform_invoice_line_test.dart
+test/platform_statement_response_test.dart

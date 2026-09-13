@@ -65,14 +65,14 @@ class LizmoBillingApi {
     return null;
   }
 
-  /// My Lizmo invoices
+  /// My Lizmo statements
   ///
-  /// One per property per month, newest first, with what has been sent against each.
+  /// One a month, newest first, itemised by property, with what has been sent against each. A line carries an invoice number once the statement is paid.
   ///
   /// Note: This method returns the HTTP [Response].
-  Future<Response> listMyPlatformInvoicesWithHttpInfo({ Future<void>? abortTrigger, }) async {
+  Future<Response> listMyPlatformStatementsWithHttpInfo({ Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/api/v1/me/platform-invoices';
+    final path = r'/api/v1/me/platform-statements';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -96,11 +96,11 @@ class LizmoBillingApi {
     );
   }
 
-  /// My Lizmo invoices
+  /// My Lizmo statements
   ///
-  /// One per property per month, newest first, with what has been sent against each.
-  Future<List<PlatformInvoiceResponse>?> listMyPlatformInvoices({ Future<void>? abortTrigger, }) async {
-    final response = await listMyPlatformInvoicesWithHttpInfo(abortTrigger: abortTrigger,);
+  /// One a month, newest first, itemised by property, with what has been sent against each. A line carries an invoice number once the statement is paid.
+  Future<List<PlatformStatementResponse>?> listMyPlatformStatements({ Future<void>? abortTrigger, }) async {
+    final response = await listMyPlatformStatementsWithHttpInfo(abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -109,8 +109,8 @@ class LizmoBillingApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       final responseBody = await _decodeBodyBytes(response);
-      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformInvoiceResponse>') as List)
-        .cast<PlatformInvoiceResponse>()
+      return (await apiClient.deserializeAsync(responseBody, 'List<PlatformStatementResponse>') as List)
+        .cast<PlatformStatementResponse>()
         .toList(growable: false);
 
     }
@@ -130,9 +130,9 @@ class LizmoBillingApi {
   /// * [PlatformPaymentRequest] payment (required):
   ///
   /// * [MultipartFile] proof:
-  Future<Response> payPlatformInvoiceWithHttpInfo(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
+  Future<Response> payPlatformStatementWithHttpInfo(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/api/v1/me/platform-invoices/{id}/payments'
+    final path = r'/api/v1/me/platform-statements/{id}/payments'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -182,8 +182,8 @@ class LizmoBillingApi {
   /// * [PlatformPaymentRequest] payment (required):
   ///
   /// * [MultipartFile] proof:
-  Future<PlatformInvoiceResponse?> payPlatformInvoice(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
-    final response = await payPlatformInvoiceWithHttpInfo(id, payment, proof: proof, abortTrigger: abortTrigger,);
+  Future<PlatformStatementResponse?> payPlatformStatement(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
+    final response = await payPlatformStatementWithHttpInfo(id, payment, proof: proof, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -191,7 +191,7 @@ class LizmoBillingApi {
     // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
-      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformInvoiceResponse',) as PlatformInvoiceResponse;
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlatformStatementResponse',) as PlatformStatementResponse;
     
     }
     return null;

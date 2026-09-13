@@ -66,7 +66,7 @@ Widget _app(
   LandlordDetail? landlord,
   List<PendingInvitation>? invitations,
   List<PlatformPaymentForAdmin>? payments,
-  List<PlatformInvoiceResponse>? invoices,
+  List<PlatformStatementResponse>? statements,
   AdminApi? api,
 }) =>
     ProviderScope(
@@ -77,8 +77,8 @@ Widget _app(
         invitationsProvider.overrideWith((ref) async => invitations ?? const []),
         landlordProvider.overrideWith((ref, id) async => landlord),
         platformPaymentsProvider.overrideWith((ref) async => payments ?? const []),
-        landlordInvoicesProvider
-            .overrideWith((ref, id) async => invoices ?? const []),
+        landlordStatementsProvider
+            .overrideWith((ref, id) async => statements ?? const []),
         if (api != null) adminApiProvider.overrideWithValue(api),
       ],
       child: const LizmoAdminApp(),
@@ -138,13 +138,13 @@ class _FakeAdminApi extends AdminApi {
 
 PlatformPaymentForAdmin _sentToLizmo() => PlatformPaymentForAdmin(
       id: 'pp1',
-      invoiceId: 'i1',
+      statementId: 's1',
       landlordId: 'l1',
       landlordName: 'Elena Bautista',
-      propertyName: 'Sunrise Apartments',
-      invoiceLabel: 'September 2026',
-      invoiceAmountDue: 450,
-      invoiceOutstanding: 450,
+      statementLabel: 'September 2026',
+      properties: 2,
+      statementAmountDue: 450,
+      statementOutstanding: 450,
       amountPaid: 450,
       paymentDate: DateTime.utc(2026, 9, 3),
       paymentMethod: PlatformPaymentForAdminPaymentMethodEnum.fromJson('GCASH'),
@@ -408,9 +408,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Unlock'), findsOneWidget);
-      // An admin looking for an invoice and finding none should learn that
+      // An admin looking for a statement and finding none should learn that
       // none exists, not conclude the page is broken.
-      expect(find.textContaining('No invoices yet'), findsOneWidget);
+      expect(find.textContaining('No statements yet'), findsOneWidget);
     });
 
     testWidgets('a narrow window keeps the rail, drops its labels',
@@ -786,7 +786,8 @@ void main() {
           payments: [_sentToLizmo()]));
       await openPayments(tester);
 
-      expect(find.text('Elena Bautista · Sunrise Apartments'), findsOneWidget);
+      // Two properties, not one: the statement is the whole month's account.
+      expect(find.text('Elena Bautista · 2 properties'), findsOneWidget);
       expect(find.text('₱450'), findsOneWidget);
       expect(find.textContaining('for September 2026'), findsOneWidget);
       expect(find.textContaining('"Ref 4012"'), findsOneWidget);
@@ -841,21 +842,50 @@ void main() {
     });
   });
 
-  group('a landlord\'s invoices', () {
-    PlatformInvoiceResponse invoice({String status = 'UNPAID', bool overdue = false}) =>
-        PlatformInvoiceResponse(
-          id: 'i1',
-          propertyId: 'p1',
-          propertyName: 'Sunrise Apartments',
+  group("a landlord's statements", () {
+    PlatformInvoiceLine line({
+      String id = 'l1',
+      String property = 'Sunrise Apartments',
+      int beds = 9,
+      int units = 1,
+      num amount = 600,
+      String? invoiceNumber,
+    }) => PlatformInvoiceLine(
+          id: id,
+          propertyId: 'p-$id',
+          propertyName: property,
+          occupiedBeds: beds,
+          occupiedUnits: units,
+          bedRate: 50,
+          unitRate: 150,
+          amountDue: amount,
+          invoiceNumber: invoiceNumber,
+        );
+
+    PlatformStatementResponse statement({
+      String status = 'UNPAID',
+      bool overdue = false,
+      List<PlatformInvoiceLine>? lines,
+    }) => PlatformStatementResponse(
+          id: 's1',
           label: 'September 2026',
-          occupiedBeds: 9,
-          occupiedUnits: 1,
-          amountDue: 600,
-          amountPaid: status == 'PAID' ? 600 : 0,
-          outstanding: status == 'PAID' ? 0 : 600,
-          status: PlatformInvoiceResponseStatusEnum.fromJson(status),
+          amountDue: 750,
+          amountPaid: status == 'PAID' ? 750 : 0,
+          outstanding: status == 'PAID' ? 0 : 750,
+          status: PlatformStatementResponseStatusEnum.fromJson(status),
           overdue: overdue,
-          lockedByThis: false,
+          locked: false,
+          lines: lines ??
+              [
+                line(),
+                line(
+                  id: 'l2',
+                  property: 'Seaview Lodge',
+                  beds: 0,
+                  units: 1,
+                  amount: 150,
+                ),
+              ],
           payments: const [],
         );
 
@@ -865,26 +895,52 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    /// Where a note said nothing raised an invoice yet.
-    testWidgets('a landlord page lists what Lizmo invoiced',
+    Widget page({
+      String status = 'UNPAID',
+      bool overdue = false,
+      List<PlatformStatementResponse>? statements,
+    }) => _app(
+      _signedIn({LizmoProfile.admin}),
+      landlords: [_landlord()],
+      landlord: LandlordDetail(landlord: _landlord(), properties: [_property()]),
+      statements: statements ?? [statement(status: status, overdue: overdue)],
+    );
+
+    /// One row a month, itemised: an admin chasing a landlord can see which
+    /// buildings the figure is made of.
+    testWidgets('a landlord page lists the month and what it covers',
         (tester) async {
       _desktop(tester);
-      await tester.pumpWidget(_app(
-        _signedIn({LizmoProfile.admin}),
-        landlords: [_landlord()],
-        landlord: LandlordDetail(landlord: _landlord(), properties: [_property()]),
-        invoices: [invoice(overdue: true)],
-      ));
+      await tester.pumpWidget(page(overdue: true));
       await openLandlord(tester);
 
-      expect(find.text('Invoices'), findsOneWidget);
+      expect(find.text('Statements'), findsOneWidget);
       expect(find.text('September 2026'), findsOneWidget);
-      expect(find.text('9 beds · 1 units'), findsOneWidget);
+      expect(find.text('₱750'), findsOneWidget);
+      // The property list above names Sunrise too, so the line itself is what
+      // this checks.
+      expect(find.text('9 beds · 1 units · ₱600'), findsOneWidget);
+      expect(find.text('Seaview Lodge'), findsOneWidget);
+      expect(find.text('0 beds · 1 units · ₱150'), findsOneWidget);
       expect(find.text('Overdue'), findsOneWidget);
-      expect(find.textContaining('Nothing raises a billing cycle'), findsNothing);
     });
 
-    testWidgets('no invoices says how they come about', (tester) async {
+    /// Paid, each line names the invoice the landlord can file.
+    testWidgets('a paid statement shows each invoice number', (tester) async {
+      _desktop(tester);
+      await tester.pumpWidget(page(statements: [
+        statement(status: 'PAID', lines: [
+          line(invoiceNumber: 'LZM-2026-09-0007'),
+        ]),
+      ]));
+      await openLandlord(tester);
+
+      expect(find.text('9 beds · 1 units · ₱600 · LZM-2026-09-0007'),
+          findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Paid'), findsOneWidget);
+    });
+
+    testWidgets('no statements says how they come about', (tester) async {
       _desktop(tester);
       await tester.pumpWidget(_app(
         _signedIn({LizmoProfile.admin}),
@@ -893,8 +949,7 @@ void main() {
       ));
       await openLandlord(tester);
 
-      expect(find.textContaining('invoices each property on the 1st'),
-          findsOneWidget);
+      expect(find.textContaining('bills a landlord on the 1st'), findsOneWidget);
     });
   });
 }

@@ -1161,14 +1161,14 @@
                 }
             }
         },
-        "/api/v1/me/platform-invoices/{id}/payments": {
+        "/api/v1/me/platform-statements/{id}/payments": {
             "post": {
                 "tags": [
                     "Lizmo billing"
                 ],
                 "summary": "Say I have paid Lizmo",
                 "description": "Waits for a Lizmo admin to confirm it. Proof is required. The photograph is re-encoded, so no EXIF or location leaves the phone.",
-                "operationId": "payPlatformInvoice",
+                "operationId": "payPlatformStatement",
                 "parameters": [
                     {
                         "name": "id",
@@ -1203,11 +1203,11 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "The invoice, with the payment",
+                        "description": "The statement, with the payment",
                         "content": {
                             "*/*": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PlatformInvoiceResponse"
+                                    "$ref": "#/components/schemas/PlatformStatementResponse"
                                 }
                             }
                         }
@@ -1223,7 +1223,7 @@
                         }
                     },
                     "404": {
-                        "description": "Not your invoice",
+                        "description": "Not your statement",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -2523,7 +2523,7 @@
                     "Admin"
                 ],
                 "summary": "The money arrived",
-                "description": "Credits the invoice. Paying it in full lifts the lock it caused.",
+                "description": "Credits the statement. Settling it in full issues an invoice for each property and lifts the locks it caused.",
                 "operationId": "confirmPlatformPayment",
                 "parameters": [
                     {
@@ -3035,6 +3035,31 @@
                 }
             }
         },
+        "/api/v1/me/platform-statements": {
+            "get": {
+                "tags": [
+                    "Lizmo billing"
+                ],
+                "summary": "My Lizmo statements",
+                "description": "One a month, newest first, itemised by property, with what has been sent against each. A line carries an invoice number once the statement is paid.",
+                "operationId": "listMyPlatformStatements",
+                "responses": {
+                    "200": {
+                        "description": "The statements",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PlatformStatementResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/platform-payment-instructions": {
             "get": {
                 "tags": [
@@ -3050,31 +3075,6 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PaymentInstructions"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/platform-invoices": {
-            "get": {
-                "tags": [
-                    "Lizmo billing"
-                ],
-                "summary": "My Lizmo invoices",
-                "description": "One per property per month, newest first, with what has been sent against each.",
-                "operationId": "listMyPlatformInvoices",
-                "responses": {
-                    "200": {
-                        "description": "The invoices",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/PlatformInvoiceResponse"
-                                    }
                                 }
                             }
                         }
@@ -3661,13 +3661,13 @@
                 }
             }
         },
-        "/api/v1/admin/landlords/{id}/invoices": {
+        "/api/v1/admin/landlords/{id}/statements": {
             "get": {
                 "tags": [
                     "Admin"
                 ],
-                "summary": "One landlord's invoices",
-                "operationId": "listLandlordInvoices",
+                "summary": "One landlord's statements",
+                "operationId": "listLandlordStatements",
                 "parameters": [
                     {
                         "name": "id",
@@ -3681,13 +3681,13 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The invoices",
+                        "description": "The statements",
                         "content": {
                             "*/*": {
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/PlatformInvoiceResponse"
+                                        "$ref": "#/components/schemas/PlatformStatementResponse"
                                     }
                                 }
                             }
@@ -4612,7 +4612,7 @@
                 "properties": {
                     "amountPaid": {
                         "type": "number",
-                        "example": 450.0
+                        "example": 850.0
                     },
                     "paymentDate": {
                         "type": "string",
@@ -4638,9 +4638,9 @@
                         "example": "Reference 4012 8876 1123"
                     }
                 },
-                "description": "Paying a Lizmo invoice"
+                "description": "Paying a Lizmo statement"
             },
-            "PlatformInvoiceResponse": {
+            "PlatformInvoiceLine": {
                 "type": "object",
                 "properties": {
                     "id": {
@@ -4653,17 +4653,6 @@
                     },
                     "propertyName": {
                         "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "billingDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "dueDate": {
-                        "type": "string",
-                        "format": "date"
                     },
                     "occupiedUnits": {
                         "type": "integer",
@@ -4682,38 +4671,15 @@
                     "amountDue": {
                         "type": "number"
                     },
-                    "amountPaid": {
-                        "type": "number"
+                    "invoiceNumber": {
+                        "type": "string"
                     },
-                    "outstanding": {
-                        "type": "number"
-                    },
-                    "status": {
+                    "issuedAt": {
                         "type": "string",
-                        "enum": [
-                            "UNPAID",
-                            "PARTIALLY_PAID",
-                            "PAID"
-                        ]
-                    },
-                    "overdue": {
-                        "type": "boolean"
-                    },
-                    "locksOn": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "lockedByThis": {
-                        "type": "boolean"
-                    },
-                    "payments": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/PlatformPaymentResponse"
-                        }
+                        "format": "date-time"
                     }
                 },
-                "description": "What one property owes Lizmo for one month"
+                "description": "One property's share of a month, and its invoice once paid"
             },
             "PlatformPaymentResponse": {
                 "type": "object",
@@ -4764,6 +4730,66 @@
                     }
                 },
                 "description": "A payment sent to Lizmo"
+            },
+            "PlatformStatementResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "billingDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "amountDue": {
+                        "type": "number"
+                    },
+                    "amountPaid": {
+                        "type": "number"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "UNPAID",
+                            "PARTIALLY_PAID",
+                            "PAID"
+                        ]
+                    },
+                    "overdue": {
+                        "type": "boolean"
+                    },
+                    "locksOn": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "locked": {
+                        "type": "boolean"
+                    },
+                    "lines": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlatformInvoiceLine"
+                        }
+                    },
+                    "payments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlatformPaymentResponse"
+                        }
+                    }
+                },
+                "description": "What a landlord owes Lizmo for one month"
             },
             "ReportProblemRequest": {
                 "required": [
@@ -5315,7 +5341,7 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "invoiceId": {
+                    "statementId": {
                         "type": "string",
                         "format": "uuid"
                     },
@@ -5326,16 +5352,17 @@
                     "landlordName": {
                         "type": "string"
                     },
-                    "propertyName": {
+                    "statementLabel": {
                         "type": "string"
                     },
-                    "invoiceLabel": {
-                        "type": "string"
+                    "properties": {
+                        "type": "integer",
+                        "format": "int32"
                     },
-                    "invoiceAmountDue": {
+                    "statementAmountDue": {
                         "type": "number"
                     },
-                    "invoiceOutstanding": {
+                    "statementOutstanding": {
                         "type": "number"
                     },
                     "amountPaid": {

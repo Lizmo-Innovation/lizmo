@@ -80,6 +80,15 @@ public class Property {
     @Column(name = "account_status", nullable = false)
     private PropertyAccountStatus accountStatus = PropertyAccountStatus.ACTIVE;
 
+    /**
+     * Which unpaid statement locked this, if enforcement did.
+     *
+     * <p>Null when an admin locked it by hand, so paying a statement lifts
+     * only what that statement caused and leaves an admin's decision alone.
+     */
+    @Column(name = "locked_by_statement_id")
+    private UUID lockedByStatementId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -146,8 +155,19 @@ public class Property {
         this.accountStatus = PropertyAccountStatus.LOCKED;
     }
 
+    /** The same, by an unpaid statement, which paying that statement undoes. */
+    public void lockFor(UUID statementId) {
+        lock();
+        this.lockedByStatementId = statementId;
+    }
+
     public void unlock() {
         this.accountStatus = PropertyAccountStatus.ACTIVE;
+        this.lockedByStatementId = null;
+    }
+
+    public UUID getLockedByStatementId() {
+        return lockedByStatementId;
     }
 
     public boolean isOwnedBy(UUID landlordId) {

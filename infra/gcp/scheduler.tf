@@ -20,7 +20,7 @@ resource "google_cloud_scheduler_job" "billing_snapshot" {
   project     = var.project_id
   region      = var.region
   name        = "lizmo-platform-billing-snapshot"
-  description = "Monthly: count each landlord's occupied slots and raise one invoice."
+  description = "Monthly: count each landlord's occupied slots and raise one statement."
   schedule    = var.billing_snapshot_cron
   time_zone   = var.scheduler_timezone
 
@@ -52,7 +52,7 @@ resource "google_cloud_scheduler_job" "billing_enforcement" {
   project     = var.project_id
   region      = var.region
   name        = "lizmo-platform-billing-enforcement"
-  description = "Daily: warn about overdue invoices once, then lock the property 30 days on."
+  description = "Daily: warn about overdue statements once, then lock the account 30 days on."
   schedule    = var.billing_enforcement_cron
   time_zone   = var.scheduler_timezone
 

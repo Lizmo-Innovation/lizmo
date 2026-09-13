@@ -13,10 +13,11 @@ import app.lizmo.document.StoredDocumentRepository;
 import app.lizmo.notification.NotificationEntityType;
 import app.lizmo.notification.NotificationService;
 import app.lizmo.notification.NotificationType;
-import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformInvoiceResponse;
+import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformInvoiceLine;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentForAdmin;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRequest;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentResponse;
+import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformStatementResponse;
 import app.lizmo.property.Property;
 import app.lizmo.property.PropertyRepository;
 import app.lizmo.user.UserRepository;
@@ -28,7 +29,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,36 +44,35 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Lizmo billing landlords, and being paid.
  *
- * <p>Product spec §3, per property since V16: on the 1st, count what each
- * property has let and raise one invoice for it, due that day. Vacant slots
- * are never billed, and a property with nothing let gets no invoice at all.
+ * <p>One statement a month per landlord, itemised by property: P50 for each let
+ * bed, P150 for each let whole unit, nothing for anything empty. The statement
+ * is what a landlord pays. When it is settled in full each line becomes an
+ * invoice -- numbered and dated -- which is what they file against a building.
  *
- * <p>Enforcement is Ariel's call on the spec's seven days: thirty. The day after
- * the due date the landlord is warned, once. Thirty days after it, the property
- * locks -- which stops it growing and touches nothing else: rent, repairs and
- * ending tenancies all go on, because the tenants are not Lizmo's debtors.
- *
- * <p>Paying works like a tenant paying rent. The landlord sends proof, an admin
- * confirms or refuses it, and only confirmation moves the invoice. Paying in
- * full lifts the lock this invoice caused, and never a lock an admin placed by
- * hand for some other reason.
+ * <p>Enforcement is Ariel's thirty days, not the spec's seven. The day after
+ * the statement falls due the landlord is warned, once. Thirty days after it,
+ * every property they own locks, because the debt is the account's rather than
+ * one building's. Locking stops a property growing and touches nothing else:
+ * rent, repairs and ending tenancies all go on, since the tenants are not
+ * Lizmo's debtors.
  */
 @Service
 public class PlatformBillingService {
 
-    /** A let whole unit, a month. Stored on each invoice, so it can change later. */
+    /** A let whole unit, a month. Stored on each line, so it can change later. */
     static final BigDecimal UNIT_RATE = new BigDecimal("150.00");
 
     /** A let bed, a month. */
     static final BigDecimal BED_RATE = new BigDecimal("50.00");
 
-    /** Days after the due date that an unpaid invoice locks its property. */
+    /** Days after the due date that an unpaid statement locks the account. */
     static final int GRACE_DAYS = 30;
 
     private static final Duration URL_LIFETIME = Duration.ofMinutes(10);
 
     private static final long MAX_UPLOAD_BYTES = 10L * 1024 * 1024;
 
+    private final PlatformStatementRepository statements;
     private final PlatformInvoiceRepository invoices;
     private final PlatformPaymentRepository payments;
     private final PropertyRepository properties;
@@ -82,6 +85,7 @@ public class PlatformBillingService {
     private final Clock clock;
 
     public PlatformBillingService(
+            PlatformStatementRepository statements,
             PlatformInvoiceRepository invoices,
             PlatformPaymentRepository payments,
             PropertyRepository properties,
@@ -92,6 +96,7 @@ public class PlatformBillingService {
             ImageNormaliser normaliser,
             NotificationService notifications,
             Clock clock) {
+        this.statements = statements;
         this.invoices = invoices;
         this.payments = payments;
         this.properties = properties;
@@ -107,54 +112,84 @@ public class PlatformBillingService {
     // ---- the jobs ------------------------------------------------------------
 
     /**
-     * Raises this month's invoices.
+     * Raises this month's statements.
      *
      * <p>Dated the 1st whatever day it runs, so a job that fires late or is
      * retried still bills the month it is for -- and a second run raises
-     * nothing, because each property has at most one invoice a month.
+     * nothing, because a landlord has at most one statement a month.
      *
      * @return how many were raised
      */
     @Transactional
     public int snapshot() {
         LocalDate billingDate = LocalDate.now(clock).withDayOfMonth(1);
-        int raised = 0;
 
+        Map<UUID, List<Property>> byLandlord = new LinkedHashMap<>();
         for (Property property : properties.findAll()) {
-            if (invoices.existsByPropertyIdAndBillingDate(property.getId(), billingDate)) {
-                continue;
-            }
-            BillableSlots.Count count = slots.of(property.getId());
-            if (count.isEmpty()) {
-                // Vacant inventory costs nothing, and an invoice for nothing is
-                // just a notification to ignore.
+            byLandlord.computeIfAbsent(property.getLandlordId(), key -> new ArrayList<>())
+                    .add(property);
+        }
+
+        int raised = 0;
+        for (Map.Entry<UUID, List<Property>> entry : byLandlord.entrySet()) {
+            UUID landlordId = entry.getKey();
+            if (statements.existsByLandlordIdAndBillingDate(landlordId, billingDate)) {
                 continue;
             }
 
-            PlatformInvoice invoice = invoices.save(new PlatformInvoice(
-                    property.getId(), billingDate, count.units(), count.beds(),
-                    UNIT_RATE, BED_RATE));
+            // Counted before anything is written, so a landlord with nothing
+            // let gets no statement rather than one for zero.
+            List<Billable> billable = new ArrayList<>();
+            for (Property property : entry.getValue()) {
+                BillableSlots.Count count = slots.of(property.getId());
+                if (!count.isEmpty()) {
+                    billable.add(new Billable(property, count));
+                }
+            }
+            if (billable.isEmpty()) {
+                continue;
+            }
+            billable.sort(Comparator.comparing(
+                    row -> row.property().getName(),
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+
+            PlatformStatement statement =
+                    statements.save(new PlatformStatement(landlordId, billingDate));
+
+            BigDecimal total = BigDecimal.ZERO;
+            for (Billable row : billable) {
+                PlatformInvoice line = invoices.save(new PlatformInvoice(
+                        statement.getId(),
+                        row.property().getId(),
+                        row.count().units(),
+                        row.count().beds(),
+                        UNIT_RATE,
+                        BED_RATE));
+                total = total.add(line.getAmountDue());
+            }
+            statement.total(total);
+            statements.save(statement);
 
             notifications.raise(
-                    property.getLandlordId(),
+                    landlordId,
                     NotificationType.PLATFORM_INVOICE_ISSUED,
-                    "Your Lizmo invoice for " + property.getName(),
-                    "P%s for %s, for %s.".formatted(
-                            plain(invoice.getAmountDue()), slotsOf(invoice), label(invoice)),
+                    "Your Lizmo statement for " + label(statement),
+                    "P%s for %s, due today.".formatted(
+                            plain(total), properties(billable.size())),
                     NotificationEntityType.PLATFORM_INVOICE,
-                    invoice.getId());
+                    statement.getId());
             raised++;
         }
         return raised;
     }
 
     /**
-     * Warns about overdue invoices, once, and locks properties thirty days on.
+     * Warns about overdue statements, once, and locks the account thirty days on.
      *
      * <p>Daily, and idempotent: what has already been done is recorded on the
-     * invoice, so a second run the same day warns nobody and locks nothing.
+     * statement, so a second run the same day warns nobody and locks nothing.
      *
-     * @return how many were warned and how many locked
+     * @return how many were warned, and how many properties locked
      */
     @Transactional
     public Map<String, Integer> enforce() {
@@ -163,52 +198,60 @@ public class PlatformBillingService {
         int warned = 0;
         int locked = 0;
 
-        for (PlatformInvoice invoice : invoices.findByStatusNot(PlatformInvoiceStatus.PAID)) {
-            if (!invoice.isOverdue(today)) {
+        for (PlatformStatement statement : statements.findByStatusNot(PlatformStatementStatus.PAID)) {
+            if (!statement.isOverdue(today)) {
                 continue;
             }
-            Property property = properties.findById(invoice.getPropertyId()).orElse(null);
-            if (property == null) {
-                continue;
-            }
+            List<Property> owned =
+                    properties.findByLandlordIdOrderByNameAsc(statement.getLandlordId());
 
-            if (invoice.getOverdueWarnedAt() == null) {
+            if (statement.getOverdueWarnedAt() == null) {
                 notifications.raise(
-                        property.getLandlordId(),
+                        statement.getLandlordId(),
                         NotificationType.PLATFORM_INVOICE_OVERDUE,
-                        "Your Lizmo invoice is overdue",
-                        ("P%s for %s is still owed. If it is not paid by %s, %s stops "
-                                + "taking new units, beds and tenants. Your tenants are "
-                                + "not affected.").formatted(
-                                plain(invoice.outstanding()), property.getName(),
-                                spoken(locksOn(invoice)), property.getName()),
+                        "Your Lizmo statement is overdue",
+                        ("P%s is still owed for %s. If it is not paid by %s, your "
+                                + "properties stop taking new units, beds and tenants. "
+                                + "Your tenants are not affected.").formatted(
+                                plain(statement.outstanding()), label(statement),
+                                spoken(locksOn(statement))),
                         NotificationEntityType.PLATFORM_INVOICE,
-                        invoice.getId());
-                invoice.markOverdueWarned(now);
+                        statement.getId());
+                statement.markOverdueWarned(now);
                 warned++;
             }
 
-            if (invoice.getLockedAt() == null && !today.isBefore(locksOn(invoice))
-                    // A property an admin already locked by hand is left as it is,
-                    // and not marked as this invoice's doing -- or paying this
-                    // invoice would lift a lock placed for some other reason.
-                    && !property.isLocked()) {
-                property.lock();
-                properties.save(property);
-                invoice.markLocked(now);
-                notifications.raise(
-                        property.getLandlordId(),
-                        NotificationType.PLATFORM_PROPERTY_LOCKED,
-                        property.getName() + " is locked",
-                        ("Its Lizmo invoice is unpaid, so it cannot take new units, beds or "
-                                + "tenants until it is paid. Rent, repairs and your tenants "
-                                + "are not affected."),
-                        NotificationEntityType.PLATFORM_INVOICE,
-                        invoice.getId());
-                locked++;
+            if (statement.getLockedAt() == null && !today.isBefore(locksOn(statement))) {
+                int lockedNow = 0;
+                for (Property property : owned) {
+                    // A property an admin locked by hand is left as it is, and
+                    // not claimed by this statement -- or paying would lift a
+                    // lock placed for some other reason.
+                    if (!property.isLocked()) {
+                        property.lockFor(statement.getId());
+                        properties.save(property);
+                        lockedNow++;
+                    }
+                }
+                // Marked either way, so a daily job does not try again forever.
+                statement.markLocked(now);
+                if (lockedNow > 0) {
+                    notifications.raise(
+                            statement.getLandlordId(),
+                            NotificationType.PLATFORM_PROPERTY_LOCKED,
+                            lockedNow == 1 ? "A property is locked" : "Your properties are locked",
+                            ("The Lizmo statement for %s is unpaid, so %s cannot take new "
+                                    + "units, beds or tenants until it is paid. Rent, repairs "
+                                    + "and your tenants are not affected.").formatted(
+                                    label(statement),
+                                    lockedNow == 1 ? "one property" : "they"),
+                            NotificationEntityType.PLATFORM_INVOICE,
+                            statement.getId());
+                }
+                locked += lockedNow;
             }
 
-            invoices.save(invoice);
+            statements.save(statement);
         }
 
         return Map.of("warned", warned, "locked", locked);
@@ -216,39 +259,59 @@ public class PlatformBillingService {
 
     // ---- the landlord --------------------------------------------------------
 
-    /** Every invoice on this landlord's properties, newest month first. */
+    /** Every statement of theirs, newest month first. */
     @Transactional(readOnly = true)
-    public List<PlatformInvoiceResponse> forLandlord(UUID landlordId) {
-        Map<UUID, Property> owned = new HashMap<>();
-        for (Property property : properties.findByLandlordIdOrderByNameAsc(landlordId)) {
-            owned.put(property.getId(), property);
-        }
+    public List<PlatformStatementResponse> forLandlord(UUID landlordId) {
+        List<PlatformStatement> owned =
+                statements.findByLandlordIdOrderByBillingDateDesc(landlordId);
         if (owned.isEmpty()) {
             return List.of();
         }
-        return invoices.findByPropertyIdInOrderByBillingDateDesc(owned.keySet()).stream()
-                .map(invoice -> describe(invoice, owned.get(invoice.getPropertyId())))
+        List<UUID> ids = owned.stream().map(PlatformStatement::getId).toList();
+
+        Map<UUID, List<PlatformInvoice>> lines = new HashMap<>();
+        invoices.findByStatementIdIn(ids).forEach(line ->
+                lines.computeIfAbsent(line.getStatementId(), key -> new ArrayList<>()).add(line));
+
+        Map<UUID, List<PlatformPayment>> sent = new HashMap<>();
+        payments.findByStatementIdIn(ids).forEach(payment ->
+                sent.computeIfAbsent(payment.getStatementId(), key -> new ArrayList<>())
+                        .add(payment));
+
+        Map<UUID, String> names = propertyNames(lines.values().stream()
+                .flatMap(List::stream)
+                .map(PlatformInvoice::getPropertyId)
+                .distinct()
+                .toList());
+
+        LocalDate today = LocalDate.now(clock);
+        return owned.stream()
+                .map(statement -> describe(
+                        statement,
+                        lines.getOrDefault(statement.getId(), List.of()),
+                        sent.getOrDefault(statement.getId(), List.of()),
+                        names,
+                        today))
                 .toList();
     }
 
     /**
-     * A landlord saying they have paid an invoice, with proof.
+     * A landlord saying they have paid a statement, with proof.
      *
-     * <p>Proof is required here, unlike rent: nobody pays Lizmo in cash at the
-     * door, and an admin matching a transfer to a landlord needs something to
-     * match it against.
+     * <p>Proof is required, unlike rent: nobody pays Lizmo in cash at the door,
+     * and an admin matching a transfer to a landlord needs something to match
+     * it against.
      */
     @Transactional
-    public PlatformInvoiceResponse pay(
-            UUID invoiceId, UUID landlordId, PlatformPaymentRequest command, MultipartFile proof) {
-        PlatformInvoice invoice = invoices.findById(invoiceId)
-                .orElseThrow(PlatformBillingService::notFound);
-        Property property = properties.findById(invoice.getPropertyId())
-                .filter(candidate -> candidate.isOwnedBy(landlordId))
+    public PlatformStatementResponse pay(
+            UUID statementId, UUID landlordId, PlatformPaymentRequest command,
+            MultipartFile proof) {
+        PlatformStatement statement = statements.findById(statementId)
+                .filter(candidate -> candidate.getLandlordId().equals(landlordId))
                 .orElseThrow(PlatformBillingService::notFound);
 
-        if (invoice.isPaid()) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "That invoice is already paid.");
+        if (statement.isPaid()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "That statement is already paid.");
         }
         if (command.amountPaid() == null || command.amountPaid().signum() <= 0) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "Enter how much you paid.");
@@ -273,7 +336,7 @@ public class PlatformBillingService {
         String remarks = command.remarks() == null || command.remarks().isBlank()
                 ? null : command.remarks().trim();
         PlatformPayment payment = payments.save(new PlatformPayment(
-                invoice.getId(),
+                statement.getId(),
                 command.amountPaid(),
                 command.paymentDate() == null ? LocalDate.now(clock) : command.paymentDate(),
                 command.paymentMethod() == null ? PaymentMethod.OTHER : command.paymentMethod(),
@@ -294,7 +357,7 @@ public class PlatformBillingService {
                 ImageNormaliser.OUTPUT_CONTENT_TYPE,
                 normalised.length));
 
-        return describe(invoice, property);
+        return one(statement);
     }
 
     // ---- Lizmo's admins --------------------------------------------------------
@@ -310,49 +373,57 @@ public class PlatformBillingService {
     /**
      * An admin agreeing the money arrived.
      *
-     * <p>Credits the invoice, and -- if that settles it -- lifts the lock it
-     * caused, unless another unpaid invoice is still holding the same property.
+     * <p>Credits the statement. Settling it in full is the moment the invoices
+     * are issued -- one per property, numbered and dated -- and the moment any
+     * locks this statement placed are lifted. A part payment issues nothing:
+     * "once paid" is Ariel's rule, and half an invoice is not a document.
      */
     @Transactional
     public PlatformPaymentForAdmin confirm(UUID paymentId, UUID adminId) {
         PlatformPayment payment = pending(paymentId);
-        PlatformInvoice invoice = invoices.findById(payment.getInvoiceId())
+        PlatformStatement statement = statements.findById(payment.getStatementId())
                 .orElseThrow(PlatformBillingService::notFound);
-        Property property = properties.findById(invoice.getPropertyId()).orElse(null);
 
         payment.confirm(adminId, clock.instant());
         payments.save(payment);
-        invoice.credit(payment.getAmountPaid());
+        statement.credit(payment.getAmountPaid());
 
-        boolean unlocked = false;
-        if (invoice.isPaid() && invoice.getLockedAt() != null) {
-            invoice.clearLock();
-            boolean stillHeld = property != null
-                    && invoices.existsByPropertyIdAndLockedAtIsNotNullAndStatusNotAndIdNot(
-                            property.getId(), PlatformInvoiceStatus.PAID, invoice.getId());
-            if (property != null && property.isLocked() && !stillHeld) {
+        int issued = 0;
+        int unlocked = 0;
+        if (statement.isPaid()) {
+            Instant now = clock.instant();
+            for (PlatformInvoice line : invoices.findByStatementId(statement.getId())) {
+                if (!line.isIssued()) {
+                    line.issue(invoiceNumber(statement), now);
+                    invoices.save(line);
+                    issued++;
+                }
+            }
+            for (Property property : properties.findByLockedByStatementId(statement.getId())) {
                 property.unlock();
                 properties.save(property);
-                unlocked = true;
+                unlocked++;
             }
+            statement.clearLock();
         }
-        invoices.save(invoice);
+        statements.save(statement);
 
-        if (property != null) {
-            String settled = invoice.isPaid()
-                    ? " The invoice is paid."
-                    : " P%s is still owed.".formatted(plain(invoice.outstanding()));
-            notifications.raise(
-                    property.getLandlordId(),
-                    NotificationType.PLATFORM_PAYMENT_CONFIRMED,
-                    "Lizmo received your payment",
-                    "P%s for %s, %s.%s%s".formatted(
-                            plain(payment.getAmountPaid()), property.getName(), label(invoice),
-                            settled,
-                            unlocked ? " " + property.getName() + " is unlocked." : ""),
-                    NotificationEntityType.PLATFORM_INVOICE,
-                    invoice.getId());
-        }
+        String settled = statement.isPaid()
+                ? " The statement is paid, and your %s ready.".formatted(
+                        issued == 1 ? "invoice is" : "invoices are")
+                : " P%s is still owed.".formatted(plain(statement.outstanding()));
+        notifications.raise(
+                statement.getLandlordId(),
+                NotificationType.PLATFORM_PAYMENT_CONFIRMED,
+                "Lizmo received your payment",
+                "P%s for %s.%s%s".formatted(
+                        plain(payment.getAmountPaid()), label(statement), settled,
+                        unlocked == 0 ? ""
+                                : (unlocked == 1 ? " Your property is unlocked."
+                                        : " Your properties are unlocked.")),
+                NotificationEntityType.PLATFORM_INVOICE,
+                statement.getId());
+
         return forAdmin(payment);
     }
 
@@ -360,25 +431,35 @@ public class PlatformBillingService {
     @Transactional
     public PlatformPaymentForAdmin reject(UUID paymentId, UUID adminId, String why) {
         PlatformPayment payment = pending(paymentId);
-        PlatformInvoice invoice = invoices.findById(payment.getInvoiceId())
+        PlatformStatement statement = statements.findById(payment.getStatementId())
                 .orElseThrow(PlatformBillingService::notFound);
 
         payment.reject(adminId, clock.instant(), why);
         payments.save(payment);
 
-        properties.findById(invoice.getPropertyId()).ifPresent(property -> notifications.raise(
-                property.getLandlordId(),
+        notifications.raise(
+                statement.getLandlordId(),
                 NotificationType.PLATFORM_PAYMENT_REJECTED,
                 "Lizmo could not confirm your payment",
-                "P%s for %s, %s, was not confirmed. %s".formatted(
-                        plain(payment.getAmountPaid()), property.getName(), label(invoice),
+                "P%s for %s was not confirmed. %s".formatted(
+                        plain(payment.getAmountPaid()), label(statement),
                         why == null || why.isBlank() ? "Contact Lizmo support." : why.trim()),
                 NotificationEntityType.PLATFORM_INVOICE,
-                invoice.getId()));
+                statement.getId());
         return forAdmin(payment);
     }
 
     // ---- shared ----------------------------------------------------------------
+
+    private PlatformStatementResponse one(PlatformStatement statement) {
+        List<PlatformInvoice> lines = invoices.findByStatementId(statement.getId());
+        return describe(
+                statement,
+                lines,
+                payments.findByStatementIdOrderByCreatedAtAsc(statement.getId()),
+                propertyNames(lines.stream().map(PlatformInvoice::getPropertyId).toList()),
+                LocalDate.now(clock));
+    }
 
     private PlatformPayment pending(UUID paymentId) {
         PlatformPayment payment = payments.findById(paymentId)
@@ -390,10 +471,41 @@ public class PlatformBillingService {
         return payment;
     }
 
-    private PlatformInvoiceResponse describe(PlatformInvoice invoice, Property property) {
-        LocalDate today = LocalDate.now(clock);
-        List<PlatformPaymentResponse> sent = payments
-                .findByInvoiceIdOrderByCreatedAtAsc(invoice.getId()).stream()
+    private Map<UUID, String> propertyNames(List<UUID> ids) {
+        Map<UUID, String> names = new HashMap<>();
+        if (!ids.isEmpty()) {
+            properties.findAllById(ids).forEach(
+                    property -> names.put(property.getId(), property.getName()));
+        }
+        return names;
+    }
+
+    private PlatformStatementResponse describe(
+            PlatformStatement statement,
+            List<PlatformInvoice> lines,
+            List<PlatformPayment> sent,
+            Map<UUID, String> names,
+            LocalDate today) {
+
+        List<PlatformInvoiceLine> itemised = lines.stream()
+                .map(line -> new PlatformInvoiceLine(
+                        line.getId(),
+                        line.getPropertyId(),
+                        names.get(line.getPropertyId()),
+                        line.getOccupiedUnits(),
+                        line.getOccupiedBeds(),
+                        line.getUnitRate(),
+                        line.getBedRate(),
+                        line.getAmountDue(),
+                        line.getInvoiceNumber(),
+                        line.getIssuedAt()))
+                .sorted(Comparator.comparing(
+                        PlatformInvoiceLine::propertyName,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .toList();
+
+        List<PlatformPaymentResponse> history = sent.stream()
+                .sorted(Comparator.comparing(PlatformPayment::getCreatedAt))
                 .map(payment -> new PlatformPaymentResponse(
                         payment.getId(),
                         payment.getAmountPaid(),
@@ -406,43 +518,38 @@ public class PlatformBillingService {
                         payment.getCreatedAt()))
                 .toList();
 
-        return new PlatformInvoiceResponse(
-                invoice.getId(),
-                invoice.getPropertyId(),
-                property == null ? null : property.getName(),
-                label(invoice),
-                invoice.getBillingDate(),
-                invoice.getDueDate(),
-                invoice.getOccupiedUnits(),
-                invoice.getOccupiedBeds(),
-                invoice.getUnitRate(),
-                invoice.getBedRate(),
-                invoice.getAmountDue(),
-                invoice.getAmountPaid(),
-                invoice.outstanding(),
-                invoice.getStatus(),
-                invoice.isOverdue(today),
-                invoice.isPaid() || invoice.getLockedAt() != null ? null : locksOn(invoice),
-                invoice.getLockedAt() != null,
-                sent);
+        return new PlatformStatementResponse(
+                statement.getId(),
+                label(statement),
+                statement.getBillingDate(),
+                statement.getDueDate(),
+                statement.getAmountDue(),
+                statement.getAmountPaid(),
+                statement.outstanding(),
+                statement.getStatus(),
+                statement.isOverdue(today),
+                statement.isPaid() || statement.getLockedAt() != null ? null : locksOn(statement),
+                statement.getLockedAt() != null,
+                itemised,
+                history);
     }
 
     private PlatformPaymentForAdmin forAdmin(PlatformPayment payment) {
-        PlatformInvoice invoice = invoices.findById(payment.getInvoiceId()).orElse(null);
-        Property property = invoice == null ? null
-                : properties.findById(invoice.getPropertyId()).orElse(null);
-        String landlordName = property == null ? null
-                : users.findById(property.getLandlordId()).map(user -> user.getName()).orElse(null);
+        PlatformStatement statement = statements.findById(payment.getStatementId()).orElse(null);
+        String landlordName = statement == null ? null
+                : users.findById(statement.getLandlordId())
+                        .map(user -> user.getName())
+                        .orElse(null);
 
         return new PlatformPaymentForAdmin(
                 payment.getId(),
-                payment.getInvoiceId(),
-                property == null ? null : property.getLandlordId(),
+                payment.getStatementId(),
+                statement == null ? null : statement.getLandlordId(),
                 landlordName,
-                property == null ? null : property.getName(),
-                invoice == null ? null : label(invoice),
-                invoice == null ? null : invoice.getAmountDue(),
-                invoice == null ? null : invoice.outstanding(),
+                statement == null ? null : label(statement),
+                statement == null ? 0 : invoices.findByStatementId(statement.getId()).size(),
+                statement == null ? null : statement.getAmountDue(),
+                statement == null ? null : statement.outstanding(),
                 payment.getAmountPaid(),
                 payment.getPaymentDate(),
                 payment.getPaymentMethod(),
@@ -454,20 +561,29 @@ public class PlatformBillingService {
     }
 
     private String proofUrl(PlatformPayment payment) {
-        return documents.findByOwnerTypeAndOwnerId(DocumentOwnerType.PLATFORM_PAYMENT, payment.getId())
+        return documents
+                .findByOwnerTypeAndOwnerId(DocumentOwnerType.PLATFORM_PAYMENT, payment.getId())
                 .stream()
                 .findFirst()
                 .map(document -> store.presignedUrl(document.getStorageKey(), URL_LIFETIME))
                 .orElse(null);
     }
 
-    private static LocalDate locksOn(PlatformInvoice invoice) {
-        return invoice.getDueDate().plusDays(GRACE_DAYS);
+    /** "LZM-2026-09-0007", from a sequence, so two never collide. */
+    private String invoiceNumber(PlatformStatement statement) {
+        return "LZM-%s-%04d".formatted(
+                DateTimeFormatter.ofPattern("yyyy-MM", Locale.ENGLISH)
+                        .format(statement.getBillingDate()),
+                statements.nextInvoiceNumber());
     }
 
-    private static String label(PlatformInvoice invoice) {
+    private static LocalDate locksOn(PlatformStatement statement) {
+        return statement.getDueDate().plusDays(GRACE_DAYS);
+    }
+
+    private static String label(PlatformStatement statement) {
         return DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
-                .format(invoice.getBillingDate());
+                .format(statement.getBillingDate());
     }
 
     /** "31 October". */
@@ -476,13 +592,8 @@ public class PlatformBillingService {
                 + date.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
     }
 
-    /** "4 beds and 1 unit". */
-    private static String slotsOf(PlatformInvoice invoice) {
-        String beds = invoice.getOccupiedBeds() == 1 ? "1 bed" : invoice.getOccupiedBeds() + " beds";
-        String units = invoice.getOccupiedUnits() == 1 ? "1 unit" : invoice.getOccupiedUnits() + " units";
-        if (invoice.getOccupiedUnits() == 0) return beds;
-        if (invoice.getOccupiedBeds() == 0) return units;
-        return beds + " and " + units;
+    private static String properties(int count) {
+        return count == 1 ? "1 property" : count + " properties";
     }
 
     private static String plain(BigDecimal amount) {
@@ -490,6 +601,10 @@ public class PlatformBillingService {
     }
 
     private static ApiException notFound() {
-        return new ApiException(ErrorCode.NOT_FOUND, "No such invoice or payment.");
+        return new ApiException(ErrorCode.NOT_FOUND, "No such statement or payment.");
+    }
+
+    /** A property with something let, before its line is written. */
+    private record Billable(Property property, BillableSlots.Count count) {
     }
 }

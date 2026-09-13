@@ -6,21 +6,22 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../platform/lizmo_billing_providers.dart';
-import '../widgets/lizmo_invoice_card.dart';
+import '../widgets/lizmo_statement_card.dart';
 import '../widgets/pay_lizmo_sheet.dart';
 
 /// What this landlord owes Lizmo, how to pay it, and what was paid.
 ///
-/// One invoice per property per month, counted on the 1st: P50 for each let
-/// bed and P150 for each let whole unit, nothing for anything empty. Each one
-/// says how it was counted, because a number a landlord cannot check is a
-/// number they telephone about.
+/// One statement a month for the whole account, counted on the 1st: P50 for
+/// each let bed and P150 for each let whole unit, nothing for anything empty.
+/// It breaks down by property, because a number a landlord cannot check is a
+/// number they telephone about -- and once it is paid each property gets an
+/// invoice of its own, numbered and dated, to file against that building.
 class LizmoBillingScreen extends ConsumerWidget {
   const LizmoBillingScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final invoices = ref.watch(myLizmoInvoicesProvider);
+    final statements = ref.watch(myLizmoStatementsProvider);
     final instructions = ref.watch(lizmoPaymentInstructionsProvider);
 
     return Scaffold(
@@ -36,7 +37,7 @@ class LizmoBillingScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(myLizmoInvoicesProvider);
+          ref.invalidate(myLizmoStatementsProvider);
           ref.invalidate(lizmoPaymentInstructionsProvider);
         },
         child: ListView(
@@ -44,12 +45,12 @@ class LizmoBillingScreen extends ConsumerWidget {
           children: [
             _HowToPay(text: instructions.valueOrNull),
             const SizedBox(height: 16),
-            ...switch (invoices) {
+            ...switch (statements) {
               AsyncError(:final error) => [
                   LizmoMessageState(
                     tone: LizmoMessageTone.problem,
                     icon: Icons.error_outline,
-                    title: 'Could not load your invoices',
+                    title: 'Could not load your statements',
                     detail: ApiFailure.from(error).message,
                   ),
                 ],
@@ -57,14 +58,14 @@ class LizmoBillingScreen extends ConsumerWidget {
                   const LizmoMessageState(
                     tone: LizmoMessageTone.neutral,
                     icon: Icons.receipt_long_outlined,
-                    title: 'No invoices yet',
-                    detail: 'Lizmo invoices a property on the 1st of each month '
-                        'for the beds and units let that day. Anything empty '
-                        'costs nothing.',
+                    title: 'No statements yet',
+                    detail: 'Lizmo bills you on the 1st of each month for the '
+                        'beds and units let that day, across all your '
+                        'properties. Anything empty costs nothing.',
                   ),
                 ],
               AsyncData(:final value) => [
-                  for (final invoice in value) _Invoice(invoice: invoice),
+                  for (final statement in value) _Statement(statement: statement),
                 ],
               _ => [const Center(child: CircularProgressIndicator())],
             },
@@ -109,34 +110,34 @@ class _HowToPay extends StatelessWidget {
   }
 }
 
-class _Invoice extends ConsumerStatefulWidget {
-  const _Invoice({required this.invoice});
+class _Statement extends ConsumerStatefulWidget {
+  const _Statement({required this.statement});
 
-  final PlatformInvoiceResponse invoice;
+  final PlatformStatementResponse statement;
 
   @override
-  ConsumerState<_Invoice> createState() => _InvoiceState();
+  ConsumerState<_Statement> createState() => _StatementState();
 }
 
-class _InvoiceState extends ConsumerState<_Invoice> {
+class _StatementState extends ConsumerState<_Statement> {
   bool _sending = false;
 
-  PlatformInvoiceResponse get invoice => widget.invoice;
+  PlatformStatementResponse get statement => widget.statement;
 
   Future<void> _pay() async {
     final paid = await PayLizmoSheet.show(
       context,
-      propertyName: invoice.propertyName ?? 'This property',
-      label: invoice.label ?? 'this month',
-      outstanding: invoice.outstanding ?? 0,
+      label: statement.label ?? 'this month',
+      covers: lizmoProperties(statement),
+      outstanding: statement.outstanding ?? 0,
     );
     if (paid == null || !mounted) return;
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(lizmoBillingApiProvider).payPlatformInvoice(
-            invoice.id!,
+      await ref.read(lizmoBillingApiProvider).payPlatformStatement(
+            statement.id!,
             PlatformPaymentRequest(
               amountPaid: paid.amount,
               paymentMethod: paid.method,
@@ -152,24 +153,15 @@ class _InvoiceState extends ConsumerState<_Invoice> {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));
     } finally {
-      ref.invalidate(myLizmoInvoicesProvider);
+      ref.invalidate(myLizmoStatementsProvider);
       if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final beds = invoice.occupiedBeds ?? 0;
-    final units = invoice.occupiedUnits ?? 0;
-    final counted = [
-      if (beds > 0)
-        '$beds ${beds == 1 ? 'bed' : 'beds'} × ₱${(invoice.bedRate ?? 0).toStringAsFixed(0)}',
-      if (units > 0)
-        '$units ${units == 1 ? 'unit' : 'units'} × ₱${(invoice.unitRate ?? 0).toStringAsFixed(0)}',
-    ].join(' + ');
-
     return Container(
-      key: ValueKey('invoice-${invoice.id}'),
+      key: ValueKey('statement-${statement.id}'),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -187,50 +179,52 @@ class _InvoiceState extends ConsumerState<_Invoice> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(invoice.propertyName ?? 'A property',
+                    Text(statement.label ?? 'This month',
                         style:
                             LizmoType.rowName.copyWith(color: LizmoColors.ink)),
                     const SizedBox(height: 2),
-                    Text('${invoice.label} · $counted',
+                    Text(lizmoProperties(statement),
                         style: LizmoType.rowSub.copyWith(fontSize: 11)),
                   ],
                 ),
               ),
-              _Chip(invoice: invoice),
+              _Chip(statement: statement),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _Figure('Due', invoice.amountDue)),
-              Expanded(child: _Figure('Paid', invoice.amountPaid)),
-              Expanded(child: _Figure('Still owed', invoice.outstanding)),
+              Expanded(child: _Figure('Due', statement.amountDue)),
+              Expanded(child: _Figure('Paid', statement.amountPaid)),
+              Expanded(child: _Figure('Still owed', statement.outstanding)),
             ],
           ),
-          if ((invoice.outstanding ?? 0) > 0) ...[
+          if ((statement.outstanding ?? 0) > 0) ...[
             const SizedBox(height: 8),
             Text(
-              lizmoInvoiceStanding(invoice),
+              lizmoStatementStanding(statement),
               style: LizmoType.rowSub.copyWith(
                 fontSize: 11,
-                color: invoice.overdue == true ? LizmoColors.red : null,
+                color: statement.overdue == true ? LizmoColors.red : null,
               ),
             ),
           ],
-          for (final payment in invoice.payments) _Sent(payment: payment),
+          const SizedBox(height: 10),
+          for (final line in statement.lines) _Line(line: line),
+          for (final payment in statement.payments) _Sent(payment: payment),
           if (_sending)
             const Padding(
               padding: EdgeInsets.only(top: 10),
               child: Center(child: CircularProgressIndicator()),
             )
-          else if (lizmoInvoiceNeedsPaying(invoice)) ...[
+          else if (lizmoStatementNeedsPaying(statement)) ...[
             const SizedBox(height: 12),
             // Full width: in a start-aligned column it shrank to its label,
             // with the text pressed against its own border.
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                key: ValueKey('pay-invoice-${invoice.id}'),
+                key: ValueKey('pay-statement-${statement.id}'),
                 onPressed: _pay,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFFE3E8E6)),
@@ -248,25 +242,83 @@ class _InvoiceState extends ConsumerState<_Invoice> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.invoice});
+/// One property's share of the month, and its invoice once the statement is paid.
+class _Line extends StatelessWidget {
+  const _Line({required this.line});
 
-  final PlatformInvoiceResponse invoice;
+  final PlatformInvoiceLine line;
 
   @override
   Widget build(BuildContext context) {
-    final status = invoice.status?.toJson();
+    final beds = line.occupiedBeds ?? 0;
+    final units = line.occupiedUnits ?? 0;
+    final counted = [
+      if (beds > 0)
+        '$beds ${beds == 1 ? 'bed' : 'beds'} × ₱${(line.bedRate ?? 0).toStringAsFixed(0)}',
+      if (units > 0)
+        '$units ${units == 1 ? 'unit' : 'units'} × ₱${(line.unitRate ?? 0).toStringAsFixed(0)}',
+    ].join(' + ');
+    final invoice = line.invoiceNumber;
+
+    return Container(
+      key: ValueKey('statement-line-${line.id}'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: LizmoColors.canvas,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(line.propertyName ?? 'A property',
+                    style: LizmoType.rowName
+                        .copyWith(fontSize: 13, color: LizmoColors.ink)),
+              ),
+              Text('₱${(line.amountDue ?? 0).toStringAsFixed(0)}',
+                  style: LizmoType.dataMedium.copyWith(color: LizmoColors.ink)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(counted, style: LizmoType.rowSub.copyWith(fontSize: 11)),
+          // Only once the statement is paid: until then there is no invoice to
+          // name, and a blank number would read as one gone missing.
+          if (invoice != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Invoice $invoice · issued ${lizmoDay(line.issuedAt)}',
+              style: LizmoType.rowSub
+                  .copyWith(fontSize: 11, color: LizmoColors.teal900),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.statement});
+
+  final PlatformStatementResponse statement;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = statement.status?.toJson();
     if (status == 'PAID') {
       return const StatusChip(status: LizmoStatus.paid, label: 'Paid');
     }
-    if (lizmoInvoiceAwaitingLizmo(invoice)) {
-      return const StatusChip(
-          status: LizmoStatus.pending, label: 'Checking');
+    if (lizmoStatementAwaitingLizmo(statement)) {
+      return const StatusChip(status: LizmoStatus.pending, label: 'Checking');
     }
-    if (invoice.lockedByThis == true) {
+    if (statement.locked == true) {
       return const StatusChip(status: LizmoStatus.overdue, label: 'Locked');
     }
-    if (invoice.overdue == true) {
+    if (statement.overdue == true) {
       return const StatusChip(status: LizmoStatus.overdue, label: 'Overdue');
     }
     if (status == 'PARTIALLY_PAID') {
@@ -297,7 +349,7 @@ class _Figure extends StatelessWidget {
   }
 }
 
-/// A payment sent against the invoice, and what Lizmo made of it.
+/// A payment sent against the statement, and what Lizmo made of it.
 class _Sent extends StatelessWidget {
   const _Sent({required this.payment});
 
@@ -314,7 +366,7 @@ class _Sent extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: LizmoColors.canvas,

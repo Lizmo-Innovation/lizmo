@@ -7255,7 +7255,7 @@ void _tenantLeaseTests() {
       List<ArrearsRow> arrears = const [],
       List<AwaitingRow> awaiting = const [],
       List<RentalRequestForLandlord>? requests,
-      List<PlatformInvoiceResponse> lizmo = const [],
+      List<PlatformStatementResponse> lizmo = const [],
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -7277,7 +7277,7 @@ void _tenantLeaseTests() {
             )),
         if (requests != null)
           requestsToAnswerProvider.overrideWith((ref) async => requests),
-        myLizmoInvoicesProvider.overrideWith((ref) async => lizmo),
+        myLizmoStatementsProvider.overrideWith((ref) async => lizmo),
         ..._tenancyL1(),
       ],
       child: const LizmoApp(),
@@ -7462,27 +7462,33 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 
-    PlatformInvoiceResponse invoice({
+    PlatformStatementResponse statement({
       bool overdue = false,
       String paymentStatus = '',
-    }) => PlatformInvoiceResponse(
-          id: 'i1',
-          propertyId: 'p1',
-          propertyName: 'Sunrise Apartments',
+    }) => PlatformStatementResponse(
+          id: 's1',
           label: 'September 2026',
           billingDate: DateTime.utc(2026, 9, 1),
           dueDate: DateTime.utc(2026, 9, 1),
-          occupiedBeds: 9,
-          occupiedUnits: 0,
-          bedRate: 50,
-          unitRate: 150,
           amountDue: 450,
           amountPaid: 0,
           outstanding: 450,
-          status: PlatformInvoiceResponseStatusEnum.fromJson('UNPAID'),
+          status: PlatformStatementResponseStatusEnum.fromJson('UNPAID'),
           overdue: overdue,
           locksOn: overdue ? DateTime.utc(2026, 10, 1) : null,
-          lockedByThis: false,
+          locked: false,
+          lines: [
+            PlatformInvoiceLine(
+              id: 'l1',
+              propertyId: 'p1',
+              propertyName: 'Sunrise Apartments',
+              occupiedBeds: 9,
+              occupiedUnits: 0,
+              bedRate: 50,
+              unitRate: 150,
+              amountDue: 450,
+            ),
+          ],
           payments: [
             if (paymentStatus.isNotEmpty)
               PlatformPaymentResponse(
@@ -7493,29 +7499,30 @@ void _tenantLeaseTests() {
           ],
         );
 
-    /// Left alone it locks a property thirty days on, and a landlord who learns
-    /// that from the lock has learned it too late.
-    testWidgets('a Lizmo invoice to pay is on Today', (tester) async {
+    /// Left alone it locks every property thirty days on, and a landlord who
+    /// learns that from the lock has learned it too late.
+    testWidgets('a Lizmo statement to pay is on Today', (tester) async {
       await tester.pumpWidget(
-          appWith(requests: const [], lizmo: [invoice(overdue: true)]));
+          appWith(requests: const [], lizmo: [statement(overdue: true)]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('lizmo-invoice-card')), findsOneWidget);
-      expect(find.text('Sunrise Apartments · September 2026'), findsOneWidget);
-      expect(find.text('Overdue · locks on 1 Oct'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('lizmo-statement-card')), findsOneWidget);
+      expect(find.text('September 2026 · 1 property'), findsOneWidget);
+      expect(find.text('Overdue · everything locks on 1 Oct'), findsOneWidget);
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 
     /// Paid and waiting for Lizmo is the landlord's part done.
-    testWidgets('an invoice already paid for is not asked for again',
+    testWidgets('a statement already paid for is not asked for again',
         (tester) async {
       await tester.pumpWidget(appWith(
         requests: const [],
-        lizmo: [invoice(paymentStatus: 'PENDING_VERIFICATION')],
+        lizmo: [statement(paymentStatus: 'PENDING_VERIFICATION')],
       ));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('lizmo-invoice-card')), findsNothing);
+      expect(find.byKey(const ValueKey('lizmo-statement-card')), findsNothing);
       expect(find.byKey(const ValueKey('all-caught-up')), findsOneWidget);
     });
 
@@ -8331,35 +8338,61 @@ void _tenantLeaseTests() {
   });
 
   group('Lizmo billing', () {
-    PlatformInvoiceResponse invoice({
+    PlatformInvoiceLine line({
+      String id = 'l1',
+      String property = 'Sunrise Apartments',
+      int beds = 8,
+      int units = 1,
+      num amount = 550,
+      String? invoiceNumber,
+    }) => PlatformInvoiceLine(
+          id: id,
+          propertyId: 'p-$id',
+          propertyName: property,
+          occupiedBeds: beds,
+          occupiedUnits: units,
+          bedRate: 50,
+          unitRate: 150,
+          amountDue: amount,
+          invoiceNumber: invoiceNumber,
+          issuedAt: invoiceNumber == null ? null : DateTime.utc(2026, 10, 3),
+        );
+
+    PlatformStatementResponse statement({
       String status = 'UNPAID',
       num paid = 0,
       bool overdue = false,
       bool locked = false,
+      List<PlatformInvoiceLine>? lines,
       List<PlatformPaymentResponse> payments = const [],
-    }) => PlatformInvoiceResponse(
-          id: 'i1',
-          propertyId: 'p1',
-          propertyName: 'Sunrise Apartments',
+    }) => PlatformStatementResponse(
+          id: 's1',
           label: 'September 2026',
           billingDate: DateTime.utc(2026, 9, 1),
           dueDate: DateTime.utc(2026, 9, 1),
-          occupiedBeds: 8,
-          occupiedUnits: 1,
-          bedRate: 50,
-          unitRate: 150,
-          amountDue: 550,
+          amountDue: 700,
           amountPaid: paid,
-          outstanding: 550 - paid,
-          status: PlatformInvoiceResponseStatusEnum.fromJson(status),
+          outstanding: 700 - paid,
+          status: PlatformStatementResponseStatusEnum.fromJson(status),
           overdue: overdue,
           locksOn: overdue && !locked ? DateTime.utc(2026, 10, 1) : null,
-          lockedByThis: locked,
+          locked: locked,
+          lines: lines ??
+              [
+                line(),
+                line(
+                  id: 'l2',
+                  property: 'Seaview Lodge',
+                  beds: 0,
+                  units: 1,
+                  amount: 150,
+                ),
+              ],
           payments: payments,
         );
 
     Widget appWith({
-      List<PlatformInvoiceResponse> invoices = const [],
+      List<PlatformStatementResponse> statements = const [],
       String? instructions,
     }) => ProviderScope(
       overrides: [
@@ -8371,7 +8404,7 @@ void _tenantLeaseTests() {
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
-        myLizmoInvoicesProvider.overrideWith((ref) async => invoices),
+        myLizmoStatementsProvider.overrideWith((ref) async => statements),
         lizmoPaymentInstructionsProvider
             .overrideWith((ref) async => instructions),
       ],
@@ -8391,24 +8424,65 @@ void _tenantLeaseTests() {
       await openBilling(tester);
 
       expect(find.byType(LizmoBillingScreen), findsOneWidget);
-      expect(find.text('No invoices yet'), findsOneWidget);
+      expect(find.text('No statements yet'), findsOneWidget);
     });
 
-    /// A number a landlord cannot check is a number they telephone about.
-    testWidgets('an invoice says how it was counted', (tester) async {
-      await tester.pumpWidget(appWith(invoices: [invoice()]));
+    /// One bill for the month, and a number a landlord cannot check is a number
+    /// they telephone about -- so each property says how it was counted.
+    testWidgets('one statement breaks down by property', (tester) async {
+      await tester.pumpWidget(appWith(statements: [statement()]));
       await openBilling(tester);
 
+      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('2 properties'), findsOneWidget);
+      expect(find.text('₱700'), findsWidgets);
       expect(find.text('Sunrise Apartments'), findsOneWidget);
-      expect(find.text('September 2026 · 8 beds × ₱50 + 1 unit × ₱150'),
-          findsOneWidget);
-      expect(find.text('₱550'), findsWidgets);
+      expect(find.text('8 beds × ₱50 + 1 unit × ₱150'), findsOneWidget);
+      expect(find.text('₱550'), findsOneWidget);
+      expect(find.text('Seaview Lodge'), findsOneWidget);
+      expect(find.text('1 unit × ₱150'), findsOneWidget);
+      expect(find.text('₱150'), findsOneWidget);
       expect(find.text('Unpaid'), findsOneWidget);
+    });
+
+    /// Nothing is invoiced until it is paid, so there is no number to show yet.
+    testWidgets('an unpaid statement names no invoice', (tester) async {
+      await tester.pumpWidget(appWith(statements: [statement()]));
+      await openBilling(tester);
+
+      expect(find.textContaining('Invoice LZM'), findsNothing);
+    });
+
+    /// Paid in full, each property has a document of its own to file.
+    testWidgets('a paid statement gives each property its invoice',
+        (tester) async {
+      await tester.pumpWidget(appWith(statements: [
+        statement(status: 'PAID', paid: 700, lines: [
+          line(invoiceNumber: 'LZM-2026-09-0007'),
+          line(
+            id: 'l2',
+            property: 'Seaview Lodge',
+            beds: 0,
+            units: 1,
+            amount: 150,
+            invoiceNumber: 'LZM-2026-09-0008',
+          ),
+        ]),
+      ]));
+      await openBilling(tester);
+
+      // Scoped to the chip: the figures carry a Paid label of their own.
+      expect(find.widgetWithText(StatusChip, 'Paid'), findsOneWidget);
+      expect(find.text('Invoice LZM-2026-09-0007 · issued 3 Oct'),
+          findsOneWidget);
+      expect(find.text('Invoice LZM-2026-09-0008 · issued 3 Oct'),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('pay-statement-s1')), findsNothing);
     });
 
     testWidgets('where to pay is shown, as an admin wrote it', (tester) async {
       await tester.pumpWidget(appWith(
-        invoices: [invoice()],
+        statements: [statement()],
         instructions: 'GCash 0917 123 4567 (Lizmo)',
       ));
       await openBilling(tester);
@@ -8418,25 +8492,25 @@ void _tenantLeaseTests() {
 
     testWidgets('no payment details says so rather than leaving a guess',
         (tester) async {
-      await tester.pumpWidget(appWith(invoices: [invoice()]));
+      await tester.pumpWidget(appWith(statements: [statement()]));
       await openBilling(tester);
 
       expect(find.textContaining('has not added payment details yet'),
           findsOneWidget);
     });
 
-    testWidgets('an overdue invoice says when the property locks',
+    testWidgets('an overdue statement says when everything locks',
         (tester) async {
-      await tester.pumpWidget(appWith(invoices: [invoice(overdue: true)]));
+      await tester.pumpWidget(appWith(statements: [statement(overdue: true)]));
       await openBilling(tester);
 
       expect(find.text('Overdue'), findsOneWidget);
-      expect(find.text('Overdue · locks on 1 Oct'), findsOneWidget);
+      expect(find.text('Overdue · everything locks on 1 Oct'), findsOneWidget);
     });
 
-    testWidgets('a locked property says what the lock stops', (tester) async {
+    testWidgets('a locked account says what the lock stops', (tester) async {
       await tester.pumpWidget(
-          appWith(invoices: [invoice(overdue: true, locked: true)]));
+          appWith(statements: [statement(overdue: true, locked: true)]));
       await openBilling(tester);
 
       expect(find.text('Locked'), findsOneWidget);
@@ -8445,12 +8519,15 @@ void _tenantLeaseTests() {
 
     /// Nobody pays Lizmo in cash at the door.
     testWidgets('paying without proof is not sent', (tester) async {
-      await tester.pumpWidget(appWith(invoices: [invoice()]));
+      await tester.pumpWidget(appWith(statements: [statement()]));
       await openBilling(tester);
 
-      await tester.tap(find.byKey(const ValueKey('pay-invoice-i1')));
+      await tester.tap(find.byKey(const ValueKey('pay-statement-s1')));
       await tester.pumpAndSettle();
       expect(find.text('Tell Lizmo you have paid'), findsOneWidget);
+      // What the figure is for, so it is not paid blind.
+      expect(find.textContaining('September 2026, 2 properties'),
+          findsOneWidget);
 
       final send = find.byKey(const ValueKey('lizmo-send'));
       await tester.ensureVisible(send);
@@ -8463,11 +8540,11 @@ void _tenantLeaseTests() {
 
     testWidgets('a payment waiting for Lizmo is shown, and not asked again',
         (tester) async {
-      await tester.pumpWidget(appWith(invoices: [
-        invoice(payments: [
+      await tester.pumpWidget(appWith(statements: [
+        statement(payments: [
           PlatformPaymentResponse(
             id: 'pp1',
-            amountPaid: 550,
+            amountPaid: 700,
             paymentDate: DateTime.utc(2026, 9, 3),
             status: PlatformPaymentResponseStatusEnum.fromJson(
                 'PENDING_VERIFICATION'),
@@ -8477,17 +8554,17 @@ void _tenantLeaseTests() {
       await openBilling(tester);
 
       expect(find.text('Checking'), findsOneWidget);
-      expect(find.text('₱550 sent 3 Sep · Waiting for Lizmo to check'),
+      expect(find.text('₱700 sent 3 Sep · Waiting for Lizmo to check'),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('pay-invoice-i1')), findsNothing);
+      expect(find.byKey(const ValueKey('pay-statement-s1')), findsNothing);
     });
 
     testWidgets('a refused payment says why', (tester) async {
-      await tester.pumpWidget(appWith(invoices: [
-        invoice(payments: [
+      await tester.pumpWidget(appWith(statements: [
+        statement(payments: [
           PlatformPaymentResponse(
             id: 'pp1',
-            amountPaid: 550,
+            amountPaid: 700,
             paymentDate: DateTime.utc(2026, 9, 3),
             status: PlatformPaymentResponseStatusEnum.fromJson('REJECTED'),
             remarks: 'Nothing arrived under that reference.',
@@ -8496,10 +8573,10 @@ void _tenantLeaseTests() {
       ]));
       await openBilling(tester);
 
-      expect(find.text('₱550 sent 3 Sep · Not confirmed'), findsOneWidget);
+      expect(find.text('₱700 sent 3 Sep · Not confirmed'), findsOneWidget);
       expect(find.text('Nothing arrived under that reference.'), findsOneWidget);
       // Refused is not paid: it can be paid again.
-      expect(find.byKey(const ValueKey('pay-invoice-i1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pay-statement-s1')), findsOneWidget);
     });
   });
 }

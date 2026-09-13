@@ -7,11 +7,14 @@ final lizmoBillingApiProvider = Provider<LizmoBillingApi>((ref) {
   return LizmoBillingApi(ref.watch(apiClientProvider));
 });
 
-/// Every invoice on this landlord's properties, newest month first.
-final myLizmoInvoicesProvider =
-    FutureProvider.autoDispose<List<PlatformInvoiceResponse>>((ref) async {
+/// Every statement of this landlord's, newest month first.
+///
+/// One a month for the whole account, with a line per property. A line only
+/// carries an invoice number once the statement is paid.
+final myLizmoStatementsProvider =
+    FutureProvider.autoDispose<List<PlatformStatementResponse>>((ref) async {
   try {
-    return await ref.watch(lizmoBillingApiProvider).listMyPlatformInvoices() ??
+    return await ref.watch(lizmoBillingApiProvider).listMyPlatformStatements() ??
         const [];
   } catch (error) {
     throw ApiFailure.from(error);
@@ -31,15 +34,15 @@ final lizmoPaymentInstructionsProvider =
   }
 });
 
-/// Whether an invoice is waiting on the landlord.
+/// Whether a statement is waiting on the landlord.
 ///
 /// Something still owed, and nothing already sent that Lizmo has yet to check.
 /// A landlord who has paid and is waiting for confirmation has done their part,
 /// and being asked again would read as the payment having been lost.
-bool lizmoInvoiceNeedsPaying(PlatformInvoiceResponse invoice) =>
-    (invoice.outstanding ?? 0) > 0 && !lizmoInvoiceAwaitingLizmo(invoice);
+bool lizmoStatementNeedsPaying(PlatformStatementResponse statement) =>
+    (statement.outstanding ?? 0) > 0 && !lizmoStatementAwaitingLizmo(statement);
 
-/// Whether a payment against this invoice is waiting for Lizmo to check it.
-bool lizmoInvoiceAwaitingLizmo(PlatformInvoiceResponse invoice) => invoice
-    .payments
-    .any((payment) => payment.status?.toJson() == 'PENDING_VERIFICATION');
+/// Whether a payment against this statement is waiting for Lizmo to check it.
+bool lizmoStatementAwaitingLizmo(PlatformStatementResponse statement) =>
+    statement.payments
+        .any((payment) => payment.status?.toJson() == 'PENDING_VERIFICATION');

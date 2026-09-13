@@ -65,7 +65,7 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**getSupportContact**](doc//AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
 *AdminApi* | [**inviteLandlord**](doc//AdminApi.md#invitelandlord) | **POST** /api/v1/admin/landlord-invitations | Invite a landlord
 *AdminApi* | [**listInvitations**](doc//AdminApi.md#listinvitations) | **GET** /api/v1/admin/landlord-invitations | Invitations not yet taken up
-*AdminApi* | [**listLandlordInvoices**](doc//AdminApi.md#listlandlordinvoices) | **GET** /api/v1/admin/landlords/{id}/invoices | One landlord's invoices
+*AdminApi* | [**listLandlordStatements**](doc//AdminApi.md#listlandlordstatements) | **GET** /api/v1/admin/landlords/{id}/statements | One landlord's statements
 *AdminApi* | [**listLandlords**](doc//AdminApi.md#listlandlords) | **GET** /api/v1/admin/landlords | Every landlord
 *AdminApi* | [**listPlatformPaymentsToReview**](doc//AdminApi.md#listplatformpaymentstoreview) | **GET** /api/v1/admin/platform-payments | Payments waiting to be checked
 *AdminApi* | [**lockProperty**](doc//AdminApi.md#lockproperty) | **POST** /api/v1/admin/properties/{id}/lock | Stop a property being added to
@@ -94,8 +94,8 @@ Class | Method | HTTP request | Description
 *LeasesApi* | [**updateLeaseDocument**](doc//LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
 *LeasesApi* | [**uploadLeaseDocument**](doc//LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
 *LizmoBillingApi* | [**getPlatformPaymentInstructions**](doc//LizmoBillingApi.md#getplatformpaymentinstructions) | **GET** /api/v1/me/platform-payment-instructions | How to pay Lizmo
-*LizmoBillingApi* | [**listMyPlatformInvoices**](doc//LizmoBillingApi.md#listmyplatforminvoices) | **GET** /api/v1/me/platform-invoices | My Lizmo invoices
-*LizmoBillingApi* | [**payPlatformInvoice**](doc//LizmoBillingApi.md#payplatforminvoice) | **POST** /api/v1/me/platform-invoices/{id}/payments | Say I have paid Lizmo
+*LizmoBillingApi* | [**listMyPlatformStatements**](doc//LizmoBillingApi.md#listmyplatformstatements) | **GET** /api/v1/me/platform-statements | My Lizmo statements
+*LizmoBillingApi* | [**payPlatformStatement**](doc//LizmoBillingApi.md#payplatformstatement) | **POST** /api/v1/me/platform-statements/{id}/payments | Say I have paid Lizmo
 *MaintenanceApi* | [**addMaintenancePhoto**](doc//MaintenanceApi.md#addmaintenancephoto) | **POST** /api/v1/me/maintenance/{id}/photos | Add a photo to my report
 *MaintenanceApi* | [**confirmMaintenanceFixed**](doc//MaintenanceApi.md#confirmmaintenancefixed) | **POST** /api/v1/me/maintenance/{id}/fixed | Say it is fixed
 *MaintenanceApi* | [**listMyMaintenanceReports**](doc//MaintenanceApi.md#listmymaintenancereports) | **GET** /api/v1/me/maintenance | What I have reported
@@ -188,12 +188,13 @@ Class | Method | HTTP request | Description
  - [PaymentInstructions](doc//PaymentInstructions.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
- - [PlatformInvoiceResponse](doc//PlatformInvoiceResponse.md)
+ - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)
  - [PlatformPaymentForAdmin](doc//PlatformPaymentForAdmin.md)
  - [PlatformPaymentRejection](doc//PlatformPaymentRejection.md)
  - [PlatformPaymentRequest](doc//PlatformPaymentRequest.md)
  - [PlatformPaymentResponse](doc//PlatformPaymentResponse.md)
  - [PlatformSettings](doc//PlatformSettings.md)
+ - [PlatformStatementResponse](doc//PlatformStatementResponse.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
