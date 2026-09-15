@@ -3,8 +3,10 @@ package app.lizmo.billing;
 import app.lizmo.billing.dto.PaymentResponse;
 import app.lizmo.billing.dto.RecordPaymentRequest;
 import app.lizmo.common.ApiError;
+import app.lizmo.common.FormFields;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -129,8 +131,32 @@ public class PaymentController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public PaymentResponse declare(
             @PathVariable UUID leaseId,
-            @Valid @RequestPart("payment") RecordPaymentRequest request,
+            // Each field its own text part rather than one JSON part: the
+            // generated app client sends a nested object as its debug text
+            // with no content type, which no JSON converter will read.
+            @Parameter(description = "Which month this pays for")
+            @RequestPart("billingPeriodId") String billingPeriodId,
+            @Parameter(schema = @Schema(type = "string", example = "2500.00"))
+            @RequestPart("amountPaid") String amountPaid,
+            @Parameter(description = "When the money moved, as YYYY-MM-DD. Defaults to today.",
+                    schema = @Schema(type = "string", example = "2026-10-04"))
+            @RequestPart(value = "paymentDate", required = false) String paymentDate,
+            @Parameter(description = "Defaults to OTHER",
+                    schema = @Schema(implementation = PaymentMethod.class))
+            @RequestPart(value = "paymentMethod", required = false) String paymentMethod,
+            @Parameter(schema = @Schema(type = "string", maxLength = 500,
+                    example = "Sent from my mother's number"))
+            @RequestPart(value = "remarks", required = false) String remarks,
+            @Parameter(description = "Which of the landlord's payment channels it was sent to")
+            @RequestPart(value = "channelId", required = false) String channelId,
             @RequestPart(value = "proof", required = false) MultipartFile proof) {
+        RecordPaymentRequest request = new RecordPaymentRequest(
+                FormFields.id(billingPeriodId, "billingPeriodId"),
+                FormFields.amount(amountPaid, "amountPaid"),
+                FormFields.date(paymentDate, "paymentDate"),
+                FormFields.choice(paymentMethod, PaymentMethod.class, "paymentMethod"),
+                FormFields.text(remarks, 500, "remarks"),
+                FormFields.optionalId(channelId, "channelId"));
         return payments.declareByTenant(
                 leaseId, currentUser.requireId(), request, proof);
     }

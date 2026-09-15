@@ -127,10 +127,17 @@ class LizmoBillingApi {
   ///
   /// * [String] id (required):
   ///
-  /// * [PlatformPaymentRequest] payment (required):
+  /// * [String] amountPaid (required):
+  ///
+  /// * [String] paymentDate:
+  ///   When the money moved, as YYYY-MM-DD. Defaults to today.
+  ///
+  /// * [String] paymentMethod:
+  ///
+  /// * [String] remarks:
   ///
   /// * [MultipartFile] proof:
-  Future<Response> payPlatformStatementWithHttpInfo(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
+  Future<Response> payPlatformStatementWithHttpInfo(String id, String amountPaid, { String? paymentDate, String? paymentMethod, String? remarks, MultipartFile? proof, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/api/v1/me/platform-statements/{id}/payments'
       .replaceAll('{id}', id);
@@ -146,9 +153,21 @@ class LizmoBillingApi {
 
     bool hasFields = false;
     final mp = MultipartRequest('POST', Uri.parse(path));
-    if (payment != null) {
+    if (amountPaid != null) {
       hasFields = true;
-      mp.fields[r'payment'] = parameterToString(payment);
+      mp.fields[r'amountPaid'] = parameterToString(amountPaid);
+    }
+    if (paymentDate != null) {
+      hasFields = true;
+      mp.fields[r'paymentDate'] = parameterToString(paymentDate);
+    }
+    if (paymentMethod != null) {
+      hasFields = true;
+      mp.fields[r'paymentMethod'] = parameterToString(paymentMethod);
+    }
+    if (remarks != null) {
+      hasFields = true;
+      mp.fields[r'remarks'] = parameterToString(remarks);
     }
     if (proof != null) {
       hasFields = true;
@@ -179,11 +198,18 @@ class LizmoBillingApi {
   ///
   /// * [String] id (required):
   ///
-  /// * [PlatformPaymentRequest] payment (required):
+  /// * [String] amountPaid (required):
+  ///
+  /// * [String] paymentDate:
+  ///   When the money moved, as YYYY-MM-DD. Defaults to today.
+  ///
+  /// * [String] paymentMethod:
+  ///
+  /// * [String] remarks:
   ///
   /// * [MultipartFile] proof:
-  Future<PlatformStatementResponse?> payPlatformStatement(String id, PlatformPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
-    final response = await payPlatformStatementWithHttpInfo(id, payment, proof: proof, abortTrigger: abortTrigger,);
+  Future<PlatformStatementResponse?> payPlatformStatement(String id, String amountPaid, { String? paymentDate, String? paymentMethod, String? remarks, MultipartFile? proof, Future<void>? abortTrigger, }) async {
+    final response = await payPlatformStatementWithHttpInfo(id, amountPaid, paymentDate: paymentDate, paymentMethod: paymentMethod, remarks: remarks, proof: proof, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

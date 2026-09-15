@@ -1,12 +1,15 @@
 package app.lizmo.platform.billing;
 
+import app.lizmo.billing.PaymentMethod;
 import app.lizmo.common.ApiError;
+import app.lizmo.common.FormFields;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentForAdmin;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRejection;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRequest;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformStatementResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -77,8 +80,24 @@ public class PlatformBillingController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public PlatformStatementResponse pay(
             @PathVariable UUID id,
-            @Valid @RequestPart("payment") PlatformPaymentRequest request,
+            // Each field its own text part, for the same reason as a tenant's
+            // rent: the generated client cannot send a nested JSON part.
+            @Parameter(schema = @Schema(type = "string", example = "850.00"))
+            @RequestPart("amountPaid") String amountPaid,
+            @Parameter(description = "When the money moved, as YYYY-MM-DD. Defaults to today.",
+                    schema = @Schema(type = "string", example = "2026-09-03"))
+            @RequestPart(value = "paymentDate", required = false) String paymentDate,
+            @Parameter(schema = @Schema(implementation = PaymentMethod.class))
+            @RequestPart(value = "paymentMethod", required = false) String paymentMethod,
+            @Parameter(schema = @Schema(type = "string", maxLength = 500,
+                    example = "Reference 4012 8876 1123"))
+            @RequestPart(value = "remarks", required = false) String remarks,
             @RequestPart(value = "proof", required = false) MultipartFile proof) {
+        PlatformPaymentRequest request = new PlatformPaymentRequest(
+                FormFields.amount(amountPaid, "amountPaid"),
+                FormFields.date(paymentDate, "paymentDate"),
+                FormFields.choice(paymentMethod, PaymentMethod.class, "paymentMethod"),
+                FormFields.text(remarks, 500, "remarks"));
         return billing.pay(id, currentUser.requireId(), request, proof);
     }
 

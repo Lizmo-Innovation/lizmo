@@ -68,7 +68,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **declarePayment**
-> PaymentResponse declarePayment(leaseId, payment, proof)
+> PaymentResponse declarePayment(leaseId, billingPeriodId, amountPaid, paymentDate, paymentMethod, remarks, channelId, proof)
 
 Say I have paid
 
@@ -80,11 +80,16 @@ import 'package:lizmo_api/api.dart';
 
 final api_instance = RentApi();
 final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final payment = ; // RecordPaymentRequest | 
+final billingPeriodId = billingPeriodId_example; // String | Which month this pays for
+final amountPaid = amountPaid_example; // String | 
+final paymentDate = paymentDate_example; // String | When the money moved, as YYYY-MM-DD. Defaults to today.
+final paymentMethod = paymentMethod_example; // String | Defaults to OTHER
+final remarks = remarks_example; // String | 
+final channelId = channelId_example; // String | Which of the landlord's payment channels it was sent to
 final proof = BINARY_DATA_HERE; // MultipartFile | 
 
 try {
-    final result = api_instance.declarePayment(leaseId, payment, proof);
+    final result = api_instance.declarePayment(leaseId, billingPeriodId, amountPaid, paymentDate, paymentMethod, remarks, channelId, proof);
     print(result);
 } catch (e) {
     print('Exception when calling RentApi->declarePayment: $e\n');
@@ -96,7 +101,12 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **leaseId** | **String**|  | 
- **payment** | [**RecordPaymentRequest**](RecordPaymentRequest.md)|  | 
+ **billingPeriodId** | **String**| Which month this pays for | 
+ **amountPaid** | **String**|  | 
+ **paymentDate** | **String**| When the money moved, as YYYY-MM-DD. Defaults to today. | [optional] 
+ **paymentMethod** | **String**| Defaults to OTHER | [optional] 
+ **remarks** | **String**|  | [optional] 
+ **channelId** | **String**| Which of the landlord's payment channels it was sent to | [optional] 
  **proof** | **MultipartFile**|  | [optional] 
 
 ### Return type

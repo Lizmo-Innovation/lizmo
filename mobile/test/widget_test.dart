@@ -471,16 +471,27 @@ List<Override> _tenancyL1() => [
 
 /// Keeps what the Rent tab asked of the API, without a network.
 class _FakeRentApi extends RentApi {
-  final declared = <RecordPaymentRequest>[];
+  final declared = <({String billingPeriodId, String amountPaid, String? paymentMethod,
+      String? channelId})>[];
 
   @override
   Future<PaymentResponse?> declarePayment(
     String leaseId,
-    RecordPaymentRequest payment, {
+    String billingPeriodId,
+    String amountPaid, {
+    String? paymentDate,
+    String? paymentMethod,
+    String? remarks,
+    String? channelId,
     MultipartFile? proof,
     Future<void>? abortTrigger,
   }) async {
-    declared.add(payment);
+    declared.add((
+      billingPeriodId: billingPeriodId,
+      amountPaid: amountPaid,
+      paymentMethod: paymentMethod,
+      channelId: channelId,
+    ));
     return null;
   }
 
@@ -7173,8 +7184,8 @@ void _tenantLeaseTests() {
 
       expect(api.declared.single.channelId, 'c1');
       // Picking the GCash account picked GCash, over the Maya tapped before.
-      expect(api.declared.single.paymentMethod,
-          RecordPaymentRequestPaymentMethodEnum.GCASH);
+      expect(api.declared.single.paymentMethod, 'GCASH');
+      expect(api.declared.single.billingPeriodId, 'b1');
     });
 
     /// Cash went to nobody's account, whatever was tapped on the way.
@@ -7192,8 +7203,7 @@ void _tenantLeaseTests() {
       await tapShown(tester, find.text('I have paid'));
 
       expect(api.declared.single.channelId, isNull);
-      expect(api.declared.single.paymentMethod,
-          RecordPaymentRequestPaymentMethodEnum.CASH);
+      expect(api.declared.single.paymentMethod, 'CASH');
     });
 
     testWidgets('with no channels the sheet asks nothing about accounts',

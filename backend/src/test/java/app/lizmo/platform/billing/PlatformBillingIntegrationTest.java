@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
@@ -511,8 +512,9 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
             throws Exception {
         MockMultipartHttpServletRequestBuilder call =
                 multipart("/api/v1/me/platform-statements/" + statement + "/payments");
-        call.file(new MockMultipartFile("payment", "", "application/json",
-                "{\"amountPaid\":%d.00,\"paymentMethod\":\"GCASH\"}".formatted(amount).getBytes()));
+        // Plain text parts with no content type, as the app sends them.
+        call.part(new MockPart("amountPaid", String.valueOf(amount).getBytes()));
+        call.part(new MockPart("paymentMethod", "GCASH".getBytes()));
         if (withProof) {
             call.file(new MockMultipartFile("proof", "p.jpg", "image/jpeg", photo()));
         }

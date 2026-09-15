@@ -85,7 +85,6 @@ part 'model/pending_invitation.dart';
 part 'model/platform_invoice_line.dart';
 part 'model/platform_payment_for_admin.dart';
 part 'model/platform_payment_rejection.dart';
-part 'model/platform_payment_request.dart';
 part 'model/platform_payment_response.dart';
 part 'model/platform_settings.dart';
 part 'model/platform_statement_response.dart';

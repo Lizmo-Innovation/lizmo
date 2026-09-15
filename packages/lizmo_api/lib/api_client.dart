@@ -259,8 +259,6 @@ class ApiClient {
           return PlatformPaymentForAdmin.fromJson(value);
         case 'PlatformPaymentRejection':
           return PlatformPaymentRejection.fromJson(value);
-        case 'PlatformPaymentRequest':
-          return PlatformPaymentRequest.fromJson(value);
         case 'PlatformPaymentResponse':
           return PlatformPaymentResponse.fromJson(value);
         case 'PlatformSettings':

@@ -114,13 +114,13 @@ class _StatementState extends ConsumerState<_Statement> {
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
+      // Each field on its own, as text: the endpoint takes a form, because
+      // the generated client cannot send one JSON part inside an upload.
       await ref.read(lizmoBillingApiProvider).payPlatformStatement(
             statement.id!,
-            PlatformPaymentRequest(
-              amountPaid: paid.amount,
-              paymentMethod: paid.method,
-              remarks: paid.note,
-            ),
+            paid.amount.toString(),
+            paymentMethod: paid.method,
+            remarks: paid.note,
             proof: http.MultipartFile.fromBytes('proof', paid.proofBytes,
                 filename: paid.proofName),
           );

@@ -89,10 +89,24 @@ class RentApi {
   ///
   /// * [String] leaseId (required):
   ///
-  /// * [RecordPaymentRequest] payment (required):
+  /// * [String] billingPeriodId (required):
+  ///   Which month this pays for
+  ///
+  /// * [String] amountPaid (required):
+  ///
+  /// * [String] paymentDate:
+  ///   When the money moved, as YYYY-MM-DD. Defaults to today.
+  ///
+  /// * [String] paymentMethod:
+  ///   Defaults to OTHER
+  ///
+  /// * [String] remarks:
+  ///
+  /// * [String] channelId:
+  ///   Which of the landlord's payment channels it was sent to
   ///
   /// * [MultipartFile] proof:
-  Future<Response> declarePaymentWithHttpInfo(String leaseId, RecordPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
+  Future<Response> declarePaymentWithHttpInfo(String leaseId, String billingPeriodId, String amountPaid, { String? paymentDate, String? paymentMethod, String? remarks, String? channelId, MultipartFile? proof, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/api/v1/me/leases/{leaseId}/payments'
       .replaceAll('{leaseId}', leaseId);
@@ -108,9 +122,29 @@ class RentApi {
 
     bool hasFields = false;
     final mp = MultipartRequest('POST', Uri.parse(path));
-    if (payment != null) {
+    if (billingPeriodId != null) {
       hasFields = true;
-      mp.fields[r'payment'] = parameterToString(payment);
+      mp.fields[r'billingPeriodId'] = parameterToString(billingPeriodId);
+    }
+    if (amountPaid != null) {
+      hasFields = true;
+      mp.fields[r'amountPaid'] = parameterToString(amountPaid);
+    }
+    if (paymentDate != null) {
+      hasFields = true;
+      mp.fields[r'paymentDate'] = parameterToString(paymentDate);
+    }
+    if (paymentMethod != null) {
+      hasFields = true;
+      mp.fields[r'paymentMethod'] = parameterToString(paymentMethod);
+    }
+    if (remarks != null) {
+      hasFields = true;
+      mp.fields[r'remarks'] = parameterToString(remarks);
+    }
+    if (channelId != null) {
+      hasFields = true;
+      mp.fields[r'channelId'] = parameterToString(channelId);
     }
     if (proof != null) {
       hasFields = true;
@@ -141,11 +175,25 @@ class RentApi {
   ///
   /// * [String] leaseId (required):
   ///
-  /// * [RecordPaymentRequest] payment (required):
+  /// * [String] billingPeriodId (required):
+  ///   Which month this pays for
+  ///
+  /// * [String] amountPaid (required):
+  ///
+  /// * [String] paymentDate:
+  ///   When the money moved, as YYYY-MM-DD. Defaults to today.
+  ///
+  /// * [String] paymentMethod:
+  ///   Defaults to OTHER
+  ///
+  /// * [String] remarks:
+  ///
+  /// * [String] channelId:
+  ///   Which of the landlord's payment channels it was sent to
   ///
   /// * [MultipartFile] proof:
-  Future<PaymentResponse?> declarePayment(String leaseId, RecordPaymentRequest payment, { MultipartFile? proof, Future<void>? abortTrigger, }) async {
-    final response = await declarePaymentWithHttpInfo(leaseId, payment, proof: proof, abortTrigger: abortTrigger,);
+  Future<PaymentResponse?> declarePayment(String leaseId, String billingPeriodId, String amountPaid, { String? paymentDate, String? paymentMethod, String? remarks, String? channelId, MultipartFile? proof, Future<void>? abortTrigger, }) async {
+    final response = await declarePaymentWithHttpInfo(leaseId, billingPeriodId, amountPaid, paymentDate: paymentDate, paymentMethod: paymentMethod, remarks: remarks, channelId: channelId, proof: proof, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

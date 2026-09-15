@@ -13,6 +13,9 @@ public enum ErrorCode {
 
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST),
 
+    /** Sent in a format the endpoint does not read, such as JSON where a form is expected. */
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+
     /** Credentials did not match, or the account is inactive. */
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
 

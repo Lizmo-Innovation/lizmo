@@ -17,7 +17,8 @@ class LizmoPayment {
   });
 
   final num amount;
-  final PlatformPaymentRequestPaymentMethodEnum method;
+  /// GCASH, MAYA, BANK_TRANSFER or OTHER, as the form field is sent.
+  final String method;
   final String? note;
   final String proofName;
   final Uint8List proofBytes;
@@ -80,17 +81,16 @@ class _PayLizmoSheetState extends State<PayLizmoSheet> {
       TextEditingController(text: widget.outstanding.toStringAsFixed(0));
   final _note = TextEditingController();
 
-  PlatformPaymentRequestPaymentMethodEnum _method =
-      PlatformPaymentRequestPaymentMethodEnum.GCASH;
+  String _method = 'GCASH';
   String? _proofName;
   Uint8List? _proofBytes;
   String? _proofError;
 
   static const _methods = {
-    PlatformPaymentRequestPaymentMethodEnum.GCASH: 'GCash',
-    PlatformPaymentRequestPaymentMethodEnum.MAYA: 'Maya',
-    PlatformPaymentRequestPaymentMethodEnum.BANK_TRANSFER: 'Bank transfer',
-    PlatformPaymentRequestPaymentMethodEnum.OTHER: 'Something else',
+    'GCASH': 'GCash',
+    'MAYA': 'Maya',
+    'BANK_TRANSFER': 'Bank transfer',
+    'OTHER': 'Something else',
   };
 
   @override
@@ -206,7 +206,7 @@ class _PayLizmoSheetState extends State<PayLizmoSheet> {
                 children: [
                   for (final entry in _methods.entries)
                     ChoiceChip(
-                      key: ValueKey('lizmo-method-${entry.key.toJson()}'),
+                      key: ValueKey('lizmo-method-${entry.key}'),
                       label: Text(entry.value,
                           style: LizmoType.rowSub.copyWith(color: LizmoColors.ink)),
                       selected: _method == entry.key,

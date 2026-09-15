@@ -389,15 +389,15 @@ Future<void> sendDeclaration(
   required Declared said,
 }) async {
   try {
+    // Each field on its own, as text: the endpoint takes a form, because the
+    // generated client cannot send one JSON part inside an upload.
     await ref.read(rentApiProvider).declarePayment(
           leaseId,
-          RecordPaymentRequest(
-            billingPeriodId: period.id!,
-            amountPaid: said.amount,
-            paymentMethod: said.method,
-            remarks: said.note,
-            channelId: said.channelId,
-          ),
+          period.id!,
+          said.amount.toString(),
+          paymentMethod: said.method.toJson(),
+          remarks: said.note,
+          channelId: said.channelId,
           proof: said.proof == null
               ? null
               : http.MultipartFile.fromBytes(

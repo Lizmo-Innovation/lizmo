@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
 /**
  * Recording rent that has been paid.
@@ -279,11 +281,59 @@ class PaymentIntegrationTest extends IntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ---- what the app actually sends --------------------------------------
+
+    /**
+     * The request the phone sends, byte for byte in shape: every field a plain
+     * text part, ASCII ones unlabelled, a note with a curly apostrophe labelled
+     * UTF-8. This failed as a 500 before, because the endpoint wanted one JSON
+     * part that the generated client cannot produce.
+     */
     @Test
-    void another_tenant_can_declare_nothing() throws Exception {
+    void the_request_the_app_sends_is_accepted() throws Exception {
+        MockPart note = new MockPart("remarks",
+                "Sent from my sister’s number".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        note.getHeaders().setContentType(MediaType.parseMediaType("text/plain; charset=utf-8"));
+
+        mvc.perform(multipart("/api/v1/me/leases/" + leaseId + "/payments")
+                        .part(new MockPart("billingPeriodId", october.getBytes()))
+                        .part(new MockPart("amountPaid", "2500".getBytes()))
+                        .part(new MockPart("paymentDate", "2026-10-04".getBytes()))
+                        .part(new MockPart("paymentMethod", "MAYA".getBytes()))
+                        .part(note)
+                        .header("Authorization", "Bearer " + anaToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.amountPaid").value(2500))
+                .andExpect(jsonPath("$.paymentDate").value("2026-10-04"))
+                .andExpect(jsonPath("$.paymentMethod").value("MAYA"))
+                .andExpect(jsonPath("$.remarks").value("Sent from my sister’s number"));
+    }
+
+    /** What an app from before this fix sends now gets a reason, not a 500. */
+    @Test
+    void the_old_single_json_part_is_refused_with_a_reason() throws Exception {
         mvc.perform(multipart("/api/v1/me/leases/" + leaseId + "/payments")
                         .file(new MockMultipartFile("payment", "", "application/json",
                                 body(2500, "GCASH").getBytes()))
+                        .header("Authorization", "Bearer " + anaToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("billingPeriodId is required."));
+    }
+
+    /** A timestamp is refused rather than trimmed into what may be the wrong day. */
+    @Test
+    void a_date_that_is_not_a_date_is_refused() throws Exception {
+        mvc.perform(formParts(multipart("/api/v1/me/leases/" + leaseId + "/payments"), 2500)
+                        .part(new MockPart("paymentDate", "2026-10-03T16:00:00.000Z".getBytes()))
+                        .header("Authorization", "Bearer " + anaToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("paymentDate must be a date written as YYYY-MM-DD."));
+    }
+
+    @Test
+    void another_tenant_can_declare_nothing() throws Exception {
+        mvc.perform(formParts(multipart("/api/v1/me/leases/" + leaseId + "/payments"), 2500)
                         .header("Authorization", "Bearer " + beaToken))
                 .andExpect(status().isNotFound());
     }
@@ -360,13 +410,23 @@ class PaymentIntegrationTest extends IntegrationTest {
     private ResultActions declare(int amount, byte[] proof) throws Exception {
         // Files first, header last: .header() narrows the builder type and
         // .file() is no longer available after it.
-        var call = multipart("/api/v1/me/leases/" + leaseId + "/payments")
-                .file(new MockMultipartFile("payment", "", "application/json",
-                        body(amount, "GCASH").getBytes()));
+        var call = formParts(multipart("/api/v1/me/leases/" + leaseId + "/payments"), amount);
         if (proof != null) {
             call = call.file(new MockMultipartFile("proof", "p.jpg", "image/jpeg", proof));
         }
         return mvc.perform(call.header("Authorization", "Bearer " + anaToken));
+    }
+
+    /**
+     * The fields as the app sends them: one plain text part each, with no
+     * content type, never a single JSON part.
+     */
+    private MockMultipartHttpServletRequestBuilder formParts(
+            MockMultipartHttpServletRequestBuilder call, int amount) {
+        return call
+                .part(new MockPart("billingPeriodId", october.getBytes()))
+                .part(new MockPart("amountPaid", String.valueOf(amount).getBytes()))
+                .part(new MockPart("paymentMethod", "GCASH".getBytes()));
     }
 
     private ResultActions confirm(String paymentId) throws Exception {

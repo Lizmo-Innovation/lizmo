@@ -1514,12 +1514,34 @@
                         "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "payment"
+                                    "amountPaid"
                                 ],
                                 "type": "object",
                                 "properties": {
-                                    "payment": {
-                                        "$ref": "#/components/schemas/PlatformPaymentRequest"
+                                    "amountPaid": {
+                                        "type": "string",
+                                        "example": 850.0
+                                    },
+                                    "paymentDate": {
+                                        "type": "string",
+                                        "description": "When the money moved, as YYYY-MM-DD. Defaults to today.",
+                                        "example": "2026-09-03"
+                                    },
+                                    "paymentMethod": {
+                                        "type": "string",
+                                        "enum": [
+                                            "CASH",
+                                            "GCASH",
+                                            "MAYA",
+                                            "BANK_TRANSFER",
+                                            "OTHER",
+                                            "ADVANCE"
+                                        ]
+                                    },
+                                    "remarks": {
+                                        "maxLength": 500,
+                                        "type": "string",
+                                        "example": "Reference 4012 8876 1123"
                                     },
                                     "proof": {
                                         "type": "string",
@@ -2064,12 +2086,44 @@
                         "multipart/form-data": {
                             "schema": {
                                 "required": [
-                                    "payment"
+                                    "amountPaid",
+                                    "billingPeriodId"
                                 ],
                                 "type": "object",
                                 "properties": {
-                                    "payment": {
-                                        "$ref": "#/components/schemas/RecordPaymentRequest"
+                                    "billingPeriodId": {
+                                        "type": "string",
+                                        "description": "Which month this pays for"
+                                    },
+                                    "amountPaid": {
+                                        "type": "string",
+                                        "example": 2500.0
+                                    },
+                                    "paymentDate": {
+                                        "type": "string",
+                                        "description": "When the money moved, as YYYY-MM-DD. Defaults to today.",
+                                        "example": "2026-10-04"
+                                    },
+                                    "paymentMethod": {
+                                        "type": "string",
+                                        "description": "Defaults to OTHER",
+                                        "enum": [
+                                            "CASH",
+                                            "GCASH",
+                                            "MAYA",
+                                            "BANK_TRANSFER",
+                                            "OTHER",
+                                            "ADVANCE"
+                                        ]
+                                    },
+                                    "remarks": {
+                                        "maxLength": 500,
+                                        "type": "string",
+                                        "example": "Sent from my mother's number"
+                                    },
+                                    "channelId": {
+                                        "type": "string",
+                                        "description": "Which of the landlord's payment channels it was sent to"
                                     },
                                     "proof": {
                                         "type": "string",
@@ -4635,6 +4689,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -4673,30 +4751,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -5403,42 +5457,6 @@
                 },
                 "description": "A request a tenant has sent"
             },
-            "PlatformPaymentRequest": {
-                "required": [
-                    "amountPaid"
-                ],
-                "type": "object",
-                "properties": {
-                    "amountPaid": {
-                        "type": "number",
-                        "example": 850.0
-                    },
-                    "paymentDate": {
-                        "type": "string",
-                        "format": "date",
-                        "example": "2026-09-03"
-                    },
-                    "paymentMethod": {
-                        "type": "string",
-                        "example": "GCASH",
-                        "enum": [
-                            "CASH",
-                            "GCASH",
-                            "MAYA",
-                            "BANK_TRANSFER",
-                            "OTHER",
-                            "ADVANCE"
-                        ]
-                    },
-                    "remarks": {
-                        "maxLength": 500,
-                        "minLength": 0,
-                        "type": "string",
-                        "example": "Reference 4012 8876 1123"
-                    }
-                },
-                "description": "Paying a Lizmo statement"
-            },
             "PlatformInvoiceLine": {
                 "type": "object",
                 "properties": {
@@ -5695,54 +5713,6 @@
                 },
                 "description": "Something said alongside a change"
             },
-            "RecordPaymentRequest": {
-                "required": [
-                    "amountPaid",
-                    "billingPeriodId"
-                ],
-                "type": "object",
-                "properties": {
-                    "billingPeriodId": {
-                        "type": "string",
-                        "description": "Which month this pays for",
-                        "format": "uuid"
-                    },
-                    "amountPaid": {
-                        "type": "number",
-                        "example": 2500.0
-                    },
-                    "paymentDate": {
-                        "type": "string",
-                        "format": "date",
-                        "example": "2026-10-05"
-                    },
-                    "paymentMethod": {
-                        "type": "string",
-                        "description": "Defaults to OTHER",
-                        "example": "GCASH",
-                        "enum": [
-                            "CASH",
-                            "GCASH",
-                            "MAYA",
-                            "BANK_TRANSFER",
-                            "OTHER",
-                            "ADVANCE"
-                        ]
-                    },
-                    "remarks": {
-                        "maxLength": 500,
-                        "minLength": 0,
-                        "type": "string",
-                        "example": "Sent from my mother's number"
-                    },
-                    "channelId": {
-                        "type": "string",
-                        "description": "Which of the landlord's payment channels it was sent to, if any. Kept as the channel read at that moment.",
-                        "format": "uuid"
-                    }
-                },
-                "description": "Recording a rent payment"
-            },
             "PaymentResponse": {
                 "type": "object",
                 "properties": {
@@ -5798,6 +5768,54 @@
                     }
                 },
                 "description": "A recorded rent payment"
+            },
+            "RecordPaymentRequest": {
+                "required": [
+                    "amountPaid",
+                    "billingPeriodId"
+                ],
+                "type": "object",
+                "properties": {
+                    "billingPeriodId": {
+                        "type": "string",
+                        "description": "Which month this pays for",
+                        "format": "uuid"
+                    },
+                    "amountPaid": {
+                        "type": "number",
+                        "example": 2500.0
+                    },
+                    "paymentDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-05"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "description": "Defaults to OTHER",
+                        "example": "GCASH",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "remarks": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Sent from my mother's number"
+                    },
+                    "channelId": {
+                        "type": "string",
+                        "description": "Which of the landlord's payment channels it was sent to, if any. Kept as the channel read at that moment.",
+                        "format": "uuid"
+                    }
+                },
+                "description": "Recording a rent payment"
             },
             "LeaseDocumentResponse": {
                 "type": "object",

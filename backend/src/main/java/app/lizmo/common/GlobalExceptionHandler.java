@@ -7,15 +7,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -131,6 +134,36 @@ public class GlobalExceptionHandler {
                 : "%s is not valid.".formatted(ex.getName());
         return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
                 .body(ApiError.of(ErrorCode.VALIDATION_FAILED, message));
+    }
+
+    /**
+     * A form upload missing a field it needs.
+     *
+     * <p>Named, because "something went wrong" over a missing amount tells
+     * nobody what to send. Also what an old app sending the retired single
+     * JSON part now gets, instead of a 500.
+     */
+    @ExceptionHandler({MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class})
+    ResponseEntity<ApiError> handleMissingPart(Exception ex) {
+        String name = ex instanceof MissingServletRequestPartException part
+                ? part.getRequestPartName()
+                : ((MissingServletRequestParameterException) ex).getParameterName();
+        return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
+                .body(ApiError.of(ErrorCode.VALIDATION_FAILED, name + " is required."));
+    }
+
+    /**
+     * A body or part in a format the endpoint cannot read.
+     *
+     * <p>This was the tenant's "I have paid" failing: an unlabelled part where
+     * JSON was expected, reported as a 500 and shown as an unknown error.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ApiError> handleUnsupportedMedia(HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(ErrorCode.UNSUPPORTED_MEDIA_TYPE.status())
+                .body(ApiError.of(ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                        "That request was sent in a format this endpoint does not accept."));
     }
 
     /**

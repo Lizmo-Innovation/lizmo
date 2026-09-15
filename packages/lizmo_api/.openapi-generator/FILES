@@ -50,7 +50,6 @@ doc/PendingInvitation.md
 doc/PlatformInvoiceLine.md
 doc/PlatformPaymentForAdmin.md
 doc/PlatformPaymentRejection.md
-doc/PlatformPaymentRequest.md
 doc/PlatformPaymentResponse.md
 doc/PlatformSettings.md
 doc/PlatformStatementResponse.md
@@ -159,7 +158,6 @@ lib/model/pending_invitation.dart
 lib/model/platform_invoice_line.dart
 lib/model/platform_payment_for_admin.dart
 lib/model/platform_payment_rejection.dart
-lib/model/platform_payment_request.dart
 lib/model/platform_payment_response.dart
 lib/model/platform_settings.dart
 lib/model/platform_statement_response.dart

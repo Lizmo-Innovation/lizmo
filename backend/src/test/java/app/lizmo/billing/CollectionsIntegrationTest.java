@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
@@ -295,11 +296,9 @@ class CollectionsIntegrationTest extends IntegrationTest {
         String period = json.readTree(months).get(0).get("id").asText();
 
         String declared = mvc.perform(multipart("/api/v1/me/leases/" + leaseId + "/payments")
-                        .file(new MockMultipartFile("payment", "", "application/json",
-                                """
-                                {"billingPeriodId":"%s","amountPaid":%d.00,
-                                 "paymentMethod":"GCASH"}
-                                """.formatted(period, amount).getBytes()))
+                        .part(new MockPart("billingPeriodId", period.getBytes()))
+                        .part(new MockPart("amountPaid", String.valueOf(amount).getBytes()))
+                        .part(new MockPart("paymentMethod", "GCASH".getBytes()))
                         .header("Authorization", "Bearer " + anaToken))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

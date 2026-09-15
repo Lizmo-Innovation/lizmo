@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
@@ -392,18 +393,15 @@ class LandlordPaymentChannelIntegrationTest extends IntegrationTest {
                         .andReturn().getResponse().getContentAsString())
                 .get(0).get("id").asText();
 
-        var fields = new LinkedHashMap<String, Object>();
-        fields.put("billingPeriodId", period);
-        fields.put("amountPaid", 2500.00);
-        fields.put("paymentMethod", "GCASH");
+        // Plain text parts with no content type, as the app sends them.
+        var call = multipart("/api/v1/me/leases/" + leaseId + "/payments")
+                .part(new MockPart("billingPeriodId", period.getBytes()))
+                .part(new MockPart("amountPaid", "2500".getBytes()))
+                .part(new MockPart("paymentMethod", "GCASH".getBytes()));
         if (channelId != null) {
-            fields.put("channelId", channelId);
+            call = call.part(new MockPart("channelId", channelId.getBytes()));
         }
-
-        return mvc.perform(multipart("/api/v1/me/leases/" + leaseId + "/payments")
-                .file(new MockMultipartFile("payment", "", "application/json",
-                        json.writeValueAsBytes(fields)))
-                .header("Authorization", "Bearer " + anaToken));
+        return mvc.perform(call.header("Authorization", "Bearer " + anaToken));
     }
 
     private String body(String channel, String name, String number, Boolean visible)

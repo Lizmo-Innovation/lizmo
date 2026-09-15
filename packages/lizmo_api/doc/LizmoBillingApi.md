@@ -93,7 +93,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **payPlatformStatement**
-> PlatformStatementResponse payPlatformStatement(id, payment, proof)
+> PlatformStatementResponse payPlatformStatement(id, amountPaid, paymentDate, paymentMethod, remarks, proof)
 
 Say I have paid Lizmo
 
@@ -105,11 +105,14 @@ import 'package:lizmo_api/api.dart';
 
 final api_instance = LizmoBillingApi();
 final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
-final payment = ; // PlatformPaymentRequest | 
+final amountPaid = amountPaid_example; // String | 
+final paymentDate = paymentDate_example; // String | When the money moved, as YYYY-MM-DD. Defaults to today.
+final paymentMethod = paymentMethod_example; // String | 
+final remarks = remarks_example; // String | 
 final proof = BINARY_DATA_HERE; // MultipartFile | 
 
 try {
-    final result = api_instance.payPlatformStatement(id, payment, proof);
+    final result = api_instance.payPlatformStatement(id, amountPaid, paymentDate, paymentMethod, remarks, proof);
     print(result);
 } catch (e) {
     print('Exception when calling LizmoBillingApi->payPlatformStatement: $e\n');
@@ -121,7 +124,10 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
- **payment** | [**PlatformPaymentRequest**](PlatformPaymentRequest.md)|  | 
+ **amountPaid** | **String**|  | 
+ **paymentDate** | **String**| When the money moved, as YYYY-MM-DD. Defaults to today. | [optional] 
+ **paymentMethod** | **String**|  | [optional] 
+ **remarks** | **String**|  | [optional] 
  **proof** | **MultipartFile**|  | [optional] 
 
 ### Return type

@@ -213,7 +213,6 @@ Class | Method | HTTP request | Description
  - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)
  - [PlatformPaymentForAdmin](doc//PlatformPaymentForAdmin.md)
  - [PlatformPaymentRejection](doc//PlatformPaymentRejection.md)
- - [PlatformPaymentRequest](doc//PlatformPaymentRequest.md)
  - [PlatformPaymentResponse](doc//PlatformPaymentResponse.md)
  - [PlatformSettings](doc//PlatformSettings.md)
  - [PlatformStatementResponse](doc//PlatformStatementResponse.md)
