@@ -8,6 +8,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import 'lizmo_payment_channels.dart';
 
 /// A tenant saying they have paid.
 ///
@@ -20,9 +21,14 @@ class DeclarePaymentSheet extends StatefulWidget {
     super.key,
     required this.periodLabel,
     required this.outstanding,
+    this.payment,
   });
 
   final String periodLabel;
+
+  /// Where to send it: the landlord's channels. Null when not known, and the
+  /// sheet then asks nothing about accounts.
+  final PaymentDetails? payment;
 
   /// Prefilled, because paying exactly what is left is the ordinary case and
   /// retyping it is a chore that invites mistakes.
@@ -32,6 +38,7 @@ class DeclarePaymentSheet extends StatefulWidget {
     BuildContext context, {
     required String periodLabel,
     required num outstanding,
+    PaymentDetails? payment,
   }) {
     return showModalBottomSheet<Declared>(
       context: context,
@@ -43,6 +50,7 @@ class DeclarePaymentSheet extends StatefulWidget {
       builder: (_) => DeclarePaymentSheet(
         periodLabel: periodLabel,
         outstanding: outstanding,
+        payment: payment,
       ),
     );
   }
@@ -58,9 +66,14 @@ class Declared {
     required this.method,
     this.note,
     this.proof,
+    this.channelId,
   });
 
   final num amount;
+
+  /// Which of the landlord's channels it went to. Null for cash, or when none
+  /// was picked; the server writes out the channel's details from this.
+  final String? channelId;
   final RecordPaymentRequestPaymentMethodEnum method;
 
   /// Anything the figures cannot say: paid from somebody else's number, sent
@@ -79,6 +92,24 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
       RecordPaymentRequestPaymentMethodEnum.GCASH;
   final _note = TextEditingController();
   XFile? _proof;
+  String? _channelId;
+
+  /// Picking an account also picks the obvious method, so nobody is asked the
+  /// same thing twice. A bank is a transfer; anything unrecognised is left.
+  void _sentTo(PaymentChannelView? channel) {
+    setState(() {
+      _channelId = channel?.id;
+      final name = (channel?.channel ?? '').toLowerCase();
+      if (channel == null) return;
+      if (name.contains('gcash')) {
+        _method = RecordPaymentRequestPaymentMethodEnum.GCASH;
+      } else if (name.contains('maya')) {
+        _method = RecordPaymentRequestPaymentMethodEnum.MAYA;
+      } else {
+        _method = RecordPaymentRequestPaymentMethodEnum.BANK_TRANSFER;
+      }
+    });
+  }
 
   static const _methods = {
     RecordPaymentRequestPaymentMethodEnum.GCASH: 'GCash',
@@ -119,6 +150,10 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
       // should leave the landlord's screen uncluttered.
       note: note.isEmpty ? null : note,
       proof: _proof,
+      // Cash went to nobody's account, whatever was tapped before.
+      channelId: _method == RecordPaymentRequestPaymentMethodEnum.CASH
+          ? null
+          : _channelId,
     ));
   }
 
@@ -159,6 +194,19 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
                 style: LizmoType.rowSub,
               ),
 
+              if (widget.payment case final payment?) ...[
+                const SizedBox(height: 18),
+                _Label('Send it to'),
+                const SizedBox(height: 6),
+                LizmoPaymentChannels(
+                  details: payment,
+                  emptyMessage: 'Your landlord has not added how to pay yet. '
+                      'Ask them before sending money.',
+                  qrUnavailable: 'That QR could not be loaded. Close this and '
+                      'pull down on the Rent tab to refresh it.',
+                ),
+              ],
+
               const SizedBox(height: 20),
               _Label('How much'),
               const SizedBox(height: 6),
@@ -181,6 +229,39 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
                 },
               ),
 
+              if (widget.payment?.channels case final channels?
+                  when channels.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _Label('Which account did you send it to?'),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final channel in channels)
+                      ChoiceChip(
+                        key: ValueKey('sent-to-${channel.id}'),
+                        label: Text('${channel.channel} · ${channel.accountName}',
+                            style: LizmoType.rowSub.copyWith(color: LizmoColors.ink)),
+                        selected: _channelId == channel.id,
+                        onSelected: (_) => _sentTo(channel),
+                      ),
+                    ChoiceChip(
+                      key: const ValueKey('sent-to-none'),
+                      label: Text('None of these',
+                          style: LizmoType.rowSub.copyWith(color: LizmoColors.ink)),
+                      selected: _channelId == null,
+                      onSelected: (_) => _sentTo(null),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your landlord sees it, so they know which account to check.',
+                  style: LizmoType.rowSub.copyWith(fontSize: 11),
+                ),
+              ],
+
               const SizedBox(height: 18),
               _Label('How you paid'),
               const SizedBox(height: 6),
@@ -191,7 +272,10 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
                   for (final entry in _methods.entries)
                     ChoiceChip(
                       key: ValueKey('method-${entry.key.toJson()}'),
-                      label: Text(entry.value),
+                      // Lizmo's type, not Material's default, like every
+                      // other label on this sheet.
+                      label: Text(entry.value,
+                          style: LizmoType.rowSub.copyWith(color: LizmoColors.ink)),
                       selected: _method == entry.key,
                       onSelected: (_) => setState(() => _method = entry.key),
                     ),
@@ -312,6 +396,7 @@ Future<void> sendDeclaration(
             amountPaid: said.amount,
             paymentMethod: said.method,
             remarks: said.note,
+            channelId: said.channelId,
           ),
           proof: said.proof == null
               ? null

@@ -471,6 +471,19 @@ List<Override> _tenancyL1() => [
 
 /// Keeps what the Rent tab asked of the API, without a network.
 class _FakeRentApi extends RentApi {
+  final declared = <RecordPaymentRequest>[];
+
+  @override
+  Future<PaymentResponse?> declarePayment(
+    String leaseId,
+    RecordPaymentRequest payment, {
+    MultipartFile? proof,
+    Future<void>? abortTrigger,
+  }) async {
+    declared.add(payment);
+    return null;
+  }
+
   final confirmed = <String>[];
   final refused = <(String, String?)>[];
   final recorded = <RecordPaymentRequest>[];
@@ -6767,6 +6780,22 @@ void _tenantLeaseTests() {
       expect(dueCard(find.text('I have paid')), findsNothing);
     });
 
+    testWidgets('a waiting payment on Home says which account it went to',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()], payments: [
+        PaymentResponse(
+          id: 'p1',
+          billingPeriodId: 'b1',
+          amountPaid: 2500,
+          sentTo: 'GCash · Elena Reyes · 09171112222',
+          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.textContaining('to GCash · Elena Reyes · 09171112222')), findsOneWidget);
+    });
+
     testWidgets('nothing owed says so', (tester) async {
       await tester.pumpWidget(appWith([
         month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
@@ -6948,7 +6977,11 @@ void _tenantLeaseTests() {
 
     // ---- the tenant's side ------------------------------------------------
 
-    Widget tenantApp(List<BillingPeriodResponse> months) => ProviderScope(
+    Widget tenantApp(
+      List<BillingPeriodResponse> months, {
+      PaymentDetails? payment,
+      _FakeRentApi? api,
+    }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
@@ -6981,6 +7014,9 @@ void _tenantLeaseTests() {
           (ref) async => const <LeaseDocumentResponse>[],
         ),
         myBillingProvider('l1').overrideWith((ref) async => months),
+        leasePaymentDetailsProvider('l1')
+            .overrideWith((ref) async => payment ?? PaymentDetails()),
+        if (api != null) rentApiProvider.overrideWithValue(api),
       ],
       child: const LizmoApp(),
     );
@@ -7072,6 +7108,103 @@ void _tenantLeaseTests() {
       expect(find.text('How much did you pay?'), findsOneWidget);
       // Still on the sheet, having declared nothing.
       expect(find.byType(DeclarePaymentSheet), findsOneWidget);
+    });
+
+    PaymentChannelView gcash() => PaymentChannelView(
+          id: 'c1',
+          channel: 'GCash',
+          accountName: 'Elena Reyes',
+          accountNumber: '09171112222',
+          qrUrlExpiresInSeconds: 600,
+        );
+
+    Finder landlordPanel(Finder matching) => find.descendant(
+          of: find.byKey(const ValueKey('landlord-how-to-pay')),
+          matching: matching,
+        );
+
+    Future<void> tapShown(WidgetTester tester, Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    /// Where to send it, before anybody taps "I have paid".
+    testWidgets('the Rent tab says how to pay the landlord', (tester) async {
+      await tester.pumpWidget(tenantApp([month()],
+          payment: PaymentDetails(
+            channels: [gcash()],
+            note: 'Cash to Aling Nena at unit 1A',
+          )));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(landlordPanel(find.text('How to pay your landlord')), findsOneWidget);
+      expect(landlordPanel(find.text('09171112222')), findsOneWidget);
+      expect(landlordPanel(find.text('Cash to Aling Nena at unit 1A')), findsOneWidget);
+    });
+
+    testWidgets('a landlord who has added nothing yet is said to have added nothing',
+        (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(landlordPanel(find.textContaining('has not added how to pay yet')),
+          findsOneWidget);
+    });
+
+    /// So the landlord opens the right app before confirming.
+    testWidgets('saying which account it went to sends it, with the method',
+        (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(tenantApp([month()],
+          payment: PaymentDetails(channels: [gcash()]), api: api));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Send it to'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('method-MAYA')));
+      await tapShown(tester, find.byKey(const ValueKey('sent-to-c1')));
+      await tapShown(tester, find.text('I have paid'));
+
+      expect(api.declared.single.channelId, 'c1');
+      // Picking the GCash account picked GCash, over the Maya tapped before.
+      expect(api.declared.single.paymentMethod,
+          RecordPaymentRequestPaymentMethodEnum.GCASH);
+    });
+
+    /// Cash went to nobody's account, whatever was tapped on the way.
+    testWidgets('cash sends no account', (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(tenantApp([month()],
+          payment: PaymentDetails(channels: [gcash()]), api: api));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      await tapShown(tester, find.byKey(const ValueKey('sent-to-c1')));
+      await tapShown(tester, find.byKey(const ValueKey('method-CASH')));
+      await tapShown(tester, find.text('I have paid'));
+
+      expect(api.declared.single.channelId, isNull);
+      expect(api.declared.single.paymentMethod,
+          RecordPaymentRequestPaymentMethodEnum.CASH);
+    });
+
+    testWidgets('with no channels the sheet asks nothing about accounts',
+        (tester) async {
+      await tester.pumpWidget(tenantApp([month()]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('sent-to-none')), findsNothing);
     });
 
     testWidgets('proof is offered, not demanded', (tester) async {

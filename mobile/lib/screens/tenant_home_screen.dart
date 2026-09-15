@@ -224,6 +224,7 @@ class _RentDue extends ConsumerWidget {
       context,
       periodLabel: period.label ?? 'this month',
       outstanding: period.outstanding ?? 0,
+      payment: ref.read(leasePaymentDetailsProvider(lease.id!)).valueOrNull,
     );
     if (said == null || !context.mounted) return;
 
@@ -247,6 +248,9 @@ class _RentDue extends ConsumerWidget {
 
     final payments =
         ref.watch(myPaymentsProvider(lease.id!)).valueOrNull ?? const [];
+    // Watched, not read, so the sheet has the landlord's channels by the time
+    // somebody taps "I have paid" here.
+    ref.watch(leasePaymentDetailsProvider(lease.id!));
     final owing = months.where((month) => (month.outstanding ?? 0) > 0).toList();
 
     final Widget card;
@@ -277,7 +281,9 @@ class _RentDue extends ConsumerWidget {
           icon: Icons.hourglass_empty,
           title: 'Waiting for your landlord',
           detail: 'You said you paid ₱${(said.first.amountPaid ?? 0).toStringAsFixed(0)} '
-              'for ${oldest.label}. It counts once they confirm it.',
+              'for ${oldest.label}'
+              '${said.first.sentTo == null ? '' : ' to ${said.first.sentTo}'}'
+              '. It counts once they confirm it.',
         );
       } else if (oldest.overdue == true) {
         final late = owing.where((month) => month.overdue == true).length;

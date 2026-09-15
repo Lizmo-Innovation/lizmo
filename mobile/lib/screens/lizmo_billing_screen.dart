@@ -44,7 +44,15 @@ class LizmoBillingScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            _HowToPay(details: payment),
+            HowToPayPanel(
+              key: const ValueKey('lizmo-how-to-pay'),
+              title: 'How to pay Lizmo',
+              details: payment,
+              emptyMessage: 'Lizmo has not added payment details yet. Contact '
+                  'Lizmo support before paying.',
+              qrUnavailable: 'That QR could not be loaded. Close this and pull '
+                  'down on the billing screen to refresh it.',
+            ),
             const SizedBox(height: 16),
             ...switch (statements) {
               AsyncError(:final error) => [
@@ -72,45 +80,6 @@ class LizmoBillingScreen extends ConsumerWidget {
             },
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _HowToPay extends StatelessWidget {
-  const _HowToPay({required this.details});
-
-  final AsyncValue<PaymentDetails> details;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget body = switch (details) {
-      AsyncData(:final value) => LizmoPaymentChannels(details: value),
-      // Unknown is not "none": a failed load saying Lizmo has no details
-      // would send somebody to support over a bad connection.
-      AsyncError() => Text('Could not load how to pay. Pull down to try again.',
-          style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
-      _ => const Padding(
-          padding: EdgeInsets.all(8),
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-    };
-
-    return Container(
-      key: const ValueKey('lizmo-how-to-pay'),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LizmoColors.tealBg,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('How to pay Lizmo',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
-          const SizedBox(height: 8),
-          body,
-        ],
       ),
     );
   }

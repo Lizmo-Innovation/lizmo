@@ -353,3 +353,17 @@ final occupancyProvider =
     throw ApiFailure.from(error);
   }
 });
+
+/// How to pay the landlord behind a lease: their channels switched on, in
+/// order, and their note.
+///
+/// Read fresh each time it is watched, because a QR link lasts ten minutes.
+final leasePaymentDetailsProvider = FutureProvider.autoDispose
+    .family<PaymentDetails, String>((ref, leaseId) async {
+  try {
+    return await ref.watch(rentApiProvider).getLeasePaymentDetails(leaseId) ??
+        PaymentDetails();
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});

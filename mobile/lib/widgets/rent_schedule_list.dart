@@ -17,7 +17,12 @@ class RentScheduleList extends StatelessWidget {
     required this.periods,
     this.emptyDetail,
     this.onTap,
+    this.header,
   });
+
+  /// Shown above the months, scrolling with them: how to pay, on the tenant's
+  /// Rent tab.
+  final Widget? header;
 
   final List<BillingPeriodResponse> periods;
 
@@ -43,14 +48,20 @@ class RentScheduleList extends StatelessWidget {
 
     final newestFirst = periods.reversed.toList();
 
+    final top = header;
+    final offset = top == null ? 0 : 1;
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      itemCount: newestFirst.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, index) => _MonthRow(
-        period: newestFirst[index],
-        onTap: onTap,
-      ),
+      itemCount: newestFirst.length + offset,
+      separatorBuilder: (_, index) =>
+          SizedBox(height: top != null && index == 0 ? 16 : 8),
+      itemBuilder: (_, index) => top != null && index == 0
+          ? top
+          : _MonthRow(
+              period: newestFirst[index - offset],
+              onTap: onTap,
+            ),
     );
   }
 }

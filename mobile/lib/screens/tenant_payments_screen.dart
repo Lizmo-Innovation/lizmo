@@ -8,6 +8,7 @@ import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/declare_payment_sheet.dart';
+import '../widgets/lizmo_payment_channels.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/rent_schedule_list.dart';
 import '../widgets/role_switcher.dart';
@@ -85,6 +86,9 @@ class _RentState extends ConsumerState<_Rent> {
       context,
       periodLabel: period.label ?? 'this month',
       outstanding: period.outstanding ?? 0,
+      // Already loaded for the panel above; null while it loads or if it
+      // failed, and the sheet then leaves the list out.
+      payment: ref.read(leasePaymentDetailsProvider(widget.leaseId)).valueOrNull,
     );
     if (said == null || !mounted) return;
 
@@ -106,6 +110,7 @@ class _RentState extends ConsumerState<_Rent> {
   @override
   Widget build(BuildContext context) {
     final billing = ref.watch(myBillingProvider(widget.leaseId));
+    final payment = ref.watch(leasePaymentDetailsProvider(widget.leaseId));
 
     if (_sending) {
       return const Center(child: CircularProgressIndicator());
@@ -121,11 +126,23 @@ class _RentState extends ConsumerState<_Rent> {
       data: (periods) => RefreshIndicator(
         // Refreshing is also how the schedule catches up: months are written
         // when somebody looks.
-        onRefresh: () async => ref.invalidate(myBillingProvider(widget.leaseId)),
+        onRefresh: () async {
+          ref.invalidate(myBillingProvider(widget.leaseId));
+          ref.invalidate(leasePaymentDetailsProvider(widget.leaseId));
+        },
         child: RentScheduleList(
           periods: periods,
           emptyDetail: 'Your first month appears once the tenancy has started.',
           onTap: _declare,
+          header: HowToPayPanel(
+            key: const ValueKey('landlord-how-to-pay'),
+            title: 'How to pay your landlord',
+            details: payment,
+            emptyMessage: 'Your landlord has not added how to pay yet. Ask '
+                'them before sending money.',
+            qrUnavailable: 'That QR could not be loaded. Close this and pull '
+                'down on the Rent tab to refresh it.',
+          ),
         ),
       ),
     );
