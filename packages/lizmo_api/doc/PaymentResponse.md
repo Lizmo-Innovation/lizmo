@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **amountPaid** | **num** |  | [optional] 
 **paymentDate** | [**DateTime**](DateTime.md) |  | [optional] 
 **paymentMethod** | **String** |  | [optional] 
+**sentTo** | **String** |  | [optional] 
 **status** | **String** |  | [optional] 
 **remarks** | **String** |  | [optional] 
 **proofUrl** | **String** |  | [optional] 

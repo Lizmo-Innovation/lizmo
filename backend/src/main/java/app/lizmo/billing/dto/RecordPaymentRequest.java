@@ -34,5 +34,9 @@ public record RecordPaymentRequest(
 
         @Size(max = 500)
         @Schema(example = "Sent from my mother's number")
-        String remarks) {
+        String remarks,
+
+        @Schema(description = "Which of the landlord's payment channels it was sent to, "
+                + "if any. Kept as the channel read at that moment.")
+        UUID channelId) {
 }

@@ -1,4 +1,4 @@
-# lizmo_api.model.PaymentChannelForLandlord
+# lizmo_api.model.PaymentChannelView
 
 ## Load the model package
 ```dart

@@ -48,7 +48,7 @@ class LizmoPaymentChannels extends StatelessWidget {
 class LizmoPaymentChannel extends StatefulWidget {
   const LizmoPaymentChannel({super.key, required this.channel});
 
-  final PaymentChannelForLandlord channel;
+  final PaymentChannelView channel;
 
   @override
   State<LizmoPaymentChannel> createState() => _LizmoPaymentChannelState();
@@ -57,7 +57,7 @@ class LizmoPaymentChannel extends StatefulWidget {
 class _LizmoPaymentChannelState extends State<LizmoPaymentChannel> {
   bool _copied = false;
 
-  PaymentChannelForLandlord get channel => widget.channel;
+  PaymentChannelView get channel => widget.channel;
 
   Future<void> _copy() async {
     final number = channel.accountNumber ?? '';

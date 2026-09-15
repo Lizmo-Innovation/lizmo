@@ -16,7 +16,7 @@ void main() {
   // final instance = PaymentDetails();
 
   group('test PaymentDetails', () {
-    // List<PaymentChannelForLandlord> channels (default value: const [])
+    // List<PaymentChannelView> channels (default value: const [])
     test('to test the property `channels`', () async {
       // TODO
     });

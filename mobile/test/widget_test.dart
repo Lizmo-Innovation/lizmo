@@ -8482,12 +8482,12 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('pay-statement-s1')), findsNothing);
     });
 
-    PaymentChannelForLandlord channel({
+    PaymentChannelView channel({
       String id = 'c1',
       String name = 'GCash',
       String number = '09771231234',
       String? qrUrl,
-    }) => PaymentChannelForLandlord(
+    }) => PaymentChannelView(
           id: id,
           channel: name,
           accountName: 'Ariel Asebias',

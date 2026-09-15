@@ -1,5 +1,6 @@
 package app.lizmo.billing;
 
+import app.lizmo.billing.channel.LandlordPaymentChannelService;
 import app.lizmo.billing.dto.PaymentResponse;
 import app.lizmo.billing.dto.RecordPaymentRequest;
 import app.lizmo.common.ApiException;
@@ -53,6 +54,7 @@ public class PaymentService {
     private final ImageNormaliser normaliser;
     private final LeasePaperworkAccess access;
     private final NotificationService notifications;
+    private final LandlordPaymentChannelService channels;
     private final Clock clock;
 
     public PaymentService(
@@ -63,6 +65,7 @@ public class PaymentService {
             ImageNormaliser normaliser,
             LeasePaperworkAccess access,
             NotificationService notifications,
+            LandlordPaymentChannelService channels,
             Clock clock) {
         this.payments = payments;
         this.periods = periods;
@@ -71,6 +74,7 @@ public class PaymentService {
         this.normaliser = normaliser;
         this.access = access;
         this.notifications = notifications;
+        this.channels = channels;
         this.clock = clock;
     }
 
@@ -238,7 +242,7 @@ public class PaymentService {
                 ? LocalDate.now(clock)
                 : command.paymentDate();
 
-        return payments.save(new Payment(
+        Payment payment = new Payment(
                 lease.getId(),
                 period.getId(),
                 command.amountPaid(),
@@ -248,7 +252,9 @@ public class PaymentService {
                         : command.paymentMethod(),
                 by,
                 status,
-                command.remarks()));
+                command.remarks());
+        payment.sendTo(channels.sentTo(lease, command.channelId()));
+        return payments.save(payment);
     }
 
     /**

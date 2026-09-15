@@ -11,9 +11,8 @@ import java.util.UUID;
 /**
  * Marks a user as able to own properties.
  *
- * <p>Carries no billing status of its own. Lizmo bills a property, not a
- * person: a landlord with three boarding houses has three invoices and three
- * statuses, and falling behind on one does not touch the others. See
+ * <p>Carries no billing status of its own: an unpaid Lizmo statement locks the
+ * landlord's properties, not this row. See
  * {@link app.lizmo.property.PropertyAccountStatus}.
  */
 @Entity
@@ -26,6 +25,13 @@ public class LandlordProfile {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    /**
+     * The line shown to tenants under this landlord's payment channels, such as
+     * "Cash to Aling Nena at unit 1A". Null when there is none.
+     */
+    @Column(name = "payment_note")
+    private String paymentNote;
 
     protected LandlordProfile() {
         // for JPA
@@ -46,5 +52,14 @@ public class LandlordProfile {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    /** Null clears it. */
+    public void notePayments(String note) {
+        this.paymentNote = note;
+    }
+
+    public String getPaymentNote() {
+        return paymentNote;
     }
 }

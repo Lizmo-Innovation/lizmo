@@ -18,6 +18,7 @@ class RecordPaymentRequest {
     this.paymentDate,
     this.paymentMethod,
     this.remarks,
+    this.channelId,
   });
 
   /// Which month this pays for
@@ -44,13 +45,23 @@ class RecordPaymentRequest {
   ///
   String? remarks;
 
+  /// Which of the landlord's payment channels it was sent to, if any. Kept as the channel read at that moment.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? channelId;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is RecordPaymentRequest &&
     other.billingPeriodId == billingPeriodId &&
     other.amountPaid == amountPaid &&
     other.paymentDate == paymentDate &&
     other.paymentMethod == paymentMethod &&
-    other.remarks == remarks;
+    other.remarks == remarks &&
+    other.channelId == channelId;
 
   @override
   int get hashCode =>
@@ -59,10 +70,11 @@ class RecordPaymentRequest {
     (amountPaid.hashCode) +
     (paymentDate == null ? 0 : paymentDate!.hashCode) +
     (paymentMethod == null ? 0 : paymentMethod!.hashCode) +
-    (remarks == null ? 0 : remarks!.hashCode);
+    (remarks == null ? 0 : remarks!.hashCode) +
+    (channelId == null ? 0 : channelId!.hashCode);
 
   @override
-  String toString() => 'RecordPaymentRequest[billingPeriodId=$billingPeriodId, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, remarks=$remarks]';
+  String toString() => 'RecordPaymentRequest[billingPeriodId=$billingPeriodId, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, remarks=$remarks, channelId=$channelId]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -82,6 +94,11 @@ class RecordPaymentRequest {
       json[r'remarks'] = this.remarks;
     } else {
       json[r'remarks'] = null;
+    }
+    if (this.channelId != null) {
+      json[r'channelId'] = this.channelId;
+    } else {
+      json[r'channelId'] = null;
     }
     return json;
   }
@@ -110,6 +127,7 @@ class RecordPaymentRequest {
         paymentDate: mapDateTime(json, r'paymentDate', r''),
         paymentMethod: RecordPaymentRequestPaymentMethodEnum.fromJson(json[r'paymentMethod']),
         remarks: mapValueOfType<String>(json, r'remarks'),
+        channelId: mapValueOfType<String>(json, r'channelId'),
       );
     }
     return null;

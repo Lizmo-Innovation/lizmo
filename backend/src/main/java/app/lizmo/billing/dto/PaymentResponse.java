@@ -13,6 +13,8 @@ import java.util.UUID;
  *
  * @param periodLabel which month it pays for, in words, so a list of payments
  *                    reads without a second request per row.
+ * @param sentTo where the payer said the money went, as the landlord's channel
+ *               read when they chose it. Null for cash and older payments.
  * @param proofUrl a presigned link to the screenshot, valid for a few minutes,
  *                 or null when none was attached. Proof is optional: cash is
  *                 real, and a required field nobody can satisfy becomes one
@@ -26,6 +28,7 @@ public record PaymentResponse(
         BigDecimal amountPaid,
         LocalDate paymentDate,
         PaymentMethod paymentMethod,
+        String sentTo,
         PaymentStatus status,
         String remarks,
         String proofUrl,
@@ -40,6 +43,7 @@ public record PaymentResponse(
                 payment.getAmountPaid(),
                 payment.getPaymentDate(),
                 payment.getPaymentMethod(),
+                payment.getSentTo(),
                 payment.getStatus(),
                 payment.getRemarks(),
                 proofUrl,

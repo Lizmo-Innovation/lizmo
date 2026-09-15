@@ -64,6 +64,13 @@ public class Payment {
     @Column(name = "remarks")
     private String remarks;
 
+    /**
+     * Where the payer said the money went, as the landlord's channel read at
+     * that moment: "GCash · Ariel Asebias · 09771231234". Null for cash.
+     */
+    @Column(name = "sent_to")
+    private String sentTo;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -121,6 +128,15 @@ public class Payment {
         if (why != null && !why.isBlank()) {
             this.remarks = why.trim();
         }
+    }
+
+    /** Written once, when the payment is made, from the channel the payer picked. */
+    public void sendTo(String channelLabel) {
+        this.sentTo = channelLabel;
+    }
+
+    public String getSentTo() {
+        return sentTo;
     }
 
     public boolean isConfirmed() {

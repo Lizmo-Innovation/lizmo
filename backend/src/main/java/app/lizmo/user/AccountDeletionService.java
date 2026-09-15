@@ -59,6 +59,7 @@ public class AccountDeletionService {
     private final UserRepository users;
     private final TenantProfileRepository tenantProfiles;
     private final LandlordProfileRepository landlordProfiles;
+    private final app.lizmo.billing.channel.LandlordPaymentChannelService paymentChannels;
     private final LeaseRepository leases;
     private final PropertyRepository properties;
     private final UnitRepository units;
@@ -71,6 +72,7 @@ public class AccountDeletionService {
             UserRepository users,
             TenantProfileRepository tenantProfiles,
             LandlordProfileRepository landlordProfiles,
+            app.lizmo.billing.channel.LandlordPaymentChannelService paymentChannels,
             LeaseRepository leases,
             PropertyRepository properties,
             UnitRepository units,
@@ -81,6 +83,7 @@ public class AccountDeletionService {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
         this.landlordProfiles = landlordProfiles;
+        this.paymentChannels = paymentChannels;
         this.leases = leases;
         this.properties = properties;
         this.units = units;
@@ -130,6 +133,8 @@ public class AccountDeletionService {
 
         deletePhotographs(userId);
         deleteLeasePaperwork(userId);
+        // Account numbers and QR codes are personal details too.
+        paymentChannels.forget(userId);
 
         // Every session ends now, including the one making this request and any
         // refresh token sitting in another device's storage.

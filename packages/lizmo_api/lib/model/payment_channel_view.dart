@@ -10,9 +10,9 @@
 
 part of openapi.api;
 
-class PaymentChannelForLandlord {
-  /// Returns a new [PaymentChannelForLandlord] instance.
-  PaymentChannelForLandlord({
+class PaymentChannelView {
+  /// Returns a new [PaymentChannelView] instance.
+  PaymentChannelView({
     this.id,
     this.channel,
     this.accountName,
@@ -70,7 +70,7 @@ class PaymentChannelForLandlord {
   int? qrUrlExpiresInSeconds;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is PaymentChannelForLandlord &&
+  bool operator ==(Object other) => identical(this, other) || other is PaymentChannelView &&
     other.id == id &&
     other.channel == channel &&
     other.accountName == accountName &&
@@ -89,7 +89,7 @@ class PaymentChannelForLandlord {
     (qrUrlExpiresInSeconds == null ? 0 : qrUrlExpiresInSeconds!.hashCode);
 
   @override
-  String toString() => 'PaymentChannelForLandlord[id=$id, channel=$channel, accountName=$accountName, accountNumber=$accountNumber, qrUrl=$qrUrl, qrUrlExpiresInSeconds=$qrUrlExpiresInSeconds]';
+  String toString() => 'PaymentChannelView[id=$id, channel=$channel, accountName=$accountName, accountNumber=$accountNumber, qrUrl=$qrUrl, qrUrlExpiresInSeconds=$qrUrlExpiresInSeconds]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -126,10 +126,10 @@ class PaymentChannelForLandlord {
     return json;
   }
 
-  /// Returns a new [PaymentChannelForLandlord] instance and imports its values from
+  /// Returns a new [PaymentChannelView] instance and imports its values from
   /// [value] if it's a [Map], null otherwise.
   // ignore: prefer_constructors_over_static_methods
-  static PaymentChannelForLandlord? fromJson(dynamic value) {
+  static PaymentChannelView? fromJson(dynamic value) {
     if (value is Map) {
       final json = value.cast<String, dynamic>();
 
@@ -140,7 +140,7 @@ class PaymentChannelForLandlord {
         return true;
       }());
 
-      return PaymentChannelForLandlord(
+      return PaymentChannelView(
         id: mapValueOfType<String>(json, r'id'),
         channel: mapValueOfType<String>(json, r'channel'),
         accountName: mapValueOfType<String>(json, r'accountName'),
@@ -152,11 +152,11 @@ class PaymentChannelForLandlord {
     return null;
   }
 
-  static List<PaymentChannelForLandlord> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <PaymentChannelForLandlord>[];
+  static List<PaymentChannelView> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PaymentChannelView>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = PaymentChannelForLandlord.fromJson(row);
+        final value = PaymentChannelView.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -165,12 +165,12 @@ class PaymentChannelForLandlord {
     return result.toList(growable: growable);
   }
 
-  static Map<String, PaymentChannelForLandlord> mapFromJson(dynamic json) {
-    final map = <String, PaymentChannelForLandlord>{};
+  static Map<String, PaymentChannelView> mapFromJson(dynamic json) {
+    final map = <String, PaymentChannelView>{};
     if (json is Map && json.isNotEmpty) {
       json = json.cast<String, dynamic>(); // ignore: parameter_assignments
       for (final entry in json.entries) {
-        final value = PaymentChannelForLandlord.fromJson(entry.value);
+        final value = PaymentChannelView.fromJson(entry.value);
         if (value != null) {
           map[entry.key] = value;
         }
@@ -179,14 +179,14 @@ class PaymentChannelForLandlord {
     return map;
   }
 
-  // maps a json object with a list of PaymentChannelForLandlord-objects as value to a dart map
-  static Map<String, List<PaymentChannelForLandlord>> mapListFromJson(dynamic json, {bool growable = false,}) {
-    final map = <String, List<PaymentChannelForLandlord>>{};
+  // maps a json object with a list of PaymentChannelView-objects as value to a dart map
+  static Map<String, List<PaymentChannelView>> mapListFromJson(dynamic json, {bool growable = false,}) {
+    final map = <String, List<PaymentChannelView>>{};
     if (json is Map && json.isNotEmpty) {
       // ignore: parameter_assignments
       json = json.cast<String, dynamic>();
       for (final entry in json.entries) {
-        map[entry.key] = PaymentChannelForLandlord.listFromJson(entry.value, growable: growable,);
+        map[entry.key] = PaymentChannelView.listFromJson(entry.value, growable: growable,);
       }
     }
     return map;

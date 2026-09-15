@@ -19,6 +19,7 @@ class PaymentResponse {
     this.amountPaid,
     this.paymentDate,
     this.paymentMethod,
+    this.sentTo,
     this.status,
     this.remarks,
     this.proofUrl,
@@ -67,6 +68,14 @@ class PaymentResponse {
 
   PaymentResponsePaymentMethodEnum? paymentMethod;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? sentTo;
+
   PaymentResponseStatusEnum? status;
 
   ///
@@ -101,6 +110,7 @@ class PaymentResponse {
     other.amountPaid == amountPaid &&
     other.paymentDate == paymentDate &&
     other.paymentMethod == paymentMethod &&
+    other.sentTo == sentTo &&
     other.status == status &&
     other.remarks == remarks &&
     other.proofUrl == proofUrl &&
@@ -115,13 +125,14 @@ class PaymentResponse {
     (amountPaid == null ? 0 : amountPaid!.hashCode) +
     (paymentDate == null ? 0 : paymentDate!.hashCode) +
     (paymentMethod == null ? 0 : paymentMethod!.hashCode) +
+    (sentTo == null ? 0 : sentTo!.hashCode) +
     (status == null ? 0 : status!.hashCode) +
     (remarks == null ? 0 : remarks!.hashCode) +
     (proofUrl == null ? 0 : proofUrl!.hashCode) +
     (proofUrlExpiresInSeconds == null ? 0 : proofUrlExpiresInSeconds!.hashCode);
 
   @override
-  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, status=$status, remarks=$remarks, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds]';
+  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -154,6 +165,11 @@ class PaymentResponse {
       json[r'paymentMethod'] = this.paymentMethod;
     } else {
       json[r'paymentMethod'] = null;
+    }
+    if (this.sentTo != null) {
+      json[r'sentTo'] = this.sentTo;
+    } else {
+      json[r'sentTo'] = null;
     }
     if (this.status != null) {
       json[r'status'] = this.status;
@@ -201,6 +217,7 @@ class PaymentResponse {
             : num.parse('${json[r'amountPaid']}'),
         paymentDate: mapDateTime(json, r'paymentDate', r''),
         paymentMethod: PaymentResponsePaymentMethodEnum.fromJson(json[r'paymentMethod']),
+        sentTo: mapValueOfType<String>(json, r'sentTo'),
         status: PaymentResponseStatusEnum.fromJson(json[r'status']),
         remarks: mapValueOfType<String>(json, r'remarks'),
         proofUrl: mapValueOfType<String>(json, r'proofUrl'),

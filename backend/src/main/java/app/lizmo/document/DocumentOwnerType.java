@@ -23,5 +23,8 @@ public enum DocumentOwnerType {
     PLATFORM_PAYMENT,
 
     /** A QR code a landlord scans to pay Lizmo. One per channel. */
-    PLATFORM_PAYMENT_CHANNEL
+    PLATFORM_PAYMENT_CHANNEL,
+
+    /** A QR code a tenant scans to pay their landlord. One per channel. */
+    LANDLORD_PAYMENT_CHANNEL
 }

@@ -1,10 +1,10 @@
 package app.lizmo.platform.payment;
 
 import app.lizmo.common.ApiError;
-import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelOrder;
-import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelRequest;
-import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelResponse;
-import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentDetails;
+import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelOrder;
+import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelRequest;
+import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelResponse;
+import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentDetails;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;

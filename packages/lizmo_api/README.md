@@ -119,6 +119,15 @@ Class | Method | HTTP request | Description
 *NotificationsApi* | [**listMyNotifications**](doc//NotificationsApi.md#listmynotifications) | **GET** /api/v1/me/notifications | What is waiting
 *NotificationsApi* | [**markAllNotificationsRead**](doc//NotificationsApi.md#markallnotificationsread) | **POST** /api/v1/me/notifications/read | Mark everything read
 *NotificationsApi* | [**markNotificationRead**](doc//NotificationsApi.md#marknotificationread) | **POST** /api/v1/me/notifications/{id}/read | Mark one read
+*PaymentChannelsApi* | [**addMyPaymentChannel**](doc//PaymentChannelsApi.md#addmypaymentchannel) | **POST** /api/v1/me/payment-channels | Add a way to pay me
+*PaymentChannelsApi* | [**deleteMyPaymentChannel**](doc//PaymentChannelsApi.md#deletemypaymentchannel) | **DELETE** /api/v1/me/payment-channels/{id} | Delete a way to pay me
+*PaymentChannelsApi* | [**getMyPaymentNote**](doc//PaymentChannelsApi.md#getmypaymentnote) | **GET** /api/v1/me/payment-note | The note under my channels
+*PaymentChannelsApi* | [**listMyPaymentChannels**](doc//PaymentChannelsApi.md#listmypaymentchannels) | **GET** /api/v1/me/payment-channels | How my tenants pay me
+*PaymentChannelsApi* | [**removeMyPaymentChannelQr**](doc//PaymentChannelsApi.md#removemypaymentchannelqr) | **DELETE** /api/v1/me/payment-channels/{id}/qr | Remove a channel's QR
+*PaymentChannelsApi* | [**reorderMyPaymentChannels**](doc//PaymentChannelsApi.md#reordermypaymentchannels) | **PUT** /api/v1/me/payment-channels/order | Put my channels in order
+*PaymentChannelsApi* | [**updateMyPaymentChannel**](doc//PaymentChannelsApi.md#updatemypaymentchannel) | **PUT** /api/v1/me/payment-channels/{id} | Change a way to pay me
+*PaymentChannelsApi* | [**updateMyPaymentNote**](doc//PaymentChannelsApi.md#updatemypaymentnote) | **PUT** /api/v1/me/payment-note | Change the note under my channels
+*PaymentChannelsApi* | [**uploadMyPaymentChannelQr**](doc//PaymentChannelsApi.md#uploadmypaymentchannelqr) | **POST** /api/v1/me/payment-channels/{id}/qr | Set a channel's QR
 *PropertiesApi* | [**createProperty**](doc//PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 *PropertiesApi* | [**createUnit**](doc//PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 *PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
@@ -130,6 +139,7 @@ Class | Method | HTTP request | Description
 *RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 *RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 *RentApi* | [**getCollections**](doc//RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
+*RentApi* | [**getLeasePaymentDetails**](doc//RentApi.md#getleasepaymentdetails) | **GET** /api/v1/me/leases/{leaseId}/payment-details | How to pay my landlord
 *RentApi* | [**getRentRoll**](doc//RentApi.md#getrentroll) | **GET** /api/v1/me/rent-roll | Every tenancy's rent for one month
 *RentApi* | [**listLeaseBilling**](doc//RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 *RentApi* | [**listLeasePayments**](doc//RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
@@ -192,11 +202,12 @@ Class | Method | HTTP request | Description
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
  - [NotificationResponse](doc//NotificationResponse.md)
  - [OccupancySummary](doc//OccupancySummary.md)
- - [PaymentChannelForLandlord](doc//PaymentChannelForLandlord.md)
  - [PaymentChannelOrder](doc//PaymentChannelOrder.md)
  - [PaymentChannelRequest](doc//PaymentChannelRequest.md)
  - [PaymentChannelResponse](doc//PaymentChannelResponse.md)
+ - [PaymentChannelView](doc//PaymentChannelView.md)
  - [PaymentDetails](doc//PaymentDetails.md)
+ - [PaymentNote](doc//PaymentNote.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
  - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)

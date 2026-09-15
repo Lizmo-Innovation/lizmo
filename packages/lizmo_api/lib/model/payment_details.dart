@@ -17,7 +17,7 @@ class PaymentDetails {
     this.note,
   });
 
-  List<PaymentChannelForLandlord> channels;
+  List<PaymentChannelView> channels;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -67,7 +67,7 @@ class PaymentDetails {
       }());
 
       return PaymentDetails(
-        channels: PaymentChannelForLandlord.listFromJson(json[r'channels']),
+        channels: PaymentChannelView.listFromJson(json[r'channels']),
         note: mapValueOfType<String>(json, r'note'),
       );
     }

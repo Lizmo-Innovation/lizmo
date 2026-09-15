@@ -11,11 +11,11 @@
 import 'package:lizmo_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for PaymentChannelForLandlord
+// tests for PaymentChannelView
 void main() {
-  // final instance = PaymentChannelForLandlord();
+  // final instance = PaymentChannelView();
 
-  group('test PaymentChannelForLandlord', () {
+  group('test PaymentChannelView', () {
     // String id
     test('to test the property `id`', () async {
       // TODO

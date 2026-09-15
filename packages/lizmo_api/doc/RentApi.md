@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**confirmPayment**](RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 [**declarePayment**](RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 [**getCollections**](RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
+[**getLeasePaymentDetails**](RentApi.md#getleasepaymentdetails) | **GET** /api/v1/me/leases/{leaseId}/payment-details | How to pay my landlord
 [**getRentRoll**](RentApi.md#getrentroll) | **GET** /api/v1/me/rent-roll | Every tenancy's rent for one month
 [**listLeaseBilling**](RentApi.md#listleasebilling) | **GET** /api/v1/leases/{leaseId}/billing | Rent on this tenancy
 [**listLeasePayments**](RentApi.md#listleasepayments) | **GET** /api/v1/leases/{leaseId}/payments | Payments on this tenancy
@@ -140,6 +141,49 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**CollectionsSummary**](CollectionsSummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getLeasePaymentDetails**
+> PaymentDetails getLeasePaymentDetails(leaseId)
+
+How to pay my landlord
+
+The channels the landlord behind this lease has switched on, in order, each with its QR when it has one, and their note. Also after moving out.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = RentApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.getLeasePaymentDetails(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling RentApi->getLeasePaymentDetails: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**PaymentDetails**](PaymentDetails.md)
 
 ### Authorization
 

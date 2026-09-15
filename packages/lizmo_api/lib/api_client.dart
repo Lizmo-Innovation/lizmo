@@ -237,16 +237,18 @@ class ApiClient {
           return NotificationResponse.fromJson(value);
         case 'OccupancySummary':
           return OccupancySummary.fromJson(value);
-        case 'PaymentChannelForLandlord':
-          return PaymentChannelForLandlord.fromJson(value);
         case 'PaymentChannelOrder':
           return PaymentChannelOrder.fromJson(value);
         case 'PaymentChannelRequest':
           return PaymentChannelRequest.fromJson(value);
         case 'PaymentChannelResponse':
           return PaymentChannelResponse.fromJson(value);
+        case 'PaymentChannelView':
+          return PaymentChannelView.fromJson(value);
         case 'PaymentDetails':
           return PaymentDetails.fromJson(value);
+        case 'PaymentNote':
+          return PaymentNote.fromJson(value);
         case 'PaymentResponse':
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':

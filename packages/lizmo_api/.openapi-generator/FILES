@@ -38,11 +38,13 @@ doc/MyAccountApi.md
 doc/NotificationResponse.md
 doc/NotificationsApi.md
 doc/OccupancySummary.md
-doc/PaymentChannelForLandlord.md
 doc/PaymentChannelOrder.md
 doc/PaymentChannelRequest.md
 doc/PaymentChannelResponse.md
+doc/PaymentChannelView.md
+doc/PaymentChannelsApi.md
 doc/PaymentDetails.md
+doc/PaymentNote.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
 doc/PlatformInvoiceLine.md
@@ -103,6 +105,7 @@ lib/api/maintenance_api.dart
 lib/api/maintenance_to_handle_api.dart
 lib/api/my_account_api.dart
 lib/api/notifications_api.dart
+lib/api/payment_channels_api.dart
 lib/api/properties_api.dart
 lib/api/rent_api.dart
 lib/api/requests_to_answer_api.dart
@@ -145,11 +148,12 @@ lib/model/maintenance_report_response.dart
 lib/model/maintenance_request.dart
 lib/model/notification_response.dart
 lib/model/occupancy_summary.dart
-lib/model/payment_channel_for_landlord.dart
 lib/model/payment_channel_order.dart
 lib/model/payment_channel_request.dart
 lib/model/payment_channel_response.dart
+lib/model/payment_channel_view.dart
 lib/model/payment_details.dart
+lib/model/payment_note.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
 lib/model/platform_invoice_line.dart
@@ -192,4 +196,3 @@ lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
-test/lizmo_billing_api_test.dart
