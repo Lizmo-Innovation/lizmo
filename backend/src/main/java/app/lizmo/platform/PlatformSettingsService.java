@@ -55,7 +55,12 @@ public class PlatformSettingsService {
         return email;
     }
 
-    /** Where a landlord sends money to Lizmo: a GCash number, a bank account. */
+    /**
+     * The note shown to landlords under Lizmo's payment channels.
+     *
+     * <p>Once the only payment details there were, as free text; the key keeps
+     * that name so what an admin already wrote carries over.
+     */
     public static final String PAYMENT_INSTRUCTIONS = "payment_instructions";
 
     /** Null until an admin has written some. There is no sensible default. */

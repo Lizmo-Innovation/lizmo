@@ -13,6 +13,7 @@ import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelForLandlo
 import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelRequest;
 import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentChannelResponse;
 import app.lizmo.platform.payment.dto.PaymentChannelDtos.PaymentDetails;
+import app.lizmo.user.LandlordProfileRepository;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashSet;
@@ -42,24 +43,36 @@ public class PaymentChannelService {
     private final DocumentStore store;
     private final ImageNormaliser normaliser;
     private final PlatformSettingsService settings;
+    private final LandlordProfileRepository landlords;
 
     public PaymentChannelService(
             PaymentChannelRepository channels,
             StoredDocumentRepository documents,
             DocumentStore store,
             ImageNormaliser normaliser,
-            PlatformSettingsService settings) {
+            PlatformSettingsService settings,
+            LandlordProfileRepository landlords) {
         this.channels = channels;
         this.documents = documents;
         this.store = store;
         this.normaliser = normaliser;
         this.settings = settings;
+        this.landlords = landlords;
     }
 
     // ---- landlords ------------------------------------------------------------
 
+    /**
+     * For a landlord, and nobody else.
+     *
+     * <p>Tenants never pay Lizmo, so there is nothing here for them. Not found
+     * rather than forbidden, like anything else that is not somebody's.
+     */
     @Transactional(readOnly = true)
-    public PaymentDetails forLandlords() {
+    public PaymentDetails forLandlord(UUID userId) {
+        if (!landlords.existsById(userId)) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "Nothing to see here.");
+        }
         List<PaymentChannelForLandlord> shown = channels.findByVisibleTrueOrderBySortOrderAsc()
                 .stream()
                 .map(channel -> new PaymentChannelForLandlord(

@@ -10,7 +10,6 @@ All URIs are relative to *http://localhost:8082*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**getPlatformPaymentDetails**](LizmoBillingApi.md#getplatformpaymentdetails) | **GET** /api/v1/me/platform-payment-details | How to pay Lizmo
-[**getPlatformPaymentInstructions**](LizmoBillingApi.md#getplatformpaymentinstructions) | **GET** /api/v1/me/platform-payment-instructions | How to pay Lizmo
 [**listMyPlatformStatements**](LizmoBillingApi.md#listmyplatformstatements) | **GET** /api/v1/me/platform-statements | My Lizmo statements
 [**payPlatformStatement**](LizmoBillingApi.md#payplatformstatement) | **POST** /api/v1/me/platform-statements/{id}/payments | Say I have paid Lizmo
 
@@ -20,7 +19,7 @@ Method | HTTP request | Description
 
 How to pay Lizmo
 
-The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them.
+The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them. Landlords only.
 
 ### Example
 ```dart
@@ -42,45 +41,6 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**PaymentDetails**](PaymentDetails.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: */*
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **getPlatformPaymentInstructions**
-> PaymentInstructions getPlatformPaymentInstructions()
-
-How to pay Lizmo
-
-As an admin wrote it in the console. Empty until one has.
-
-### Example
-```dart
-import 'package:lizmo_api/api.dart';
-
-final api_instance = LizmoBillingApi();
-
-try {
-    final result = api_instance.getPlatformPaymentInstructions();
-    print(result);
-} catch (e) {
-    print('Exception when calling LizmoBillingApi->getPlatformPaymentInstructions: $e\n');
-}
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**PaymentInstructions**](PaymentInstructions.md)
 
 ### Authorization
 

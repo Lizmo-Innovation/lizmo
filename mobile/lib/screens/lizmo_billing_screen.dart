@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../platform/lizmo_billing_providers.dart';
+import '../widgets/lizmo_payment_channels.dart';
 import '../widgets/lizmo_statement_card.dart';
 import '../widgets/pay_lizmo_sheet.dart';
 
@@ -22,7 +23,7 @@ class LizmoBillingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statements = ref.watch(myLizmoStatementsProvider);
-    final instructions = ref.watch(lizmoPaymentInstructionsProvider);
+    final payment = ref.watch(lizmoPaymentDetailsProvider);
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -38,12 +39,12 @@ class LizmoBillingScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(myLizmoStatementsProvider);
-          ref.invalidate(lizmoPaymentInstructionsProvider);
+          ref.invalidate(lizmoPaymentDetailsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            _HowToPay(text: instructions.valueOrNull),
+            _HowToPay(details: payment),
             const SizedBox(height: 16),
             ...switch (statements) {
               AsyncError(:final error) => [
@@ -77,12 +78,24 @@ class LizmoBillingScreen extends ConsumerWidget {
 }
 
 class _HowToPay extends StatelessWidget {
-  const _HowToPay({required this.text});
+  const _HowToPay({required this.details});
 
-  final String? text;
+  final AsyncValue<PaymentDetails> details;
 
   @override
   Widget build(BuildContext context) {
+    final Widget body = switch (details) {
+      AsyncData(:final value) => LizmoPaymentChannels(details: value),
+      // Unknown is not "none": a failed load saying Lizmo has no details
+      // would send somebody to support over a bad connection.
+      AsyncError() => Text('Could not load how to pay. Pull down to try again.',
+          style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+      _ => const Padding(
+          padding: EdgeInsets.all(8),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+    };
+
     return Container(
       key: const ValueKey('lizmo-how-to-pay'),
       padding: const EdgeInsets.all(14),
@@ -95,15 +108,8 @@ class _HowToPay extends StatelessWidget {
         children: [
           Text('How to pay Lizmo',
               style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
-          const SizedBox(height: 4),
-          Text(
-            // Said honestly when missing, rather than leaving a landlord to
-            // guess where the money goes.
-            text ??
-                'Lizmo has not added payment details yet. Contact Lizmo '
-                    'support before paying.',
-            style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-          ),
+          const SizedBox(height: 8),
+          body,
         ],
       ),
     );
@@ -130,6 +136,9 @@ class _StatementState extends ConsumerState<_Statement> {
       label: statement.label ?? 'this month',
       covers: lizmoProperties(statement),
       outstanding: statement.outstanding ?? 0,
+      // Already loaded for the screen behind; null while it still loads or if
+      // it failed, and the sheet then simply leaves the list out.
+      payment: ref.read(lizmoPaymentDetailsProvider).valueOrNull,
     );
     if (paid == null || !mounted) return;
 

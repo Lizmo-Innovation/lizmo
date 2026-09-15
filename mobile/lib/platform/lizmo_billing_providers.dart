@@ -21,14 +21,15 @@ final myLizmoStatementsProvider =
   }
 });
 
-/// Where to send the money, as a Lizmo admin wrote it. Null until one has.
-final lizmoPaymentInstructionsProvider =
-    FutureProvider.autoDispose<String?>((ref) async {
+/// Where to send the money: the channels an admin has switched on, in their
+/// order, each with its QR when it has one, and the note shown under them.
+///
+/// Read fresh each time the screen opens, because a QR link lasts ten minutes.
+final lizmoPaymentDetailsProvider =
+    FutureProvider.autoDispose<PaymentDetails>((ref) async {
   try {
-    final answer =
-        await ref.watch(lizmoBillingApiProvider).getPlatformPaymentInstructions();
-    final text = answer?.instructions?.trim();
-    return text == null || text.isEmpty ? null : text;
+    return await ref.watch(lizmoBillingApiProvider).getPlatformPaymentDetails() ??
+        PaymentDetails();
   } catch (error) {
     throw ApiFailure.from(error);
   }

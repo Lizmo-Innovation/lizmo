@@ -1,8 +1,6 @@
 package app.lizmo.platform.billing;
 
 import app.lizmo.common.ApiError;
-import app.lizmo.platform.PlatformSettingsService;
-import app.lizmo.platform.billing.dto.PlatformBillingDtos.PaymentInstructions;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentForAdmin;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRejection;
 import app.lizmo.platform.billing.dto.PlatformBillingDtos.PlatformPaymentRequest;
@@ -42,15 +40,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class PlatformBillingController {
 
     private final PlatformBillingService billing;
-    private final PlatformSettingsService settings;
     private final CurrentUser currentUser;
 
-    public PlatformBillingController(
-            PlatformBillingService billing,
-            PlatformSettingsService settings,
-            CurrentUser currentUser) {
+    public PlatformBillingController(PlatformBillingService billing, CurrentUser currentUser) {
         this.billing = billing;
-        this.settings = settings;
         this.currentUser = currentUser;
     }
 
@@ -87,16 +80,6 @@ public class PlatformBillingController {
             @Valid @RequestPart("payment") PlatformPaymentRequest request,
             @RequestPart(value = "proof", required = false) MultipartFile proof) {
         return billing.pay(id, currentUser.requireId(), request, proof);
-    }
-
-    @GetMapping("/api/v1/me/platform-payment-instructions")
-    @Tag(name = "Lizmo billing", description = "What a landlord owes Lizmo")
-    @Operation(operationId = "getPlatformPaymentInstructions", summary = "How to pay Lizmo",
-            description = "As an admin wrote it in the console. Empty until one has.")
-    @ApiResponse(responseCode = "200", description = "The instructions",
-            content = @Content(schema = @Schema(implementation = PaymentInstructions.class)))
-    public PaymentInstructions instructions() {
-        return new PaymentInstructions(settings.paymentInstructions());
     }
 
     // ---- Lizmo's admins --------------------------------------------------------

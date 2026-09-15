@@ -12,18 +12,35 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 /// an ID photographed at an angle is often only legible zoomed into one
 /// corner.
 class FullScreenImage extends StatelessWidget {
-  const FullScreenImage({super.key, required this.url, required this.label});
+  const FullScreenImage({
+    super.key,
+    required this.url,
+    required this.label,
+    this.unavailable = _photoUnavailable,
+  });
 
   final String url;
   final String label;
 
-  static Future<void> show(BuildContext context, String url, String label) {
+  /// What to say when the link has expired, which depends on where it came from.
+  final String unavailable;
+
+  static const _photoUnavailable =
+      'That photograph could not be loaded. Close this and open the tenant again.';
+
+  static Future<void> show(
+    BuildContext context,
+    String url,
+    String label, {
+    String unavailable = _photoUnavailable,
+  }) {
     return showDialog<void>(
       context: context,
       // Near-black rather than the usual scrim: a photograph is easier to
       // read against something that is not competing with it.
       barrierColor: Colors.black87,
-      builder: (_) => FullScreenImage(url: url, label: label),
+      builder: (_) =>
+          FullScreenImage(url: url, label: label, unavailable: unavailable),
     );
   }
 
@@ -67,8 +84,7 @@ class FullScreenImage extends StatelessWidget {
                           size: 40, color: LizmoColors.white),
                       const SizedBox(height: 12),
                       Text(
-                        'That photograph could not be loaded. Close this and '
-                        'open the tenant again.',
+                        unavailable,
                         textAlign: TextAlign.center,
                         style: LizmoType.rowSub
                             .copyWith(color: LizmoColors.white),

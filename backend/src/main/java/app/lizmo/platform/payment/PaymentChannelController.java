@@ -53,11 +53,13 @@ public class PaymentChannelController {
     @Tag(name = "Lizmo billing", description = "What a landlord owes Lizmo")
     @Operation(operationId = "getPlatformPaymentDetails", summary = "How to pay Lizmo",
             description = "The channels an admin has made visible, in order, each with its "
-                    + "QR when it has one, and the note shown under them.")
+                    + "QR when it has one, and the note shown under them. Landlords only.")
     @ApiResponse(responseCode = "200", description = "The channels and note",
             content = @Content(schema = @Schema(implementation = PaymentDetails.class)))
+    @ApiResponse(responseCode = "404", description = "Not a landlord",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     public PaymentDetails details() {
-        return payment.forLandlords();
+        return payment.forLandlord(currentUser.requireId());
     }
 
     // ---- Lizmo's admins --------------------------------------------------------

@@ -133,10 +133,4 @@ public final class PlatformBillingDtos {
             @Size(max = 500) @Schema(example = "Nothing arrived under that reference.")
             String remarks) {
     }
-
-    /** Where to send money to Lizmo, as an admin wrote it. */
-    @Schema(description = "How to pay Lizmo")
-    public record PaymentInstructions(
-            @Schema(example = "GCash 0917 123 4567 (Lizmo Innovation)") String instructions) {
-    }
 }

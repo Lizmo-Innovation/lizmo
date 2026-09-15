@@ -247,8 +247,6 @@ class ApiClient {
           return PaymentChannelResponse.fromJson(value);
         case 'PaymentDetails':
           return PaymentDetails.fromJson(value);
-        case 'PaymentInstructions':
-          return PaymentInstructions.fromJson(value);
         case 'PaymentResponse':
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':

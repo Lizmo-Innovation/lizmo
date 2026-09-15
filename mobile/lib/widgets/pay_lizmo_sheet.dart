@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'lizmo_payment_channels.dart';
+
 /// What the landlord said they paid, and the proof.
 class LizmoPayment {
   const LizmoPayment({
@@ -31,6 +33,7 @@ class PayLizmoSheet extends StatefulWidget {
     required this.label,
     required this.covers,
     required this.outstanding,
+    this.payment,
   });
 
   final String label;
@@ -40,11 +43,16 @@ class PayLizmoSheet extends StatefulWidget {
 
   final num outstanding;
 
+  /// Where to send it, shown at the top so the number is copied here rather
+  /// than by closing the sheet to find it. Left out when not known.
+  final PaymentDetails? payment;
+
   static Future<LizmoPayment?> show(
     BuildContext context, {
     required String label,
     required String covers,
     required num outstanding,
+    PaymentDetails? payment,
   }) {
     return showModalBottomSheet<LizmoPayment>(
       context: context,
@@ -57,6 +65,7 @@ class PayLizmoSheet extends StatefulWidget {
         label: label,
         covers: covers,
         outstanding: outstanding,
+        payment: payment,
       ),
     );
   }
@@ -160,6 +169,12 @@ class _PayLizmoSheetState extends State<PayLizmoSheet> {
                 style: LizmoType.rowSub,
               ),
               const SizedBox(height: 20),
+              if (widget.payment case final payment?) ...[
+                Text('Send it to', style: LizmoType.rowName.copyWith(fontSize: 13)),
+                const SizedBox(height: 6),
+                LizmoPaymentChannels(details: payment),
+                const SizedBox(height: 18),
+              ],
               Text('How much', style: LizmoType.rowName.copyWith(fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(

@@ -43,6 +43,8 @@ import 'package:lizmo/screens/rent_roll_screen.dart';
 import 'package:lizmo/maintenance/maintenance_providers.dart';
 import 'package:lizmo/platform/lizmo_billing_providers.dart';
 import 'package:lizmo/screens/lizmo_billing_screen.dart';
+import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
+import 'package:lizmo/widgets/full_screen_image.dart';
 import 'package:lizmo/screens/maintenance_inbox_screen.dart';
 import 'package:lizmo/screens/maintenance_report_screen.dart';
 import 'package:http/http.dart' show MultipartFile;
@@ -8393,7 +8395,7 @@ void _tenantLeaseTests() {
 
     Widget appWith({
       List<PlatformStatementResponse> statements = const [],
-      String? instructions,
+      PaymentDetails? payment,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -8405,8 +8407,8 @@ void _tenantLeaseTests() {
           (ref) async => const <NotificationResponse>[],
         ),
         myLizmoStatementsProvider.overrideWith((ref) async => statements),
-        lizmoPaymentInstructionsProvider
-            .overrideWith((ref) async => instructions),
+        lizmoPaymentDetailsProvider
+            .overrideWith((ref) async => payment ?? PaymentDetails()),
       ],
       child: const LizmoApp(),
     );
@@ -8480,14 +8482,146 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('pay-statement-s1')), findsNothing);
     });
 
-    testWidgets('where to pay is shown, as an admin wrote it', (tester) async {
+    PaymentChannelForLandlord channel({
+      String id = 'c1',
+      String name = 'GCash',
+      String number = '09771231234',
+      String? qrUrl,
+    }) => PaymentChannelForLandlord(
+          id: id,
+          channel: name,
+          accountName: 'Ariel Asebias',
+          accountNumber: number,
+          qrUrl: qrUrl,
+          qrUrlExpiresInSeconds: 600,
+        );
+
+    testWidgets('each channel says whose account and which number',
+        (tester) async {
       await tester.pumpWidget(appWith(
         statements: [statement()],
-        instructions: 'GCash 0917 123 4567 (Lizmo)',
+        payment: PaymentDetails(
+          channels: [
+            channel(),
+            channel(id: 'c2', name: 'BPI', number: '1234 5678 90'),
+          ],
+          note: 'Put your property name in the reference.',
+        ),
       ));
       await openBilling(tester);
 
-      expect(find.text('GCash 0917 123 4567 (Lizmo)'), findsOneWidget);
+      expect(find.text('GCash'), findsOneWidget);
+      expect(find.text('09771231234'), findsOneWidget);
+      expect(find.text('BPI'), findsOneWidget);
+      expect(find.text('1234 5678 90'), findsOneWidget);
+      expect(find.text('Ariel Asebias'), findsNWidgets(2));
+      expect(find.text('Put your property name in the reference.'), findsOneWidget);
+      expect(find.textContaining('has not added payment details yet'), findsNothing);
+    });
+
+    /// About to be pasted into a wallet, and retyped digits are how money goes
+    /// to the wrong account.
+    testWidgets('tapping a number copies it', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      await tester.pumpWidget(appWith(
+        statements: [statement()],
+        payment: PaymentDetails(channels: [channel()]),
+      ));
+      await openBilling(tester);
+
+      await tester.tap(find.byKey(const ValueKey('copy-channel-c1')));
+      await tester.pumpAndSettle();
+
+      expect(copied, '09771231234');
+      expect(find.text('Copied'), findsOneWidget);
+    });
+
+    /// Scanned from another phone, so a thumbnail is not enough.
+    testWidgets('a QR opens full screen, and a channel without one offers none',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        statements: [statement()],
+        payment: PaymentDetails(channels: [
+          channel(qrUrl: 'https://example.test/qr.jpg'),
+          channel(id: 'c2', name: 'BPI', number: '1234 5678 90'),
+        ]),
+      ));
+      await openBilling(tester);
+
+      expect(find.byKey(const ValueKey('qr-channel-c2')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('qr-channel-c1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FullScreenImage), findsOneWidget);
+    });
+
+    Finder inSheet(Finder matching) =>
+        find.descendant(of: find.byType(PayLizmoSheet), matching: matching);
+
+    /// So the number is copied where the payment is entered, not by closing
+    /// the sheet to find it on the screen behind.
+    testWidgets('the pay sheet shows where to send it, and copies there',
+        (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      await tester.pumpWidget(appWith(
+        statements: [statement()],
+        payment: PaymentDetails(
+          channels: [channel(qrUrl: 'https://example.test/qr.jpg')],
+          note: 'Put your property name in the reference.',
+        ),
+      ));
+      await openBilling(tester);
+
+      await tester.tap(find.byKey(const ValueKey('pay-statement-s1')));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.text('Send it to')), findsOneWidget);
+      expect(inSheet(find.text('09771231234')), findsOneWidget);
+      expect(inSheet(find.byKey(const ValueKey('qr-channel-c1'))), findsOneWidget);
+      expect(inSheet(find.text('Put your property name in the reference.')),
+          findsOneWidget);
+
+      await tester.tap(inSheet(find.byKey(const ValueKey('copy-channel-c1'))));
+      await tester.pumpAndSettle();
+
+      expect(copied, '09771231234');
+      expect(inSheet(find.text('Copied')), findsOneWidget);
+    });
+
+    testWidgets('with no payment details the sheet says so too', (tester) async {
+      await tester.pumpWidget(appWith(statements: [statement()]));
+      await openBilling(tester);
+
+      await tester.tap(find.byKey(const ValueKey('pay-statement-s1')));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.textContaining('has not added payment details yet')),
+          findsOneWidget);
     });
 
     testWidgets('no payment details says so rather than leaving a guess',
@@ -8497,6 +8631,18 @@ void _tenantLeaseTests() {
 
       expect(find.textContaining('has not added payment details yet'),
           findsOneWidget);
+    });
+
+    testWidgets('a note with no channels is still shown, not called missing',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        statements: [statement()],
+        payment: PaymentDetails(note: 'Pay at the Lizmo office in Cebu.'),
+      ));
+      await openBilling(tester);
+
+      expect(find.text('Pay at the Lizmo office in Cebu.'), findsOneWidget);
+      expect(find.textContaining('has not added payment details yet'), findsNothing);
     });
 
     testWidgets('an overdue statement says when everything locks',

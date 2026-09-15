@@ -438,22 +438,6 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
                         .value("Sunrise Apartments"));
     }
 
-    @Test
-    void a_landlord_reads_the_payment_details_an_admin_wrote() throws Exception {
-        mvc.perform(put("/api/v1/admin/settings")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"supportEmail":"help@lizmo.app",
-                                 "paymentInstructions":"GCash 0917 123 4567 (Lizmo)"}
-                                """))
-                .andExpect(status().isOk());
-
-        mvc.perform(get("/api/v1/me/platform-payment-instructions")
-                        .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(jsonPath("$.instructions").value("GCash 0917 123 4567 (Lizmo)"));
-    }
-
     // ---- fixtures -----------------------------------------------------------------------------
 
     private LocalDate firstOfMonth() {

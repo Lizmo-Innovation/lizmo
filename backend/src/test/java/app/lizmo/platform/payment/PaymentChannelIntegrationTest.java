@@ -233,6 +233,16 @@ class PaymentChannelIntegrationTest extends IntegrationTest {
         adminList().andExpect(jsonPath("$.length()").value(0));
     }
 
+    /** Tenants never pay Lizmo, so they are not shown where Lizmo is paid. */
+    @Test
+    void a_tenant_is_not_told_where_lizmo_is_paid() throws Exception {
+        add("GCash", "Ariel Asebias", "09771231234");
+
+        mvc.perform(get("/api/v1/me/platform-payment-details")
+                        .header("Authorization", "Bearer " + accounts.tenant("ana").token()))
+                .andExpect(status().isNotFound());
+    }
+
     @Test
     void nobody_signed_out_reads_where_the_money_goes() throws Exception {
         mvc.perform(get("/api/v1/me/platform-payment-details"))

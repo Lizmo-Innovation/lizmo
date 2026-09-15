@@ -78,7 +78,6 @@ part 'model/payment_channel_order.dart';
 part 'model/payment_channel_request.dart';
 part 'model/payment_channel_response.dart';
 part 'model/payment_details.dart';
-part 'model/payment_instructions.dart';
 part 'model/payment_response.dart';
 part 'model/pending_invitation.dart';
 part 'model/platform_invoice_line.dart';

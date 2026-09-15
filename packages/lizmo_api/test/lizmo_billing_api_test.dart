@@ -19,19 +19,19 @@ void main() {
   group('tests for LizmoBillingApi', () {
     // How to pay Lizmo
     //
-    // As an admin wrote it in the console. Empty until one has.
+    // The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them. Landlords only.
     //
-    //Future<PaymentInstructions> getPlatformPaymentInstructions() async
-    test('test getPlatformPaymentInstructions', () async {
+    //Future<PaymentDetails> getPlatformPaymentDetails() async
+    test('test getPlatformPaymentDetails', () async {
       // TODO
     });
 
-    // My Lizmo invoices
+    // My Lizmo statements
     //
-    // One per property per month, newest first, with what has been sent against each.
+    // One a month, newest first, itemised by property, with what has been sent against each. A line carries an invoice number once the statement is paid.
     //
-    //Future<List<PlatformInvoiceResponse>> listMyPlatformInvoices() async
-    test('test listMyPlatformInvoices', () async {
+    //Future<List<PlatformStatementResponse>> listMyPlatformStatements() async
+    test('test listMyPlatformStatements', () async {
       // TODO
     });
 
@@ -39,8 +39,8 @@ void main() {
     //
     // Waits for a Lizmo admin to confirm it. Proof is required. The photograph is re-encoded, so no EXIF or location leaves the phone.
     //
-    //Future<PlatformInvoiceResponse> payPlatformInvoice(String id, PlatformPaymentRequest payment, { MultipartFile proof }) async
-    test('test payPlatformInvoice', () async {
+    //Future<PlatformStatementResponse> payPlatformStatement(String id, PlatformPaymentRequest payment, { MultipartFile proof }) async
+    test('test payPlatformStatement', () async {
       // TODO
     });
 

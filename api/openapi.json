@@ -3359,35 +3359,13 @@
                 }
             }
         },
-        "/api/v1/me/platform-payment-instructions": {
-            "get": {
-                "tags": [
-                    "Lizmo billing"
-                ],
-                "summary": "How to pay Lizmo",
-                "description": "As an admin wrote it in the console. Empty until one has.",
-                "operationId": "getPlatformPaymentInstructions",
-                "responses": {
-                    "200": {
-                        "description": "The instructions",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PaymentInstructions"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/me/platform-payment-details": {
             "get": {
                 "tags": [
                     "Lizmo billing"
                 ],
                 "summary": "How to pay Lizmo",
-                "description": "The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them.",
+                "description": "The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them. Landlords only.",
                 "operationId": "getPlatformPaymentDetails",
                 "responses": {
                     "200": {
@@ -3396,6 +3374,16 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PaymentDetails"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not a landlord",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
                                 }
                             }
                         }
@@ -4250,6 +4238,30 @@
                 },
                 "description": "A utility's fixed monthly charge on a unit"
             },
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "Standard error response"
+            },
             "UtilitiesResponse": {
                 "type": "object",
                 "properties": {
@@ -4288,30 +4300,6 @@
                     }
                 },
                 "description": "A utility's fixed monthly charge on a unit"
-            },
-            "ApiError": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "example": "INVALID_CREDENTIALS"
-                    },
-                    "message": {
-                        "type": "string",
-                        "example": "Email or password is incorrect."
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "Standard error response"
             },
             "MaintenanceRequest": {
                 "required": [
@@ -6124,16 +6112,6 @@
                     }
                 },
                 "description": "A payment waiting for the landlord to confirm it"
-            },
-            "PaymentInstructions": {
-                "type": "object",
-                "properties": {
-                    "instructions": {
-                        "type": "string",
-                        "example": "GCash 0917 123 4567 (Lizmo Innovation)"
-                    }
-                },
-                "description": "How to pay Lizmo"
             },
             "PaymentChannelForLandlord": {
                 "type": "object",

@@ -18,7 +18,7 @@ class LizmoBillingApi {
 
   /// How to pay Lizmo
   ///
-  /// The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them.
+  /// The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them. Landlords only.
   ///
   /// Note: This method returns the HTTP [Response].
   Future<Response> getPlatformPaymentDetailsWithHttpInfo({ Future<void>? abortTrigger, }) async {
@@ -49,7 +49,7 @@ class LizmoBillingApi {
 
   /// How to pay Lizmo
   ///
-  /// The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them.
+  /// The channels an admin has made visible, in order, each with its QR when it has one, and the note shown under them. Landlords only.
   Future<PaymentDetails?> getPlatformPaymentDetails({ Future<void>? abortTrigger, }) async {
     final response = await getPlatformPaymentDetailsWithHttpInfo(abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -60,55 +60,6 @@ class LizmoBillingApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PaymentDetails',) as PaymentDetails;
-    
-    }
-    return null;
-  }
-
-  /// How to pay Lizmo
-  ///
-  /// As an admin wrote it in the console. Empty until one has.
-  ///
-  /// Note: This method returns the HTTP [Response].
-  Future<Response> getPlatformPaymentInstructionsWithHttpInfo({ Future<void>? abortTrigger, }) async {
-    // ignore: prefer_const_declarations
-    final path = r'/api/v1/me/platform-payment-instructions';
-
-    // ignore: prefer_final_locals
-    Object? postBody;
-
-    final queryParams = <QueryParam>[];
-    final headerParams = <String, String>{};
-    final formParams = <String, String>{};
-
-    const contentTypes = <String>[];
-
-
-    return apiClient.invokeAPI(
-      path,
-      'GET',
-      queryParams,
-      postBody,
-      headerParams,
-      formParams,
-      contentTypes.isEmpty ? null : contentTypes.first,
-      abortTrigger: abortTrigger,
-    );
-  }
-
-  /// How to pay Lizmo
-  ///
-  /// As an admin wrote it in the console. Empty until one has.
-  Future<PaymentInstructions?> getPlatformPaymentInstructions({ Future<void>? abortTrigger, }) async {
-    final response = await getPlatformPaymentInstructionsWithHttpInfo(abortTrigger: abortTrigger,);
-    if (response.statusCode >= HttpStatus.badRequest) {
-      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
-    }
-    // When a remote server returns no body with a status of 204, we shall not decode it.
-    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
-    // FormatException when trying to decode an empty string.
-    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
-      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PaymentInstructions',) as PaymentInstructions;
     
     }
     return null;

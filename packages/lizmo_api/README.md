@@ -101,7 +101,6 @@ Class | Method | HTTP request | Description
 *LeasesApi* | [**updateLeaseDocument**](doc//LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
 *LeasesApi* | [**uploadLeaseDocument**](doc//LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
 *LizmoBillingApi* | [**getPlatformPaymentDetails**](doc//LizmoBillingApi.md#getplatformpaymentdetails) | **GET** /api/v1/me/platform-payment-details | How to pay Lizmo
-*LizmoBillingApi* | [**getPlatformPaymentInstructions**](doc//LizmoBillingApi.md#getplatformpaymentinstructions) | **GET** /api/v1/me/platform-payment-instructions | How to pay Lizmo
 *LizmoBillingApi* | [**listMyPlatformStatements**](doc//LizmoBillingApi.md#listmyplatformstatements) | **GET** /api/v1/me/platform-statements | My Lizmo statements
 *LizmoBillingApi* | [**payPlatformStatement**](doc//LizmoBillingApi.md#payplatformstatement) | **POST** /api/v1/me/platform-statements/{id}/payments | Say I have paid Lizmo
 *MaintenanceApi* | [**addMaintenancePhoto**](doc//MaintenanceApi.md#addmaintenancephoto) | **POST** /api/v1/me/maintenance/{id}/photos | Add a photo to my report
@@ -198,7 +197,6 @@ Class | Method | HTTP request | Description
  - [PaymentChannelRequest](doc//PaymentChannelRequest.md)
  - [PaymentChannelResponse](doc//PaymentChannelResponse.md)
  - [PaymentDetails](doc//PaymentDetails.md)
- - [PaymentInstructions](doc//PaymentInstructions.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
  - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)

@@ -43,7 +43,6 @@ doc/PaymentChannelOrder.md
 doc/PaymentChannelRequest.md
 doc/PaymentChannelResponse.md
 doc/PaymentDetails.md
-doc/PaymentInstructions.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
 doc/PlatformInvoiceLine.md
@@ -151,7 +150,6 @@ lib/model/payment_channel_order.dart
 lib/model/payment_channel_request.dart
 lib/model/payment_channel_response.dart
 lib/model/payment_details.dart
-lib/model/payment_instructions.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
 lib/model/platform_invoice_line.dart
@@ -194,8 +192,4 @@ lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
-test/payment_channel_for_landlord_test.dart
-test/payment_channel_order_test.dart
-test/payment_channel_request_test.dart
-test/payment_channel_response_test.dart
-test/payment_details_test.dart
+test/lizmo_billing_api_test.dart
