@@ -62,6 +62,7 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**addPaymentChannel**](doc//AdminApi.md#addpaymentchannel) | **POST** /api/v1/admin/platform-payment-channels | Add a payment channel
 *AdminApi* | [**confirmPlatformPayment**](doc//AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
 *AdminApi* | [**deletePaymentChannel**](doc//AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
+*AdminApi* | [**getAdminProperty**](doc//AdminApi.md#getadminproperty) | **GET** /api/v1/admin/properties/{id} | One property, opened up
 *AdminApi* | [**getLandlord**](doc//AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 *AdminApi* | [**getPlatformSettings**](doc//AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 *AdminApi* | [**getSupportContact**](doc//AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -177,7 +178,11 @@ Class | Method | HTTP request | Description
 
  - [AcceptInvitationRequest](doc//AcceptInvitationRequest.md)
  - [AcceptRequest](doc//AcceptRequest.md)
+ - [AdminPropertyBed](doc//AdminPropertyBed.md)
+ - [AdminPropertyDetail](doc//AdminPropertyDetail.md)
  - [AdminPropertySummary](doc//AdminPropertySummary.md)
+ - [AdminPropertyTenancy](doc//AdminPropertyTenancy.md)
+ - [AdminPropertyUnit](doc//AdminPropertyUnit.md)
  - [ApiError](doc//ApiError.md)
  - [ArrearsRow](doc//ArrearsRow.md)
  - [AuthResponse](doc//AuthResponse.md)

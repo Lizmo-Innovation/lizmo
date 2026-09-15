@@ -18,10 +18,12 @@ import org.springframework.http.MediaType;
  * What Lizmo's console reads.
  *
  * <p>Two things are asserted throughout: that only staff can read any of it,
- * and that none of it names a tenant. Lizmo bills on occupied slots — the count
- * is the business, the people in them are between a tenant and their landlord,
- * and an admin API that could enumerate them is access nobody could justify
- * after a leak.
+ * and that the landlord list and a landlord's page name no tenant. Lizmo bills
+ * on occupied slots, and those screens are about the count.
+ *
+ * <p>Opening a single property does name its current tenants, by decision --
+ * see {@link AdminPropertyIntegrationTest}, which also holds it to name and
+ * contact only.
  */
 class AdminConsoleIntegrationTest extends IntegrationTest {
 

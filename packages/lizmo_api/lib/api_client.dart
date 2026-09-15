@@ -187,8 +187,16 @@ class ApiClient {
           return AcceptInvitationRequest.fromJson(value);
         case 'AcceptRequest':
           return AcceptRequest.fromJson(value);
+        case 'AdminPropertyBed':
+          return AdminPropertyBed.fromJson(value);
+        case 'AdminPropertyDetail':
+          return AdminPropertyDetail.fromJson(value);
         case 'AdminPropertySummary':
           return AdminPropertySummary.fromJson(value);
+        case 'AdminPropertyTenancy':
+          return AdminPropertyTenancy.fromJson(value);
+        case 'AdminPropertyUnit':
+          return AdminPropertyUnit.fromJson(value);
         case 'ApiError':
           return ApiError.fromJson(value);
         case 'ArrearsRow':

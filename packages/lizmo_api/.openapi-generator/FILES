@@ -4,7 +4,11 @@ README.md
 doc/AcceptInvitationRequest.md
 doc/AcceptRequest.md
 doc/AdminApi.md
+doc/AdminPropertyBed.md
+doc/AdminPropertyDetail.md
 doc/AdminPropertySummary.md
+doc/AdminPropertyTenancy.md
+doc/AdminPropertyUnit.md
 doc/ApiError.md
 doc/ArrearsRow.md
 doc/AskingForARoomApi.md
@@ -122,7 +126,11 @@ lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
 lib/model/accept_invitation_request.dart
 lib/model/accept_request.dart
+lib/model/admin_property_bed.dart
+lib/model/admin_property_detail.dart
 lib/model/admin_property_summary.dart
+lib/model/admin_property_tenancy.dart
+lib/model/admin_property_unit.dart
 lib/model/api_error.dart
 lib/model/arrears_row.dart
 lib/model/auth_response.dart
@@ -194,3 +202,7 @@ lib/model/vacant_bed.dart
 lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
+test/admin_property_bed_test.dart
+test/admin_property_detail_test.dart
+test/admin_property_tenancy_test.dart
+test/admin_property_unit_test.dart

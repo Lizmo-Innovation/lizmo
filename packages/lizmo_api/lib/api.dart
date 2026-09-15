@@ -49,7 +49,11 @@ part 'api/units_api.dart';
 
 part 'model/accept_invitation_request.dart';
 part 'model/accept_request.dart';
+part 'model/admin_property_bed.dart';
+part 'model/admin_property_detail.dart';
 part 'model/admin_property_summary.dart';
+part 'model/admin_property_tenancy.dart';
+part 'model/admin_property_unit.dart';
 part 'model/api_error.dart';
 part 'model/arrears_row.dart';
 part 'model/auth_response.dart';

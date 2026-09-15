@@ -4318,6 +4318,49 @@
                 }
             }
         },
+        "/api/v1/admin/properties/{id}": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "One property, opened up",
+                "description": "Every unit and bed, whether each is leased, vacant or out of service, and the tenancy running on it now with the tenant's name, phone and email. Never their ID or emergency contact, and never a tenant who has moved out.",
+                "operationId": "getAdminProperty",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminPropertyDetail"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No such property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/platform-payments": {
             "get": {
                 "tags": [
@@ -6922,6 +6965,183 @@
                     }
                 },
                 "description": "What an invitation is for"
+            },
+            "AdminPropertyBed": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "rent": {
+                        "type": "number"
+                    },
+                    "occupancy": {
+                        "type": "string",
+                        "enum": [
+                            "LEASED",
+                            "PARTLY_LEASED",
+                            "VACANT",
+                            "OUT_OF_SERVICE"
+                        ]
+                    },
+                    "tenancy": {
+                        "$ref": "#/components/schemas/AdminPropertyTenancy"
+                    }
+                },
+                "description": "A bed in a bedspace unit"
+            },
+            "AdminPropertyDetail": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "APARTMENT",
+                            "BOARDING_HOUSE",
+                            "CONDO",
+                            "SINGLE_HOUSE",
+                            "OFFICE",
+                            "RETAIL_SPACE",
+                            "WAREHOUSE",
+                            "STALL"
+                        ]
+                    },
+                    "usage": {
+                        "type": "string",
+                        "enum": [
+                            "RESIDENTIAL",
+                            "COMMERCIAL"
+                        ]
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "accountStatus": {
+                        "type": "string"
+                    },
+                    "landlordId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "landlordName": {
+                        "type": "string"
+                    },
+                    "unitCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "bedCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "leased": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "outOfService": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "units": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminPropertyUnit"
+                        }
+                    }
+                },
+                "description": "A property's units, beds and current tenancies, for Lizmo's staff"
+            },
+            "AdminPropertyTenancy": {
+                "type": "object",
+                "properties": {
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tenantName": {
+                        "type": "string"
+                    },
+                    "tenantPhone": {
+                        "type": "string"
+                    },
+                    "tenantEmail": {
+                        "type": "string"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "rent": {
+                        "type": "number"
+                    }
+                },
+                "description": "A tenancy running now"
+            },
+            "AdminPropertyUnit": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "floor": {
+                        "type": "string"
+                    },
+                    "rentalMode": {
+                        "type": "string",
+                        "enum": [
+                            "WHOLE_UNIT",
+                            "BEDSPACE"
+                        ]
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "rent": {
+                        "type": "number"
+                    },
+                    "occupancy": {
+                        "type": "string",
+                        "enum": [
+                            "LEASED",
+                            "PARTLY_LEASED",
+                            "VACANT",
+                            "OUT_OF_SERVICE"
+                        ]
+                    },
+                    "tenancy": {
+                        "$ref": "#/components/schemas/AdminPropertyTenancy"
+                    },
+                    "beds": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminPropertyBed"
+                        }
+                    }
+                },
+                "description": "A unit, and its beds when it is a bedspace"
             },
             "LandlordSummary": {
                 "type": "object",

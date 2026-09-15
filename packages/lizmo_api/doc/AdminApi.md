@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**addPaymentChannel**](AdminApi.md#addpaymentchannel) | **POST** /api/v1/admin/platform-payment-channels | Add a payment channel
 [**confirmPlatformPayment**](AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
 [**deletePaymentChannel**](AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
+[**getAdminProperty**](AdminApi.md#getadminproperty) | **GET** /api/v1/admin/properties/{id} | One property, opened up
 [**getLandlord**](AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 [**getPlatformSettings**](AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 [**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -148,6 +149,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 void (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getAdminProperty**
+> AdminPropertyDetail getAdminProperty(id)
+
+One property, opened up
+
+Every unit and bed, whether each is leased, vacant or out of service, and the tenancy running on it now with the tenant's name, phone and email. Never their ID or emergency contact, and never a tenant who has moved out.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.getAdminProperty(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->getAdminProperty: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminPropertyDetail**](AdminPropertyDetail.md)
 
 ### Authorization
 

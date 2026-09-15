@@ -1,5 +1,6 @@
 package app.lizmo.admin;
 
+import app.lizmo.admin.dto.AdminPropertyDetail;
 import app.lizmo.admin.dto.AdminPropertySummary;
 import app.lizmo.admin.dto.LandlordDetail;
 import app.lizmo.admin.dto.LandlordSummary;
@@ -63,6 +64,19 @@ public class AdminLandlordController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public LandlordDetail one(@PathVariable UUID id) {
         return landlords.one(id);
+    }
+
+    @GetMapping("/properties/{id}")
+    @Operation(operationId = "getAdminProperty", summary = "One property, opened up",
+            description = "Every unit and bed, whether each is leased, vacant or out of "
+                    + "service, and the tenancy running on it now with the tenant's name, "
+                    + "phone and email. Never their ID or emergency contact, and never a "
+                    + "tenant who has moved out.")
+    @ApiResponse(responseCode = "200", description = "The property")
+    @ApiResponse(responseCode = "404", description = "No such property",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public AdminPropertyDetail property(@PathVariable UUID id) {
+        return landlords.property(id);
     }
 
     @PostMapping("/properties/{id}/lock")
