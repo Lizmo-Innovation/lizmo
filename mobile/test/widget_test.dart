@@ -1,3 +1,6 @@
+import 'package:lizmo/billing/payment_channel_providers.dart';
+import 'package:lizmo/screens/payment_channels_screen.dart';
+import 'package:lizmo/widgets/payment_channel_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7173,6 +7176,26 @@ void _tenantLeaseTests() {
           findsOneWidget);
     });
 
+    testWidgets('the landlord sees which account it was sent to', (tester) async {
+      await tester.pumpWidget(landlordApp(months: [month()], payments: [
+        PaymentResponse(
+          id: 'p1',
+          billingPeriodId: 'b1',
+          periodLabel: 'October 2026',
+          amountPaid: 2500,
+          paymentDate: DateTime.utc(2026, 10, 4),
+          paymentMethod: PaymentResponsePaymentMethodEnum.GCASH,
+          sentTo: 'GCash · Elena Reyes · 09171112222',
+          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+          proofUrlExpiresInSeconds: 600,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await reachRent(tester);
+
+      expect(find.text('Sent to GCash · Elena Reyes · 09171112222'), findsOneWidget);
+    });
+
     testWidgets('the landlord reads the note while deciding', (tester) async {
       await tester.pumpWidget(landlordApp(
         months: [month()],
@@ -7370,6 +7393,28 @@ void _tenantLeaseTests() {
 
     /// The banner said somebody was waiting and could not be tapped. Each
     /// waiting payment is now a row naming whose it is.
+    /// Which account to open before confirming, so nobody searches GCash for a
+    /// bank transfer.
+    testWidgets('a waiting payment on Today says which account it went to',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: 1, awaiting: [
+        AwaitingRow(
+          leaseId: 'l1',
+          paymentId: 'pay1',
+          tenantName: 'Ana Reyes',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          amount: 2500,
+          paidOn: DateTime.utc(2026, 9, 3),
+          sentTo: 'GCash · Elena Reyes · 09171112222',
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sent to GCash · Elena Reyes · 09171112222'), findsOneWidget);
+    });
+
     testWidgets('each waiting payment is named, and opens its tenant',
         (tester) async {
       await tester.pumpWidget(appWith(waiting: 1, awaiting: [
@@ -7833,6 +7878,24 @@ void _tenantLeaseTests() {
       expect(inHeader(find.text('₱7500')), findsOneWidget);
       expect(inHeader(find.text('₱2500')), findsOneWidget);
       expect(inHeader(find.text('₱5000')), findsOneWidget);
+    });
+
+    testWidgets('a declared payment on the Rent tab says which account it went to',
+        (tester) async {
+      await tester.pumpWidget(appWith(roll([
+        row(waiting: [
+          WaitingPayment(
+            paymentId: 'pay1',
+            amount: 2500,
+            paidOn: DateTime.utc(2026, 9, 3),
+            method: WaitingPaymentMethodEnum.GCASH,
+            sentTo: 'GCash · Elena Reyes · 09171112222',
+          ),
+        ]),
+      ])));
+      await openRent(tester);
+
+      expect(find.text('Sent to GCash · Elena Reyes · 09171112222'), findsOneWidget);
     });
 
     /// Answered where it is read, rather than a tenant's screen away.
@@ -8339,6 +8402,186 @@ void _tenantLeaseTests() {
     });
   });
 
+  group('how tenants pay me', () {
+    Widget appWith(
+      _FakePaymentChannelsApi api, {
+      Future<PickedImage?> Function()? pick,
+    }) =>
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
+            ),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+            myNotificationsProvider.overrideWith(
+              (ref) async => const <NotificationResponse>[],
+            ),
+            // Not the list providers: they read this fake, so a change and the
+            // re-read after it are both what gets tested.
+            paymentChannelsApiProvider.overrideWithValue(api),
+            if (pick != null) pickGalleryImageProvider.overrideWithValue(pick),
+          ],
+          child: const LizmoApp(),
+        );
+
+    Future<void> openIt(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('How tenants pay me'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> tapShown(WidgetTester tester, Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a landlord finds it in the account menu', (tester) async {
+      await tester.pumpWidget(appWith(_FakePaymentChannelsApi([])));
+      await openIt(tester);
+
+      expect(find.byType(PaymentChannelsScreen), findsOneWidget);
+      expect(find.text('No ways to pay yet'), findsOneWidget);
+    });
+
+    testWidgets('the channels are listed, and a hidden one says so', (tester) async {
+      await tester.pumpWidget(appWith(_FakePaymentChannelsApi([
+        _myChannel(),
+        _myChannel(id: 'c2', channel: 'Maya', number: '09173334444', visible: false),
+      ])));
+      await openIt(tester);
+
+      expect(find.text('GCash'), findsOneWidget);
+      expect(find.text('Elena Reyes \u00b7 09171112222'), findsOneWidget);
+      expect(find.text('Maya'), findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Hidden'), findsOneWidget);
+    });
+
+    testWidgets('adding a channel sends its details, then the QR chosen',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([]);
+      await tester.pumpWidget(appWith(api,
+          pick: () async => (name: 'gcash.png', bytes: Uint8List.fromList([1, 2, 3]))));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('add-payment-channel')));
+      await tester.enterText(find.byKey(const ValueKey('channel-field')), 'GCash');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-name-field')), 'Elena Reyes');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-number-field')), '09171112222');
+      await tapShown(tester, find.byKey(const ValueKey('pick-qr')));
+      await tapShown(tester, find.byKey(const ValueKey('save-channel')));
+
+      expect(api.added.single.channel, 'GCash');
+      expect(api.added.single.accountName, 'Elena Reyes');
+      expect(api.added.single.accountNumber, '09171112222');
+      expect(api.uploaded, [('new', 3)]);
+      expect(find.byType(PaymentChannelSheet), findsNothing);
+      expect(find.text('Elena Reyes \u00b7 09171112222'), findsOneWidget);
+    });
+
+    /// A channel with no number is a tenant told to pay and unable to.
+    testWidgets('a blank account number is refused before calling the API',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([]);
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('add-payment-channel')));
+      await tester.enterText(find.byKey(const ValueKey('channel-field')), 'GCash');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-name-field')), 'Elena Reyes');
+      await tapShown(tester, find.byKey(const ValueKey('save-channel')));
+
+      expect(find.text('Enter the account number'), findsOneWidget);
+      expect(api.added, isEmpty);
+    });
+
+    testWidgets('switching one off sends it hidden, with its details unchanged',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel()]);
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('channel-visible-c1')));
+
+      expect(api.updated.single.$1, 'c1');
+      expect(api.updated.single.$2.visible, isFalse);
+      expect(api.updated.single.$2.accountNumber, '09171112222');
+      expect(find.widgetWithText(StatusChip, 'Hidden'), findsOneWidget);
+    });
+
+    testWidgets('moving one down sends the whole new order', (tester) async {
+      final api = _FakePaymentChannelsApi([
+        _myChannel(),
+        _myChannel(id: 'c2', channel: 'Maya'),
+        _myChannel(id: 'c3', channel: 'BPI'),
+      ]);
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('channel-down-c1')));
+
+      expect(api.order, ['c2', 'c1', 'c3']);
+    });
+
+    testWidgets('deleting asks first, and backing out deletes nothing',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel()]);
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('delete-channel-c1')));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(api.deleted, isEmpty);
+
+      await tapShown(tester, find.byKey(const ValueKey('delete-channel-c1')));
+      await tester.tap(find.byKey(const ValueKey('confirm-delete-channel')));
+      await tester.pumpAndSettle();
+
+      expect(api.deleted, ['c1']);
+      expect(find.text('GCash'), findsNothing);
+    });
+
+    testWidgets('editing a channel can take its QR away', (tester) async {
+      final api = _FakePaymentChannelsApi(
+          [_myChannel(qrUrl: 'https://example.test/qr.jpg')]);
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('edit-channel-c1')));
+      await tapShown(tester, find.byKey(const ValueKey('remove-qr')));
+      await tapShown(tester, find.byKey(const ValueKey('save-channel')));
+
+      expect(api.updated.single.$1, 'c1');
+      expect(api.removedQr, ['c1']);
+      expect(api.uploaded, isEmpty);
+    });
+
+    testWidgets('the note shows what was saved, and saves what is typed',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([], note: 'Cash to Aling Nena at unit 1A');
+      await tester.pumpWidget(appWith(api));
+      await openIt(tester);
+
+      final field = find.byKey(const ValueKey('payment-note-field'));
+      await tester.ensureVisible(field);
+      expect(find.text('Cash to Aling Nena at unit 1A'), findsOneWidget);
+
+      await tester.enterText(field, 'Pay before the 5th, please');
+      await tapShown(tester, find.byKey(const ValueKey('save-payment-note')));
+
+      expect(api.savedNote, 'Pay before the 5th, please');
+      expect(find.text('Note saved.'), findsOneWidget);
+    });
+  });
+
   group('Lizmo billing', () {
     PlatformInvoiceLine line({
       String id = 'l1',
@@ -8725,4 +8968,129 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('pay-statement-s1')), findsOneWidget);
     });
   });
+}
+
+PaymentChannelResponse _myChannel({
+  String id = 'c1',
+  String? channel = 'GCash',
+  String? name = 'Elena Reyes',
+  String? number = '09171112222',
+  bool visible = true,
+  String? qrUrl,
+}) =>
+    PaymentChannelResponse(
+      id: id,
+      channel: channel,
+      accountName: name,
+      accountNumber: number,
+      visible: visible,
+      sortOrder: 0,
+      qrUrl: qrUrl,
+      qrUrlExpiresInSeconds: 600,
+    );
+
+/// A landlord's own channels, played from a list in memory, keeping what was asked.
+class _FakePaymentChannelsApi extends PaymentChannelsApi {
+  _FakePaymentChannelsApi(List<PaymentChannelResponse> channels, {this.note})
+      : channels = [...channels];
+
+  final List<PaymentChannelResponse> channels;
+  String? note;
+  String? savedNote;
+  final added = <PaymentChannelRequest>[];
+  final updated = <(String, PaymentChannelRequest)>[];
+  final deleted = <String>[];
+  final uploaded = <(String, int)>[];
+  final removedQr = <String>[];
+  List<String>? order;
+
+  @override
+  Future<List<PaymentChannelResponse>?> listMyPaymentChannels({
+    Future<void>? abortTrigger,
+  }) async =>
+      [...channels];
+
+  @override
+  Future<PaymentNote?> getMyPaymentNote({Future<void>? abortTrigger}) async =>
+      PaymentNote(note: note);
+
+  @override
+  Future<PaymentNote?> updateMyPaymentNote(
+    PaymentNote paymentNote, {
+    Future<void>? abortTrigger,
+  }) async {
+    savedNote = paymentNote.note;
+    note = paymentNote.note;
+    return paymentNote;
+  }
+
+  @override
+  Future<PaymentChannelResponse?> addMyPaymentChannel(
+    PaymentChannelRequest paymentChannelRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    added.add(paymentChannelRequest);
+    final created = _myChannel(
+      id: 'new',
+      channel: paymentChannelRequest.channel,
+      name: paymentChannelRequest.accountName,
+      number: paymentChannelRequest.accountNumber,
+    );
+    channels.add(created);
+    return created;
+  }
+
+  @override
+  Future<PaymentChannelResponse?> updateMyPaymentChannel(
+    String id,
+    PaymentChannelRequest paymentChannelRequest, {
+    Future<void>? abortTrigger,
+  }) async {
+    updated.add((id, paymentChannelRequest));
+    final at = channels.indexWhere((channel) => channel.id == id);
+    if (at < 0) return null;
+    final was = channels[at];
+    return channels[at] = _myChannel(
+      id: id,
+      channel: paymentChannelRequest.channel,
+      name: paymentChannelRequest.accountName,
+      number: paymentChannelRequest.accountNumber,
+      visible: paymentChannelRequest.visible ?? was.visible ?? true,
+      qrUrl: was.qrUrl,
+    );
+  }
+
+  @override
+  Future<void> deleteMyPaymentChannel(String id, {Future<void>? abortTrigger}) async {
+    deleted.add(id);
+    channels.removeWhere((channel) => channel.id == id);
+  }
+
+  @override
+  Future<PaymentChannelResponse?> uploadMyPaymentChannelQr(
+    String id,
+    MultipartFile qr, {
+    Future<void>? abortTrigger,
+  }) async {
+    uploaded.add((id, qr.length));
+    return null;
+  }
+
+  @override
+  Future<PaymentChannelResponse?> removeMyPaymentChannelQr(
+    String id, {
+    Future<void>? abortTrigger,
+  }) async {
+    removedQr.add(id);
+    return null;
+  }
+
+  @override
+  Future<List<PaymentChannelResponse>?> reorderMyPaymentChannels(
+    PaymentChannelOrder paymentChannelOrder, {
+    Future<void>? abortTrigger,
+  }) async {
+    order = [...paymentChannelOrder.ids];
+    return channels;
+  }
 }

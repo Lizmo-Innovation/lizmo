@@ -63,6 +63,8 @@ public record RentRoll(
      *
      * @param note what the tenant wrote alongside it, which is often the thing
      *             that decides whether the landlord believes it.
+     * @param sentTo which of the landlord's accounts the tenant says it went to,
+     *               so they know where to look. Null for cash.
      */
     @Schema(description = "A payment waiting for the landlord to confirm it")
     public record WaitingPayment(
@@ -70,6 +72,7 @@ public record RentRoll(
             BigDecimal amount,
             LocalDate paidOn,
             PaymentMethod method,
-            String note) {
+            String note,
+            String sentTo) {
     }
 }

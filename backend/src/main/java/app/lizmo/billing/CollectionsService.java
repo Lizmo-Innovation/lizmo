@@ -212,7 +212,8 @@ public class CollectionsService {
                 unit == null ? null : unit.getUnitNumber(),
                 lease.getBedId() == null ? null : bedLabels.get(lease.getBedId()),
                 row.payment().getAmountPaid(),
-                row.payment().getPaymentDate());
+                row.payment().getPaymentDate(),
+                row.payment().getSentTo());
     }
 
     /**

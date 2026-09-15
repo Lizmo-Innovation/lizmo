@@ -164,7 +164,8 @@ public class RentRollService {
                                 payment.getAmountPaid(),
                                 payment.getPaymentDate(),
                                 payment.getPaymentMethod(),
-                                payment.getRemarks()))
+                                payment.getRemarks(),
+                                payment.getSentTo()))
                         .toList();
 
                 String bedLabel = lease.getBedId() == null ? null : bedLabels.get(lease.getBedId());

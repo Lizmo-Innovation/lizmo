@@ -17,6 +17,7 @@ import app.lizmo.support.MutableClock;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -259,6 +260,26 @@ class LandlordPaymentChannelIntegrationTest extends IntegrationTest {
         mvc.perform(get("/api/v1/leases/" + leaseId + "/payments")
                         .header("Authorization", "Bearer " + elena.token()))
                 .andExpect(jsonPath("$[0].sentTo").value("GCash · Elena Reyes · 09171112222"));
+    }
+
+    /** Where the landlord decides whether to confirm: Today, and the Rent tab. */
+    @Test
+    void the_landlord_sees_where_it_went_on_today_and_the_rent_tab() throws Exception {
+        String gcash = idOf(add(elena, "GCash", "Elena Reyes", "09171112222"));
+        declare(gcash).andExpect(status().isCreated());
+
+        String today = mvc.perform(get("/api/v1/me/collections")
+                        .header("Authorization", "Bearer " + elena.token()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String rentTab = mvc.perform(get("/api/v1/me/rent-roll")
+                        .header("Authorization", "Bearer " + elena.token()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(json.readTree(today).path("awaiting").get(0).path("sentTo").asText())
+                .isEqualTo("GCash · Elena Reyes · 09171112222");
+        assertThat(rentTab).contains("\"sentTo\":\"GCash · Elena Reyes · 09171112222\"");
     }
 
     @Test

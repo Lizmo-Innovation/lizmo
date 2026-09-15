@@ -6526,6 +6526,9 @@
                     },
                     "note": {
                         "type": "string"
+                    },
+                    "sentTo": {
+                        "type": "string"
                     }
                 },
                 "description": "A payment waiting for the landlord to confirm it"
@@ -6778,6 +6781,9 @@
                     "paidOn": {
                         "type": "string",
                         "format": "date"
+                    },
+                    "sentTo": {
+                        "type": "string"
                     }
                 },
                 "description": "A payment waiting for the landlord to confirm it"

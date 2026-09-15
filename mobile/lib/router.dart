@@ -31,6 +31,7 @@ import 'screens/tenant_profile_screen.dart';
 import 'screens/unit_detail_screen.dart';
 import 'screens/delete_account_screen.dart';
 import 'screens/lizmo_billing_screen.dart';
+import 'screens/payment_channels_screen.dart';
 import 'screens/maintenance_inbox_screen.dart';
 import 'screens/maintenance_report_screen.dart';
 import 'screens/maintenance_screen.dart';
@@ -166,6 +167,9 @@ abstract final class Detail {
 
   /// What the landlord owes Lizmo. Reached from Today and the account menu.
   static const lizmoBilling = 'lizmo-billing';
+
+  /// How the landlord's tenants pay them. Reached from the account menu.
+  static const paymentChannels = 'payment-channels';
 }
 
 extension OpenInTab on BuildContext {
@@ -472,6 +476,10 @@ List<RouteBase> _landlordDetails() => [
       GoRoute(
         path: Detail.lizmoBilling,
         builder: (context, state) => const LizmoBillingScreen(),
+      ),
+      GoRoute(
+        path: Detail.paymentChannels,
+        builder: (context, state) => const PaymentChannelsScreen(),
       ),
       GoRoute(
         path: 'maintenance/:reportId',

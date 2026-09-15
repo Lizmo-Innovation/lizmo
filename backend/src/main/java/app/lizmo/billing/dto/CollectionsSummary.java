@@ -71,6 +71,8 @@ public record CollectionsSummary(
             String unitNumber,
             String bedLabel,
             BigDecimal amount,
-            java.time.LocalDate paidOn) {
+            java.time.LocalDate paidOn,
+            // Which of the landlord's accounts to check. Null for cash.
+            String sentTo) {
     }
 }

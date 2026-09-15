@@ -276,6 +276,15 @@ class _WaitingRow extends StatelessWidget {
                       '$where$when',
                       style: LizmoType.rowSub.copyWith(fontSize: 11),
                     ),
+                    if (row.sentTo case final sentTo?) ...[
+                      const SizedBox(height: 2),
+                      // Which account to open before confirming.
+                      Text(
+                        'Sent to $sentTo',
+                        style: LizmoType.rowSub.copyWith(
+                            fontSize: 11, color: LizmoColors.amberText),
+                      ),
+                    ],
                   ],
                 ),
               ),

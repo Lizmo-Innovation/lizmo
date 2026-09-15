@@ -88,6 +88,19 @@ class AccountSheet extends ConsumerWidget {
                 },
               ),
 
+            // Where their tenants send rent. Beside Lizmo billing because it is
+            // the same thing the other way round.
+            if (session?.isLandlord ?? false)
+              _SheetAction(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'How tenants pay me',
+                colour: LizmoColors.ink,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.openInTab(Detail.paymentChannels);
+                },
+              ),
+
             // Not buried, deliberately. An app that makes leaving hard is an
             // app people leave badly -- by uninstalling, which deletes nothing
             // and leaves their ID photographs where they were.

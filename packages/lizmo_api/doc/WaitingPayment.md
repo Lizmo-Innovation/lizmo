@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **paidOn** | [**DateTime**](DateTime.md) |  | [optional] 
 **method** | **String** |  | [optional] 
 **note** | **String** |  | [optional] 
+**sentTo** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -490,6 +490,14 @@ class _Waiting extends StatelessWidget {
             '${paidOn == null ? '' : ' on ${_day(paidOn)}'}',
             style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
           ),
+          if (payment.sentTo case final sentTo?) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Sent to $sentTo',
+              style: LizmoType.rowSub
+                  .copyWith(fontSize: 12, color: LizmoColors.amberText),
+            ),
+          ],
           if ((payment.note ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(

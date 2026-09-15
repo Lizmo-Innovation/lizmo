@@ -18,6 +18,7 @@ class WaitingPayment {
     this.paidOn,
     this.method,
     this.note,
+    this.sentTo,
   });
 
   ///
@@ -54,13 +55,22 @@ class WaitingPayment {
   ///
   String? note;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? sentTo;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is WaitingPayment &&
     other.paymentId == paymentId &&
     other.amount == amount &&
     other.paidOn == paidOn &&
     other.method == method &&
-    other.note == note;
+    other.note == note &&
+    other.sentTo == sentTo;
 
   @override
   int get hashCode =>
@@ -69,10 +79,11 @@ class WaitingPayment {
     (amount == null ? 0 : amount!.hashCode) +
     (paidOn == null ? 0 : paidOn!.hashCode) +
     (method == null ? 0 : method!.hashCode) +
-    (note == null ? 0 : note!.hashCode);
+    (note == null ? 0 : note!.hashCode) +
+    (sentTo == null ? 0 : sentTo!.hashCode);
 
   @override
-  String toString() => 'WaitingPayment[paymentId=$paymentId, amount=$amount, paidOn=$paidOn, method=$method, note=$note]';
+  String toString() => 'WaitingPayment[paymentId=$paymentId, amount=$amount, paidOn=$paidOn, method=$method, note=$note, sentTo=$sentTo]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -101,6 +112,11 @@ class WaitingPayment {
     } else {
       json[r'note'] = null;
     }
+    if (this.sentTo != null) {
+      json[r'sentTo'] = this.sentTo;
+    } else {
+      json[r'sentTo'] = null;
+    }
     return json;
   }
 
@@ -126,6 +142,7 @@ class WaitingPayment {
         paidOn: mapDateTime(json, r'paidOn', r''),
         method: WaitingPaymentMethodEnum.fromJson(json[r'method']),
         note: mapValueOfType<String>(json, r'note'),
+        sentTo: mapValueOfType<String>(json, r'sentTo'),
       );
     }
     return null;

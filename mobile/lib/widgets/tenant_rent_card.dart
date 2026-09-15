@@ -174,6 +174,15 @@ class _Waiting extends StatelessWidget {
               style: LizmoType.rowSub
                   .copyWith(fontSize: 11, color: LizmoColors.amberText),
             ),
+            if (payment.sentTo case final sentTo?) ...[
+              const SizedBox(height: 2),
+              // Which account to open before confirming.
+              Text(
+                'Sent to $sentTo',
+                style: LizmoType.rowSub
+                    .copyWith(fontSize: 11, color: LizmoColors.amberText),
+              ),
+            ],
             if ((payment.remarks ?? '').isNotEmpty) ...[
               const SizedBox(height: 6),
               // What the figures cannot say -- "paid from my sister's number"
