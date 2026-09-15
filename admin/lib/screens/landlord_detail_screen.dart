@@ -100,7 +100,14 @@ class _Detail extends ConsumerWidget {
             ],
             rows: [
               for (final property in detail.properties)
-                ConsoleRow(cells: [
+                ConsoleRow(
+                  // The row opens the property; the Lock button inside it
+                  // still does only what it says.
+                  onTap: property.id == null
+                      ? null
+                      : () => context.go(
+                          '${Routes.landlords}/${landlord.userId}/properties/${property.id}'),
+                  cells: [
                   _PropertyName(property: property),
                   Text(property.code ?? '', style: LizmoType.dataMedium),
                   Text(
@@ -184,7 +191,17 @@ class _PropertyName extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(property.name ?? '', style: LizmoType.rowName),
+        // Teal with a chevron, because the row opens something.
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(property.name ?? '',
+                  style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: LizmoColors.teal900),
+          ],
+        ),
         const SizedBox(height: 2),
         Text(property.address ?? '', style: LizmoType.rowSub, overflow: TextOverflow.ellipsis),
       ],

@@ -28,6 +28,12 @@ final landlordProvider =
   return ref.watch(adminApiProvider).getLandlord(id);
 });
 
+/// One property opened up: its units and beds, and who leases which now.
+final adminPropertyProvider =
+    FutureProvider.family<AdminPropertyDetail?, String>((ref, id) async {
+  return ref.watch(adminApiProvider).getAdminProperty(id);
+});
+
 /// Invitations sent and not yet taken up, expired ones included.
 final invitationsProvider = FutureProvider<List<PendingInvitation>>((ref) async {
   return await ref.watch(adminApiProvider).listInvitations() ?? const [];

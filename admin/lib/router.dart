@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'screens/accept_invitation_screen.dart';
+import 'screens/admin_property_screen.dart';
 import 'screens/delete_account_info_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/invitations_screen.dart';
@@ -117,6 +118,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => NoTransitionPage(
               child: LandlordDetailScreen(landlordId: state.pathParameters['id']!),
             ),
+            routes: [
+              // Under the landlord, so Back and the rail both still say where
+              // this property belongs.
+              GoRoute(
+                path: 'properties/:propertyId',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: AdminPropertyScreen(
+                    landlordId: state.pathParameters['id']!,
+                    propertyId: state.pathParameters['propertyId']!,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

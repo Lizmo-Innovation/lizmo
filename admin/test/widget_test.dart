@@ -7,6 +7,7 @@ import 'package:lizmo_admin/admin_providers.dart';
 import 'package:lizmo_admin/main.dart';
 import 'package:lizmo_admin/router.dart';
 import 'package:lizmo_admin/screens/accept_invitation_screen.dart';
+import 'package:lizmo_admin/screens/admin_property_screen.dart';
 import 'package:lizmo_admin/screens/admin_login_screen.dart';
 import 'package:lizmo_admin/screens/delete_account_info_screen.dart';
 import 'package:lizmo_admin/screens/settings_screen.dart';
@@ -71,6 +72,7 @@ Widget _app(
   List<PendingInvitation>? invitations,
   List<PlatformPaymentForAdmin>? payments,
   List<PlatformStatementResponse>? statements,
+  AdminPropertyDetail? property,
   AdminApi? api,
 }) =>
     ProviderScope(
@@ -83,6 +85,8 @@ Widget _app(
         platformPaymentsProvider.overrideWith((ref) async => payments ?? const []),
         landlordStatementsProvider
             .overrideWith((ref, id) async => statements ?? const []),
+        if (property != null)
+          adminPropertyProvider.overrideWith((ref, id) async => property),
         if (api != null) adminApiProvider.overrideWithValue(api),
       ],
       child: const LizmoAdminApp(),
@@ -1014,6 +1018,157 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.rejected, isEmpty);
+    });
+  });
+
+  group('one property', () {
+    AdminPropertyTenancy tenancy(String name, String phone, String email) =>
+        AdminPropertyTenancy(
+          leaseId: 'lease-$name',
+          tenantName: name,
+          tenantPhone: phone,
+          tenantEmail: email,
+          startDate: DateTime.utc(2026, 9, 1),
+          rent: 2500,
+        );
+
+    AdminPropertyDetail detail({List<AdminPropertyUnit>? units}) => AdminPropertyDetail(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: AdminPropertyDetailTypeEnum.fromJson('BOARDING_HOUSE'),
+          code: 'PH4CP4G2',
+          accountStatus: 'ACTIVE',
+          landlordId: 'l1',
+          landlordName: 'Elena Bautista',
+          unitCount: units == null ? 2 : units.length,
+          bedCount: units == null ? 3 : 0,
+          leased: units == null ? 2 : 0,
+          outOfService: units == null ? 1 : 0,
+          units: units ??
+              [
+                AdminPropertyUnit(
+                  id: 'u1',
+                  unitNumber: '1A',
+                  floor: '1',
+                  rentalMode: AdminPropertyUnitRentalModeEnum.fromJson('WHOLE_UNIT'),
+                  capacity: 1,
+                  rent: 7000,
+                  occupancy: AdminPropertyUnitOccupancyEnum.fromJson('LEASED'),
+                  tenancy: tenancy('Bea Cruz', '09170000002', 'bea@example.com'),
+                ),
+                AdminPropertyUnit(
+                  id: 'u2',
+                  unitNumber: '2B',
+                  floor: '2',
+                  rentalMode: AdminPropertyUnitRentalModeEnum.fromJson('BEDSPACE'),
+                  capacity: 3,
+                  rent: 2500,
+                  occupancy: AdminPropertyUnitOccupancyEnum.fromJson('PARTLY_LEASED'),
+                  beds: [
+                    AdminPropertyBed(
+                      id: 'b1',
+                      label: 'Bed 1',
+                      rent: 2500,
+                      occupancy: AdminPropertyBedOccupancyEnum.fromJson('LEASED'),
+                      tenancy: tenancy('Ana Reyes', '09170000001', 'ana@example.com'),
+                    ),
+                    AdminPropertyBed(
+                      id: 'b2',
+                      label: 'Bed 2',
+                      rent: 2500,
+                      occupancy: AdminPropertyBedOccupancyEnum.fromJson('VACANT'),
+                    ),
+                    AdminPropertyBed(
+                      id: 'b3',
+                      label: 'Bed 3',
+                      rent: 2500,
+                      occupancy: AdminPropertyBedOccupancyEnum.fromJson('OUT_OF_SERVICE'),
+                    ),
+                  ],
+                ),
+              ],
+        );
+
+    Widget app(AdminPropertyDetail property) => _app(
+          _signedIn({LizmoProfile.admin}),
+          landlords: [_landlord()],
+          landlord: LandlordDetail(landlord: _landlord(), properties: [_property()]),
+          property: property,
+        );
+
+    Future<void> openProperty(WidgetTester tester) async {
+      _desktop(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(InkWell, 'Landlords'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Elena Bautista').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a property on the landlord page opens its units', (tester) async {
+      await tester.pumpWidget(app(detail()));
+      await openProperty(tester);
+
+      expect(find.byType(AdminPropertyScreen), findsOneWidget);
+      expect(find.text('Unit 1A'), findsOneWidget);
+      expect(find.text('Unit 2B'), findsOneWidget);
+    });
+
+    testWidgets('the summary counts units, beds, what is leased and what is not in service',
+        (tester) async {
+      await tester.pumpWidget(app(detail()));
+      await openProperty(tester);
+
+      expect(find.text('2 units · 3 beds · 2 leased · 1 out of service'), findsOneWidget);
+    });
+
+    /// So support can reach whoever lives there.
+    testWidgets('a leased unit names its tenant and how to reach them', (tester) async {
+      await tester.pumpWidget(app(detail()));
+      await openProperty(tester);
+
+      expect(find.text('Bea Cruz'), findsOneWidget);
+      expect(find.text('09170000002 · bea@example.com'), findsOneWidget);
+      expect(find.text('Since 1 Sep 2026'), findsNWidgets(2));
+      expect(find.widgetWithText(StatusChip, 'Leased'), findsNWidgets(2));
+    });
+
+    /// A boarding house reads room by room: the room, then each of its beds.
+    testWidgets('a shared room lists its beds, each with its own standing', (tester) async {
+      await tester.pumpWidget(app(detail()));
+      await openProperty(tester);
+
+      expect(find.text('Floor 2 · Bedspace · 3 beds'), findsOneWidget);
+      expect(find.text('1 of 3 beds leased'), findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Partly leased'), findsOneWidget);
+      expect(find.text('Bed 1'), findsOneWidget);
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('Bed 2'), findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Vacant'), findsOneWidget);
+      expect(find.text('Bed 3'), findsOneWidget);
+      expect(find.widgetWithText(StatusChip, 'Out of service'), findsOneWidget);
+    });
+
+    testWidgets('back goes to the landlord it belongs to', (tester) async {
+      await tester.pumpWidget(app(detail()));
+      await openProperty(tester);
+
+      expect(find.text('Back to Elena Bautista'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('back-to-landlord')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LandlordDetailScreen), findsOneWidget);
+      expect(find.byType(AdminPropertyScreen), findsNothing);
+    });
+
+    testWidgets('a property with no units says so', (tester) async {
+      await tester.pumpWidget(app(detail(units: const [])));
+      await openProperty(tester);
+
+      expect(find.text('This property has no units yet.'), findsOneWidget);
     });
   });
 
