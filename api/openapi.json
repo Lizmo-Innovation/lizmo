@@ -5802,6 +5802,9 @@
                     "remarks": {
                         "type": "string"
                     },
+                    "rejectionReason": {
+                        "type": "string"
+                    },
                     "proofUrl": {
                         "type": "string"
                     },

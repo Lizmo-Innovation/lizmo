@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **sentTo** | **String** |  | [optional] 
 **status** | **String** |  | [optional] 
 **remarks** | **String** |  | [optional] 
+**rejectionReason** | **String** |  | [optional] 
 **proofUrl** | **String** |  | [optional] 
 **proofUrlExpiresInSeconds** | **int** |  | [optional] 
 

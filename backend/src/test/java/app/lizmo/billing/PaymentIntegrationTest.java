@@ -200,7 +200,42 @@ class PaymentIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + anaToken))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].status").value("REJECTED"))
-                .andExpect(jsonPath("$[0].remarks").value("Nothing arrived in my GCash."));
+                .andExpect(jsonPath("$[0].rejectionReason").value("Nothing arrived in my GCash."))
+                .andExpect(jsonPath("$[0].remarks").doesNotExist());
+    }
+
+    /**
+     * The reason used to be written over the tenant's own note, so refusing a
+     * payment erased what the tenant said and left them reading the
+     * landlord's words as if they were their own.
+     */
+    @Test
+    void refusing_a_payment_keeps_what_the_tenant_wrote() throws Exception {
+        String payment = idOf(declare(2500, null, "Paid from my sister's number"));
+        reject(payment, "Nothing arrived in my GCash.").andExpect(status().isOk())
+                .andExpect(jsonPath("$.remarks").value("Paid from my sister's number"))
+                .andExpect(jsonPath("$.rejectionReason").value("Nothing arrived in my GCash."));
+
+        // And the landlord sees the same two, apart.
+        mvc.perform(get("/api/v1/leases/" + leaseId + "/payments")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$[0].remarks").value("Paid from my sister's number"))
+                .andExpect(jsonPath("$[0].rejectionReason").value("Nothing arrived in my GCash."));
+    }
+
+    @Test
+    void a_refusal_without_a_reason_has_none() throws Exception {
+        String payment = idOf(declare(2500, null, "Paid from my sister's number"));
+        reject(payment, "   ").andExpect(status().isOk())
+                .andExpect(jsonPath("$.rejectionReason").doesNotExist())
+                .andExpect(jsonPath("$.remarks").value("Paid from my sister's number"));
+    }
+
+    @Test
+    void a_payment_nobody_refused_has_no_reason() throws Exception {
+        String payment = idOf(declare(2500, null, "Paid from my sister's number"));
+        confirm(payment).andExpect(status().isOk())
+                .andExpect(jsonPath("$.rejectionReason").doesNotExist());
     }
 
     @Test
@@ -408,9 +443,16 @@ class PaymentIntegrationTest extends IntegrationTest {
     }
 
     private ResultActions declare(int amount, byte[] proof) throws Exception {
+        return declare(amount, proof, null);
+    }
+
+    private ResultActions declare(int amount, byte[] proof, String remarks) throws Exception {
         // Files first, header last: .header() narrows the builder type and
         // .file() is no longer available after it.
         var call = formParts(multipart("/api/v1/me/leases/" + leaseId + "/payments"), amount);
+        if (remarks != null) {
+            call = call.part(new MockPart("remarks", remarks.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        }
         if (proof != null) {
             call = call.file(new MockMultipartFile("proof", "p.jpg", "image/jpeg", proof));
         }

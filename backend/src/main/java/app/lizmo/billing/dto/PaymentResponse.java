@@ -15,6 +15,10 @@ import java.util.UUID;
  *                    reads without a second request per row.
  * @param sentTo where the payer said the money went, as the landlord's channel
  *               read when they chose it. Null for cash and older payments.
+ * @param remarks the payer's own note, as they wrote it.
+ * @param rejectionReason why the landlord said it did not arrive, when it was
+ *                        refused with a reason. Null otherwise, and for
+ *                        payments refused before this was kept apart.
  * @param proofUrl a presigned link to the screenshot, valid for a few minutes,
  *                 or null when none was attached. Proof is optional: cash is
  *                 real, and a required field nobody can satisfy becomes one
@@ -31,6 +35,7 @@ public record PaymentResponse(
         String sentTo,
         PaymentStatus status,
         String remarks,
+        String rejectionReason,
         String proofUrl,
         long proofUrlExpiresInSeconds) {
 
@@ -46,6 +51,7 @@ public record PaymentResponse(
                 payment.getSentTo(),
                 payment.getStatus(),
                 payment.getRemarks(),
+                payment.getRejectionReason(),
                 proofUrl,
                 expiresIn);
     }

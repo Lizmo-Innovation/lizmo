@@ -22,6 +22,7 @@ class PaymentResponse {
     this.sentTo,
     this.status,
     this.remarks,
+    this.rejectionReason,
     this.proofUrl,
     this.proofUrlExpiresInSeconds,
   });
@@ -92,6 +93,14 @@ class PaymentResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
+  String? rejectionReason;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
   String? proofUrl;
 
   ///
@@ -113,6 +122,7 @@ class PaymentResponse {
     other.sentTo == sentTo &&
     other.status == status &&
     other.remarks == remarks &&
+    other.rejectionReason == rejectionReason &&
     other.proofUrl == proofUrl &&
     other.proofUrlExpiresInSeconds == proofUrlExpiresInSeconds;
 
@@ -128,11 +138,12 @@ class PaymentResponse {
     (sentTo == null ? 0 : sentTo!.hashCode) +
     (status == null ? 0 : status!.hashCode) +
     (remarks == null ? 0 : remarks!.hashCode) +
+    (rejectionReason == null ? 0 : rejectionReason!.hashCode) +
     (proofUrl == null ? 0 : proofUrl!.hashCode) +
     (proofUrlExpiresInSeconds == null ? 0 : proofUrlExpiresInSeconds!.hashCode);
 
   @override
-  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds]';
+  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, rejectionReason=$rejectionReason, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -181,6 +192,11 @@ class PaymentResponse {
     } else {
       json[r'remarks'] = null;
     }
+    if (this.rejectionReason != null) {
+      json[r'rejectionReason'] = this.rejectionReason;
+    } else {
+      json[r'rejectionReason'] = null;
+    }
     if (this.proofUrl != null) {
       json[r'proofUrl'] = this.proofUrl;
     } else {
@@ -220,6 +236,7 @@ class PaymentResponse {
         sentTo: mapValueOfType<String>(json, r'sentTo'),
         status: PaymentResponseStatusEnum.fromJson(json[r'status']),
         remarks: mapValueOfType<String>(json, r'remarks'),
+        rejectionReason: mapValueOfType<String>(json, r'rejectionReason'),
         proofUrl: mapValueOfType<String>(json, r'proofUrl'),
         proofUrlExpiresInSeconds: mapValueOfType<int>(json, r'proofUrlExpiresInSeconds'),
       );

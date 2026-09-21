@@ -64,6 +64,10 @@ public class Payment {
     @Column(name = "remarks")
     private String remarks;
 
+    /** The landlord's word on a refusal. Apart from remarks, which are the payer's. */
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
     /**
      * Where the payer said the money went, as the landlord's channel read at
      * that moment: "GCash · Ariel Asebias · 09771231234". Null for cash.
@@ -125,9 +129,9 @@ public class Payment {
         this.status = PaymentStatus.REJECTED;
         this.verifiedBy = landlordId;
         this.verifiedAt = at;
-        if (why != null && !why.isBlank()) {
-            this.remarks = why.trim();
-        }
+        // Beside the payer's remarks, not over them: both are worth keeping,
+        // and the tenant needs to know which words are the landlord's.
+        this.rejectionReason = why == null || why.isBlank() ? null : why.trim();
     }
 
     /** Written once, when the payment is made, from the channel the payer picked. */
@@ -184,6 +188,10 @@ public class Payment {
 
     public String getRemarks() {
         return remarks;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
     }
 
     public Instant getCreatedAt() {
