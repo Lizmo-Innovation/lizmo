@@ -98,6 +98,16 @@ void main() {
       expect((status as RentPaid).nextDue, DateTime.utc(2026, 2, 28));
     });
 
+    /// October settled on the 3rd is not due again on the 5th.
+    test('a month paid early moves the next rent day past it', () {
+      final octPaid = _month('oct', DateTime.utc(2026, 10, 5), paid: 2500, label: 'October 2026');
+      final status = _status([sep, octPaid], today: DateTime(2026, 10, 3));
+
+      status as RentPaid;
+      expect(status.nextDue, DateTime.utc(2026, 11, 5));
+      expect(status.lastPaid?.label, 'October 2026');
+    });
+
     test('on rent day itself, the next one is next month', () {
       final status = _status([sep], today: DateTime(2026, 9, 5));
 

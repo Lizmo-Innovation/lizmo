@@ -6692,8 +6692,14 @@ void _tenantLeaseTests() {
     Widget appWith(
       List<BillingPeriodResponse> periods, {
       List<PaymentResponse> payments = const [],
+      PaymentDetails? details,
+      DateTime? today,
     }) => ProviderScope(
       overrides: [
+        // Two days before the months below fall due, unless a test says.
+        todayProvider.overrideWithValue(today ?? DateTime(2026, 10, 3)),
+        if (details != null)
+          leasePaymentDetailsProvider('l1').overrideWith((ref) async => details),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
         ),
@@ -6744,22 +6750,103 @@ void _tenantLeaseTests() {
           matching: finder,
         );
 
+    PaymentResponse payment(
+      PaymentResponseStatusEnum status, {
+      String? reason,
+      String? sentTo,
+    }) =>
+        PaymentResponse(
+          id: 'p1',
+          billingPeriodId: 'b1',
+          amountPaid: 2500,
+          paymentDate: DateTime.utc(2026, 10, 3),
+          sentTo: sentTo,
+          status: status,
+          rejectionReason: reason,
+        );
+
+    // The kicker is the Text itself, keyed.
+    Finder kicker(String text) => dueCard(find.byWidgetPredicate((widget) =>
+        widget is Text &&
+        widget.key == const ValueKey('rent-status-kicker') &&
+        widget.data == text));
+
     /// Home said nothing about rent beyond the monthly figure. Somebody who
-    /// opens the app on the 4th wants to know whether it is due tomorrow.
+    /// opens the app on the 3rd wants to know that it is due on the 5th.
     testWidgets('Home says what is due, and when', (tester) async {
       await tester.pumpWidget(appWith([month()]));
       await tester.pumpAndSettle();
 
-      expect(dueCard(find.text('₱2500 due on 5 Oct')), findsOneWidget);
+      expect(kicker('Due in 2 days'), findsOneWidget);
+      expect(dueCard(find.text('₱2,500 due on 5 Oct')), findsOneWidget);
       expect(dueCard(find.text('I have paid')), findsOneWidget);
+      expect(dueCard(find.text('How to pay')), findsOneWidget);
     });
 
-    testWidgets('late rent on Home is called late', (tester) async {
-      await tester.pumpWidget(appWith([month(overdue: true)]));
+    testWidgets('on rent day it is due today', (tester) async {
+      await tester.pumpWidget(appWith([month()], today: DateTime(2026, 10, 5)));
       await tester.pumpAndSettle();
 
-      expect(dueCard(find.text('₱2500 is late')), findsOneWidget);
-      expect(dueCard(find.text('October 2026 was due on 5 Oct.')), findsOneWidget);
+      expect(kicker('Due today'), findsOneWidget);
+    });
+
+    /// Five days out, the same day the reminder goes. Before that a month
+    /// that is open is not yet something to act on.
+    testWidgets('a month more than five days off is not due yet',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()], today: DateTime(2026, 9, 28)));
+      await tester.pumpAndSettle();
+
+      expect(kicker('Paid up'), findsOneWidget);
+      expect(dueCard(find.text('Next rent: ₱2,500 on 5 Oct.')), findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsNothing);
+    });
+
+    /// The number is about to be pasted into GCash; retyped digits are how
+    /// money goes to the wrong account.
+    testWidgets('due soon offers the landlord\'s account to copy',
+        (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      await tester.pumpWidget(appWith([month()],
+          details: PaymentDetails(channels: [
+            PaymentChannelView(
+              id: 'c1',
+              channel: 'GCash',
+              accountName: 'Elena Reyes',
+              accountNumber: '09171112222',
+              qrUrlExpiresInSeconds: 600,
+            ),
+          ])));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.text('GCash · Elena Reyes')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('rent-status-copy')));
+      await tester.pumpAndSettle();
+
+      expect(copied, '09171112222');
+      expect(dueCard(find.text('Copied')), findsOneWidget);
+    });
+
+    testWidgets('how to pay opens the Rent tab', (tester) async {
+      await tester.pumpWidget(appWith([month()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(dueCard(find.text('How to pay')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantPaymentsScreen), findsOneWidget);
     });
 
     testWidgets('saying you paid from Home opens the same sheet',
@@ -6777,34 +6864,100 @@ void _tenantLeaseTests() {
     /// the first one had been lost.
     testWidgets('a payment already said is not asked for again',
         (tester) async {
-      await tester.pumpWidget(appWith([month()], payments: [
-        PaymentResponse(
-          id: 'p1',
-          billingPeriodId: 'b1',
-          amountPaid: 2500,
-          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
-        ),
-      ]));
+      await tester.pumpWidget(appWith([month()],
+          payments: [payment(PaymentResponseStatusEnum.PENDING_VERIFICATION)]));
       await tester.pumpAndSettle();
 
-      expect(dueCard(find.text('Waiting for your landlord')), findsOneWidget);
+      expect(kicker('Waiting for your landlord'), findsOneWidget);
+      expect(dueCard(find.text('You paid ₱2,500 on 3 Oct')), findsOneWidget);
       expect(dueCard(find.text('I have paid')), findsNothing);
+      expect(dueCard(find.text('How to pay')), findsNothing);
     });
 
     testWidgets('a waiting payment on Home says which account it went to',
         (tester) async {
       await tester.pumpWidget(appWith([month()], payments: [
-        PaymentResponse(
-          id: 'p1',
-          billingPeriodId: 'b1',
-          amountPaid: 2500,
-          sentTo: 'GCash · Elena Reyes · 09171112222',
-          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
-        ),
+        payment(PaymentResponseStatusEnum.PENDING_VERIFICATION,
+            sentTo: 'GCash · Elena Reyes · 09171112222'),
       ]));
       await tester.pumpAndSettle();
 
-      expect(dueCard(find.textContaining('to GCash · Elena Reyes · 09171112222')), findsOneWidget);
+      expect(dueCard(find.textContaining('Sent to GCash · Elena Reyes · 09171112222')),
+          findsOneWidget);
+    });
+
+    /// Their words, quoted, so the tenant knows whose they are -- and what to
+    /// fix before sending it again.
+    testWidgets('a refused payment quotes the landlord\'s reason',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()], payments: [
+        payment(PaymentResponseStatusEnum.REJECTED,
+            reason: 'No GCash transfer on 3 Oct.'),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(kicker('Not received'), findsOneWidget);
+      expect(dueCard(find.text('Your landlord didn\'t find your ₱2,500')), findsOneWidget);
+      expect(dueCard(find.text('"No GCash transfer on 3 Oct."')), findsOneWidget);
+    });
+
+    testWidgets('a refusal without a reason says there was none',
+        (tester) async {
+      await tester.pumpWidget(appWith([month()],
+          payments: [payment(PaymentResponseStatusEnum.REJECTED)]));
+      await tester.pumpAndSettle();
+
+      expect(dueCard(find.textContaining('They didn\'t say why')), findsOneWidget);
+    });
+
+    testWidgets('telling them again opens the same sheet', (tester) async {
+      await tester.pumpWidget(appWith([month()], payments: [
+        payment(PaymentResponseStatusEnum.REJECTED, reason: 'Nothing arrived'),
+      ]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(dueCard(find.text('Tell them again')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tell your landlord you have paid'), findsOneWidget);
+    });
+
+    testWidgets('late rent on Home is called late', (tester) async {
+      await tester.pumpWidget(appWith([month(overdue: true)],
+          today: DateTime(2026, 10, 6)));
+      await tester.pumpAndSettle();
+
+      expect(kicker('Late'), findsOneWidget);
+      expect(dueCard(find.text('₱2,500 overdue')), findsOneWidget);
+      expect(dueCard(find.text('October 2026 was due on 5 Oct.')), findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsOneWidget);
+    });
+
+    testWidgets('months late are counted and added up', (tester) async {
+      await tester.pumpWidget(appWith([
+        month(overdue: true),
+        month(id: 'b2', label: 'November 2026', overdue: true),
+      ], today: DateTime(2026, 11, 20)));
+      await tester.pumpAndSettle();
+
+      expect(kicker('2 months late'), findsOneWidget);
+      expect(dueCard(find.text('₱5,000 overdue')), findsOneWidget);
+    });
+
+    /// Still late until the landlord confirms, but the tenant sees their
+    /// payment was received, and is not asked for it twice.
+    testWidgets('late with a payment waiting says so, and does not ask again',
+        (tester) async {
+      await tester.pumpWidget(appWith([month(overdue: true)],
+          payments: [payment(PaymentResponseStatusEnum.PENDING_VERIFICATION)],
+          today: DateTime(2026, 10, 8)));
+      await tester.pumpAndSettle();
+
+      expect(kicker('Late'), findsOneWidget);
+      expect(find.byKey(const ValueKey('rent-status-note')), findsOneWidget);
+      expect(dueCard(find.textContaining('Waiting for your landlord to confirm')),
+          findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsNothing);
     });
 
     testWidgets('nothing owed says so', (tester) async {
@@ -6813,8 +6966,11 @@ void _tenantLeaseTests() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(dueCard(find.text('You are paid up')), findsOneWidget);
-      expect(dueCard(find.textContaining('due on the 5th')), findsOneWidget);
+      expect(kicker('Paid up'), findsOneWidget);
+      expect(dueCard(find.text('You\'re all set for October 2026')), findsOneWidget);
+      // Paid early: October is settled, so the next rent is November's.
+      expect(dueCard(find.text('Next rent: ₱2,500 on 5 Nov.')), findsOneWidget);
+      expect(dueCard(find.text('I have paid')), findsNothing);
     });
 
     /// It showed the monthly rent, from before payments were recorded.
@@ -6994,6 +7150,7 @@ void _tenantLeaseTests() {
       _FakeRentApi? api,
     }) => ProviderScope(
       overrides: [
+        todayProvider.overrideWithValue(DateTime(2026, 10, 3)),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
         ),
@@ -7942,6 +8099,7 @@ void _tenantLeaseTests() {
       _FakeRentApi? api,
     }) => ProviderScope(
       overrides: [
+        todayProvider.overrideWithValue(DateTime(2026, 10, 3)),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
         ),

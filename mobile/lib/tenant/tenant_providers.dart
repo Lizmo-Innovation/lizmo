@@ -116,3 +116,9 @@ final myAccountApiProvider = Provider<MyAccountApi>((ref) {
 final canDeleteMyAccountProvider = FutureProvider.autoDispose<void>((ref) async {
   await ref.watch(myAccountApiProvider).checkAccountDeletable();
 });
+
+/// Today, for anything that counts days to rent.
+///
+/// A provider rather than DateTime.now() at the call site, so a test can say
+/// what day it is. Read once per build; nothing needs it to tick.
+final todayProvider = Provider<DateTime>((ref) => DateTime.now());

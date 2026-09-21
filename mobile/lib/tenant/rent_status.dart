@@ -146,8 +146,14 @@ RentStatus rentStatus({
     );
   }
 
+  // Not simply the next rent day on the calendar: a month already billed and
+  // paid -- October settled on the 3rd -- is not due on the 5th. The next one
+  // is the first rent day after the last month billed.
+  final calendar = _nextRentDay(day, dueDay);
+  final billed = months.map(_due).where((due) => due.year < 9999).toList()..sort();
+  final afterBilled = billed.isEmpty ? null : _nextRentDay(billed.last, dueDay);
   return RentPaid(
-    nextDue: _nextRentDay(day, dueDay),
+    nextDue: afterBilled != null && afterBilled.isAfter(calendar) ? afterBilled : calendar,
     amount: rent,
     lastPaid: _lastPaid(months),
   );

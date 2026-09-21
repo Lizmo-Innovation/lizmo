@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
-import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
-import '../widgets/declare_payment_sheet.dart';
 import '../widgets/notification_bell.dart';
+import '../widgets/rent_status_card.dart';
 import '../widgets/role_switcher.dart';
 
 /// What is waiting on the tenant.
@@ -108,7 +107,7 @@ class TenantHomeScreen extends ConsumerWidget {
                   ],
 
                   if (lease != null) ...[
-                    _RentDue(lease: lease),
+                    RentStatusCard(lease: lease),
                     _Settled(lease: lease),
                     const SizedBox(height: 12),
                   ],
@@ -187,136 +186,6 @@ class _Waiting extends StatelessWidget {
       title: 'Waiting for a reply',
       detail: 'You asked for $where at ${request.propertyName ?? 'a property'}. '
           'Your landlord has not answered yet.',
-    );
-  }
-}
-
-/// What is owed right now, and the way to say it has been paid.
-///
-/// Home said nothing about rent: the monthly figure in the header, and a card
-/// saying the tenancy was active. Somebody who opens the app on the 4th wants
-/// to know whether rent is due tomorrow, and to say they paid it without going
-/// looking for where.
-///
-/// The oldest month still owed, since that is the one a landlord is waiting
-/// on. Nothing at all while the months are loading or failed to load -- the
-/// Rent tab says why -- because "paid up" over a list that never arrived
-/// would be a false all-clear.
-class _RentDue extends ConsumerWidget {
-  const _RentDue({required this.lease});
-
-  final LeaseResponse lease;
-
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
-  static String _day(DateTime? date) =>
-      date == null ? '' : '${date.day} ${_months[date.month - 1]}';
-
-  Future<void> _declare(
-    BuildContext context,
-    WidgetRef ref,
-    BillingPeriodResponse period,
-  ) async {
-    final said = await DeclarePaymentSheet.show(
-      context,
-      periodLabel: period.label ?? 'this month',
-      outstanding: period.outstanding ?? 0,
-      payment: ref.read(leasePaymentDetailsProvider(lease.id!)).valueOrNull,
-    );
-    if (said == null || !context.mounted) return;
-
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await sendDeclaration(ref, leaseId: lease.id!, period: period, said: said);
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Told your landlord. They will confirm it.'),
-      ));
-    } on ApiFailure catch (failure) {
-      messenger.showSnackBar(SnackBar(content: Text(failure.message)));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final months = ref.watch(myBillingProvider(lease.id!)).valueOrNull;
-    // A tenancy that has not started has no months yet; the card below it
-    // already says the tenancy exists.
-    if (months == null || months.isEmpty) return const SizedBox.shrink();
-
-    final payments =
-        ref.watch(myPaymentsProvider(lease.id!)).valueOrNull ?? const [];
-    // Watched, not read, so the sheet has the landlord's channels by the time
-    // somebody taps "I have paid" here.
-    ref.watch(leasePaymentDetailsProvider(lease.id!));
-    final owing = months.where((month) => (month.outstanding ?? 0) > 0).toList();
-
-    final Widget card;
-    if (owing.isEmpty) {
-      card = _Card(
-        colour: LizmoColors.white,
-        textColour: LizmoColors.ink,
-        icon: Icons.check_circle_outline,
-        title: 'You are paid up',
-        detail: 'Your next rent is due on the '
-            '${TenantHomeScreen._ordinal(lease.dueDateDay ?? 1)}.',
-      );
-    } else {
-      // The server sends oldest first, and the oldest is the one owed longest.
-      final oldest = owing.first;
-      final left = oldest.outstanding ?? 0;
-      final said = payments.where((payment) =>
-          payment.billingPeriodId == oldest.id &&
-          payment.status == PaymentResponseStatusEnum.PENDING_VERIFICATION);
-
-      if (said.isNotEmpty) {
-        // Not asked again. Somebody who has already said they paid and is
-        // offered "I have paid" a second time would reasonably think the
-        // first one was lost.
-        card = _Card(
-          colour: LizmoColors.amberBg,
-          textColour: LizmoColors.amberText,
-          icon: Icons.hourglass_empty,
-          title: 'Waiting for your landlord',
-          detail: 'You said you paid ₱${(said.first.amountPaid ?? 0).toStringAsFixed(0)} '
-              'for ${oldest.label}'
-              '${said.first.sentTo == null ? '' : ' to ${said.first.sentTo}'}'
-              '. It counts once they confirm it.',
-        );
-      } else if (oldest.overdue == true) {
-        final late = owing.where((month) => month.overdue == true).length;
-        final total =
-            owing.fold<num>(0, (sum, month) => sum + (month.outstanding ?? 0));
-        card = _Card(
-          colour: LizmoColors.redBg,
-          textColour: LizmoColors.red,
-          icon: Icons.error_outline,
-          title: '₱${total.toStringAsFixed(0)} is late',
-          detail: late == 1
-              ? '${oldest.label} was due on ${_day(oldest.dueDate)}.'
-              : '$late months are overdue, the oldest since '
-                  '${_day(oldest.dueDate)}.',
-          actionLabel: 'I have paid',
-          onAction: (context) => _declare(context, ref, oldest),
-        );
-      } else {
-        card = _Card(
-          colour: LizmoColors.white,
-          textColour: LizmoColors.ink,
-          icon: Icons.receipt_long_outlined,
-          title: '₱${left.toStringAsFixed(0)} due on ${_day(oldest.dueDate)}',
-          detail: 'Rent for ${oldest.label}.',
-          actionLabel: 'I have paid',
-          onAction: (context) => _declare(context, ref, oldest),
-        );
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: KeyedSubtree(key: const ValueKey('rent-due'), child: card),
     );
   }
 }

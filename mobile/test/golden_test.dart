@@ -10,6 +10,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/splash_screen.dart';
+import 'package:lizmo/tenant/tenant_providers.dart';
 
 /// Renders each role's home screen for visual review.
 /// Regenerate with `flutter test test/golden_test.dart --update-goldens`.
@@ -357,4 +358,129 @@ void main() {
       matchesGoldenFile('goldens/splash_offline.png'),
     );
   });
+
+  // ---- The rent card on a tenant's Home, one per state ----------------------
+
+  BillingPeriodResponse month(String id, String label, int m,
+          {num paid = 0, bool overdue = false}) =>
+      BillingPeriodResponse(
+        id: id,
+        label: label,
+        periodStart: DateTime.utc(2026, m, 1),
+        periodEnd: DateTime.utc(2026, m + 1, 0),
+        dueDate: DateTime.utc(2026, m, 5),
+        amountDue: 2500,
+        amountPaid: paid,
+        outstanding: 2500 - paid,
+        status: paid >= 2500
+            ? BillingPeriodResponseStatusEnum.PAID
+            : BillingPeriodResponseStatusEnum.UNPAID,
+        overdue: overdue,
+      );
+
+  PaymentResponse payment(PaymentResponseStatusEnum status, {String? reason}) =>
+      PaymentResponse(
+        id: 'p1',
+        billingPeriodId: 'oct',
+        amountPaid: 2500,
+        paymentDate: DateTime.utc(2026, 10, 3),
+        sentTo: 'GCash · Elena Bautista · 0917 111 2222',
+        status: status,
+        rejectionReason: reason,
+      );
+
+  Widget tenantHome(
+    List<BillingPeriodResponse> months, {
+    List<PaymentResponse> payments = const [],
+    required DateTime today,
+  }) =>
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeAuth(AuthSignedIn(Session(
+              userId: 'u1',
+              name: 'Ana Reyes',
+              profiles: {LizmoProfile.tenant},
+              accessToken: 'token',
+            ))),
+          ),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          myNotificationsProvider.overrideWith(
+            (ref) async => const <NotificationResponse>[],
+          ),
+          todayProvider.overrideWithValue(today),
+          myTenantProfileProvider.overrideWith(
+            (ref) async => TenantProfileResponse(readyForALease: true),
+          ),
+          myTenantDocumentsProvider.overrideWith(
+            (ref) async => const <TenantDocumentResponse>[],
+          ),
+          myRentalRequestsProvider.overrideWith(
+            (ref) async => const <RentalRequestResponse>[],
+          ),
+          myLeasesProvider.overrideWith((ref) async => [
+                LeaseResponse(
+                  id: 'l1',
+                  tenantId: 't1',
+                  propertyName: 'Sunrise Apartments',
+                  unitNumber: '2B',
+                  bedLabel: 'Bed 1',
+                  rentAmount: 2500,
+                  dueDateDay: 5,
+                  startDate: DateTime.utc(2026, 8, 1),
+                  status: LeaseResponseStatusEnum.ACTIVE,
+                ),
+              ]),
+          myLeaseDocumentsProvider('l1').overrideWith(
+            (ref) async => const <LeaseDocumentResponse>[],
+          ),
+          myBillingProvider('l1').overrideWith((ref) async => months),
+          myPaymentsProvider('l1').overrideWith((ref) async => payments),
+          leasePaymentDetailsProvider('l1').overrideWith((ref) async => PaymentDetails(
+                channels: [
+                  PaymentChannelView(
+                    id: 'c1',
+                    channel: 'GCash',
+                    accountName: 'Elena Bautista',
+                    accountNumber: '0917 111 2222',
+                    qrUrlExpiresInSeconds: 600,
+                  ),
+                ],
+              )),
+        ],
+        child: const LizmoApp(),
+      );
+
+  final sep = month('sep', 'September 2026', 9, paid: 2500);
+  final oct = month('oct', 'October 2026', 10);
+  final states = <String, Widget>{
+    'paid': tenantHome([sep], today: DateTime(2026, 9, 20)),
+    'due_soon': tenantHome([sep, oct], today: DateTime(2026, 10, 2)),
+    'waiting': tenantHome([sep, oct],
+        payments: [payment(PaymentResponseStatusEnum.PENDING_VERIFICATION)],
+        today: DateTime(2026, 10, 3)),
+    'not_received': tenantHome([sep, oct],
+        payments: [
+          payment(PaymentResponseStatusEnum.REJECTED,
+              reason: 'No GCash transfer on 3 Oct. Please send the reference number.'),
+        ],
+        today: DateTime(2026, 10, 4)),
+    'late': tenantHome([
+      month('sep', 'September 2026', 9, overdue: true),
+      month('oct', 'October 2026', 10, overdue: true),
+    ], today: DateTime(2026, 10, 12)),
+  };
+
+  for (final entry in states.entries) {
+    testWidgets('tenant home rent: ${entry.key}', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(entry.value);
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(LizmoApp),
+        matchesGoldenFile('goldens/tenant_rent_${entry.key}.png'),
+      );
+    });
+  }
 }
