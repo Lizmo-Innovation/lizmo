@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../maintenance/maintenance_providers.dart';
 import '../platform/lizmo_billing_providers.dart';
 import '../property/property_providers.dart';
 import '../widgets/account_sheet.dart';
@@ -10,6 +11,7 @@ import '../widgets/collections_card.dart';
 import '../widgets/lizmo_statement_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/occupancy_card.dart';
+import '../widgets/repairs_card.dart';
 import '../widgets/role_switcher.dart';
 import '../widgets/requests_card.dart';
 
@@ -38,6 +40,8 @@ class LandlordHomeScreen extends ConsumerWidget {
     final requests = ref.watch(requestsToAnswerProvider).valueOrNull;
     final rent = ref.watch(collectionsProvider).valueOrNull;
     final lizmo = ref.watch(myLizmoStatementsProvider).valueOrNull;
+    final repairs = ref.watch(maintenanceToHandleProvider).valueOrNull;
+    final repairsWaiting = repairs == null ? null : repairsNeedingYou(repairs);
 
     // Only once every answer is in. Unknown is not nothing, and "nothing
     // needs you" over a queue that failed to load would be a lie told at the
@@ -48,7 +52,9 @@ class LandlordHomeScreen extends ConsumerWidget {
         (rent.awaitingConfirmation ?? 0) == 0 &&
         rent.inArrears.isEmpty &&
         lizmo != null &&
-        !lizmo.any(lizmoStatementNeedsPaying);
+        !lizmo.any(lizmoStatementNeedsPaying) &&
+        repairsWaiting != null &&
+        repairsWaiting.isEmpty;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -79,6 +85,12 @@ class LandlordHomeScreen extends ConsumerWidget {
                 value: _count(rent?.tenanciesInArrears),
                 label: 'Behind',
               ),
+              // Its own count rather than inside To answer: a room request
+              // and a leaking sink are different jobs.
+              LatticeHeaderStat(
+                value: _count(repairsWaiting?.length),
+                label: 'Repairs',
+              ),
             ],
           ),
           Expanded(
@@ -89,6 +101,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(occupancyProvider);
                 ref.invalidate(requestsToAnswerProvider);
                 ref.invalidate(myLizmoStatementsProvider);
+                ref.invalidate(maintenanceToHandleProvider);
               },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -99,6 +112,9 @@ class LandlordHomeScreen extends ConsumerWidget {
                   // elsewhere. Each card renders nothing when it has nothing.
                   const RequestsCard(),
                   const ConfirmPaymentsCard(),
+                  // Before arrears: a tenant is living with it now, and
+                  // arrears can wait a day.
+                  const RepairsCard(),
                   const ArrearsCard(),
                   // Last of the four: nobody is standing at the door over it,
                   // but left alone it locks every property they have.
@@ -178,7 +194,8 @@ class _AllCaughtUp extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Nobody is waiting for an answer, no payment is waiting '
-                    'to be confirmed, and no tenant is late.',
+                    'to be confirmed, no repair is waiting to be picked up, '
+                    'and no tenant is late.',
                     style: LizmoType.rowSub,
                   ),
                 ],

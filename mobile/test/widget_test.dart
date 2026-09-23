@@ -7581,6 +7581,9 @@ void _tenantLeaseTests() {
       List<AwaitingRow> awaiting = const [],
       List<RentalRequestForLandlord>? requests,
       List<PlatformStatementResponse> lizmo = const [],
+      // Pinned to none unless a test says; null leaves it unread.
+      List<MaintenanceReportResponse>? repairs = const [],
+      ApiFailure? repairsFail,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -7602,6 +7605,10 @@ void _tenantLeaseTests() {
             )),
         if (requests != null)
           requestsToAnswerProvider.overrideWith((ref) async => requests),
+        if (repairsFail != null)
+          maintenanceToHandleProvider.overrideWith((ref) async => throw repairsFail)
+        else if (repairs != null)
+          maintenanceToHandleProvider.overrideWith((ref) async => repairs),
         myLizmoStatementsProvider.overrideWith((ref) async => lizmo),
         ..._tenancyL1(),
       ],
@@ -7806,6 +7813,157 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();
 
+      expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
+    });
+
+    // ---- Repairs on Today -------------------------------------------------
+
+    MaintenanceReportResponse repair(
+      String id, {
+      String description = 'The ceiling fan grinds and stops',
+      MaintenanceReportResponseStatusEnum status =
+          MaintenanceReportResponseStatusEnum.SUBMITTED,
+      bool reopened = false,
+      int hoursAgo = 2,
+    }) =>
+        MaintenanceReportResponse(
+          id: id,
+          leaseId: 'l1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          tenantName: 'Ana Reyes',
+          description: description,
+          status: status,
+          reopened: reopened,
+          submittedAt: DateTime.now().subtract(Duration(hours: hoursAgo)),
+          updatedAt: DateTime.now().subtract(Duration(hours: hoursAgo)),
+        );
+
+    Finder inRepairs(Finder finder) => find.descendant(
+          of: find.byKey(const ValueKey('repairs-card')),
+          matching: finder,
+        );
+
+    /// A tenant living with a broken fan is somebody waiting, and Today used
+    /// to say "Nothing needs you" over them.
+    testWidgets('a new repair is on Today, and opens', (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], repairs: [repair('m1')]));
+      await tester.pumpAndSettle();
+
+      expect(inRepairs(find.text('Repairs')), findsOneWidget);
+      expect(inRepairs(find.text('1 new')), findsOneWidget);
+      expect(inRepairs(find.text('The ceiling fan grinds and stops')), findsOneWidget);
+      expect(inRepairs(find.text('Ana Reyes · Bed 1, 2B · Sunrise Apartments')),
+          findsOneWidget);
+      expect(inRepairs(find.text('New · 2h')), findsOneWidget);
+      expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('repair-m1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('repair-m1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceReportScreen), findsOneWidget);
+    });
+
+    /// The fix did not hold, which says more than how long ago.
+    testWidgets('a reopened repair says it was reopened', (tester) async {
+      await tester.pumpWidget(appWith(
+          requests: const [], repairs: [repair('m1', reopened: true)]));
+      await tester.pumpAndSettle();
+
+      expect(inRepairs(find.text('Reopened')), findsOneWidget);
+    });
+
+    testWidgets('the header counts repairs apart from requests', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: [asking()],
+        repairs: [repair('m1'), repair('m2', reopened: true)],
+      ));
+      await tester.pumpAndSettle();
+
+      final header = find.byType(LatticeHeader);
+      expect(find.descendant(of: header, matching: find.text('Repairs')), findsOneWidget);
+      expect(find.descendant(of: header, matching: find.text('2')), findsOneWidget);
+      expect(find.descendant(of: header, matching: find.text('To answer')), findsOneWidget);
+    });
+
+    /// In progress is the landlord's own work; fixed is the tenant's move.
+    testWidgets('work already started or finished is not listed',
+        (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], repairs: [
+        repair('m1',
+            description: 'Sink leaking',
+            status: MaintenanceReportResponseStatusEnum.IN_PROGRESS),
+        repair('m2',
+            description: 'Light switch sparks',
+            status: MaintenanceReportResponseStatusEnum.RESOLVED),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('repairs-card')), findsNothing);
+      expect(find.byKey(const ValueKey('all-caught-up')), findsOneWidget);
+    });
+
+    testWidgets('work in progress is one line, not a row', (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], repairs: [
+        repair('m1'),
+        repair('m2',
+            description: 'Sink leaking',
+            status: MaintenanceReportResponseStatusEnum.IN_PROGRESS),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(inRepairs(find.text('Sink leaking')), findsNothing);
+      expect(inRepairs(find.text('1 in progress · See all repairs ›')), findsOneWidget);
+    });
+
+    /// Today is a summary; the Maintenance tab has them all.
+    testWidgets('only the three that have waited longest are listed',
+        (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], repairs: [
+        repair('m1', description: 'Newest', hoursAgo: 1),
+        repair('m2', description: 'Oldest', hoursAgo: 80),
+        repair('m3', description: 'Middle', hoursAgo: 30),
+        repair('m4', description: 'Second oldest', hoursAgo: 50),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(inRepairs(find.text('4 new')), findsOneWidget);
+      expect(inRepairs(find.text('Newest')), findsNothing);
+      final oldest = tester.getTopLeft(inRepairs(find.text('Oldest'))).dy;
+      final second = tester.getTopLeft(inRepairs(find.text('Second oldest'))).dy;
+      expect(oldest, lessThan(second));
+      expect(inRepairs(find.text('1 more · See all repairs ›')), findsOneWidget);
+    });
+
+    testWidgets('see all opens the Maintenance tab', (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], repairs: [
+        repair('m1'),
+        repair('m2', status: MaintenanceReportResponseStatusEnum.IN_PROGRESS),
+      ]));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('repairs-see-all')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('repairs-see-all')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceInboxScreen), findsOneWidget);
+    });
+
+    /// Hidden, a failure would read as nothing broken.
+    testWidgets('repairs that cannot be read say so, and are no all-clear',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        repairsFail: const ApiFailure(code: 'NETWORK_UNAVAILABLE', message: 'no signal'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inRepairs(find.text('no signal')), findsOneWidget);
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 

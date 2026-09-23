@@ -100,8 +100,11 @@ class LatticeHeader extends StatelessWidget {
                 Row(
                   children: [
                     for (final (i, stat) in stats.indexed) ...[
-                      if (i > 0) const SizedBox(width: 10),
-                      Expanded(child: _StatCard(stat: stat)),
+                      // Four across a phone is tight; the gaps and padding
+                      // give a little back so the labels keep to one line.
+                      if (i > 0) SizedBox(width: stats.length > 3 ? 8 : 10),
+                      Expanded(
+                          child: _StatCard(stat: stat, compact: stats.length > 3)),
                     ],
                   ],
                 ),
@@ -124,14 +127,15 @@ class LatticeHeaderStat {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.stat});
+  const _StatCard({required this.stat, this.compact = false});
 
   final LatticeHeaderStat stat;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: 10),
       decoration: BoxDecoration(
         color: LizmoColors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
@@ -148,7 +152,13 @@ class _StatCard extends StatelessWidget {
             child: Text(stat.value, style: LizmoType.dataLarge, maxLines: 1),
           ),
           const SizedBox(height: 2),
-          Text(stat.label, style: LizmoType.statLabel),
+          // One line, shrinking a touch if it must: a label that wraps makes
+          // its card taller than its neighbours, and the row reads as broken.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(stat.label, style: LizmoType.statLabel, maxLines: 1),
+          ),
         ],
       ),
     );

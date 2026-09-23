@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
+import 'package:lizmo/maintenance/maintenance_providers.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
@@ -64,6 +65,19 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        // One repair waiting, so Today shows its Repairs card.
+        maintenanceToHandleProvider.overrideWith((ref) async => [
+              MaintenanceReportResponse(
+                id: 'm1',
+                propertyName: 'Sunrise Apartments',
+                unitNumber: '2B',
+                bedLabel: 'Bed 1',
+                tenantName: 'Ana Reyes',
+                description: 'The ceiling fan grinds and stops',
+                status: MaintenanceReportResponseStatusEnum.SUBMITTED,
+                submittedAt: DateTime.now().subtract(const Duration(hours: 2)),
+              ),
+            ]),
         occupancyProvider.overrideWith((ref) async => OccupancySummary(
               lettable: 4,
               occupied: 1,
