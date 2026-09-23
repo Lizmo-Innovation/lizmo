@@ -624,6 +624,59 @@
                 }
             }
         },
+        "/api/v1/me/payment-channels/{id}/properties": {
+            "put": {
+                "tags": [
+                    "Payment channels"
+                ],
+                "summary": "Choose which properties a way to pay is for",
+                "description": "The whole list: what is sent replaces what was there. An empty list reaches no tenant, which is allowed -- their Rent tab then says the landlord has not added how to pay yet.",
+                "operationId": "setMyPaymentChannelProperties",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChannelProperties"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The channel, with its properties",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentChannelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your channel, or not your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/payment-channels/order": {
             "put": {
                 "tags": [
@@ -5103,6 +5156,13 @@
                     "qrUrlExpiresInSeconds": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "propertyIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
                     }
                 },
                 "description": "A way to be paid, for its owner"
@@ -7223,6 +7283,19 @@
                     }
                 },
                 "description": "An invitation still waiting to be accepted"
+            },
+            "ChannelProperties": {
+                "type": "object",
+                "properties": {
+                    "propertyIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "description": "The properties a way to be paid applies to"
             }
         }
     }

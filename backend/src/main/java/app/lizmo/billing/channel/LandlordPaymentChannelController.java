@@ -1,6 +1,7 @@
 package app.lizmo.billing.channel;
 
 import app.lizmo.common.ApiError;
+import app.lizmo.paymentchannel.dto.PaymentChannelDtos.ChannelProperties;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelOrder;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelRequest;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelResponse;
@@ -130,6 +131,22 @@ public class LandlordPaymentChannelController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public void delete(@PathVariable UUID id) {
         payment.remove(currentUser.requireId(), id);
+    }
+
+    @PutMapping(MINE + "/{id}/properties")
+    @Tag(name = "Payment channels", description = "How a landlord's tenants pay them")
+    @Operation(operationId = "setMyPaymentChannelProperties",
+            summary = "Choose which properties a way to pay is for",
+            description = "The whole list: what is sent replaces what was there. An empty "
+                    + "list reaches no tenant, which is allowed -- their Rent tab then says "
+                    + "the landlord has not added how to pay yet.")
+    @ApiResponse(responseCode = "200", description = "The channel, with its properties",
+            content = @Content(schema = @Schema(implementation = PaymentChannelResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Not your channel, or not your property",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public PaymentChannelResponse useFor(
+            @PathVariable UUID id, @Valid @RequestBody ChannelProperties properties) {
+        return payment.useFor(currentUser.requireId(), id, properties.propertyIds());
     }
 
     @PostMapping(path = MINE + "/{id}/qr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

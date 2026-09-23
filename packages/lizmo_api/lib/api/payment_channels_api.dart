@@ -338,6 +338,68 @@ class PaymentChannelsApi {
     return null;
   }
 
+  /// Choose which properties a way to pay is for
+  ///
+  /// The whole list: what is sent replaces what was there. An empty list reaches no tenant, which is allowed -- their Rent tab then says the landlord has not added how to pay yet.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ChannelProperties] channelProperties (required):
+  Future<Response> setMyPaymentChannelPropertiesWithHttpInfo(String id, ChannelProperties channelProperties, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/me/payment-channels/{id}/properties'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = channelProperties;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Choose which properties a way to pay is for
+  ///
+  /// The whole list: what is sent replaces what was there. An empty list reaches no tenant, which is allowed -- their Rent tab then says the landlord has not added how to pay yet.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ChannelProperties] channelProperties (required):
+  Future<PaymentChannelResponse?> setMyPaymentChannelProperties(String id, ChannelProperties channelProperties, { Future<void>? abortTrigger, }) async {
+    final response = await setMyPaymentChannelPropertiesWithHttpInfo(id, channelProperties, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PaymentChannelResponse',) as PaymentChannelResponse;
+    
+    }
+    return null;
+  }
+
   /// Change a way to pay me
   ///
   /// Visibility is left as it is when not sent. Past payments keep the details they were sent to.

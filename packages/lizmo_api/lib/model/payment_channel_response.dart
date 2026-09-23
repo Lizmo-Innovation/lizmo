@@ -21,6 +21,7 @@ class PaymentChannelResponse {
     this.sortOrder,
     this.qrUrl,
     this.qrUrlExpiresInSeconds,
+    this.propertyIds = const [],
   });
 
   ///
@@ -87,6 +88,8 @@ class PaymentChannelResponse {
   ///
   int? qrUrlExpiresInSeconds;
 
+  List<String> propertyIds;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PaymentChannelResponse &&
     other.id == id &&
@@ -96,7 +99,8 @@ class PaymentChannelResponse {
     other.visible == visible &&
     other.sortOrder == sortOrder &&
     other.qrUrl == qrUrl &&
-    other.qrUrlExpiresInSeconds == qrUrlExpiresInSeconds;
+    other.qrUrlExpiresInSeconds == qrUrlExpiresInSeconds &&
+    _deepEquality.equals(other.propertyIds, propertyIds);
 
   @override
   int get hashCode =>
@@ -108,10 +112,11 @@ class PaymentChannelResponse {
     (visible == null ? 0 : visible!.hashCode) +
     (sortOrder == null ? 0 : sortOrder!.hashCode) +
     (qrUrl == null ? 0 : qrUrl!.hashCode) +
-    (qrUrlExpiresInSeconds == null ? 0 : qrUrlExpiresInSeconds!.hashCode);
+    (qrUrlExpiresInSeconds == null ? 0 : qrUrlExpiresInSeconds!.hashCode) +
+    (propertyIds.hashCode);
 
   @override
-  String toString() => 'PaymentChannelResponse[id=$id, channel=$channel, accountName=$accountName, accountNumber=$accountNumber, visible=$visible, sortOrder=$sortOrder, qrUrl=$qrUrl, qrUrlExpiresInSeconds=$qrUrlExpiresInSeconds]';
+  String toString() => 'PaymentChannelResponse[id=$id, channel=$channel, accountName=$accountName, accountNumber=$accountNumber, visible=$visible, sortOrder=$sortOrder, qrUrl=$qrUrl, qrUrlExpiresInSeconds=$qrUrlExpiresInSeconds, propertyIds=$propertyIds]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -155,6 +160,7 @@ class PaymentChannelResponse {
     } else {
       json[r'qrUrlExpiresInSeconds'] = null;
     }
+      json[r'propertyIds'] = this.propertyIds;
     return json;
   }
 
@@ -181,6 +187,9 @@ class PaymentChannelResponse {
         sortOrder: mapValueOfType<int>(json, r'sortOrder'),
         qrUrl: mapValueOfType<String>(json, r'qrUrl'),
         qrUrlExpiresInSeconds: mapValueOfType<int>(json, r'qrUrlExpiresInSeconds'),
+        propertyIds: json[r'propertyIds'] is Iterable
+            ? (json[r'propertyIds'] as Iterable).cast<String>().toList(growable: false)
+            : const [],
       );
     }
     return null;

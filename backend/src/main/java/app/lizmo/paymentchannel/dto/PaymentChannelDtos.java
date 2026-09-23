@@ -37,6 +37,9 @@ public final class PaymentChannelDtos {
      *
      * @param qrUrl presigned, good for {@code qrUrlExpiresInSeconds}. Null when
      *              the channel has no QR.
+     * @param propertyIds the properties a landlord's channel is used for, empty
+     *                    until they choose. Always empty for Lizmo's own
+     *                    channels, which have no properties to apply to.
      */
     @Schema(description = "A way to be paid, for its owner")
     public record PaymentChannelResponse(
@@ -47,7 +50,8 @@ public final class PaymentChannelDtos {
             boolean visible,
             int sortOrder,
             String qrUrl,
-            long qrUrlExpiresInSeconds) {
+            long qrUrlExpiresInSeconds,
+            List<UUID> propertyIds) {
     }
 
     /**
@@ -72,6 +76,14 @@ public final class PaymentChannelDtos {
      */
     @Schema(description = "How to pay")
     public record PaymentDetails(List<PaymentChannelView> channels, String note) {
+    }
+
+    /**
+     * The properties a landlord's channel is used for. The whole list: what is
+     * sent replaces what was there, and an empty list reaches no tenant.
+     */
+    @Schema(description = "The properties a way to be paid applies to")
+    public record ChannelProperties(List<UUID> propertyIds) {
     }
 
     /** The whole list, top to bottom. Every channel exactly once. */

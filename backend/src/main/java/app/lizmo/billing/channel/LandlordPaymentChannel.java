@@ -1,22 +1,28 @@
 package app.lizmo.billing.channel;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * One way a landlord is paid rent: a GCash number, a Maya account, a bank
  * account.
  *
- * <p>Belongs to the landlord, not a property: one list covers everything they
- * own. Their tenants see the visible ones beside "I have paid". The QR, when
- * there is one, is a document owned by this row.
+ * <p>Kept by the landlord, applied to properties: one account can serve
+ * several, and a tenant is shown only those their own property uses. The QR,
+ * when there is one, is a document owned by this row.
  */
 @Entity
 @Table(name = "landlord_payment_channels")
@@ -49,6 +55,17 @@ public class LandlordPaymentChannel {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /**
+     * The properties this account is used for. Empty means no tenant sees it:
+     * a new account applies nowhere until its landlord says where.
+     */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "landlord_payment_channel_properties",
+            joinColumns = @JoinColumn(name = "channel_id"))
+    @Column(name = "property_id", nullable = false)
+    private Set<UUID> propertyIds = new LinkedHashSet<>();
 
     protected LandlordPaymentChannel() {
     }
@@ -132,5 +149,18 @@ public class LandlordPaymentChannel {
 
     public int getSortOrder() {
         return sortOrder;
+    }
+
+    public Set<UUID> getPropertyIds() {
+        return propertyIds;
+    }
+
+    /** Replaces the properties this account is used for. */
+    public void useFor(Set<UUID> properties) {
+        this.propertyIds = new LinkedHashSet<>(properties);
+    }
+
+    public boolean appliesTo(UUID propertyId) {
+        return propertyId != null && propertyIds.contains(propertyId);
     }
 }

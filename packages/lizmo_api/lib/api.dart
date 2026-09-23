@@ -61,6 +61,7 @@ part 'model/awaiting_row.dart';
 part 'model/bed_request.dart';
 part 'model/bed_response.dart';
 part 'model/billing_period_response.dart';
+part 'model/channel_properties.dart';
 part 'model/collections_summary.dart';
 part 'model/complete_password_reset_request.dart';
 part 'model/complete_registration_request.dart';

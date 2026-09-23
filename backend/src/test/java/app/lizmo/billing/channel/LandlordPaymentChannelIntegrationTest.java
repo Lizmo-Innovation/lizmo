@@ -337,14 +337,179 @@ class LandlordPaymentChannelIntegrationTest extends IntegrationTest {
                 .isEmpty();
     }
 
+    // ---- which properties an account is used for ------------------------------------------
+
+    /**
+     * An account applies nowhere until its landlord says where. Rent landing in
+     * a wallet the landlord never chose for that property is the worse
+     * mistake, so nothing is assumed.
+     */
+    @Test
+    void an_account_reaches_no_tenant_until_its_properties_are_chosen() throws Exception {
+        String gcash = idOf(addUnused(elena, "GCash", "Elena Reyes", "09171112222"));
+
+        details(anaToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.channels.length()").value(0));
+        mine(elena).andExpect(jsonPath("$[0].propertyIds.length()").value(0));
+
+        useFor(elena, gcash, List.of(propertyId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.propertyIds.length()").value(1))
+                .andExpect(jsonPath("$.propertyIds[0]").value(propertyId));
+        details(anaToken).andExpect(jsonPath("$.channels.length()").value(1));
+    }
+
+    /** A landlord who keeps a property's rent in its own wallet. */
+    @Test
+    void each_property_shows_only_the_accounts_it_uses() throws Exception {
+        String other = secondProperty();
+        String beaLease = letUnitAt(other, beaToken);
+
+        String sunrise = idOf(addUnused(elena, "GCash", "Elena Reyes", "09171112222"));
+        String sunset = idOf(addUnused(elena, "Maya", "Elena Reyes", "09173334444"));
+        useFor(elena, sunrise, List.of(propertyId)).andExpect(status().isOk());
+        useFor(elena, sunset, List.of(other)).andExpect(status().isOk());
+
+        details(anaToken)
+                .andExpect(jsonPath("$.channels.length()").value(1))
+                .andExpect(jsonPath("$.channels[0].channel").value("GCash"));
+        detailsOf(beaLease, beaToken)
+                .andExpect(jsonPath("$.channels.length()").value(1))
+                .andExpect(jsonPath("$.channels[0].channel").value("Maya"));
+    }
+
+    /** One wallet for everything is the common case, and still one list. */
+    @Test
+    void an_account_can_serve_every_property() throws Exception {
+        String other = secondProperty();
+        String beaLease = letUnitAt(other, beaToken);
+
+        String gcash = idOf(addUnused(elena, "GCash", "Elena Reyes", "09171112222"));
+        useFor(elena, gcash, List.of(propertyId, other)).andExpect(status().isOk());
+
+        details(anaToken).andExpect(jsonPath("$.channels.length()").value(1));
+        detailsOf(beaLease, beaToken).andExpect(jsonPath("$.channels.length()").value(1));
+    }
+
+    /** What is sent replaces what was there. */
+    @Test
+    void taking_a_property_off_an_account_takes_it_off_those_tenants() throws Exception {
+        String gcash = idOf(add(elena, "GCash", "Elena Reyes", "09171112222"));
+        details(anaToken).andExpect(jsonPath("$.channels.length()").value(1));
+
+        useFor(elena, gcash, List.of())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.propertyIds.length()").value(0));
+
+        details(anaToken).andExpect(jsonPath("$.channels.length()").value(0));
+    }
+
+    @Test
+    void another_landlords_property_cannot_be_chosen() throws Exception {
+        String gcash = idOf(add(mario, "GCash", "Mario Santos", "09995556666"));
+
+        useFor(mario, gcash, List.of(propertyId)).andExpect(status().isNotFound());
+    }
+
+    /**
+     * The account was shown for another property, never for this one, so a
+     * payment cannot claim it went there.
+     */
+    @Test
+    void an_account_not_used_here_cannot_be_picked() throws Exception {
+        String other = secondProperty();
+        String sunset = idOf(addUnused(elena, "Maya", "Elena Reyes", "09173334444"));
+        useFor(elena, sunset, List.of(other)).andExpect(status().isOk());
+
+        declare(sunset).andExpect(status().isNotFound());
+    }
+
     // ---- fixtures -----------------------------------------------------------------------------
 
+    /**
+     * Added and used for this test's property, which is what a landlord does
+     * next: an account applies nowhere until they say where.
+     */
     private ResultActions add(Accounts.Account landlord, String channel, String name, String number)
+            throws Exception {
+        ResultActions added = addUnused(landlord, channel, name, number);
+        if (added.andReturn().getResponse().getStatus() == 201 && landlord == elena) {
+            useFor(landlord, idOf(added), List.of(propertyId)).andExpect(status().isOk());
+        }
+        // The creation, so callers still read the channel they added.
+        return added;
+    }
+
+    /** Added and left applying to nothing, as the endpoint leaves it. */
+    private ResultActions addUnused(
+            Accounts.Account landlord, String channel, String name, String number)
             throws Exception {
         return mvc.perform(post("/api/v1/me/payment-channels")
                 .header("Authorization", "Bearer " + landlord.token())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(channel, name, number, null)));
+    }
+
+    private ResultActions useFor(Accounts.Account landlord, String id, List<String> properties)
+            throws Exception {
+        String ids = properties.stream()
+                .map("\"%s\""::formatted)
+                .collect(java.util.stream.Collectors.joining(","));
+        return mvc.perform(put("/api/v1/me/payment-channels/" + id + "/properties")
+                .header("Authorization", "Bearer " + landlord.token())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"propertyIds\":[%s]}".formatted(ids)));
+    }
+
+    /** A second property of Elena's, with a unit and a tenancy for Bea. */
+    private String secondProperty() throws Exception {
+        String property = mvc.perform(post("/api/v1/properties")
+                        .header("Authorization", "Bearer " + elena.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Sunset Residences","address":"48 Rizal Ave",
+                                 "type":"APARTMENT","usage":"RESIDENTIAL"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(property).get("id").asText();
+    }
+
+    private String letUnitAt(String propertyId, String tenantToken) throws Exception {
+        String unit = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
+                        .header("Authorization", "Bearer " + elena.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"unitNumber":"1A","floor":"1","rentalMode":"WHOLE_UNIT",
+                                 "capacity":1,"rent":7500.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String otherUnit = json.readTree(unit).get("id").asText();
+
+        makeReadyForALease(tenantToken);
+        String request = mvc.perform(post("/api/v1/me/rental-requests")
+                        .header("Authorization", "Bearer " + tenantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitId\":\"%s\"}".formatted(otherUnit)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String lease = mvc.perform(post("/api/v1/rental-requests/"
+                        + json.readTree(request).get("id").asText() + "/accept")
+                        .header("Authorization", "Bearer " + elena.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rentAmount\":7500.00,\"startDate\":\"%s\"}"
+                                .formatted(LocalDate.now(clock))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(lease).get("id").asText();
+    }
+
+    private ResultActions detailsOf(String leaseId, String tenantToken) throws Exception {
+        return mvc.perform(get("/api/v1/me/leases/" + leaseId + "/payment-details")
+                .header("Authorization", "Bearer " + tenantToken));
     }
 
     private ResultActions change(

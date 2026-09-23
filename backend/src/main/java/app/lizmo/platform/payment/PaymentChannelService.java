@@ -160,6 +160,9 @@ public class PaymentChannelService {
                 channel.isVisible(),
                 channel.getSortOrder(),
                 qr.url(OWNER, channel.getId()),
-                ChannelQrCodes.URL_LIFETIME.toSeconds());
+                ChannelQrCodes.URL_LIFETIME.toSeconds(),
+                // Lizmo's own channels serve everybody; there are no
+                // properties to apply them to.
+                java.util.List.of());
     }
 }

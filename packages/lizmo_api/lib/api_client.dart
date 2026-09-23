@@ -211,6 +211,8 @@ class ApiClient {
           return BedResponse.fromJson(value);
         case 'BillingPeriodResponse':
           return BillingPeriodResponse.fromJson(value);
+        case 'ChannelProperties':
+          return ChannelProperties.fromJson(value);
         case 'CollectionsSummary':
           return CollectionsSummary.fromJson(value);
         case 'CompletePasswordResetRequest':

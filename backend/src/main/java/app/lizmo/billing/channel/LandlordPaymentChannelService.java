@@ -7,6 +7,8 @@ import app.lizmo.lease.Lease;
 import app.lizmo.lease.LeasePaperworkAccess;
 import app.lizmo.paymentchannel.ChannelQrCodes;
 import app.lizmo.paymentchannel.ChannelRules;
+import app.lizmo.property.Property;
+import app.lizmo.property.PropertyRepository;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelRequest;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelResponse;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentChannelView;
@@ -14,7 +16,9 @@ import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentDetails;
 import app.lizmo.paymentchannel.dto.PaymentChannelDtos.PaymentNote;
 import app.lizmo.user.LandlordProfile;
 import app.lizmo.user.LandlordProfileRepository;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,16 +43,19 @@ public class LandlordPaymentChannelService {
     private final LandlordPaymentChannelRepository channels;
     private final LandlordProfileRepository landlords;
     private final LeasePaperworkAccess leases;
+    private final PropertyRepository properties;
     private final ChannelQrCodes qr;
 
     public LandlordPaymentChannelService(
             LandlordPaymentChannelRepository channels,
             LandlordProfileRepository landlords,
             LeasePaperworkAccess leases,
+            PropertyRepository properties,
             ChannelQrCodes qr) {
         this.channels = channels;
         this.landlords = landlords;
         this.leases = leases;
+        this.properties = properties;
         this.qr = qr;
     }
 
@@ -149,6 +156,31 @@ public class LandlordPaymentChannelService {
         return new PaymentNote(landlord.getPaymentNote());
     }
 
+    /**
+     * Which properties an account is used for. The list replaces what was
+     * there; an empty one reaches no tenant, which is allowed and said plainly
+     * on screen rather than refused here -- a landlord rearranging their
+     * accounts passes through empty on the way.
+     */
+    @Transactional
+    public PaymentChannelResponse useFor(UUID landlordId, UUID id, List<UUID> propertyIds) {
+        LandlordPaymentChannel channel = find(landlordId, id);
+        Set<UUID> chosen = new LinkedHashSet<>(propertyIds == null ? List.of() : propertyIds);
+
+        for (UUID propertyId : chosen) {
+            // Somebody else's property reads as not found, as everywhere else:
+            // an id that is not theirs tells them nothing about whose it is.
+            properties.findById(propertyId)
+                    .map(Property::getLandlordId)
+                    .filter(landlordId::equals)
+                    .orElseThrow(() -> new ApiException(
+                            ErrorCode.NOT_FOUND, "No such property."));
+        }
+
+        channel.useFor(chosen);
+        return describe(channels.save(channel));
+    }
+
     // ---- a tenant paying ----------------------------------------------------------------
 
     /**
@@ -160,8 +192,14 @@ public class LandlordPaymentChannelService {
         Lease lease = leases.requireTenant(leaseId, tenantId);
         UUID landlordId = leases.landlordOf(lease);
 
+        // Only the accounts their own property uses. A landlord who keeps a
+        // property's rent in its own wallet would otherwise have every tenant
+        // shown every account, and rent lands wherever it was guessed.
+        UUID propertyId = leases.propertyOf(lease);
+
         List<PaymentChannelView> shown = landlordId == null ? List.of()
                 : channels.findByLandlordIdAndVisibleTrueOrderBySortOrderAsc(landlordId).stream()
+                        .filter(channel -> channel.appliesTo(propertyId))
                         .map(channel -> new PaymentChannelView(
                                 channel.getId(),
                                 channel.getChannel(),
@@ -179,9 +217,10 @@ public class LandlordPaymentChannelService {
     /**
      * What a payment should say about where it went, or null when nobody chose.
      *
-     * <p>The channel must be this lease's landlord's and visible: a tenant picks
-     * from the list they were shown, and the words are written here rather than
-     * taken from them, so nobody can type their own account into a record.
+     * <p>The channel must be this lease's landlord's, visible, and used for
+     * this lease's property: a tenant picks from the list they were shown, and
+     * the words are written here rather than taken from them, so nobody can
+     * type their own account into a record.
      */
     @Transactional(readOnly = true)
     public String sentTo(Lease lease, UUID channelId) {
@@ -189,8 +228,10 @@ public class LandlordPaymentChannelService {
             return null;
         }
         UUID landlordId = leases.landlordOf(lease);
+        UUID propertyId = leases.propertyOf(lease);
         return channels.findByIdAndLandlordId(channelId, landlordId)
                 .filter(LandlordPaymentChannel::isVisible)
+                .filter(channel -> channel.appliesTo(propertyId))
                 .map(LandlordPaymentChannel::label)
                 .orElseThrow(() -> new ApiException(
                         ErrorCode.NOT_FOUND, "No such payment channel."));
@@ -237,6 +278,7 @@ public class LandlordPaymentChannelService {
                 channel.isVisible(),
                 channel.getSortOrder(),
                 qr.url(OWNER, channel.getId()),
-                ChannelQrCodes.URL_LIFETIME.toSeconds());
+                ChannelQrCodes.URL_LIFETIME.toSeconds(),
+                List.copyOf(channel.getPropertyIds()));
     }
 }

@@ -18,6 +18,7 @@ doc/AwaitingRow.md
 doc/BedRequest.md
 doc/BedResponse.md
 doc/BillingPeriodResponse.md
+doc/ChannelProperties.md
 doc/CollectionsSummary.md
 doc/CompletePasswordResetRequest.md
 doc/CompleteRegistrationRequest.md
@@ -138,6 +139,7 @@ lib/model/awaiting_row.dart
 lib/model/bed_request.dart
 lib/model/bed_response.dart
 lib/model/billing_period_response.dart
+lib/model/channel_properties.dart
 lib/model/collections_summary.dart
 lib/model/complete_password_reset_request.dart
 lib/model/complete_registration_request.dart

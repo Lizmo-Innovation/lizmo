@@ -15,6 +15,7 @@ Method | HTTP request | Description
 [**listMyPaymentChannels**](PaymentChannelsApi.md#listmypaymentchannels) | **GET** /api/v1/me/payment-channels | How my tenants pay me
 [**removeMyPaymentChannelQr**](PaymentChannelsApi.md#removemypaymentchannelqr) | **DELETE** /api/v1/me/payment-channels/{id}/qr | Remove a channel's QR
 [**reorderMyPaymentChannels**](PaymentChannelsApi.md#reordermypaymentchannels) | **PUT** /api/v1/me/payment-channels/order | Put my channels in order
+[**setMyPaymentChannelProperties**](PaymentChannelsApi.md#setmypaymentchannelproperties) | **PUT** /api/v1/me/payment-channels/{id}/properties | Choose which properties a way to pay is for
 [**updateMyPaymentChannel**](PaymentChannelsApi.md#updatemypaymentchannel) | **PUT** /api/v1/me/payment-channels/{id} | Change a way to pay me
 [**updateMyPaymentNote**](PaymentChannelsApi.md#updatemypaymentnote) | **PUT** /api/v1/me/payment-note | Change the note under my channels
 [**uploadMyPaymentChannelQr**](PaymentChannelsApi.md#uploadmypaymentchannelqr) | **POST** /api/v1/me/payment-channels/{id}/qr | Set a channel's QR
@@ -255,6 +256,51 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List<PaymentChannelResponse>**](PaymentChannelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **setMyPaymentChannelProperties**
+> PaymentChannelResponse setMyPaymentChannelProperties(id, channelProperties)
+
+Choose which properties a way to pay is for
+
+The whole list: what is sent replaces what was there. An empty list reaches no tenant, which is allowed -- their Rent tab then says the landlord has not added how to pay yet.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PaymentChannelsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final channelProperties = ChannelProperties(); // ChannelProperties | 
+
+try {
+    final result = api_instance.setMyPaymentChannelProperties(id, channelProperties);
+    print(result);
+} catch (e) {
+    print('Exception when calling PaymentChannelsApi->setMyPaymentChannelProperties: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **channelProperties** | [**ChannelProperties**](ChannelProperties.md)|  | 
+
+### Return type
+
+[**PaymentChannelResponse**](PaymentChannelResponse.md)
 
 ### Authorization
 

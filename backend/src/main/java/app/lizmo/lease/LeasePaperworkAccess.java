@@ -95,6 +95,17 @@ public class LeasePaperworkAccess {
                 .orElse(null);
     }
 
+    /**
+     * The property this lease sits on, through its unit. Null when the unit or
+     * property has gone.
+     */
+    @Transactional(readOnly = true)
+    public UUID propertyOf(Lease lease) {
+        return units.findById(lease.getUnitId())
+                .map(Unit::getPropertyId)
+                .orElse(null);
+    }
+
     private static ApiException notFound() {
         return new ApiException(ErrorCode.NOT_FOUND, "No such lease.");
     }

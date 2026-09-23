@@ -126,6 +126,7 @@ Class | Method | HTTP request | Description
 *PaymentChannelsApi* | [**listMyPaymentChannels**](doc//PaymentChannelsApi.md#listmypaymentchannels) | **GET** /api/v1/me/payment-channels | How my tenants pay me
 *PaymentChannelsApi* | [**removeMyPaymentChannelQr**](doc//PaymentChannelsApi.md#removemypaymentchannelqr) | **DELETE** /api/v1/me/payment-channels/{id}/qr | Remove a channel's QR
 *PaymentChannelsApi* | [**reorderMyPaymentChannels**](doc//PaymentChannelsApi.md#reordermypaymentchannels) | **PUT** /api/v1/me/payment-channels/order | Put my channels in order
+*PaymentChannelsApi* | [**setMyPaymentChannelProperties**](doc//PaymentChannelsApi.md#setmypaymentchannelproperties) | **PUT** /api/v1/me/payment-channels/{id}/properties | Choose which properties a way to pay is for
 *PaymentChannelsApi* | [**updateMyPaymentChannel**](doc//PaymentChannelsApi.md#updatemypaymentchannel) | **PUT** /api/v1/me/payment-channels/{id} | Change a way to pay me
 *PaymentChannelsApi* | [**updateMyPaymentNote**](doc//PaymentChannelsApi.md#updatemypaymentnote) | **PUT** /api/v1/me/payment-note | Change the note under my channels
 *PaymentChannelsApi* | [**uploadMyPaymentChannelQr**](doc//PaymentChannelsApi.md#uploadmypaymentchannelqr) | **POST** /api/v1/me/payment-channels/{id}/qr | Set a channel's QR
@@ -190,6 +191,7 @@ Class | Method | HTTP request | Description
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
  - [BillingPeriodResponse](doc//BillingPeriodResponse.md)
+ - [ChannelProperties](doc//ChannelProperties.md)
  - [CollectionsSummary](doc//CollectionsSummary.md)
  - [CompletePasswordResetRequest](doc//CompletePasswordResetRequest.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
