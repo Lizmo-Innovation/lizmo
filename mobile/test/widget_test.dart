@@ -8862,9 +8862,18 @@ void _tenantLeaseTests() {
   });
 
   group('how tenants pay me', () {
+    PropertyResponse aProperty(String id, String name) => PropertyResponse(
+          id: id,
+          name: name,
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 1,
+        );
+
     Widget appWith(
       _FakePaymentChannelsApi api, {
       Future<PickedImage?> Function()? pick,
+      List<PropertyResponse> properties = const [],
     }) =>
         ProviderScope(
           overrides: [
@@ -8872,7 +8881,7 @@ void _tenantLeaseTests() {
               () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
             ),
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-            propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+            propertiesProvider.overrideWith((ref) async => properties),
             myNotificationsProvider.overrideWith(
               (ref) async => const <NotificationResponse>[],
             ),
@@ -9038,6 +9047,137 @@ void _tenantLeaseTests() {
 
       expect(api.savedNote, 'Pay before the 5th, please');
       expect(find.text('Note saved.'), findsOneWidget);
+    });
+
+    // ---- which properties an account is used for -----------------------------------------
+
+    /// Rent landing in a wallet nobody chose for that property is the worse
+    /// mistake, so a new account is asked about at once.
+    testWidgets('a new account asks where it is used, and sends what is ticked',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([]);
+      await tester.pumpWidget(appWith(api, properties: [
+        aProperty('p1', 'Sunrise Apartments'),
+        aProperty('p2', 'Sunset Residences'),
+      ]));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('add-payment-channel')));
+      await tester.enterText(find.byKey(const ValueKey('channel-field')), 'GCash');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-name-field')), 'Elena Reyes');
+      await tester.enterText(
+          find.byKey(const ValueKey('account-number-field')), '09171112222');
+      await tapShown(tester, find.byKey(const ValueKey('save-channel')));
+
+      expect(find.text('Where do you use GCash?'), findsOneWidget);
+      await tapShown(tester, find.byKey(const ValueKey('channel-property-p1')));
+      await tapShown(tester, find.byKey(const ValueKey('save-channel-properties')));
+
+      expect(api.usedFor.single.$1, 'new');
+      expect(api.usedFor.single.$2, ['p1']);
+    });
+
+    testWidgets('an account says where it is used, and changing it sends the lot',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel(properties: ['p1'])]);
+      await tester.pumpWidget(appWith(api, properties: [
+        aProperty('p1', 'Sunrise Apartments'),
+        aProperty('p2', 'Sunset Residences'),
+      ]));
+      await openIt(tester);
+
+      expect(find.text('Used at Sunrise Apartments'), findsOneWidget);
+
+      await tapShown(tester, find.byKey(const ValueKey('channel-properties-c1')));
+      await tapShown(tester, find.byKey(const ValueKey('channel-property-p2')));
+      await tapShown(tester, find.byKey(const ValueKey('save-channel-properties')));
+
+      expect(api.usedFor.single.$2, ['p1', 'p2']);
+      expect(find.text('Used at all 2 properties'), findsOneWidget);
+    });
+
+    /// One wallet everywhere is the common case.
+    testWidgets('all my properties ticks every one', (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel()]);
+      await tester.pumpWidget(appWith(api, properties: [
+        aProperty('p1', 'Sunrise Apartments'),
+        aProperty('p2', 'Sunset Residences'),
+      ]));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('channel-properties-c1')));
+      await tapShown(tester, find.byKey(const ValueKey('channel-properties-all')));
+      await tapShown(tester, find.byKey(const ValueKey('save-channel-properties')));
+
+      expect(api.usedFor.single.$2, ['p1', 'p2']);
+    });
+
+    /// Said plainly: an account used nowhere reaches nobody, and a landlord
+    /// who has just added one would otherwise think it was working.
+    testWidgets('an account used nowhere says so', (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel()]);
+      await tester.pumpWidget(
+          appWith(api, properties: [aProperty('p1', 'Sunrise Apartments')]));
+      await openIt(tester);
+
+      expect(find.text('Not used anywhere yet'), findsOneWidget);
+    });
+
+    testWidgets('ticking nothing is allowed, and says what it means',
+        (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel(properties: ['p1'])]);
+      await tester.pumpWidget(
+          appWith(api, properties: [aProperty('p1', 'Sunrise Apartments')]));
+      await openIt(tester);
+
+      await tapShown(tester, find.byKey(const ValueKey('channel-properties-c1')));
+      await tapShown(tester, find.byKey(const ValueKey('channel-property-p1')));
+
+      expect(find.text('With none ticked, no tenant sees this account.'),
+          findsOneWidget);
+      await tapShown(tester, find.byKey(const ValueKey('save-channel-properties')));
+
+      expect(api.usedFor.single.$1, 'c1');
+      expect(api.usedFor.single.$2, isEmpty);
+      expect(find.text('No tenants see this account now.'), findsOneWidget);
+    });
+
+    /// The first a landlord would otherwise hear of it is a tenant asking
+    /// where to send rent.
+    testWidgets('a property with no way to pay is called out', (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel(properties: ['p1'])]);
+      await tester.pumpWidget(appWith(api, properties: [
+        aProperty('p1', 'Sunrise Apartments'),
+        aProperty('p2', 'Sunset Residences'),
+      ]));
+      await openIt(tester);
+
+      expect(find.byKey(const ValueKey('properties-without-payment')), findsOneWidget);
+      expect(find.text('Tenants at Sunset Residences have no way to pay you'),
+          findsOneWidget);
+    });
+
+    /// A hidden account is one tenants cannot see, so it covers nothing.
+    testWidgets('a hidden account leaves its property with no way to pay',
+        (tester) async {
+      final api = _FakePaymentChannelsApi(
+          [_myChannel(visible: false, properties: ['p1'])]);
+      await tester.pumpWidget(
+          appWith(api, properties: [aProperty('p1', 'Sunrise Apartments')]));
+      await openIt(tester);
+
+      expect(find.text('Tenants at Sunrise Apartments have no way to pay you'),
+          findsOneWidget);
+    });
+
+    testWidgets('every property covered says nothing at all', (tester) async {
+      final api = _FakePaymentChannelsApi([_myChannel(properties: ['p1'])]);
+      await tester.pumpWidget(
+          appWith(api, properties: [aProperty('p1', 'Sunrise Apartments')]));
+      await openIt(tester);
+
+      expect(find.byKey(const ValueKey('properties-without-payment')), findsNothing);
     });
   });
 
@@ -9436,6 +9576,7 @@ PaymentChannelResponse _myChannel({
   String? number = '09171112222',
   bool visible = true,
   String? qrUrl,
+  List<String> properties = const [],
 }) =>
     PaymentChannelResponse(
       id: id,
@@ -9446,6 +9587,7 @@ PaymentChannelResponse _myChannel({
       sortOrder: 0,
       qrUrl: qrUrl,
       qrUrlExpiresInSeconds: 600,
+      propertyIds: properties,
     );
 
 /// A landlord's own channels, played from a list in memory, keeping what was asked.
@@ -9461,6 +9603,7 @@ class _FakePaymentChannelsApi extends PaymentChannelsApi {
   final deleted = <String>[];
   final uploaded = <(String, int)>[];
   final removedQr = <String>[];
+  final usedFor = <(String, List<String>)>[];
   List<String>? order;
 
   @override
@@ -9516,6 +9659,28 @@ class _FakePaymentChannelsApi extends PaymentChannelsApi {
       number: paymentChannelRequest.accountNumber,
       visible: paymentChannelRequest.visible ?? was.visible ?? true,
       qrUrl: was.qrUrl,
+      properties: was.propertyIds,
+    );
+  }
+
+  @override
+  Future<PaymentChannelResponse?> setMyPaymentChannelProperties(
+    String id,
+    ChannelProperties channelProperties, {
+    Future<void>? abortTrigger,
+  }) async {
+    usedFor.add((id, [...channelProperties.propertyIds]));
+    final at = channels.indexWhere((channel) => channel.id == id);
+    if (at < 0) return null;
+    final was = channels[at];
+    return channels[at] = _myChannel(
+      id: id,
+      channel: was.channel,
+      name: was.accountName,
+      number: was.accountNumber,
+      visible: was.visible ?? true,
+      qrUrl: was.qrUrl,
+      properties: [...channelProperties.propertyIds],
     );
   }
 

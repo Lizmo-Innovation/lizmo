@@ -6,6 +6,8 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/payment_channel_providers.dart';
+import '../property/property_providers.dart';
+import '../widgets/channel_properties_sheet.dart';
 import '../widgets/payment_channel_sheet.dart';
 
 /// Where a landlord's tenants send rent: GCash, Maya, bank, each with an
@@ -26,6 +28,9 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
   bool _noteSeeded = false;
   bool _busy = false;
   bool _savingNote = false;
+
+  /// An account just added, waiting to be asked where it is used.
+  PaymentChannelResponse? _askWhere;
 
   @override
   void dispose() {
@@ -68,7 +73,9 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
           ? await _api.addMyPaymentChannel(request)
           : await _api.updateMyPaymentChannel(existing.id!, request);
       final id = saved?.id ?? existing?.id;
-      final done = existing == null ? 'Added.' : 'Saved.';
+      // Nothing said for a new one: the sheet asking where it is used opens on
+      // top of this, and a snackbar would sit over its Save button.
+      final done = existing == null ? '' : 'Saved.';
       if (id == null) return done;
 
       // The details are saved by now. A QR that fails to upload should say so
@@ -85,7 +92,37 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
       } catch (error) {
         return 'Saved, but the QR did not upload. Edit it to try again.';
       }
+      // A new account applies nowhere, so it reaches no tenant until this is
+      // answered. Asked here rather than left for the landlord to find.
+      if (existing == null) _askWhere = saved;
       return done;
+    });
+
+    if (_askWhere case final added?) {
+      _askWhere = null;
+      if (mounted) await _useFor(added);
+    }
+  }
+
+  /// Which properties an account is used for.
+  Future<void> _useFor(PaymentChannelResponse channel) async {
+    final properties = await ref.read(propertiesProvider.future);
+    if (!mounted) return;
+
+    final chosen = await ChannelPropertiesSheet.show(
+      context,
+      channel: channel.channel ?? 'this account',
+      properties: properties,
+      chosen: [...channel.propertyIds],
+    );
+    if (chosen == null || !mounted) return;
+
+    await _run(() async {
+      await _api.setMyPaymentChannelProperties(
+        channel.id!,
+        ChannelProperties(propertyIds: chosen),
+      );
+      return chosen.isEmpty ? 'No tenants see this account now.' : 'Saved.';
     });
   }
 
@@ -189,11 +226,13 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
             Text(
-              'Your tenants see these when they pay rent, in this order, for '
-              'every property. Switch one off to keep it for later.',
+              'Your tenants see these when they pay rent, in this order. Each '
+              'one is shown only at the properties you use it for. Switch one '
+              'off to keep it for later.',
               style: LizmoType.rowSub,
             ),
             const SizedBox(height: 14),
+            const _PropertiesWithNoWayToPay(),
             ...switch (channels) {
               AsyncError(:final error) => [
                   LizmoMessageState(
@@ -223,6 +262,7 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
                       onUp: () => _move(value, index, index - 1),
                       onDown: () => _move(value, index, index + 1),
                       onEdit: () => _edit(channel),
+                      onUseFor: () => _useFor(channel),
                       onDelete: () => _delete(channel),
                     ),
                 ],
@@ -320,6 +360,7 @@ class _ChannelRow extends StatelessWidget {
     required this.onUp,
     required this.onDown,
     required this.onEdit,
+    required this.onUseFor,
     required this.onDelete,
   });
 
@@ -331,6 +372,7 @@ class _ChannelRow extends StatelessWidget {
   final VoidCallback onUp;
   final VoidCallback onDown;
   final VoidCallback onEdit;
+  final VoidCallback onUseFor;
   final VoidCallback onDelete;
 
   @override
@@ -386,6 +428,8 @@ class _ChannelRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text('${channel.accountName ?? ''} · ${channel.accountNumber ?? ''}',
                         style: LizmoType.rowSub.copyWith(fontSize: 12)),
+                    const SizedBox(height: 4),
+                    _UsedAt(channel: channel, busy: busy, onTap: onUseFor),
                   ],
                 ),
               ),
@@ -426,6 +470,143 @@ class _ChannelRow extends StatelessWidget {
                     style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.red)),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where an account is used, and the way to change it.
+///
+/// Named rather than counted when there is one: "Sunrise Apartments" is what a
+/// landlord recognises, and a count only helps once there are several.
+class _UsedAt extends ConsumerWidget {
+  const _UsedAt({required this.channel, required this.busy, required this.onTap});
+
+  final PaymentChannelResponse channel;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chosen = channel.propertyIds;
+    final mine = ref.watch(propertiesProvider).valueOrNull;
+    final none = chosen.isEmpty;
+
+    String where() {
+      if (none) return 'Not used anywhere yet';
+      if (mine == null) {
+        return chosen.length == 1 ? 'Used at 1 property' : 'Used at ${chosen.length} properties';
+      }
+      if (mine.length > 1 && chosen.length == mine.length) {
+        return 'Used at all ${mine.length} properties';
+      }
+      final names = [
+        for (final property in mine)
+          if (chosen.contains(property.id)) property.name ?? 'A property',
+      ];
+      if (names.isEmpty) return 'Used at ${chosen.length} properties';
+      return names.length == 1
+          ? 'Used at ${names.first}'
+          : 'Used at ${names.first} +${names.length - 1}';
+    }
+
+    return InkWell(
+      key: ValueKey('channel-properties-${channel.id}'),
+      onTap: busy ? null : onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.home_work_outlined,
+                size: 14,
+                color: none ? LizmoColors.amberText : LizmoColors.teal900),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                where(),
+                style: LizmoType.rowSub.copyWith(
+                  fontSize: 12,
+                  color: none ? LizmoColors.amberText : LizmoColors.teal900,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(Icons.edit_outlined,
+                size: 13,
+                color: none ? LizmoColors.amberText : LizmoColors.teal900),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The properties whose tenants have no way to pay.
+///
+/// The landlord cannot see this from the list itself: an account switched off,
+/// or used somewhere else, leaves a property with nothing, and the first they
+/// would hear of it is a tenant asking where to send rent.
+class _PropertiesWithNoWayToPay extends ConsumerWidget {
+  const _PropertiesWithNoWayToPay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final channels = ref.watch(myPaymentChannelsProvider).valueOrNull;
+    final properties = ref.watch(propertiesProvider).valueOrNull;
+    if (channels == null || properties == null || properties.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final covered = {
+      for (final channel in channels)
+        if (channel.visible ?? true) ...channel.propertyIds,
+    };
+    final missing = [
+      for (final property in properties)
+        if (!covered.contains(property.id)) property.name ?? 'A property',
+    ];
+    if (missing.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      key: const ValueKey('properties-without-payment'),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: LizmoColors.amberBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, size: 18, color: LizmoColors.amberText),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  missing.length == 1
+                      ? 'Tenants at ${missing.first} have no way to pay you'
+                      : 'Tenants at ${missing.length} properties have no way to pay you',
+                  style: LizmoType.rowName
+                      .copyWith(fontSize: 13, color: LizmoColors.amberText),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  missing.length == 1
+                      ? 'Use one of your accounts there, and they will see it '
+                          'when rent is due.'
+                      : '${missing.join(', ')}. Use an account at each, and '
+                          'their tenants will see it when rent is due.',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                ),
+              ],
+            ),
           ),
         ],
       ),

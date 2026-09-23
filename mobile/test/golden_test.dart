@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo/maintenance/maintenance_providers.dart';
+import 'package:lizmo/billing/payment_channel_providers.dart';
+import 'package:lizmo/screens/payment_channels_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
@@ -497,4 +499,68 @@ void main() {
       );
     });
   }
+
+  /// How tenants pay me, with an account used at one property and another
+  /// left out, so the warning shows too.
+  testWidgets('payment channels', (tester) async {
+    _phone(tester);
+
+    PaymentChannelResponse channel(
+      String id,
+      String name,
+      String number, {
+      List<String> properties = const [],
+      bool visible = true,
+    }) =>
+        PaymentChannelResponse(
+          id: id,
+          channel: name,
+          accountName: 'Elena Bautista',
+          accountNumber: number,
+          visible: visible,
+          sortOrder: 0,
+          qrUrlExpiresInSeconds: 600,
+          propertyIds: properties,
+        );
+
+    PropertyResponse property(String id, String name) => PropertyResponse(
+          id: id,
+          name: name,
+          address: '12 Mabini St, Quezon City',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: 3,
+        );
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(AuthSignedIn(Session(
+            userId: 'u1',
+            name: 'Elena Bautista',
+            profiles: {LizmoProfile.landlord},
+            accessToken: 'token',
+          ))),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        propertiesProvider.overrideWith((ref) async => [
+              property('p1', 'Sunrise Apartments'),
+              property('p2', 'Sunset Residences'),
+            ]),
+        myPaymentChannelsProvider.overrideWith((ref) async => [
+              channel('c1', 'GCash', '0917 111 2222', properties: ['p1']),
+              channel('c2', 'BPI', '1234 5678 90', properties: ['p1']),
+              channel('c3', 'Maya', '0917 333 4444'),
+            ]),
+        myPaymentNoteProvider.overrideWith(
+            (ref) async => 'Cash to Aling Nena at unit 1A, before the 5th.'),
+      ],
+      child: const MaterialApp(home: PaymentChannelsScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(PaymentChannelsScreen),
+      matchesGoldenFile('goldens/payment_channels.png'),
+    );
+  });
 }
