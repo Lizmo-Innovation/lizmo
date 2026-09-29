@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/payment_channel_providers.dart';
 import '../maintenance/maintenance_providers.dart';
 import '../platform/lizmo_billing_providers.dart';
 import '../property/property_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/collections_card.dart';
+import '../widgets/getting_started_card.dart';
 import '../widgets/lizmo_statement_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/occupancy_card.dart';
@@ -102,10 +104,14 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(requestsToAnswerProvider);
                 ref.invalidate(myLizmoStatementsProvider);
                 ref.invalidate(maintenanceToHandleProvider);
+                ref.invalidate(myPaymentChannelsProvider);
               },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
                 children: [
+                  // Above what needs them: a property that is not set up has
+                  // nothing waiting on it yet, and that is the problem.
+                  const GettingStartedSection(),
                   const _SectionLabel('Needs you'),
                   // People asking come first: they are the most perishable.
                   // Somebody told nothing for a week has found a room

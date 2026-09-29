@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo/maintenance/maintenance_providers.dart';
 import 'package:lizmo/billing/payment_channel_providers.dart';
+import 'package:lizmo/platform/lizmo_billing_providers.dart';
 import 'package:lizmo/screens/payment_channels_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -561,6 +562,84 @@ void main() {
     await expectLater(
       find.byType(PaymentChannelsScreen),
       matchesGoldenFile('goldens/payment_channels.png'),
+    );
+  });
+
+  /// Today for a landlord still setting up: one property with nothing done,
+  /// another halfway.
+  testWidgets('getting started', (tester) async {
+    _phone(tester);
+
+    PropertyResponse property(String id, String name, int units) => PropertyResponse(
+          id: id,
+          name: name,
+          address: '12 Mabini St, Quezon City',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: units,
+        );
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuth(AuthSignedIn(Session(
+            userId: 'u1',
+            name: 'Maricel Tan',
+            profiles: {LizmoProfile.landlord},
+            accessToken: 'token',
+          ))),
+        ),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        myNotificationsProvider.overrideWith(
+          (ref) async => const <NotificationResponse>[],
+        ),
+        maintenanceToHandleProvider
+            .overrideWith((ref) async => const <MaintenanceReportResponse>[]),
+        requestsToAnswerProvider
+            .overrideWith((ref) async => const <RentalRequestForLandlord>[]),
+        myLizmoStatementsProvider
+            .overrideWith((ref) async => const <PlatformStatementResponse>[]),
+        propertiesProvider.overrideWith((ref) async => [
+              property('p1', 'Sunrise Apartments', 3),
+              property('p2', 'Sunset Residences', 0),
+            ]),
+        myPaymentChannelsProvider.overrideWith((ref) async => [
+              PaymentChannelResponse(
+                id: 'c1',
+                channel: 'GCash',
+                accountName: 'Maricel Tan',
+                accountNumber: '0917 111 2222',
+                visible: true,
+                sortOrder: 0,
+                qrUrlExpiresInSeconds: 600,
+                propertyIds: const ['p1'],
+              ),
+            ]),
+        occupancyProvider.overrideWith((ref) async => OccupancySummary(
+              lettable: 4,
+              occupied: 0,
+              empty: 4,
+              outOfService: 0,
+              earningRent: 0,
+              emptyRent: 10000,
+              vacancies: const [],
+            )),
+        collectionsProvider.overrideWith((ref) async => CollectionsSummary(
+              dueThisMonth: 0,
+              collectedThisMonth: 0,
+              outstandingAllTime: 0,
+              awaitingConfirmation: 0,
+              tenanciesInArrears: 0,
+              inArrears: const [],
+              awaiting: const [],
+            )),
+      ],
+      child: const LizmoApp(),
+    ));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(LizmoApp),
+      matchesGoldenFile('goldens/landlord_getting_started.png'),
     );
   });
 }

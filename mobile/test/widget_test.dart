@@ -7584,13 +7584,38 @@ void _tenantLeaseTests() {
       // Pinned to none unless a test says; null leaves it unread.
       List<MaintenanceReportResponse>? repairs = const [],
       ApiFailure? repairsFail,
+      List<PropertyResponse> properties = const [],
+      // Pinned to none unless a test says; null leaves it unread.
+      List<PaymentChannelResponse>? channels = const [],
+      int occupied = 0,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+        propertiesProvider.overrideWith((ref) async => properties),
+        if (channels != null)
+          myPaymentChannelsProvider.overrideWith((ref) async => channels),
+        occupancyProvider.overrideWith((ref) async => OccupancySummary(
+              lettable: 4,
+              occupied: occupied,
+              empty: 4 - occupied,
+              outOfService: 0,
+              earningRent: 0,
+              emptyRent: 0,
+              vacancies: [
+                for (final property in properties)
+                  VacancyRow(
+                    propertyId: property.id,
+                    propertyName: property.name,
+                    lettable: 4,
+                    occupied: occupied,
+                    empty: 4 - occupied,
+                    emptyRent: 0,
+                  ),
+              ],
+            )),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
@@ -7967,6 +7992,163 @@ void _tenantLeaseTests() {
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 
+    // ---- getting started ------------------------------------------------------------------
+
+    PropertyResponse aProperty(String id, String name, {int units = 0}) =>
+        PropertyResponse(
+          id: id,
+          name: name,
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          unitCount: units,
+        );
+
+    Finder inStarted(String id, Finder finder) => find.descendant(
+          of: find.byKey(ValueKey('get-started-$id')),
+          matching: finder,
+        );
+
+    /// An empty Today told a new landlord nothing about what to do next.
+    testWidgets('a landlord with no property is told to add one',
+        (tester) async {
+      await tester.pumpWidget(appWith(requests: const [], properties: const []));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('get-started-first-property')), findsOneWidget);
+      expect(find.text('Add your first property'), findsOneWidget);
+    });
+
+    testWidgets('a new property lists what is left to do', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inStarted('p1', find.text('Set up Sunrise Apartments')), findsOneWidget);
+      expect(inStarted('p1', find.text('0 of 3 done')), findsOneWidget);
+      expect(inStarted('p1', find.text('Add units or beds')), findsOneWidget);
+      expect(inStarted('p1', find.text('Choose how tenants pay you here')), findsOneWidget);
+      expect(inStarted('p1', find.text('Share your property code')), findsOneWidget);
+    });
+
+    /// Three coral buttons would be three things shouting.
+    testWidgets('only the next step is a button', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inStarted('p1', find.text('1 of 3 done')), findsOneWidget);
+      expect(inStarted('p1', find.text('Do it')), findsOneWidget);
+    });
+
+    testWidgets('the next step opens where it is done', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments')],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(inStarted('p1', find.text('Do it')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PropertyDetailScreen), findsOneWidget);
+    });
+
+    /// An account switched off is one no tenant can see.
+    testWidgets('a hidden account does not tick paying', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+        channels: [_myChannel(visible: false, properties: ['p1'])],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inStarted('p1', find.text('1 of 3 done')), findsOneWidget);
+    });
+
+    testWidgets('an account used here ticks paying', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+        channels: [_myChannel(properties: ['p1'])],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(inStarted('p1', find.text('2 of 3 done')), findsOneWidget);
+    });
+
+    /// Somebody asking is the only sign the app has that the code got out.
+    testWidgets('somebody asking to rent ticks sharing the code',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: [asking()],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+        channels: [_myChannel(properties: ['p1'])],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('get-started-p1')), findsNothing);
+    });
+
+    testWidgets('a property somebody lives in has its code ticked',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+        channels: [_myChannel(properties: ['p1'])],
+        occupied: 1,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('get-started-p1')), findsNothing);
+    });
+
+    /// One card each: a landlord adding a second property is not starting over
+    /// on the first.
+    testWidgets('each unfinished property gets its own card', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [
+          aProperty('p1', 'Sunrise Apartments'),
+          aProperty('p2', 'Sunset Residences', units: 3),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('get-started-p1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('get-started-p2')), findsOneWidget);
+      expect(find.text('GET STARTED'), findsOneWidget);
+    });
+
+    /// Scaffolding, not a permanent part of Today.
+    testWidgets('nothing is shown once a property is set up', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
+        channels: [_myChannel(properties: ['p1'])],
+        occupied: 1,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GET STARTED'), findsNothing);
+      expect(find.byKey(const ValueKey('all-caught-up')), findsOneWidget);
+    });
+
+    /// A step ticked and then unticked reads as the app losing what was done.
+    testWidgets('nothing is shown until every answer is in', (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: const [],
+        properties: [aProperty('p1', 'Sunrise Apartments')],
+        channels: null,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GET STARTED'), findsNothing);
+    });
+
     PlatformStatementResponse statement({
       bool overdue = false,
       String paymentStatus = '',
@@ -8173,6 +8355,10 @@ void _tenantLeaseTests() {
       final row = find.byKey(const ValueKey('vacancy-p1'));
       await tester.scrollUntilVisible(row, 200,
           scrollable: find.byType(Scrollable).first);
+      // Scrolled to, then settled: the getting-started cards above it change
+      // the page's height as they arrive.
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
       await tester.tap(row);
       await tester.pumpAndSettle();
 
