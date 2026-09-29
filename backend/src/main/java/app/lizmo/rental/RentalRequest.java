@@ -38,12 +38,19 @@ public class RentalRequest {
     @Column(name = "property_id", nullable = false, updatable = false)
     private UUID propertyId;
 
-    @Column(name = "unit_id", nullable = false, updatable = false)
+    /**
+      * Null when the request is about the property rather than one room: the
+      * tenant is shown how many beds are free per floor, not which, and the
+      * landlord picks the room when they accept.
+      */
+    @Column(name = "unit_id")
     private UUID unitId;
 
     /** Null for a whole unit. */
-    @Column(name = "bed_id", updatable = false)
+    @Column(name = "bed_id")
     private UUID bedId;
+
+
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -131,5 +138,17 @@ public class RentalRequest {
 
     public Instant getDecidedAt() {
         return decidedAt;
+    }
+
+    /**
+     * The room a landlord chose for somebody who asked about the place.
+     *
+     * <p>Written onto the request as it is accepted, so the queue, the
+     * notification and anything reading it later say which room was given
+     * rather than leaving it blank forever.
+     */
+    public void roomChosen(UUID unitId, UUID bedId) {
+        this.unitId = unitId;
+        this.bedId = bedId;
     }
 }

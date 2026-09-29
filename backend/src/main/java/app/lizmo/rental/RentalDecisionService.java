@@ -82,16 +82,39 @@ public class RentalDecisionService {
     public LeaseResponse accept(UUID requestId, UUID landlordId, AcceptRequest terms) {
         RentalRequest request = pendingRequestToAccept(requestId, landlordId);
 
-        Unit unit = units.findById(request.getUnitId()).orElseThrow(
+        // Named by the request, or -- when the tenant asked about the place
+        // and was never shown the rooms -- chosen here by the landlord.
+        UUID unitId = request.getUnitId() == null
+                ? requireChosen(terms == null ? null : terms.unitId())
+                : request.getUnitId();
+        UUID bedId = request.getUnitId() == null
+                ? (terms == null ? null : terms.bedId())
+                : request.getBedId();
+
+        Unit unit = units.findById(unitId).orElseThrow(
                 () -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));
+        // Somebody else's room, reached with an id from anywhere: not found,
+        // as it reads everywhere else.
+        if (!unit.getPropertyId().equals(request.getPropertyId())) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "No such unit.");
+        }
         if (unit.getStatus() == UnitStatus.MAINTENANCE) {
             throw unavailable("That room is out of service.");
         }
 
-        Bed bed = request.getBedId() == null
+        Bed bed = bedId == null
                 ? null
-                : beds.findById(request.getBedId()).orElseThrow(
+                : beds.findById(bedId).orElseThrow(
                         () -> new ApiException(ErrorCode.NOT_FOUND, "No such bed."));
+        if (bed != null && !bed.getUnitId().equals(unit.getId())) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "No such bed.");
+        }
+        // A shared room is let bed by bed: giving the whole of it to one
+        // tenant would take beds off the market nobody agreed to.
+        if (bed == null && unit.getRentalMode() == RentalMode.BEDSPACE) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "That room is let bed by bed. Choose which bed to give them.");
+        }
 
         requireStillFree(unit, bed);
         // Here rather than when they asked: this is where the tenancy is
@@ -126,6 +149,9 @@ public class RentalDecisionService {
             throw unavailable("Somebody else was accepted for this one.");
         }
 
+        // Written down before it is settled: which room they were given is
+        // part of what happened, and the request is the record of it.
+        request.roomChosen(unit.getId(), bed == null ? null : bed.getId());
         request.settle(RentalRequestStatus.ACCEPTED);
         requests.save(request);
 
@@ -178,6 +204,15 @@ public class RentalDecisionService {
      * chose them, and did not judge these. Telling somebody they were turned
      * down when they were simply not first is both untrue and worse to read.
      */
+    /** The room a landlord has to name when the tenant never saw one. */
+    private UUID requireChosen(UUID unitId) {
+        if (unitId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Choose which room to give them.");
+        }
+        return unitId;
+    }
+
     private void supersedeRivals(RentalRequest accepted) {
         List<RentalRequest> waiting = requests.findByPropertyIdAndStatusOrderByCreatedAtAsc(
                 accepted.getPropertyId(), RentalRequestStatus.PENDING);
@@ -216,6 +251,11 @@ public class RentalDecisionService {
      * queue the landlord still wants.
      */
     private static boolean sameSlot(RentalRequest one, RentalRequest other) {
+        // A request about the place is nobody's rival: the tenant never named
+        // a room, so nothing they asked for has gone.
+        if (one.getUnitId() == null || other.getUnitId() == null) {
+            return false;
+        }
         if (one.getBedId() != null || other.getBedId() != null) {
             return one.getBedId() != null && one.getBedId().equals(other.getBedId());
         }

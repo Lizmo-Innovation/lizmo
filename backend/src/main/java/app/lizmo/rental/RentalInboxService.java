@@ -141,7 +141,11 @@ public class RentalInboxService {
         User tenant = users.findById(request.getTenantId()).orElse(null);
         TenantProfile profile = profiles.findById(request.getTenantId()).orElse(null);
 
-        Unit unit = units.findById(request.getUnitId()).orElse(null);
+        // Null until a landlord chooses one: a request about the place names
+        // no room, because the tenant was never shown any.
+        Unit unit = request.getUnitId() == null
+                ? null
+                : units.findById(request.getUnitId()).orElse(null);
         Bed bed = request.getBedId() == null
                 ? null
                 : beds.findById(request.getBedId()).orElse(null);

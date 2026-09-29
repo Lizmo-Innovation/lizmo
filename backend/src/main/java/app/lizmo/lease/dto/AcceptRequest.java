@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * The terms a landlord is accepting on.
@@ -19,6 +20,14 @@ import java.time.LocalDate;
  */
 @Schema(description = "Terms for the lease being created")
 public record AcceptRequest(
+        @Schema(description = "Which room to give them. Required when the request is "
+                + "about the property rather than one room, and ignored when it names "
+                + "one.")
+        UUID unitId,
+
+        @Schema(description = "Which bed, when that unit is let bed by bed")
+        UUID bedId,
+
         @DecimalMin(value = "0.0", inclusive = false)
         @Schema(example = "2500.00", description = "Defaults to the asking rent")
         BigDecimal rentAmount,

@@ -13,12 +13,32 @@ part of openapi.api;
 class AcceptRequest {
   /// Returns a new [AcceptRequest] instance.
   AcceptRequest({
+    this.unitId,
+    this.bedId,
     this.rentAmount,
     this.dueDateDay,
     this.startDate,
     this.depositAmount,
     this.advanceAmount,
   });
+
+  /// Which room to give them. Required when the request is about the property rather than one room, and ignored when it names one.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? unitId;
+
+  /// Which bed, when that unit is let bed by bed
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? bedId;
 
   /// Defaults to the asking rent
   ///
@@ -76,6 +96,8 @@ class AcceptRequest {
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is AcceptRequest &&
+    other.unitId == unitId &&
+    other.bedId == bedId &&
     other.rentAmount == rentAmount &&
     other.dueDateDay == dueDateDay &&
     other.startDate == startDate &&
@@ -85,6 +107,8 @@ class AcceptRequest {
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
+    (unitId == null ? 0 : unitId!.hashCode) +
+    (bedId == null ? 0 : bedId!.hashCode) +
     (rentAmount == null ? 0 : rentAmount!.hashCode) +
     (dueDateDay == null ? 0 : dueDateDay!.hashCode) +
     (startDate == null ? 0 : startDate!.hashCode) +
@@ -92,10 +116,20 @@ class AcceptRequest {
     (advanceAmount == null ? 0 : advanceAmount!.hashCode);
 
   @override
-  String toString() => 'AcceptRequest[rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, depositAmount=$depositAmount, advanceAmount=$advanceAmount]';
+  String toString() => 'AcceptRequest[unitId=$unitId, bedId=$bedId, rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, depositAmount=$depositAmount, advanceAmount=$advanceAmount]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.unitId != null) {
+      json[r'unitId'] = this.unitId;
+    } else {
+      json[r'unitId'] = null;
+    }
+    if (this.bedId != null) {
+      json[r'bedId'] = this.bedId;
+    } else {
+      json[r'bedId'] = null;
+    }
     if (this.rentAmount != null) {
       json[r'rentAmount'] = this.rentAmount;
     } else {
@@ -139,6 +173,8 @@ class AcceptRequest {
       }());
 
       return AcceptRequest(
+        unitId: mapValueOfType<String>(json, r'unitId'),
+        bedId: mapValueOfType<String>(json, r'bedId'),
         rentAmount: json[r'rentAmount'] == null
             ? null
             : num.parse('${json[r'rentAmount']}'),

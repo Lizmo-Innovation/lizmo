@@ -13,11 +13,28 @@ part of openapi.api;
 class RentalRequestCreate {
   /// Returns a new [RentalRequestCreate] instance.
   RentalRequestCreate({
-    required this.unitId,
+    this.propertyId,
+    this.unitId,
     this.bedId,
   });
 
-  String unitId;
+  /// The property asked about. Omit when naming a unit
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? propertyId;
+
+  /// Omit to ask about the property as a whole
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? unitId;
 
   /// Omit to ask for the whole unit
   ///
@@ -30,21 +47,32 @@ class RentalRequestCreate {
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is RentalRequestCreate &&
+    other.propertyId == propertyId &&
     other.unitId == unitId &&
     other.bedId == bedId;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (unitId.hashCode) +
+    (propertyId == null ? 0 : propertyId!.hashCode) +
+    (unitId == null ? 0 : unitId!.hashCode) +
     (bedId == null ? 0 : bedId!.hashCode);
 
   @override
-  String toString() => 'RentalRequestCreate[unitId=$unitId, bedId=$bedId]';
+  String toString() => 'RentalRequestCreate[propertyId=$propertyId, unitId=$unitId, bedId=$bedId]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
+    if (this.propertyId != null) {
+      json[r'propertyId'] = this.propertyId;
+    } else {
+      json[r'propertyId'] = null;
+    }
+    if (this.unitId != null) {
       json[r'unitId'] = this.unitId;
+    } else {
+      json[r'unitId'] = null;
+    }
     if (this.bedId != null) {
       json[r'bedId'] = this.bedId;
     } else {
@@ -64,13 +92,12 @@ class RentalRequestCreate {
       // Note 1: the values aren't checked for validity beyond being non-null.
       // Note 2: this code is stripped in release mode!
       assert(() {
-        assert(json.containsKey(r'unitId'), 'Required key "RentalRequestCreate[unitId]" is missing from JSON.');
-        assert(json[r'unitId'] != null, 'Required key "RentalRequestCreate[unitId]" has a null value in JSON.');
         return true;
       }());
 
       return RentalRequestCreate(
-        unitId: mapValueOfType<String>(json, r'unitId')!,
+        propertyId: mapValueOfType<String>(json, r'propertyId'),
+        unitId: mapValueOfType<String>(json, r'unitId'),
         bedId: mapValueOfType<String>(json, r'bedId'),
       );
     }
@@ -119,7 +146,6 @@ class RentalRequestCreate {
 
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
-    'unitId',
   };
 }
 

@@ -5366,6 +5366,16 @@
             "AcceptRequest": {
                 "type": "object",
                 "properties": {
+                    "unitId": {
+                        "type": "string",
+                        "description": "Which room to give them. Required when the request is about the property rather than one room, and ignored when it names one.",
+                        "format": "uuid"
+                    },
+                    "bedId": {
+                        "type": "string",
+                        "description": "Which bed, when that unit is let bed by bed",
+                        "format": "uuid"
+                    },
                     "rentAmount": {
                         "minimum": 0.0,
                         "exclusiveMinimum": true,
@@ -5510,13 +5520,16 @@
                 "description": "A photograph a tenant has uploaded about themselves"
             },
             "RentalRequestCreate": {
-                "required": [
-                    "unitId"
-                ],
                 "type": "object",
                 "properties": {
+                    "propertyId": {
+                        "type": "string",
+                        "description": "The property asked about. Omit when naming a unit",
+                        "format": "uuid"
+                    },
                     "unitId": {
                         "type": "string",
+                        "description": "Omit to ask about the property as a whole",
                         "format": "uuid"
                     },
                     "bedId": {
@@ -5525,7 +5538,7 @@
                         "format": "uuid"
                     }
                 },
-                "description": "A request for a bed or a whole unit"
+                "description": "A request about a property, or for one room in it"
             },
             "RentalRequestResponse": {
                 "type": "object",

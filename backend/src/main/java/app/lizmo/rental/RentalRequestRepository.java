@@ -14,6 +14,10 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, UU
     boolean existsByTenantIdAndBedIdAndStatus(
             UUID tenantId, UUID bedId, RentalRequestStatus status);
 
+    /** A live ask about the place itself, with no room named. */
+    boolean existsByTenantIdAndPropertyIdAndUnitIdIsNullAndStatus(
+            UUID tenantId, UUID propertyId, RentalRequestStatus status);
+
     boolean existsByTenantIdAndUnitIdAndBedIdIsNullAndStatus(
             UUID tenantId, UUID unitId, RentalRequestStatus status);
 

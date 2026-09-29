@@ -66,6 +66,12 @@ public class RentalRequestService {
         // the ones who will not are invisible -- they simply never ask.
         readiness.requireEnoughToAsk(tenantId);
 
+        // About the place, which is what scanning a code leads to: the rooms
+        // are not shown to a stranger, so there is none to name.
+        if (command.unitId() == null) {
+            return askAboutAProperty(tenantId, command.propertyId());
+        }
+
         Unit unit = units.findById(command.unitId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));
 
@@ -111,12 +117,80 @@ public class RentalRequestService {
         return describe(request, unit, bed);
     }
 
+    /**
+     * Asking about the property, with no room named.
+     *
+     * <p>Refused when there is nothing free: a request nobody can fill is a
+     * tenant waiting for an answer that cannot come, and the landlord is left
+     * to decline somebody who did nothing wrong.
+     */
+    private RentalRequestResponse askAboutAProperty(UUID tenantId, UUID propertyId) {
+        if (propertyId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Say which property you are asking about.");
+        }
+        Property property = properties.findById(propertyId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such property."));
+
+        if (!anythingIsFree(propertyId)) {
+            throw unavailable("Nothing is free here at the moment.");
+        }
+        if (requests.existsByTenantIdAndPropertyIdAndUnitIdIsNullAndStatus(
+                tenantId, propertyId, RentalRequestStatus.PENDING)) {
+            throw new ApiException(ErrorCode.ALREADY_REQUESTED,
+                    "You have already asked about this place. The landlord will reply.");
+        }
+
+        RentalRequest request = new RentalRequest(tenantId, propertyId, null, null);
+        try {
+            request = requests.saveAndFlush(request);
+        } catch (DataIntegrityViolationException raced) {
+            throw new ApiException(ErrorCode.ALREADY_REQUESTED,
+                    "You have already asked about this place. The landlord will reply.");
+        }
+
+        notifications.raise(
+                property.getLandlordId(),
+                NotificationType.REQUEST_RECEIVED,
+                "Somebody has asked about a room",
+                "A tenant has asked about %s. Open your requests to see who, and which "
+                        .formatted(property.getName())
+                        + "room to offer them.",
+                NotificationEntityType.RENTAL_REQUEST,
+                request.getId());
+
+        return describe(request, null, null);
+    }
+
+    /** Whether any room there could be let today. */
+    private boolean anythingIsFree(UUID propertyId) {
+        for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(propertyId)) {
+            if (unit.getStatus() == UnitStatus.MAINTENANCE) {
+                continue;
+            }
+            if (unit.getRentalMode() == RentalMode.WHOLE_UNIT) {
+                if (unit.getStatus() == UnitStatus.VACANT) {
+                    return true;
+                }
+                continue;
+            }
+            for (Bed bed : beds.findByUnitIdOrderByBedLabelAsc(unit.getId())) {
+                if (bed.getStatus() == BedStatus.VACANT) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** Everything this tenant has asked for, newest first. */
     @Transactional(readOnly = true)
     public List<RentalRequestResponse> listMine(UUID tenantId) {
         List<RentalRequestResponse> described = new ArrayList<>();
         for (RentalRequest request : requests.findByTenantIdOrderByCreatedAtDesc(tenantId)) {
-            Unit unit = units.findById(request.getUnitId()).orElse(null);
+            Unit unit = request.getUnitId() == null
+                    ? null
+                    : units.findById(request.getUnitId()).orElse(null);
             Bed bed = request.getBedId() == null
                     ? null
                     : beds.findById(request.getBedId()).orElse(null);
@@ -147,7 +221,9 @@ public class RentalRequestService {
         request.settle(RentalRequestStatus.WITHDRAWN);
         requests.save(request);
 
-        Unit unit = units.findById(request.getUnitId()).orElse(null);
+        Unit unit = request.getUnitId() == null
+                ? null
+                : units.findById(request.getUnitId()).orElse(null);
         Bed bed = request.getBedId() == null
                 ? null
                 : beds.findById(request.getBedId()).orElse(null);

@@ -31,6 +31,7 @@ class RentalRequestIntegrationTest extends IntegrationTest {
     private String tenantToken;
     private String otherTenantToken;
 
+    private String propertyId;
     private String bedUnitId;
     private String wholeUnitId;
     private String bedId;
@@ -50,7 +51,7 @@ class RentalRequestIntegrationTest extends IntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        String propertyId = json.readTree(property).get("id").asText();
+        propertyId = json.readTree(property).get("id").asText();
 
         bedUnitId = addUnit(propertyId, """
                 {"unitNumber":"2B","floor":"2","rentalMode":"BEDSPACE",
@@ -156,6 +157,86 @@ class RentalRequestIntegrationTest extends IntegrationTest {
                 // Nothing is decided yet, and the field says so rather than
                 // carrying a placeholder date.
                 .andExpect(jsonPath("$.decidedAt").doesNotExist());
+    }
+
+    // ---- asking about the place ----------------------------------------------
+
+    private ResultActions askAboutTheProperty(String token) throws Exception {
+        return mvc.perform(post("/api/v1/me/rental-requests")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"propertyId\":\"%s\"}".formatted(propertyId)));
+    }
+
+    /**
+     * Scanning a code shows how many beds are free per floor, not which, so
+     * there is no room for the tenant to name. The landlord picks one when
+     * they accept, which is how it is settled on the phone anyway.
+     */
+    @Test
+    void a_tenant_can_ask_about_the_property_without_naming_a_room()
+            throws Exception {
+        makeReadyForALease(tenantToken);
+
+        askAboutTheProperty(tenantToken)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.propertyName").value("Sunrise Apartments"))
+                // Nothing to name yet: the landlord chooses on acceptance.
+                .andExpect(jsonPath("$.unitNumber").doesNotExist())
+                .andExpect(jsonPath("$.bedLabel").doesNotExist());
+    }
+
+    /** One ask per place: tapping twice is one enquiry, not two. */
+    @Test
+    void asking_about_the_same_place_twice_is_refused() throws Exception {
+        makeReadyForALease(tenantToken);
+        askAboutTheProperty(tenantToken).andExpect(status().isCreated());
+
+        askAboutTheProperty(tenantToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ALREADY_REQUESTED"))
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("already asked about this place")));
+    }
+
+    /**
+     * A request nobody can fill leaves a tenant waiting for an answer that
+     * cannot come, and a landlord declining somebody who did nothing wrong.
+     */
+    @Test
+    void asking_about_a_full_property_is_refused() throws Exception {
+        makeReadyForALease(tenantToken);
+        fillEveryRoom();
+
+        askAboutTheProperty(tenantToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("Nothing is free here")));
+    }
+
+    @Test
+    void asking_about_nothing_in_particular_is_refused() throws Exception {
+        makeReadyForALease(tenantToken);
+
+        mvc.perform(post("/api/v1/me/rental-requests")
+                        .header("Authorization", "Bearer " + tenantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("which property")));
+    }
+
+    /** Puts every bed and unit beyond reach, without letting them. */
+    private void fillEveryRoom() throws Exception {
+        for (String unit : new String[] {bedUnitId, wholeUnitId}) {
+            mvc.perform(put("/api/v1/units/" + unit + "/maintenance")
+                            .header("Authorization", "Bearer " + landlordToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"underMaintenance\":true}"))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Test

@@ -8,6 +8,8 @@ import 'package:lizmo_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**unitId** | **String** | Which room to give them. Required when the request is about the property rather than one room, and ignored when it names one. | [optional] 
+**bedId** | **String** | Which bed, when that unit is let bed by bed | [optional] 
 **rentAmount** | **num** | Defaults to the asking rent | [optional] 
 **dueDateDay** | **int** | Defaults to the start date's day | [optional] 
 **startDate** | [**DateTime**](DateTime.md) | Defaults to today | [optional] 

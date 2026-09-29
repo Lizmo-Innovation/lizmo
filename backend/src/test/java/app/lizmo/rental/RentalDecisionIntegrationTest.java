@@ -198,6 +198,99 @@ class RentalDecisionIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.tenantStillNeeds.length()").value(0));
     }
 
+    // ---- a request about the place ----------------------------------------
+
+    /** As scanning a code leads to: no room named, because none was shown. */
+    private String askAboutTheProperty(String token) throws Exception {
+        String created = mvc.perform(post("/api/v1/me/rental-requests")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"propertyId\":\"%s\"}".formatted(propertyId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(created).get("id").asText();
+    }
+
+    @Test
+    void the_landlord_picks_the_room_when_the_tenant_asked_about_the_place()
+            throws Exception {
+        String request = askAboutTheProperty(anaToken);
+
+        accept(request, """
+                {"unitId":"%s","bedId":"%s"}
+                """.formatted(bedUnitId, bed1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.unitNumber").value("2B"))
+                .andExpect(jsonPath("$.bedLabel").exists());
+    }
+
+    /** The request is the record of what happened, including which room. */
+    @Test
+    void the_room_chosen_is_written_onto_the_request() throws Exception {
+        String request = askAboutTheProperty(anaToken);
+        accept(request, """
+                {"unitId":"%s","bedId":"%s"}
+                """.formatted(bedUnitId, bed1)).andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/rental-requests/" + request)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.unitNumber").value("2B"))
+                .andExpect(jsonPath("$.bedLabel").exists());
+    }
+
+    @Test
+    void accepting_without_choosing_a_room_is_refused() throws Exception {
+        String request = askAboutTheProperty(anaToken);
+
+        accept(request, null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers
+                        .containsString("Choose which room to give them")));
+    }
+
+    /** Giving away the whole of a room that is let bed by bed. */
+    @Test
+    void a_shared_room_cannot_be_handed_over_whole() throws Exception {
+        String request = askAboutTheProperty(anaToken);
+
+        accept(request, """
+                {"unitId":"%s"}
+                """.formatted(bedUnitId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers
+                        .containsString("Choose which bed")));
+    }
+
+    /**
+     * Nobody asked for a particular room, so nobody's room has gone: a second
+     * tenant asking about the place is still waiting for an answer.
+     */
+    @Test
+    void asking_about_the_place_supersedes_nobody() throws Exception {
+        String ana = askAboutTheProperty(anaToken);
+        String bea = askAboutTheProperty(beaToken);
+
+        accept(ana, """
+                {"unitId":"%s","bedId":"%s"}
+                """.formatted(bedUnitId, bed1)).andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/rental-requests/" + bea)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    /** Somebody mid-conversation keeps the request they already sent. */
+    @Test
+    void a_request_that_names_a_bed_still_accepts_as_it_did() throws Exception {
+        String request = ask(anaToken, bedUnitId, bed1);
+
+        accept(request, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bedLabel").exists());
+    }
+
     // ---- saying yes -------------------------------------------------------
 
     @Test
