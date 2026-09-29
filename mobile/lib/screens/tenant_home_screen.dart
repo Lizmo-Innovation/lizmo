@@ -45,7 +45,15 @@ class TenantHomeScreen extends ConsumerWidget {
     final waiting = (requests.valueOrNull ?? const <RentalRequestResponse>[])
         .where((request) => request.status == RentalRequestResponseStatusEnum.PENDING)
         .toList();
-    final unfinished = profile.valueOrNull?.readyForALease == false;
+    final details = profile.valueOrNull;
+    // Two different gaps, and only one of them is worth saying at a time.
+    // Without a number they cannot ask about a room at all; with a request
+    // waiting, an unfinished profile is what the landlord is held up by.
+    final noNumber = details != null && (details.contactPhone ?? '').isEmpty;
+    final holdingUpALandlord = details?.readyForALease == false &&
+        (requests.valueOrNull ?? const <RentalRequestResponse>[]).any(
+            (request) => request.status == RentalRequestResponseStatusEnum.PENDING);
+    final unfinished = noNumber || holdingUpALandlord;
 
     final nothingToSay = !unfinished && waiting.isEmpty && lease == null;
 
@@ -97,7 +105,7 @@ class TenantHomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
                 children: [
                   if (unfinished) ...[
-                    const _FinishYourProfile(),
+                    _FinishYourProfile(noNumber: noNumber),
                     const SizedBox(height: 12),
                   ],
 
@@ -146,18 +154,25 @@ class TenantHomeScreen extends ConsumerWidget {
 /// A tenant has no reason to go looking for a profile screen, so the app asks
 /// on the one screen they do open — and says why, rather than nagging.
 class _FinishYourProfile extends StatelessWidget {
-  const _FinishYourProfile();
+  const _FinishYourProfile({required this.noNumber});
+
+  /// Nothing to ring them on, so they cannot ask about a room yet.
+  final bool noNumber;
 
   @override
   Widget build(BuildContext context) {
     return _Card(
       colour: LizmoColors.amberBg,
       textColour: LizmoColors.amberText,
-      icon: Icons.badge_outlined,
-      title: 'Finish your profile',
-      detail: 'A landlord needs your ID and an emergency contact before they '
-          'can accept you.',
-      actionLabel: 'Open my profile',
+      icon: noNumber ? Icons.phone_outlined : Icons.badge_outlined,
+      title: noNumber ? 'Add your mobile number' : 'A landlord is waiting on you',
+      // Said as the thing it holds up, not as a form to go and fill in.
+      detail: noNumber
+          ? 'Landlords answer room requests by calling. Without a number you '
+              'cannot ask about a room.'
+          : 'Your request cannot be accepted until you add your ID details, '
+              'a photo of your ID and an emergency contact.',
+      actionLabel: noNumber ? 'Add my number' : 'Finish my profile',
       onAction: (context) => context.push(Routes.tenantProfile),
     );
   }

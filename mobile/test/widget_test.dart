@@ -203,7 +203,7 @@ Widget _app(AuthState initial) => ProviderScope(
         // A tenant screen reads this on build. Left to the real provider it
         // would reach for the network from every routing test.
         myTenantProfileProvider
-            .overrideWith((ref) async => TenantProfileResponse(readyForALease: true)),
+            .overrideWith((ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true)),
         myTenantDocumentsProvider
             .overrideWith((ref) async => const <TenantDocumentResponse>[]),
         myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
@@ -3866,6 +3866,7 @@ void _tenantProfileTests() {
       TenantProfileResponse profile, {
       _RecordingTenantProfileApi? api,
       List<TenantDocumentResponse> documents = const [],
+      List<RentalRequestResponse> requests = const [],
     }) =>
         ProviderScope(
           overrides: [
@@ -3874,6 +3875,7 @@ void _tenantProfileTests() {
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
             myTenantProfileProvider.overrideWith((ref) async => profile),
             myTenantDocumentsProvider.overrideWith((ref) async => documents),
+            myRentalRequestsProvider.overrideWith((ref) async => requests),
             if (api != null) tenantProfileApiProvider.overrideWithValue(api),
           ],
           child: const LizmoApp(),
@@ -3897,6 +3899,7 @@ void _tenantProfileTests() {
 
     /// Everything a lease needs.
     TenantProfileResponse complete() => TenantProfileResponse(
+          contactPhone: '09170000001',
           birthdate: DateTime.utc(1998, 4, 12),
           permanentAddress: 'Brgy. San Isidro, Naga City',
           occupation: 'Nurse at Bicol Medical Center',
@@ -3944,12 +3947,47 @@ void _tenantProfileTests() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('the home screen asks an unfinished profile to be finished',
+    /// Without a number they cannot ask about a room at all, which is the
+    /// more urgent of the two gaps.
+    testWidgets('the home screen asks for a number when there is none',
         (tester) async {
       await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
       await tester.pumpAndSettle();
 
-      expect(find.text('Finish your profile'), findsOneWidget);
+      expect(find.text('Add your mobile number'), findsOneWidget);
+    });
+
+    /// It used to nag anybody whose profile was unfinished, whether or not
+    /// anything was waiting on it. Nothing is, until they have asked.
+    testWidgets('an unfinished profile with nothing waiting is left alone',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        TenantProfileResponse(contactPhone: '09170000001', readyForALease: false),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add your mobile number'), findsNothing);
+      expect(find.text('A landlord is waiting on you'), findsNothing);
+    });
+
+    testWidgets('a request waiting on an unfinished profile says who is held up',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        TenantProfileResponse(contactPhone: '09170000001', readyForALease: false),
+        requests: [
+          RentalRequestResponse(
+            id: 'r1',
+            propertyName: 'Sunrise Apartments',
+            unitNumber: '2B',
+            bedLabel: 'Bed 3',
+            status: RentalRequestResponseStatusEnum.PENDING,
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A landlord is waiting on you'), findsOneWidget);
+      expect(find.textContaining('cannot be accepted until you add'), findsOneWidget);
     });
 
     testWidgets('a finished profile is not nagged', (tester) async {
@@ -3963,7 +4001,7 @@ void _tenantProfileTests() {
     testWidgets('the prompt opens the profile', (tester) async {
       await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Open my profile'));
+      await tester.tap(find.text('Add my number'));
       await tester.pumpAndSettle();
 
       expect(find.text('My profile'), findsOneWidget);
@@ -4012,22 +4050,47 @@ void _tenantProfileTests() {
     });
 
     testWidgets('the banner says what a lease still needs', (tester) async {
-      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await tester.pumpWidget(appWith(
+        TenantProfileResponse(contactPhone: '09170000001', readyForALease: false),
+      ));
       await openProfile(tester);
 
       // Named rather than counted, and in the order the form asks for them.
       expect(
-        find.textContaining('an emergency contact, your ID details, '
-            'a photo of your ID and a 1x1 or selfie'),
+        find.textContaining('an emergency contact, your ID details '
+            'and a photo of your ID'),
         findsOneWidget,
       );
     });
 
+    /// The gate in front of asking, which comes before any of the rest.
+    testWidgets('with no number the banner asks for that first', (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      expect(find.textContaining('Add your mobile number so you can ask about a room'),
+          findsOneWidget);
+    });
+
+    testWidgets('the number is saved with the rest of the profile',
+        (tester) async {
+      final api = _RecordingTenantProfileApi(complete());
+      await tester.pumpWidget(appWith(complete(), api: api));
+      await openProfile(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('contact-phone')), '09991112222');
+      await saveProfile(tester);
+
+      expect(api.saved?.contactPhone, '09991112222');
+    });
+
     testWidgets('the banner clears as the last field is filled in',
         (tester) async {
-      // Everything, both photographs included, but the ID number.
+      // Everything, the ID photograph included, but the ID number.
       await tester.pumpWidget(appWith(
         TenantProfileResponse(
+          contactPhone: '09170000001',
           emergencyContactName: 'Rosa Dela Cruz',
           emergencyContactPhone: '09171234567',
           idType: TenantProfileResponseIdTypeEnum.UMID,
@@ -4078,19 +4141,27 @@ void _tenantProfileTests() {
 
     testWidgets('the banner counts a missing photograph, not just fields',
         (tester) async {
+      await tester.pumpWidget(appWith(complete()));
+      await openProfile(tester);
+
+      // Every detail typed in, and still not ready: an ID number typed into a
+      // form is not an ID anybody has seen.
+      expect(find.textContaining('a photo of your ID'), findsOneWidget);
+      expect(find.text('Your profile is ready for a lease.'), findsNothing);
+    });
+
+    /// A 1x1 used to be demanded as well, from somebody who had not moved in.
+    testWidgets('a selfie is no longer part of being ready', (tester) async {
       await tester.pumpWidget(appWith(
         complete(),
         documents: [photograph(TenantDocumentResponseDocTypeEnum.VALID_ID)],
       ));
       await openProfile(tester);
 
-      // Every detail typed in and an ID photographed, and still not ready: a
-      // landlord asked for a face as well as a document.
-      expect(find.textContaining('a 1x1 or selfie'), findsOneWidget);
-      expect(find.text('Your profile is ready for a lease.'), findsNothing);
+      expect(find.text('Your profile is ready for a lease.'), findsOneWidget);
     });
 
-    testWidgets('details and both photographs together are what ready means',
+    testWidgets('details and the ID photograph together are what ready means',
         (tester) async {
       await tester.pumpWidget(appWith(complete(), documents: bothPhotographs()));
       await openProfile(tester);
@@ -4519,7 +4590,7 @@ void _findingAPlaceTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -4673,15 +4744,17 @@ void _findingAPlaceTests() {
       expect(find.text('Ask for this'), findsNothing);
     });
 
-    testWidgets('an unfinished profile is explained in the second person', (
+    /// It used to send them to a profile form and leave them to find their
+    /// way back. A number is the whole of what asking takes, so it is asked
+    /// on the room they are looking at.
+    testWidgets('a tenant with no number is asked for one, here', (
       tester,
     ) async {
       final asking = _FakeAskingApi(
         failWith: const ApiFailure(
           code: 'TENANT_PROFILE_INCOMPLETE',
-          // What the server actually says: written for a landlord reading
-          // about somebody else.
-          message: 'This tenant cannot sign a lease yet. They still need an ID.',
+          // What the server actually says.
+          message: 'Add a phone number before asking about a room.',
         ),
       );
       await tester.pumpWidget(
@@ -4691,12 +4764,13 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       await tester.tap(find.text('Ask for this'));
-      await tester.pumpAndSettle();
+      // Not pumpAndSettle: the sheet's field takes focus, and a blinking
+      // cursor never settles.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-      // Said to the tenant about themselves, with the way to fix it.
-      expect(find.text('Finish your profile first'), findsOneWidget);
-      expect(find.textContaining('This tenant cannot'), findsNothing);
-      expect(find.text('Open my profile'), findsOneWidget);
+      expect(find.text('What number can the landlord ring?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('ask-phone-field')), findsOneWidget);
     });
 
     testWidgets('a slot taken while reading is shown as it happened', (
@@ -5229,7 +5303,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -5423,7 +5497,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -5937,7 +6011,7 @@ void _tenantLeaseTests() {
           tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
           propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
           myTenantProfileProvider.overrideWith(
-            (ref) async => TenantProfileResponse(readyForALease: true),
+            (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
           ),
           myRentalRequestsProvider.overrideWith(
             (ref) async => const <RentalRequestResponse>[],
@@ -6280,7 +6354,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -6406,7 +6480,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -6705,7 +6779,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -7156,7 +7230,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
@@ -8726,7 +8800,7 @@ void _tenantLeaseTests() {
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         myTenantProfileProvider.overrideWith(
-          (ref) async => TenantProfileResponse(readyForALease: true),
+          (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
         ),
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],

@@ -427,7 +427,7 @@ void main() {
           ),
           todayProvider.overrideWithValue(today),
           myTenantProfileProvider.overrideWith(
-            (ref) async => TenantProfileResponse(readyForALease: true),
+            (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
           ),
           myTenantDocumentsProvider.overrideWith(
             (ref) async => const <TenantDocumentResponse>[],

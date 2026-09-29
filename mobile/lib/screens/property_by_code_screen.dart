@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
-import '../router.dart';
+import '../widgets/ask_for_number_sheet.dart';
 import '../tenant/tenant_providers.dart';
 
 /// What a tenant sees after entering the code: the place, and what is free.
@@ -185,7 +184,7 @@ class _VacancyState extends ConsumerState<_Vacancy> {
   bool _asking = false;
   bool _asked = false;
 
-  Future<void> _ask() async {
+  Future<void> _ask({bool retrying = false}) async {
     setState(() => _asking = true);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -202,12 +201,12 @@ class _VacancyState extends ConsumerState<_Vacancy> {
       final failure = ApiFailure.from(error);
       if (!mounted) return;
 
-      if (failure.code == 'TENANT_PROFILE_INCOMPLETE') {
-        // The server's message is written for a landlord reading about
-        // somebody else — "this tenant cannot sign a lease yet". Said to the
-        // tenant about themselves it has to be second person, and it has to
-        // offer the way to fix it rather than only stating the problem.
-        _offerToFinishTheProfile();
+      if (failure.code == 'TENANT_PROFILE_INCOMPLETE' && !retrying) {
+        // A number is the whole of what asking takes, so it is asked here, on
+        // the room they are looking at, and the request goes again with no
+        // second tap. Retrying only once: a second refusal is a real problem
+        // and should be read, not looped over.
+        await _askForANumberThenTryAgain();
         return;
       }
 
@@ -217,36 +216,12 @@ class _VacancyState extends ConsumerState<_Vacancy> {
     }
   }
 
-  void _offerToFinishTheProfile() {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: LizmoColors.canvas,
-        title: Text('Finish your profile first', style: LizmoType.rowName),
-        content: Text(
-          'Landlords need to know who they are letting to. Add your emergency '
-          'contact, your ID details, and a photo of your ID and a 1x1 — then '
-          'you can ask for this one.',
-          style: LizmoType.rowSub,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Not now', style: LizmoType.rowSub),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              context.push(Routes.tenantProfile);
-            },
-            child: Text(
-              'Open my profile',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _askForANumberThenTryAgain() async {
+    final profile = await ref.read(myTenantProfileProvider.future);
+    if (!mounted) return;
+
+    final saved = await AskForNumberSheet.show(context, profile);
+    if (saved && mounted) await _ask(retrying: true);
   }
 
   @override

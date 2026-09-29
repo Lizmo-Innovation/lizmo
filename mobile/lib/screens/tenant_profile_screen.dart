@@ -42,6 +42,7 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
 
   DateTime? _birthdate;
   TenantProfileRequestIdTypeEnum? _idType;
+  final _contactPhone = TextEditingController();
 
   /// Seeded once from the API. A rebuild must never overwrite what is typed.
   bool _seeded = false;
@@ -52,6 +53,7 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
   void dispose() {
     _permanentAddress.dispose();
     _occupation.dispose();
+    _contactPhone.dispose();
     _emergencyName.dispose();
     _emergencyRelationship.dispose();
     _emergencyPhone.dispose();
@@ -62,6 +64,7 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
   void _seed(TenantProfileResponse profile) {
     _permanentAddress.text = profile.permanentAddress ?? '';
     _occupation.text = profile.occupation ?? '';
+    _contactPhone.text = profile.contactPhone ?? '';
     _emergencyName.text = profile.emergencyContactName ?? '';
     _emergencyRelationship.text = profile.emergencyContactRelationship ?? '';
     _emergencyPhone.text = profile.emergencyContactPhone ?? '';
@@ -107,6 +110,7 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
               birthdate: _birthdate,
               permanentAddress: _trimToNull(_permanentAddress.text),
               occupation: _trimToNull(_occupation.text),
+              contactPhone: _trimToNull(_contactPhone.text),
               emergencyContactName: _trimToNull(_emergencyName.text),
               emergencyContactRelationship: _trimToNull(
                 _emergencyRelationship.text,
@@ -139,8 +143,11 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// What the banner still needs, in the order the form asks for it. Named
+  /// What a lease still needs, in the order the form asks for it. Named
   /// rather than counted: "2 things missing" makes a tenant hunt for them.
+  ///
+  /// The number is not here: it is not for signing, it is for being answered,
+  /// and it is the only thing asked before a tenant may ask about a room.
   List<String> _whatIsMissing(List<TenantDocumentResponse> documents) {
     bool uploaded(TenantDocumentResponseDocTypeEnum kind) =>
         documents.any((document) => document.docType == kind);
@@ -152,8 +159,6 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
       if (_idType == null || _idNumber.text.trim().isEmpty) 'your ID details',
       if (!uploaded(TenantDocumentResponseDocTypeEnum.VALID_ID))
         'a photo of your ID',
-      if (!uploaded(TenantDocumentResponseDocTypeEnum.TENANT_PHOTO))
-        'a 1x1 or selfie',
     ];
   }
 
@@ -206,9 +211,29 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 14),
-                _ReadinessBanner(missing: missing),
+                _ReadinessBanner(
+                  missing: missing,
+                  hasPhone: _contactPhone.text.trim().isNotEmpty,
+                ),
                 const SizedBox(height: 20),
 
+                const _SectionHeading('How landlords reach you'),
+                const SizedBox(height: 4),
+                Text(
+                  'Your own number. A landlord rings this to answer a room you '
+                  'asked about.',
+                  style: LizmoType.rowSub,
+                ),
+                const SizedBox(height: 10),
+                _Field(
+                  key: const ValueKey('contact-phone'),
+                  controller: _contactPhone,
+                  label: 'Mobile number',
+                  hint: '09171234567',
+                  keyboardType: TextInputType.phone,
+                ),
+
+                const SizedBox(height: 24),
                 const _SectionHeading('About you'),
                 const SizedBox(height: 10),
                 _BirthdateField(value: _birthdate, onTap: _pickBirthdate),
@@ -409,13 +434,17 @@ class _WhoYouAre extends StatelessWidget {
 /// are uploaded. Both mirror what the server decides, so the screen and the
 /// API cannot disagree about whether a lease may be signed.
 class _ReadinessBanner extends StatelessWidget {
-  const _ReadinessBanner({required this.missing});
+  const _ReadinessBanner({required this.missing, required this.hasPhone});
 
   final List<String> missing;
 
+  /// Without it a tenant cannot even ask about a room, which is the more
+  /// urgent of the two and so the one the banner leads with.
+  final bool hasPhone;
+
   @override
   Widget build(BuildContext context) {
-    final ready = missing.isEmpty;
+    final ready = missing.isEmpty && hasPhone;
     final colour = ready ? LizmoColors.teal900 : LizmoColors.amberText;
 
     return Container(
@@ -435,10 +464,12 @@ class _ReadinessBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              ready
-                  ? 'Your profile is ready for a lease.'
-                  : 'Before signing a lease you still need '
-                        '${_asAList(missing)}.',
+              !hasPhone
+                  ? 'Add your mobile number so you can ask about a room.'
+                  : ready
+                      ? 'Your profile is ready for a lease.'
+                      : 'Before signing a lease you still need '
+                            '${_asAList(missing)}.',
               style: LizmoType.rowSub.copyWith(color: colour),
             ),
           ),
@@ -468,6 +499,7 @@ class _SectionHeading extends StatelessWidget {
 /// A labelled text field on a card, matching the rest of the app.
 class _Field extends StatelessWidget {
   const _Field({
+    super.key,
     required this.controller,
     required this.label,
     required this.hint,
