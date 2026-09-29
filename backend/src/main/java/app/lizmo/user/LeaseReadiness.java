@@ -19,13 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  * implementations of the same rule would drift, and the day they disagreed a
  * tenant would be told they were ready by one screen and refused by the next.
  *
- * <p><strong>Nothing calls {@link #require} yet.</strong> Lease creation does
- * not exist — no endpoint, no rows, no screen — so this guard is written and
- * tested ahead of the thing it guards, on Ariel's instruction. Its tests
- * exercise it directly rather than through an API, which is the most that can
- * honestly be proven until leases land. Whoever builds lease creation should
- * call {@code require(tenantId)} before writing the row, and is the first
- * person able to prove it actually blocks anything.
+ * <p>Asked at acceptance, which is where the tenancy is written. It used to be
+ * asked when the tenant merely requested a room, which meant a stranger had to
+ * hand a landlord their ID photograph to ask whether a bed was still free --
+ * and the ones who would not are invisible, because the request was never
+ * made. {@link #whatIsNeededToAsk} is the far smaller thing asked then: a
+ * number the landlord can ring.
  */
 @Service
 public class LeaseReadiness {
@@ -71,10 +70,6 @@ public class LeaseReadiness {
         if (!documents.has(tenantId, DocumentType.VALID_ID)) {
             missing.add("a photo of their ID");
         }
-        if (!documents.has(tenantId, DocumentType.TENANT_PHOTO)) {
-            missing.add("a 1x1 or selfie");
-        }
-
         return List.copyOf(missing);
     }
 
@@ -82,6 +77,46 @@ public class LeaseReadiness {
     @Transactional(readOnly = true)
     public boolean isReady(UUID tenantId) {
         return whatIsMissing(tenantId).isEmpty();
+    }
+
+    /**
+     * What the tenant still owes before they may ask for a room at all.
+     *
+     * <p>Only a number. A landlord answering a request wants to ring the
+     * person who made it, and until now they could not: the request carries
+     * the account's phone, and registration collects an email. Everything
+     * else -- the ID, the emergency contact, the photograph -- is asked when
+     * a landlord accepts, by which point the two have spoken.
+     *
+     * <p>Empty means they may ask.
+     */
+    @Transactional(readOnly = true)
+    public List<String> whatIsNeededToAsk(UUID tenantId) {
+        Optional<TenantProfile> found = profiles.findById(tenantId);
+        if (found.isEmpty()) {
+            return List.of("a tenant profile");
+        }
+        return isBlank(found.get().getContactPhone())
+                ? List.of("a phone number")
+                : List.of();
+    }
+
+    /**
+     * Refuses unless the tenant may ask for a room.
+     *
+     * @throws ApiException with {@link ErrorCode#TENANT_PROFILE_INCOMPLETE},
+     *                      as {@link #require} does: nothing is malformed, and
+     *                      the same request works once they add it.
+     */
+    @Transactional(readOnly = true)
+    public void requireEnoughToAsk(UUID tenantId) {
+        List<String> missing = whatIsNeededToAsk(tenantId);
+        if (missing.isEmpty()) {
+            return;
+        }
+        throw new ApiException(ErrorCode.TENANT_PROFILE_INCOMPLETE,
+                "Add %s before asking about a room, so the landlord can reach you."
+                        .formatted(asAList(missing)));
     }
 
     /**

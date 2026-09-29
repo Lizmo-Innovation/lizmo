@@ -92,7 +92,8 @@ class TenantProfileIntegrationTest extends IntegrationTest {
     void the_details_a_lease_needs_are_an_emergency_contact_and_an_id() throws Exception {
         // Everything but the ID.
         save(tenantToken, """
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "emergencyContactPhone":"09171234567",
                  "birthdate":"1998-04-12",
                  "permanentAddress":"Naga City","occupation":"Nurse"}
@@ -103,7 +104,8 @@ class TenantProfileIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.readyForALease").value(false));
 
         save(tenantToken, """
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "emergencyContactPhone":"09171234567",
                  "idType":"UMID","idNumber":"0111-2222222-3"}
                 """);

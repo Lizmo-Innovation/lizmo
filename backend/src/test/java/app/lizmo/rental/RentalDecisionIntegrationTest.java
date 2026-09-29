@@ -91,7 +91,8 @@ class RentalDecisionIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactPhone":"09171234567",
                                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                                 """))
@@ -128,6 +129,73 @@ class RentalDecisionIntegrationTest extends IntegrationTest {
             call = call.contentType(MediaType.APPLICATION_JSON).content(terms);
         }
         return mvc.perform(call);
+    }
+
+    /**
+     * The gate that used to stand in front of asking. A tenant with only a
+     * number can ask about a room; the ID and the rest are wanted here, where
+     * the tenancy is actually written.
+     */
+    private String askWithOnlyANumber(String token, String unitId, String bedId)
+            throws Exception {
+        mvc.perform(put("/api/v1/me/tenant-profile")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"contactPhone":"09170000001"}
+                                """))
+                .andExpect(status().isOk());
+        return ask(token, unitId, bedId);
+    }
+
+    @Test
+    void a_tenant_who_has_only_given_a_number_cannot_be_accepted() throws Exception {
+        String request = askWithOnlyANumber(anaToken, bedUnitId, bed1);
+
+        accept(request, null)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TENANT_PROFILE_INCOMPLETE"))
+                // Named, so the landlord has something to go back to the
+                // tenant with.
+                // Their ID photograph is already on file from an earlier
+                // tenancy; the details they typed are what the profile lost.
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString(
+                        "an emergency contact and their ID details")));
+    }
+
+    /** Refused, not spent: the same request works once they finish. */
+    @Test
+    void the_request_survives_being_refused_for_an_unfinished_profile()
+            throws Exception {
+        String request = askWithOnlyANumber(anaToken, bedUnitId, bed1);
+        accept(request, null).andExpect(status().isConflict());
+
+        makeReadyForALease(anaToken);
+
+        accept(request, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
+
+    /** So a landlord can see what to wait for before they tap accept. */
+    @Test
+    void the_request_says_what_the_tenant_still_needs() throws Exception {
+        String request = askWithOnlyANumber(anaToken, bedUnitId, bed1);
+
+        mvc.perform(get("/api/v1/rental-requests/" + request)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tenantStillNeeds.length()").value(2))
+                .andExpect(jsonPath("$.tenantStillNeeds[0]").value("an emergency contact"))
+                // The number they gave, which is how the landlord reaches
+                // them to ask for the rest.
+                .andExpect(jsonPath("$.tenantPhone").value("09170000001"));
+
+        makeReadyForALease(anaToken);
+
+        mvc.perform(get("/api/v1/rental-requests/" + request)
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andExpect(jsonPath("$.tenantStillNeeds.length()").value(0));
     }
 
     // ---- saying yes -------------------------------------------------------

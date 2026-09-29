@@ -26,6 +26,12 @@ public record TenantProfileRequest(
         @Size(max = 255)
         @Schema(example = "Nurse at Bicol Medical Center") String occupation,
 
+        @Size(max = 30)
+        @Schema(example = "09171234567",
+                description = "The tenant's own number, which a landlord needs before "
+                        + "they can answer a request about a room")
+        String contactPhone,
+
         @Size(max = 255)
         @Schema(example = "Rosa Dela Cruz") String emergencyContactName,
 

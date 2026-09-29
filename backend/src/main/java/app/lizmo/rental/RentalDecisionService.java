@@ -21,6 +21,7 @@ import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
 import app.lizmo.property.UnitStatus;
 import app.lizmo.rental.dto.RentalRequestForLandlord;
+import app.lizmo.user.LeaseReadiness;
 import app.lizmo.user.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -48,6 +49,8 @@ public class RentalDecisionService {
     private final UnitRepository units;
     private final BedRepository beds;
     private final UserRepository users;
+    /** What a tenant must have on file before a tenancy may be written. */
+    private final LeaseReadiness readiness;
 
     /** Nobody was told anything before this. See NotificationService. */
     private final NotificationService notifications;
@@ -61,6 +64,7 @@ public class RentalDecisionService {
             UnitRepository units,
             BedRepository beds,
             UserRepository users,
+            LeaseReadiness readiness,
             NotificationService notifications) {
         this.requests = requests;
         this.inbox = inbox;
@@ -71,6 +75,7 @@ public class RentalDecisionService {
         this.beds = beds;
         this.users = users;
         this.notifications = notifications;
+        this.readiness = readiness;
     }
 
     @Transactional
@@ -89,6 +94,11 @@ public class RentalDecisionService {
                         () -> new ApiException(ErrorCode.NOT_FOUND, "No such bed."));
 
         requireStillFree(unit, bed);
+        // Here rather than when they asked: this is where the tenancy is
+        // written, and the landlord has spoken to them by now. Refused with
+        // what is still missing, which the request already says on screen, so
+        // this is the backstop rather than the first anybody hears of it.
+        readiness.require(request.getTenantId());
 
         BigDecimal rent = rentFor(terms, unit, bed);
         LocalDate start = terms == null || terms.startDate() == null

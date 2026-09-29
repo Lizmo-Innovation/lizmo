@@ -54,15 +54,48 @@ class LeaseReadinessTest extends IntegrationTest {
         assertThat(readiness.whatIsMissing(tenantId)).containsExactly(
                 "an emergency contact",
                 "their ID details",
-                "a photo of their ID",
-                "a 1x1 or selfie");
+                "a photo of their ID");
+    }
+
+    /**
+     * All it takes to ask about a room. The rest is asked when a landlord
+     * accepts, by which point the two have spoken.
+     */
+    @Test
+    void asking_about_a_room_takes_only_a_number() throws Exception {
+        assertThat(readiness.whatIsNeededToAsk(tenantId))
+                .containsExactly("a phone number");
+
+        save("""
+                {"contactPhone":"09170000001"}
+                """);
+
+        assertThat(readiness.whatIsNeededToAsk(tenantId)).isEmpty();
+        // Still nowhere near ready for a tenancy.
+        assertThat(readiness.isReady(tenantId)).isFalse();
+        readiness.requireEnoughToAsk(tenantId);
+    }
+
+    @Test
+    void being_told_to_add_a_number_says_why() {
+        assertThatThrownBy(() -> readiness.requireEnoughToAsk(tenantId))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("so the landlord can reach you")
+                .extracting(error -> ((ApiException) error).getCode())
+                .isEqualTo(ErrorCode.TENANT_PROFILE_INCOMPLETE);
+    }
+
+    /** An account that is not a tenant's has no number to ask with either. */
+    @Test
+    void an_account_with_no_profile_cannot_ask() {
+        assertThat(readiness.whatIsNeededToAsk(UUID.randomUUID()))
+                .containsExactly("a tenant profile");
     }
 
     @Test
     void a_tenant_who_has_done_it_all_is_ready() throws Exception {
         fillInDetails();
         upload("VALID_ID");
-        upload("TENANT_PHOTO");
 
         assertThat(readiness.whatIsMissing(tenantId)).isEmpty();
         assertThat(readiness.isReady(tenantId)).isTrue();
@@ -76,33 +109,37 @@ class LeaseReadinessTest extends IntegrationTest {
 
         // An ID number typed into a form is not an ID anybody has seen.
         assertThat(readiness.whatIsMissing(tenantId))
-                .containsExactly("a photo of their ID", "a 1x1 or selfie");
+                .containsExactly("a photo of their ID");
     }
 
     @Test
     void photographs_without_details_are_not_enough_either() throws Exception {
         upload("VALID_ID");
-        upload("TENANT_PHOTO");
 
         // A landlord holding two photographs still has nobody to call.
         assertThat(readiness.whatIsMissing(tenantId))
                 .containsExactly("an emergency contact", "their ID details");
     }
 
+    /**
+     * A 1x1 used to be demanded too: a second identity document from somebody
+     * who has not moved in, on top of the ID they had already photographed.
+     */
     @Test
-    void an_id_photograph_is_not_a_1x1() throws Exception {
+    void a_selfie_is_no_longer_demanded() throws Exception {
         fillInDetails();
         upload("VALID_ID");
 
-        // The one a landlord is most likely to think is enough.
-        assertThat(readiness.whatIsMissing(tenantId)).containsExactly("a 1x1 or selfie");
+        assertThat(readiness.whatIsMissing(tenantId)).isEmpty();
+        assertThat(readiness.isReady(tenantId)).isTrue();
     }
 
     @Test
     void half_an_emergency_contact_does_not_count() throws Exception {
         // A name with no number is nobody to call.
         save("""
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                 """);
 
@@ -112,7 +149,8 @@ class LeaseReadinessTest extends IntegrationTest {
     @Test
     void an_id_type_with_no_number_does_not_count() throws Exception {
         save("""
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "emergencyContactPhone":"09171234567",
                  "idType":"PHILSYS"}
                 """);
@@ -134,8 +172,8 @@ class LeaseReadinessTest extends IntegrationTest {
                 .isInstanceOf(ApiException.class)
                 // A landlord told only "profile incomplete" goes back to their
                 // tenant with nothing to act on.
-                .hasMessageContaining("an emergency contact, their ID details, "
-                        + "a photo of their ID and a 1x1 or selfie")
+                .hasMessageContaining("an emergency contact, their ID details "
+                        + "and a photo of their ID")
                 .extracting(error -> ((ApiException) error).getCode())
                 // 409, not 400: the request is fine, and the same one will
                 // succeed once the tenant finishes.
@@ -146,10 +184,10 @@ class LeaseReadinessTest extends IntegrationTest {
     void one_thing_missing_reads_as_one_thing() throws Exception {
         fillInDetails();
         upload("VALID_ID");
-        upload("TENANT_PHOTO");
         // Clear the phone again, leaving exactly one gap.
         save("""
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "emergencyContactPhone":"",
                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                 """);
@@ -163,7 +201,6 @@ class LeaseReadinessTest extends IntegrationTest {
     void the_profile_endpoint_and_the_guard_never_disagree() throws Exception {
         fillInDetails();
         upload("VALID_ID");
-        upload("TENANT_PHOTO");
 
         // readyForALease on the response is this same guard. If the two were
         // computed separately, the day they drifted a tenant would be told they
@@ -182,7 +219,8 @@ class LeaseReadinessTest extends IntegrationTest {
 
     private void fillInDetails() throws Exception {
         save("""
-                {"emergencyContactName":"Rosa Dela Cruz",
+                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                  "emergencyContactPhone":"09171234567",
                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                 """);

@@ -31,6 +31,7 @@ class RentalRequestForLandlord {
     this.permanentAddress,
     this.age,
     this.idType,
+    this.tenantStillNeeds = const [],
     this.askingRent,
   });
 
@@ -166,6 +167,8 @@ class RentalRequestForLandlord {
 
   RentalRequestForLandlordIdTypeEnum? idType;
 
+  List<String> tenantStillNeeds;
+
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
@@ -194,6 +197,7 @@ class RentalRequestForLandlord {
     other.permanentAddress == permanentAddress &&
     other.age == age &&
     other.idType == idType &&
+    _deepEquality.equals(other.tenantStillNeeds, tenantStillNeeds) &&
     other.askingRent == askingRent;
 
   @override
@@ -217,10 +221,11 @@ class RentalRequestForLandlord {
     (permanentAddress == null ? 0 : permanentAddress!.hashCode) +
     (age == null ? 0 : age!.hashCode) +
     (idType == null ? 0 : idType!.hashCode) +
+    (tenantStillNeeds.hashCode) +
     (askingRent == null ? 0 : askingRent!.hashCode);
 
   @override
-  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, age=$age, idType=$idType, askingRent=$askingRent]';
+  String toString() => 'RentalRequestForLandlord[id=$id, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt, tenantId=$tenantId, tenantName=$tenantName, tenantPhone=$tenantPhone, birthdate=$birthdate, occupation=$occupation, permanentAddress=$permanentAddress, age=$age, idType=$idType, tenantStillNeeds=$tenantStillNeeds, askingRent=$askingRent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -314,6 +319,7 @@ class RentalRequestForLandlord {
     } else {
       json[r'idType'] = null;
     }
+      json[r'tenantStillNeeds'] = this.tenantStillNeeds;
     if (this.askingRent != null) {
       json[r'askingRent'] = this.askingRent;
     } else {
@@ -355,6 +361,9 @@ class RentalRequestForLandlord {
         permanentAddress: mapValueOfType<String>(json, r'permanentAddress'),
         age: mapValueOfType<int>(json, r'age'),
         idType: RentalRequestForLandlordIdTypeEnum.fromJson(json[r'idType']),
+        tenantStillNeeds: json[r'tenantStillNeeds'] is Iterable
+            ? (json[r'tenantStillNeeds'] as Iterable).cast<String>().toList(growable: false)
+            : const [],
         askingRent: json[r'askingRent'] == null
             ? null
             : num.parse('${json[r'askingRent']}'),

@@ -123,7 +123,8 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + ana.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactPhone":"09171234567",
                                  "idType":"PHILSYS","idNumber":"1234-5678-9012",
                                  "occupation":"Nurse","birthdate":"1998-04-12",
@@ -364,7 +365,8 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactPhone":"09171234567",
                                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                                 """))

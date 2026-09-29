@@ -42,6 +42,13 @@ public class TenantProfile {
 
     private String occupation;
 
+    /**
+      * How a landlord reaches them about a room they asked for. Theirs, not
+      * their emergency contact's, and the one thing asked before asking.
+      */
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
     @Column(name = "emergency_contact_name")
     private String emergencyContactName;
 
@@ -79,6 +86,7 @@ public class TenantProfile {
             LocalDate birthdate,
             String permanentAddress,
             String occupation,
+            String contactPhone,
             String emergencyContactName,
             String emergencyContactRelationship,
             String emergencyContactPhone,
@@ -87,6 +95,7 @@ public class TenantProfile {
         this.birthdate = birthdate;
         this.permanentAddress = permanentAddress;
         this.occupation = occupation;
+        this.contactPhone = contactPhone;
         this.emergencyContactName = emergencyContactName;
         this.emergencyContactRelationship = emergencyContactRelationship;
         this.emergencyContactPhone = emergencyContactPhone;
@@ -96,6 +105,10 @@ public class TenantProfile {
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
     }
 
     /**
@@ -112,6 +125,7 @@ public class TenantProfile {
         this.birthdate = null;
         this.permanentAddress = null;
         this.occupation = null;
+        this.contactPhone = null;
         this.emergencyContactName = null;
         this.emergencyContactRelationship = null;
         this.emergencyContactPhone = null;

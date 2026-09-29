@@ -76,7 +76,8 @@ class RentalInboxIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactRelationship":"Mother",
                                  "emergencyContactPhone":"09171234567",
                                  "occupation":"Nurse","birthdate":"1998-04-12",

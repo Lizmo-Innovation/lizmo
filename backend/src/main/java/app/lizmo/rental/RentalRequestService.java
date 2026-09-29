@@ -60,11 +60,11 @@ public class RentalRequestService {
 
     @Transactional
     public RentalRequestResponse create(UUID tenantId, RentalRequestCreate command) {
-        // Before anything else. A landlord judging a request needs an emergency
-        // contact and an ID to judge it on, and telling the tenant now — while
-        // they are in the app, looking at the room they want — is the moment
-        // they are most likely to go and finish their profile.
-        readiness.require(tenantId);
+        // Only a number, so the landlord can ring them. The ID and the rest
+        // are asked when that landlord accepts: a stranger should not have to
+        // hand over identity documents to ask whether a bed is still free, and
+        // the ones who will not are invisible -- they simply never ask.
+        readiness.requireEnoughToAsk(tenantId);
 
         Unit unit = units.findById(command.unitId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));

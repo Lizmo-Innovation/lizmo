@@ -16,6 +16,7 @@ class TenantProfileResponse {
     this.birthdate,
     this.permanentAddress,
     this.occupation,
+    this.contactPhone,
     this.emergencyContactName,
     this.emergencyContactRelationship,
     this.emergencyContactPhone,
@@ -47,6 +48,14 @@ class TenantProfileResponse {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? occupation;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? contactPhone;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -95,6 +104,7 @@ class TenantProfileResponse {
     other.birthdate == birthdate &&
     other.permanentAddress == permanentAddress &&
     other.occupation == occupation &&
+    other.contactPhone == contactPhone &&
     other.emergencyContactName == emergencyContactName &&
     other.emergencyContactRelationship == emergencyContactRelationship &&
     other.emergencyContactPhone == emergencyContactPhone &&
@@ -108,6 +118,7 @@ class TenantProfileResponse {
     (birthdate == null ? 0 : birthdate!.hashCode) +
     (permanentAddress == null ? 0 : permanentAddress!.hashCode) +
     (occupation == null ? 0 : occupation!.hashCode) +
+    (contactPhone == null ? 0 : contactPhone!.hashCode) +
     (emergencyContactName == null ? 0 : emergencyContactName!.hashCode) +
     (emergencyContactRelationship == null ? 0 : emergencyContactRelationship!.hashCode) +
     (emergencyContactPhone == null ? 0 : emergencyContactPhone!.hashCode) +
@@ -116,7 +127,7 @@ class TenantProfileResponse {
     (readyForALease == null ? 0 : readyForALease!.hashCode);
 
   @override
-  String toString() => 'TenantProfileResponse[birthdate=$birthdate, permanentAddress=$permanentAddress, occupation=$occupation, emergencyContactName=$emergencyContactName, emergencyContactRelationship=$emergencyContactRelationship, emergencyContactPhone=$emergencyContactPhone, idType=$idType, idNumber=$idNumber, readyForALease=$readyForALease]';
+  String toString() => 'TenantProfileResponse[birthdate=$birthdate, permanentAddress=$permanentAddress, occupation=$occupation, contactPhone=$contactPhone, emergencyContactName=$emergencyContactName, emergencyContactRelationship=$emergencyContactRelationship, emergencyContactPhone=$emergencyContactPhone, idType=$idType, idNumber=$idNumber, readyForALease=$readyForALease]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -134,6 +145,11 @@ class TenantProfileResponse {
       json[r'occupation'] = this.occupation;
     } else {
       json[r'occupation'] = null;
+    }
+    if (this.contactPhone != null) {
+      json[r'contactPhone'] = this.contactPhone;
+    } else {
+      json[r'contactPhone'] = null;
     }
     if (this.emergencyContactName != null) {
       json[r'emergencyContactName'] = this.emergencyContactName;
@@ -186,6 +202,7 @@ class TenantProfileResponse {
         birthdate: mapDateTime(json, r'birthdate', r''),
         permanentAddress: mapValueOfType<String>(json, r'permanentAddress'),
         occupation: mapValueOfType<String>(json, r'occupation'),
+        contactPhone: mapValueOfType<String>(json, r'contactPhone'),
         emergencyContactName: mapValueOfType<String>(json, r'emergencyContactName'),
         emergencyContactRelationship: mapValueOfType<String>(json, r'emergencyContactRelationship'),
         emergencyContactPhone: mapValueOfType<String>(json, r'emergencyContactPhone'),

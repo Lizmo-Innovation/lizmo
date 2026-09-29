@@ -41,6 +41,7 @@ public class TenantProfileService {
                 // same rule every optional field in this API follows.
                 trimToNull(request.permanentAddress()),
                 trimToNull(request.occupation()),
+                trimToNull(request.contactPhone()),
                 trimToNull(request.emergencyContactName()),
                 trimToNull(request.emergencyContactRelationship()),
                 trimToNull(request.emergencyContactPhone()),

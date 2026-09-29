@@ -10,6 +10,7 @@ import app.lizmo.property.PropertyRepository;
 import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
 import app.lizmo.rental.dto.RentalRequestForLandlord;
+import app.lizmo.user.LeaseReadiness;
 import app.lizmo.user.TenantProfile;
 import app.lizmo.user.TenantProfileRepository;
 import app.lizmo.user.User;
@@ -40,6 +41,8 @@ public class RentalInboxService {
     private final BedRepository beds;
     private final UserRepository users;
     private final TenantProfileRepository profiles;
+    /** So a landlord is told what is still missing before they try to accept. */
+    private final LeaseReadiness readiness;
 
     /** Injected so an age can be asserted against a date a test chooses. */
     private final Clock clock;
@@ -52,6 +55,7 @@ public class RentalInboxService {
             BedRepository beds,
             UserRepository users,
             TenantProfileRepository profiles,
+            LeaseReadiness readiness,
             Clock clock) {
         this.requests = requests;
         this.access = access;
@@ -60,6 +64,7 @@ public class RentalInboxService {
         this.beds = beds;
         this.users = users;
         this.profiles = profiles;
+        this.readiness = readiness;
         this.clock = clock;
     }
 
@@ -155,6 +160,10 @@ public class RentalInboxService {
                 // decides it.
                 bed != null && bed.getRent() != null
                         ? bed.getRent()
-                        : (unit == null ? null : unit.getRent()));
+                        : (unit == null ? null : unit.getRent()),
+                // Empty means the landlord can accept. Named rather than a
+                // flag, so the screen can say which thing is missing instead
+                // of "profile incomplete", which a landlord cannot act on.
+                readiness.whatIsMissing(request.getTenantId()));
     }
 }

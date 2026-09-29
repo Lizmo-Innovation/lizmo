@@ -190,12 +190,13 @@ class TenantDocumentIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void a_lease_needs_the_details_and_both_photographs() throws Exception {
+    void a_lease_needs_the_details_and_the_id_photograph() throws Exception {
         mvc.perform(put("/api/v1/me/tenant-profile")
                         .header("Authorization", "Bearer " + tenantToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactPhone":"09171234567",
                                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                                 """))
@@ -207,13 +208,8 @@ class TenantDocumentIntegrationTest extends IntegrationTest {
         upload(tenantToken, "VALID_ID", photo());
         mvc.perform(get("/api/v1/me/tenant-profile")
                         .header("Authorization", "Bearer " + tenantToken))
-                // One photograph is not both. A landlord asked for a face as
-                // well as a document.
-                .andExpect(jsonPath("$.readyForALease").value(false));
-
-        upload(tenantToken, "TENANT_PHOTO", photo());
-        mvc.perform(get("/api/v1/me/tenant-profile")
-                        .header("Authorization", "Bearer " + tenantToken))
+                // The ID photograph is the last of it. A 1x1 used to be asked
+                // for as well, from somebody who had not moved in.
                 .andExpect(jsonPath("$.readyForALease").value(true));
     }
 

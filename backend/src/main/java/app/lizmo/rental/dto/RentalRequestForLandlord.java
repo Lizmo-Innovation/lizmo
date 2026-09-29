@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -67,6 +68,7 @@ public record RentalRequestForLandlord(
         String permanentAddress,
         Integer age,
         IdType idType,
+        List<String> tenantStillNeeds,
         BigDecimal askingRent) {
 
     public static RentalRequestForLandlord of(
@@ -77,7 +79,8 @@ public record RentalRequestForLandlord(
             String unitNumber,
             String bedLabel,
             LocalDate today,
-            BigDecimal askingRent) {
+            BigDecimal askingRent,
+            List<String> tenantStillNeeds) {
         return new RentalRequestForLandlord(
                 request.getId(),
                 request.getPropertyId(),
@@ -94,13 +97,25 @@ public record RentalRequestForLandlord(
                 // How the landlord will actually reach them to arrange a
                 // viewing. Withheld would make the request unanswerable except
                 // through the app.
-                tenant == null ? null : tenant.getPhone(),
+                // The profile's number first: it is the one they gave for
+                // this, and registration collects an email, so the account's
+                // is usually empty.
+                contactPhone(tenant, profile),
                 profile == null ? null : profile.getBirthdate(),
                 profile == null ? null : profile.getOccupation(),
                 profile == null ? null : profile.getPermanentAddress(),
                 Age.on(profile == null ? null : profile.getBirthdate(), today),
                 profile == null ? null : profile.getIdType(),
+                tenantStillNeeds,
                 askingRent);
+    }
+
+    private static String contactPhone(User tenant, TenantProfile profile) {
+        if (profile != null && profile.getContactPhone() != null
+                && !profile.getContactPhone().isBlank()) {
+            return profile.getContactPhone();
+        }
+        return tenant == null ? null : tenant.getPhone();
     }
 
 }

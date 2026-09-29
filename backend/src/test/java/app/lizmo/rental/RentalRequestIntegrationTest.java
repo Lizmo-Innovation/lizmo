@@ -83,7 +83,8 @@ class RentalRequestIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"emergencyContactName":"Rosa Dela Cruz",
+                                {"contactPhone":"09170000001",
+                                 "emergencyContactName":"Rosa Dela Cruz",
                                  "emergencyContactPhone":"09171234567",
                                  "idType":"PHILSYS","idNumber":"1234-5678-9012"}
                                 """))
@@ -111,15 +112,35 @@ class RentalRequestIntegrationTest extends IntegrationTest {
     // ---- the gate ---------------------------------------------------------
 
     @Test
-    void a_tenant_cannot_ask_until_their_profile_is_finished() throws Exception {
+    void a_tenant_cannot_ask_without_a_number_to_ring() throws Exception {
         ask(tenantToken, bedUnitId, bedId)
                 .andExpect(status().isConflict())
-                // Named, not merely refused: a landlord judging a request needs
-                // something to judge, and this is the moment the tenant is most
-                // likely to go and finish it.
+                // The only thing asked before asking: a landlord answering a
+                // request wants to ring whoever made it.
                 .andExpect(jsonPath("$.message").value(
-                        org.hamcrest.Matchers.containsString("an emergency contact")))
+                        org.hamcrest.Matchers.containsString("a phone number")))
                 .andExpect(jsonPath("$.code").value("TENANT_PROFILE_INCOMPLETE"));
+    }
+
+    /**
+     * It used to take an emergency contact, an ID number, a photograph of the
+     * ID and a 1x1 before a stranger could ask whether a bed was free. The
+     * ones who would not are invisible: they simply never asked.
+     */
+    @Test
+    void a_number_alone_is_enough_to_ask() throws Exception {
+        mvc.perform(put("/api/v1/me/tenant-profile")
+                        .header("Authorization", "Bearer " + tenantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"contactPhone":"09170000001"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.readyForALease").value(false));
+
+        ask(tenantToken, bedUnitId, bedId)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     @Test

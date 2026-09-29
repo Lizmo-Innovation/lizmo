@@ -4990,6 +4990,13 @@
                         "type": "string",
                         "example": "Nurse at Bicol Medical Center"
                     },
+                    "contactPhone": {
+                        "maxLength": 30,
+                        "minLength": 0,
+                        "type": "string",
+                        "description": "The tenant's own number, which a landlord needs before they can answer a request about a room",
+                        "example": "09171234567"
+                    },
                     "emergencyContactName": {
                         "maxLength": 255,
                         "minLength": 0,
@@ -5046,6 +5053,9 @@
                         "type": "string"
                     },
                     "occupation": {
+                        "type": "string"
+                    },
+                    "contactPhone": {
                         "type": "string"
                     },
                     "emergencyContactName": {
@@ -5340,6 +5350,12 @@
                             "PRC",
                             "OTHER"
                         ]
+                    },
+                    "tenantStillNeeds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "askingRent": {
                         "type": "number"

@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **birthdate** | [**DateTime**](DateTime.md) |  | [optional] 
 **permanentAddress** | **String** |  | [optional] 
 **occupation** | **String** |  | [optional] 
+**contactPhone** | **String** |  | [optional] 
 **emergencyContactName** | **String** |  | [optional] 
 **emergencyContactRelationship** | **String** |  | [optional] 
 **emergencyContactPhone** | **String** |  | [optional] 
