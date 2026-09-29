@@ -4930,7 +4930,9 @@ void _landlordRequestTests() {
       String id = 'r1',
       String name = 'Ana Reyes',
       String? bedLabel = 'Bed 1',
+      List<String> stillNeeds = const [],
     }) => RentalRequestForLandlord(
+      tenantStillNeeds: stillNeeds,
       id: id,
       propertyId: 'p1',
       propertyName: 'Sunrise Apartments',
@@ -5144,6 +5146,47 @@ void _landlordRequestTests() {
       // yet is no use to a landlord deciding whether to let them.
       expect(find.textContaining('In an emergency'), findsNothing);
       expect(find.textContaining('Rosa'), findsNothing);
+    });
+
+    /// The server refuses it, so a button that fails after the tap would read
+    /// as the app being broken rather than as somebody else still owing
+    /// something.
+    testWidgets('a tenant who has not finished cannot be accepted yet',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: [
+        request(stillNeeds: const ['their ID details', 'a photo of their ID']),
+      ]));
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('tenant-still-needs')), findsOneWidget);
+      expect(
+        find.textContaining(
+            'accept once they add their ID details and a photo of their ID'),
+        findsOneWidget,
+      );
+
+      final accept = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Accept'));
+      expect(accept.onPressed, isNull);
+      // Declining still works: a landlord is not trapped by somebody else's
+      // unfinished form.
+      final decline = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Decline'));
+      expect(decline.onPressed, isNotNull);
+    });
+
+    testWidgets('a finished tenant is accepted as before', (tester) async {
+      await tester.pumpWidget(appWith(waiting: [request()]));
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('tenant-still-needs')), findsNothing);
+      final accept = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Accept'));
+      expect(accept.onPressed, isNotNull);
     });
 
     testWidgets('accepting asks first, then sends', (tester) async {
@@ -7856,14 +7899,36 @@ void _tenantLeaseTests() {
 
     // ---- Today as a to-do list ------------------------------------------
 
-    RentalRequestForLandlord asking() => RentalRequestForLandlord(
+    RentalRequestForLandlord asking({List<String> stillNeeds = const []}) =>
+        RentalRequestForLandlord(
           id: 'r1',
           propertyId: 'p1',
           propertyName: 'Sunrise Apartments',
           unitNumber: '2B',
           tenantName: 'Miguel Cruz',
           createdAt: DateTime.now(),
+          tenantStillNeeds: stillNeeds,
         );
+
+    /// Known before opening it: a landlord who taps in expecting to answer
+    /// should not find out there that they cannot.
+    testWidgets('a request waiting on its tenant says so on Today',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        requests: [asking(stillNeeds: const ['a photo of their ID'])],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('request-waiting-on-tenant')),
+          findsOneWidget);
+    });
+
+    testWidgets('a request that can be answered is not marked', (tester) async {
+      await tester.pumpWidget(appWith(requests: [asking()]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('request-waiting-on-tenant')), findsNothing);
+    });
 
     Finder inHeader(Finder finder) =>
         find.descendant(of: find.byType(LatticeHeader), matching: finder);

@@ -146,6 +146,21 @@ class _RequestRow extends StatelessWidget {
                       where,
                       style: LizmoType.rowSub.copyWith(fontSize: 11),
                     ),
+                    // Said here as well as on the queue itself: a landlord
+                    // opening a request expecting to answer it should know
+                    // beforehand that they cannot yet.
+                    if (request.tenantStillNeeds.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Waiting on their details',
+                        key: const ValueKey('request-waiting-on-tenant'),
+                        style: LizmoType.rowSub.copyWith(
+                          fontSize: 11,
+                          color: LizmoColors.amberText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

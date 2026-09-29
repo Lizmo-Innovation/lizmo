@@ -170,6 +170,11 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
           const SizedBox(height: 12),
           _Facts(request: request),
 
+          if (request.tenantStillNeeds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _StillWaitingOn(missing: request.tenantStillNeeds),
+          ],
+
           const SizedBox(height: 8),
           if (_working)
             const Padding(
@@ -198,11 +203,19 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
                 ),
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: _confirmAccept,
+                  // Off until the tenant has finished: accepting would be
+                  // refused by the server, and a button that fails after the
+                  // tap reads as the app being broken rather than as somebody
+                  // else still owing something.
+                  onPressed:
+                      request.tenantStillNeeds.isEmpty ? _confirmAccept : null,
                   child: Text(
                     'Accept',
-                    style:
-                        LizmoType.rowName.copyWith(color: LizmoColors.teal900),
+                    style: LizmoType.rowName.copyWith(
+                      color: request.tenantStillNeeds.isEmpty
+                          ? LizmoColors.teal900
+                          : LizmoColors.slate,
+                    ),
                   ),
                 ),
               ],
@@ -277,6 +290,49 @@ class _Facts extends StatelessWidget {
     final age = request.age;
     if (age == null) return null;
     return '$age years old';
+  }
+}
+
+/// What the tenant has not given yet, and so what the landlord is waiting on.
+///
+/// Asking takes only a number now; the ID, the emergency contact and the
+/// photograph are wanted before a tenancy exists. Named rather than "profile
+/// incomplete", which a landlord cannot act on: these are things to ring them
+/// about.
+class _StillWaitingOn extends StatelessWidget {
+  const _StillWaitingOn({required this.missing});
+
+  final List<String> missing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('tenant-still-needs'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: LizmoColors.amberBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.hourglass_empty, size: 16, color: LizmoColors.amberText),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You can accept once they add ${_asAList(missing)}.',
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "a and b", "a, b and c" — a comma before "and" reads as a fourth item.
+  static String _asAList(List<String> items) {
+    if (items.length == 1) return items.single;
+    return '${items.sublist(0, items.length - 1).join(', ')} and ${items.last}';
   }
 }
 
