@@ -199,6 +199,8 @@ class ApiClient {
           return AdminPropertyUnit.fromJson(value);
         case 'ApiError':
           return ApiError.fromJson(value);
+        case 'AppVersion':
+          return AppVersion.fromJson(value);
         case 'ArrearsRow':
           return ArrearsRow.fromJson(value);
         case 'AuthResponse':

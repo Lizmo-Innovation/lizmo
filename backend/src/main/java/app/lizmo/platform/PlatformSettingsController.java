@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
@@ -46,10 +47,34 @@ public class PlatformSettingsController {
         return new SupportContact(settings.supportEmail());
     }
 
+    /**
+      * What the app checks when it opens.
+      *
+      * <p>Public, and deliberately so: this is read on the splash screen,
+      * before anybody has signed in, and an app too old to be allowed in is
+      * also too old to be trusted with a session.
+      */
+    @GetMapping("/api/v1/platform/app-version")
+    @Operation(operationId = "getAppVersion", summary = "The oldest app build allowed",
+            description = "Public: the app asks before anybody signs in. A minimum of 0 "
+                    + "means nobody is turned away.")
+    @ApiResponse(responseCode = "200", description = "The minimum, and where to update")
+    public AppVersion appVersion() {
+        return new AppVersion(
+                settings.minimumAppBuild(),
+                settings.androidUpdateUrl(),
+                settings.iosUpdateUrl());
+    }
+
     @GetMapping("/api/v1/admin/settings")
     @Operation(operationId = "getPlatformSettings", summary = "Settings the console owns")
     public PlatformSettings read() {
-        return new PlatformSettings(settings.supportEmail(), settings.paymentInstructions());
+        return new PlatformSettings(
+                settings.supportEmail(),
+                settings.paymentInstructions(),
+                settings.minimumAppBuild(),
+                settings.androidUpdateUrl(),
+                settings.iosUpdateUrl());
     }
 
     @PutMapping("/api/v1/admin/settings")
@@ -65,11 +90,34 @@ public class PlatformSettingsController {
                 ? settings.paymentInstructions()
                 : settings.changePaymentInstructions(
                         body.paymentInstructions(), currentUser.requireId());
-        return new PlatformSettings(email, instructions);
+        int minimumBuild = body.minimumAppBuild() == null
+                ? settings.minimumAppBuild()
+                : settings.changeMinimumAppBuild(
+                        body.minimumAppBuild(), currentUser.requireId());
+        String android = body.androidUpdateUrl() == null
+                ? settings.androidUpdateUrl()
+                : settings.changeAndroidUpdateUrl(
+                        body.androidUpdateUrl(), currentUser.requireId());
+        String ios = body.iosUpdateUrl() == null
+                ? settings.iosUpdateUrl()
+                : settings.changeIosUpdateUrl(body.iosUpdateUrl(), currentUser.requireId());
+        return new PlatformSettings(email, instructions, minimumBuild, android, ios);
     }
 
     @Schema(description = "Where to write to Lizmo")
     public record SupportContact(String email) {}
+
+    /**
+      * @param minimumBuild the oldest build allowed to carry on. 0 turns the
+      *                     check off, which is what an operator who has never
+      *                     set one has.
+      */
+    @Schema(description = "What the app checks when it opens")
+    public record AppVersion(
+            @Schema(example = "7") int minimumBuild,
+            @Schema(example = "https://play.google.com/store/apps/details?id=app.lizmo")
+            String androidUpdateUrl,
+            String iosUpdateUrl) {}
 
     @Schema(description = "Settings the console owns")
     public record PlatformSettings(
@@ -77,5 +125,11 @@ public class PlatformSettingsController {
             @Schema(example = "lizmodev@gmail.com") String supportEmail,
             @Size(max = 1000)
             @Schema(example = "GCash 0917 123 4567 (Lizmo Innovation)")
-            String paymentInstructions) {}
+            String paymentInstructions,
+            @Min(0) @Schema(example = "7",
+                    description = "The oldest app build allowed in. Raising it locks out "
+                            + "everybody on an older one, so it is left alone when not sent.")
+            Integer minimumAppBuild,
+            @Size(max = 500) String androidUpdateUrl,
+            @Size(max = 500) String iosUpdateUrl) {}
 }

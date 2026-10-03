@@ -10,6 +10,7 @@ doc/AdminPropertySummary.md
 doc/AdminPropertyTenancy.md
 doc/AdminPropertyUnit.md
 doc/ApiError.md
+doc/AppVersion.md
 doc/ArrearsRow.md
 doc/AskingForARoomApi.md
 doc/AuthApi.md
@@ -131,6 +132,7 @@ lib/model/admin_property_summary.dart
 lib/model/admin_property_tenancy.dart
 lib/model/admin_property_unit.dart
 lib/model/api_error.dart
+lib/model/app_version.dart
 lib/model/arrears_row.dart
 lib/model/auth_response.dart
 lib/model/awaiting_row.dart

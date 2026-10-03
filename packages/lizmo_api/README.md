@@ -63,6 +63,7 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**confirmPlatformPayment**](doc//AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
 *AdminApi* | [**deletePaymentChannel**](doc//AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
 *AdminApi* | [**getAdminProperty**](doc//AdminApi.md#getadminproperty) | **GET** /api/v1/admin/properties/{id} | One property, opened up
+*AdminApi* | [**getAppVersion**](doc//AdminApi.md#getappversion) | **GET** /api/v1/platform/app-version | The oldest app build allowed
 *AdminApi* | [**getLandlord**](doc//AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 *AdminApi* | [**getPlatformSettings**](doc//AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 *AdminApi* | [**getSupportContact**](doc//AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -185,6 +186,7 @@ Class | Method | HTTP request | Description
  - [AdminPropertyTenancy](doc//AdminPropertyTenancy.md)
  - [AdminPropertyUnit](doc//AdminPropertyUnit.md)
  - [ApiError](doc//ApiError.md)
+ - [AppVersion](doc//AppVersion.md)
  - [ArrearsRow](doc//ArrearsRow.md)
  - [AuthResponse](doc//AuthResponse.md)
  - [AwaitingRow](doc//AwaitingRow.md)

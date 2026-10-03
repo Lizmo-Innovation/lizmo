@@ -55,6 +55,7 @@ part 'model/admin_property_summary.dart';
 part 'model/admin_property_tenancy.dart';
 part 'model/admin_property_unit.dart';
 part 'model/api_error.dart';
+part 'model/app_version.dart';
 part 'model/arrears_row.dart';
 part 'model/auth_response.dart';
 part 'model/awaiting_row.dart';

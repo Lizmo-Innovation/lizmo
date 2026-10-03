@@ -3726,6 +3726,28 @@
                 }
             }
         },
+        "/api/v1/platform/app-version": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "The oldest app build allowed",
+                "description": "Public: the app asks before anybody signs in. A minimum of 0 means nobody is turned away.",
+                "operationId": "getAppVersion",
+                "responses": {
+                    "200": {
+                        "description": "The minimum, and where to update",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AppVersion"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/tenants": {
             "get": {
                 "tags": [
@@ -5260,6 +5282,23 @@
                         "minLength": 0,
                         "type": "string",
                         "example": "GCash 0917 123 4567 (Lizmo Innovation)"
+                    },
+                    "minimumAppBuild": {
+                        "minimum": 0,
+                        "type": "integer",
+                        "description": "The oldest app build allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent.",
+                        "format": "int32",
+                        "example": 7
+                    },
+                    "androidUpdateUrl": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "iosUpdateUrl": {
+                        "maxLength": 500,
+                        "minLength": 0,
+                        "type": "string"
                     }
                 },
                 "description": "Settings the console owns"
@@ -7276,6 +7315,24 @@
                     }
                 },
                 "description": "The properties a way to be paid applies to"
+            },
+            "AppVersion": {
+                "type": "object",
+                "properties": {
+                    "minimumBuild": {
+                        "type": "integer",
+                        "format": "int32",
+                        "example": 7
+                    },
+                    "androidUpdateUrl": {
+                        "type": "string",
+                        "example": "https://play.google.com/store/apps/details?id=app.lizmo"
+                    },
+                    "iosUpdateUrl": {
+                        "type": "string"
+                    }
+                },
+                "description": "What the app checks when it opens"
             }
         }
     }

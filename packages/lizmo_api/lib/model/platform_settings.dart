@@ -15,6 +15,9 @@ class PlatformSettings {
   PlatformSettings({
     required this.supportEmail,
     this.paymentInstructions,
+    this.minimumAppBuild,
+    this.androidUpdateUrl,
+    this.iosUpdateUrl,
   });
 
   String supportEmail;
@@ -27,19 +30,52 @@ class PlatformSettings {
   ///
   String? paymentInstructions;
 
+  /// The oldest app build allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent.
+  ///
+  /// Minimum value: 0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? minimumAppBuild;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? androidUpdateUrl;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? iosUpdateUrl;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlatformSettings &&
     other.supportEmail == supportEmail &&
-    other.paymentInstructions == paymentInstructions;
+    other.paymentInstructions == paymentInstructions &&
+    other.minimumAppBuild == minimumAppBuild &&
+    other.androidUpdateUrl == androidUpdateUrl &&
+    other.iosUpdateUrl == iosUpdateUrl;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (supportEmail.hashCode) +
-    (paymentInstructions == null ? 0 : paymentInstructions!.hashCode);
+    (paymentInstructions == null ? 0 : paymentInstructions!.hashCode) +
+    (minimumAppBuild == null ? 0 : minimumAppBuild!.hashCode) +
+    (androidUpdateUrl == null ? 0 : androidUpdateUrl!.hashCode) +
+    (iosUpdateUrl == null ? 0 : iosUpdateUrl!.hashCode);
 
   @override
-  String toString() => 'PlatformSettings[supportEmail=$supportEmail, paymentInstructions=$paymentInstructions]';
+  String toString() => 'PlatformSettings[supportEmail=$supportEmail, paymentInstructions=$paymentInstructions, minimumAppBuild=$minimumAppBuild, androidUpdateUrl=$androidUpdateUrl, iosUpdateUrl=$iosUpdateUrl]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -48,6 +84,21 @@ class PlatformSettings {
       json[r'paymentInstructions'] = this.paymentInstructions;
     } else {
       json[r'paymentInstructions'] = null;
+    }
+    if (this.minimumAppBuild != null) {
+      json[r'minimumAppBuild'] = this.minimumAppBuild;
+    } else {
+      json[r'minimumAppBuild'] = null;
+    }
+    if (this.androidUpdateUrl != null) {
+      json[r'androidUpdateUrl'] = this.androidUpdateUrl;
+    } else {
+      json[r'androidUpdateUrl'] = null;
+    }
+    if (this.iosUpdateUrl != null) {
+      json[r'iosUpdateUrl'] = this.iosUpdateUrl;
+    } else {
+      json[r'iosUpdateUrl'] = null;
     }
     return json;
   }
@@ -71,6 +122,9 @@ class PlatformSettings {
       return PlatformSettings(
         supportEmail: mapValueOfType<String>(json, r'supportEmail')!,
         paymentInstructions: mapValueOfType<String>(json, r'paymentInstructions'),
+        minimumAppBuild: mapValueOfType<int>(json, r'minimumAppBuild'),
+        androidUpdateUrl: mapValueOfType<String>(json, r'androidUpdateUrl'),
+        iosUpdateUrl: mapValueOfType<String>(json, r'iosUpdateUrl'),
       );
     }
     return null;

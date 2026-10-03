@@ -66,6 +66,10 @@ public class SecurityConfig {
                         // work for somebody who has already uninstalled the
                         // app and cannot sign in to ask.
                         .requestMatchers(HttpMethod.GET, "/api/v1/platform/support").permitAll()
+                        // Asked on the splash screen, before anybody signs
+                        // in: an app too old to be allowed in cannot first
+                        // be made to log in.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/platform/app-version").permitAll()
                         // The sub-paths too, not just /actuator/health: Cloud
                         // Run's liveness probe hits /actuator/health/liveness,
                         // and a 401 counts as a failed probe. Three of those

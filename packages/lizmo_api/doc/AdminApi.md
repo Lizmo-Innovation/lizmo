@@ -13,6 +13,7 @@ Method | HTTP request | Description
 [**confirmPlatformPayment**](AdminApi.md#confirmplatformpayment) | **POST** /api/v1/admin/platform-payments/{id}/confirm | The money arrived
 [**deletePaymentChannel**](AdminApi.md#deletepaymentchannel) | **DELETE** /api/v1/admin/platform-payment-channels/{id} | Delete a payment channel
 [**getAdminProperty**](AdminApi.md#getadminproperty) | **GET** /api/v1/admin/properties/{id} | One property, opened up
+[**getAppVersion**](AdminApi.md#getappversion) | **GET** /api/v1/platform/app-version | The oldest app build allowed
 [**getLandlord**](AdminApi.md#getlandlord) | **GET** /api/v1/admin/landlords/{id} | One landlord and their properties
 [**getPlatformSettings**](AdminApi.md#getplatformsettings) | **GET** /api/v1/admin/settings | Settings the console owns
 [**getSupportContact**](AdminApi.md#getsupportcontact) | **GET** /api/v1/platform/support | Where to write to Lizmo
@@ -192,6 +193,45 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**AdminPropertyDetail**](AdminPropertyDetail.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getAppVersion**
+> AppVersion getAppVersion()
+
+The oldest app build allowed
+
+Public: the app asks before anybody signs in. A minimum of 0 means nobody is turned away.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AdminApi();
+
+try {
+    final result = api_instance.getAppVersion();
+    print(result);
+} catch (e) {
+    print('Exception when calling AdminApi->getAppVersion: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AppVersion**](AppVersion.md)
 
 ### Authorization
 
