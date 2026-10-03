@@ -122,9 +122,7 @@ class UnitDetailScreen extends ConsumerWidget {
   /// "Not set" rather than ₱0, which would claim the unit is free.
   static String _rentLabel(num? rent) {
     if (rent == null) return '—';
-    final asDouble = rent.toDouble();
-    final whole = asDouble == asDouble.roundToDouble();
-    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+    return LizmoMoney.peso(rent);
   }
 }
 
@@ -511,9 +509,7 @@ class _BedRow extends ConsumerWidget {
   }
 
   static String _money(num amount) {
-    final asDouble = amount.toDouble();
-    final whole = asDouble == asDouble.roundToDouble();
-    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+    return LizmoMoney.peso(amount);
   }
 
   LizmoStatus _status() => switch (bed.status) {
@@ -734,7 +730,7 @@ class _BedPriceDialogState extends State<_BedPriceDialog> {
             Text(
               widget.unitRent != null
                   ? 'Leave empty to charge the unit rate of '
-                      '₱${widget.unitRent}.'
+                      '${LizmoMoney.peso(widget.unitRent)}.'
                   : 'Leave empty to charge whatever the unit asks.',
               style: LizmoType.rowSub,
             ),
@@ -951,7 +947,7 @@ class _UtilitiesRow extends StatelessWidget {
                             // Not "₱0": nothing is switched on, which is a
                             // different statement from a charge of nothing.
                             ? 'None charged'
-                            : 'A fixed ₱$monthly each month',
+                            : 'A fixed ${LizmoMoney.peso(monthly)} each month',
                         style: LizmoType.rowSub,
                       ),
                     ],

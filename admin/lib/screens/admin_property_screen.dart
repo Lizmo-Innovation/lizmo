@@ -279,7 +279,7 @@ class _Rent extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = amount;
     return Text(
-      value == null ? '—' : '₱${value.toStringAsFixed(0)}',
+      value == null ? '—' : LizmoMoney.peso(value),
       style: LizmoType.dataMedium,
     );
   }

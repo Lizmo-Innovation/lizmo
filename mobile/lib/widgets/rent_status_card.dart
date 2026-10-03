@@ -193,13 +193,7 @@ class RentStatusCard extends ConsumerWidget {
   static String _day(DateTime? date) =>
       date == null ? '' : '${date.day} ${_months[date.month - 1]}';
 
-  /// "₱2,500": grouped, because an amount is read at a glance here.
-  static String _peso(num amount) {
-    final whole = amount.round().toString();
-    final grouped = whole.replaceAllMapped(
-        RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
-    return '₱$grouped';
-  }
+  static String _peso(num amount) => LizmoMoney.peso(amount.round());
 }
 
 enum _Tone { done, plain, attention, late }

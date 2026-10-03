@@ -250,7 +250,7 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               if (widget.askingRent != null) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Advertised at ₱${widget.askingRent!.toStringAsFixed(0)}. '
+                  'Advertised at ${LizmoMoney.peso(widget.askingRent!)}. '
                   'Change it here if you agreed something else.',
                   style: LizmoType.rowSub,
                 ),
@@ -521,7 +521,7 @@ class _RoomChoice extends StatelessWidget {
               Text(
                 room.rent == null
                     ? 'No price set'
-                    : '₱${room.rent!.toStringAsFixed(0)}',
+                    : LizmoMoney.peso(room.rent!),
                 style: LizmoType.rowSub.copyWith(
                   color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
                 ),

@@ -172,9 +172,9 @@ class _ReviewState extends ConsumerState<_Review> {
           key: ValueKey('platform-payment-${payment.id}'),
           landlord: '${payment.landlordName ?? 'A landlord'} · $covers',
           subtitle: '$method$paid · for ${payment.statementLabel ?? 'a statement'}, '
-              '₱${(payment.statementOutstanding ?? 0).toStringAsFixed(0)} owed'
+              '${LizmoMoney.peso((payment.statementOutstanding ?? 0))} owed'
               '${note == null || note.isEmpty ? '' : ' · "$note"'}',
-          amount: '₱${(payment.amountPaid ?? 0).toStringAsFixed(0)}',
+          amount: LizmoMoney.peso((payment.amountPaid ?? 0)),
           status: LizmoStatus.pending,
           statusLabel: 'To check',
           onConfirm: _busy

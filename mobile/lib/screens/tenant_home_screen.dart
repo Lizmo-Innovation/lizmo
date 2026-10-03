@@ -81,7 +81,7 @@ class TenantHomeScreen extends ConsumerWidget {
                     // been paid; payments are recorded now, so it is what is
                     // actually owed. A dash until that is known.
                     LatticeHeaderStat(
-                      value: owed == null ? '—' : '₱${owed.toStringAsFixed(0)}',
+                      value: owed == null ? '—' : LizmoMoney.peso(owed),
                       label: 'Owed',
                     ),
                     LatticeHeaderStat(
@@ -217,8 +217,8 @@ class _Settled extends StatelessWidget {
       textColour: LizmoColors.teal900,
       icon: Icons.check_circle_outline,
       title: lease.propertyName ?? 'Your place',
-      detail: 'Your tenancy is active. Rent is ₱'
-          '${(lease.rentAmount ?? 0).toStringAsFixed(0)} a month.',
+      detail: 'Your tenancy is active. Rent is '
+          '${LizmoMoney.peso(lease.rentAmount ?? 0)} a month.',
       actionLabel: 'See my place',
       onAction: (context) => context.go(Routes.tenantPlace),
     );

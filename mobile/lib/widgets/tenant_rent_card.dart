@@ -101,7 +101,7 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
                 Expanded(
                   child: _Figure(
                     label: 'Outstanding',
-                    value: '₱${owed.toStringAsFixed(0)}',
+                    value: LizmoMoney.peso(owed),
                     ink: owed > 0 ? LizmoColors.ink : LizmoColors.teal900,
                   ),
                 ),
@@ -164,7 +164,7 @@ class _Waiting extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '₱${(payment.amountPaid ?? 0).toStringAsFixed(0)} for '
+              '${LizmoMoney.peso((payment.amountPaid ?? 0))} for '
               '${payment.periodLabel ?? 'rent'}',
               style: LizmoType.rowName.copyWith(color: LizmoColors.amberText),
             ),

@@ -105,7 +105,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
               Text(
-                '₱${(statement.outstanding ?? 0).toStringAsFixed(0)}',
+                LizmoMoney.peso((statement.outstanding ?? 0)),
                 style: LizmoType.dataMedium.copyWith(color: ink),
               ),
               const SizedBox(width: 4),

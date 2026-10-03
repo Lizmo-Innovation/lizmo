@@ -283,7 +283,8 @@ class _Total extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text('Each month', style: LizmoType.rowName),
-        Text(total == 0 ? '—' : '₱$total', style: LizmoType.dataMedium),
+        Text(total == 0 ? '—' : LizmoMoney.peso(total),
+            style: LizmoType.dataMedium),
       ],
     );
   }

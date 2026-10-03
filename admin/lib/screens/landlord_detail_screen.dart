@@ -349,9 +349,9 @@ class _Statements extends ConsumerWidget {
                               _Line(line: line),
                           ],
                         ),
-                        Text('₱${(statement.amountDue ?? 0).toStringAsFixed(0)}',
+                        Text(LizmoMoney.peso((statement.amountDue ?? 0)),
                             style: LizmoType.dataMedium),
-                        Text('₱${(statement.amountPaid ?? 0).toStringAsFixed(0)}',
+                        Text(LizmoMoney.peso((statement.amountPaid ?? 0)),
                             style: LizmoType.dataMedium),
                         _StatementStatus(statement: statement),
                       ]),
@@ -382,7 +382,7 @@ class _Line extends StatelessWidget {
           Text(line.propertyName ?? 'A property', style: LizmoType.rowName),
           Text(
             '${line.occupiedBeds ?? 0} beds · ${line.occupiedUnits ?? 0} units '
-            '· ₱${(line.amountDue ?? 0).toStringAsFixed(0)}'
+            '· ${LizmoMoney.peso((line.amountDue ?? 0))}'
             "${invoice == null ? '' : ' · $invoice'}",
             style: LizmoType.rowSub,
           ),

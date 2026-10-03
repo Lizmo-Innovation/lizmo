@@ -213,7 +213,7 @@ class _EndTenancySheetState extends State<EndTenancySheet> {
                 Text('Settling the deposit', style: LizmoType.sectionHeading),
                 const SizedBox(height: 4),
                 Text(
-                  'You took ₱${widget.depositAmount!.toStringAsFixed(0)}. '
+                  'You took ${LizmoMoney.peso(widget.depositAmount!)}. '
                   'Leave this blank if you have not settled it yet.',
                   style: LizmoType.rowSub,
                 ),
@@ -239,8 +239,8 @@ class _EndTenancySheetState extends State<EndTenancySheet> {
                     // Checked here as well as on the server, so a typo is
                     // caught before it costs a round trip.
                     if (amount > widget.depositAmount!) {
-                      return 'That is more than the ₱'
-                          '${widget.depositAmount!.toStringAsFixed(0)} you took';
+                      return 'That is more than the '
+                          '${LizmoMoney.peso(widget.depositAmount)} you took';
                     }
                     return null;
                   },

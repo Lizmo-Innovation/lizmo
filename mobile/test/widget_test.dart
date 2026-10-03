@@ -1479,8 +1479,8 @@ void main() {
 
       // Both figures are monthly, so they are comparable: two beds at 2500
       // against a whole unit at 7000.
-      expect(find.text('₱5000'), findsOneWidget);
-      expect(find.text('₱7000'), findsOneWidget);
+      expect(find.text('₱5,000'), findsOneWidget);
+      expect(find.text('₱7,000'), findsOneWidget);
     });
 
     testWidgets('the header totals what the property brings in', (tester) async {
@@ -1496,7 +1496,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Per month'), findsOneWidget);
-      expect(find.text('₱17000'), findsOneWidget);
+      expect(find.text('₱17,000'), findsOneWidget);
     });
 
     testWidgets('a property with no rents set totals a dash, not zero',
@@ -1525,9 +1525,9 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      // ₱120000 is wider than the stat card, so the figure scales down rather
+      // ₱120,000 is wider than the stat card, so the figure scales down rather
       // than losing a digit -- a landlord with a real portfolio hits this.
-      expect(find.text('₱120000'), findsOneWidget);
+      expect(find.text('₱120,000'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -2666,7 +2666,7 @@ void main() {
 
       // Only the exception is printed: a bed priced on its own. The other is
       // silent, so the one line that carries information stands out.
-      expect(find.text('₱2000'), findsOneWidget);
+      expect(find.text('₱2,000'), findsOneWidget);
       expect(find.textContaining('unit rate'), findsNothing);
     });
 
@@ -2958,7 +2958,7 @@ void main() {
       ]);
 
       // Everything, before filtering.
-      expect(find.text('₱20000'), findsOneWidget);
+      expect(find.text('₱20,000'), findsOneWidget);
 
       await tester.tap(find.text('Floor 2'));
       await tester.pumpAndSettle();
@@ -2970,7 +2970,7 @@ void main() {
       // The figures describe the floor now, and the title says so, or the
       // header would be a property total sitting over one floor's list.
       expect(find.text('Floor 2'), findsWidgets);
-      expect(find.text('₱13000'), findsOneWidget);
+      expect(find.text('₱13,000'), findsOneWidget);
     });
 
     testWidgets('units with no floor get a bucket of their own', (tester) async {
@@ -3002,7 +3002,7 @@ void main() {
 
       expect(find.text('Unit 1A'), findsOneWidget);
       expect(find.text('Unit 2A'), findsOneWidget);
-      expect(find.text('₱15000'), findsOneWidget);
+      expect(find.text('₱15,000'), findsOneWidget);
     });
   });
 
@@ -3063,7 +3063,7 @@ void main() {
       // The closed unit has four beds; none of them can be let, so the
       // rentable count is zero and only the open unit's rent is totalled.
       expect(find.text('0'), findsOneWidget);
-      expect(find.text('₱7000'), findsWidgets);
+      expect(find.text('₱7,000'), findsWidgets);
     });
 
     testWidgets('the card says so, rather than just showing a dash',
@@ -3203,7 +3203,7 @@ void main() {
         (tester) async {
       await openUnit(tester, monthlyUtilities: 1700);
 
-      expect(find.text('A fixed ₱1700 each month'), findsOneWidget);
+      expect(find.text('A fixed ₱1,700 each month'), findsOneWidget);
     });
 
     testWidgets('the row opens the utilities screen', (tester) async {
@@ -3326,12 +3326,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Water is set up but not charged, so it is not in the total.
-      expect(find.text('₱1700'), findsOneWidget);
+      expect(find.text('₱1,700'), findsOneWidget);
 
       await tester.tap(find.byType(Switch).at(2));
       await tester.pumpAndSettle();
 
-      expect(find.text('₱2000'), findsOneWidget);
+      expect(find.text('₱2,000'), findsOneWidget);
     });
   });
 
@@ -3683,7 +3683,7 @@ void main() {
 
       // The Properties tab's own figures are no longer repeated here.
       expect(find.text('Per month'), findsNothing);
-      expect(find.text('₱10000'), findsNothing);
+      expect(find.text('₱10,000'), findsNothing);
 
       // And the last placeholder, from before leases existed, is gone.
       expect(find.text('Coming up'), findsNothing);
@@ -4827,7 +4827,7 @@ void _findingAPlaceTests() {
       num? cheapest = 2500,
       num? dearest,
       bool utilitiesOnTop = false,
-      String floor = '2',
+      String? floor = '2',
     }) => PropertyByCodeResponse(
       id: 'p1',
       code: 'PHK7M4Q2',
@@ -4947,8 +4947,41 @@ void _findingAPlaceTests() {
       expect(find.text('Sunrise Apartments'), findsWidgets);
       expect(find.text('12 Mabini St'), findsOneWidget);
       expect(find.text('3 spaces free'), findsOneWidget);
-      expect(find.text('Floor 2'), findsOneWidget);
+      expect(find.text('2nd floor'), findsOneWidget);
       expect(find.text('3 bedspaces free'), findsOneWidget);
+    });
+
+    /// The landlord types this field themselves. A number becomes an ordinary
+    /// English floor; a word stands as they wrote it, because "Roof deck
+    /// floor" is not a thing anybody says.
+    testWidgets('a floor is named the way it is said', (tester) async {
+      for (final (written, shown) in [
+        ('1', '1st floor'),
+        ('2', '2nd floor'),
+        ('3', '3rd floor'),
+        ('4', '4th floor'),
+        ('11', '11th floor'),
+        ('21', '21st floor'),
+        ('Ground', 'Ground'),
+        ('Mezzanine', 'Mezzanine'),
+      ]) {
+        await tester.pumpWidget(
+            appWith(found: place(beds: 2, floor: written)));
+        await openFind(tester);
+        await enterCode(tester, 'PHK7M4Q2');
+
+        expect(find.text(shown), findsOneWidget,
+            reason: 'a floor written "$written" should read "$shown"');
+      }
+    });
+
+    /// Nothing says it, so it is not claimed to be the second floor either.
+    testWidgets('a floor nobody named is ground level', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2, floor: null)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.text('Ground level'), findsOneWidget);
     });
 
     /// The whole point: somebody with the code learns how much is free and
@@ -4967,13 +5000,24 @@ void _findingAPlaceTests() {
       await tester.pumpWidget(appWith(found: place(beds: 2)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
-      expect(find.text('\u20b12500'), findsOneWidget);
+      expect(find.text('\u20b12,500'), findsOneWidget);
 
       await tester.pumpWidget(
           appWith(found: place(beds: 2, cheapest: 2500, dearest: 3200)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
-      expect(find.text('\u20b12500\u2013\u20b13200'), findsOneWidget);
+      expect(find.text('\u20b12,500\u2013\u20b13,200'), findsOneWidget);
+    });
+
+    /// A rent runs to five figures, and 7500 against 75000 is a difference
+    /// nobody should have to count digits to see.
+    testWidgets('a five-figure rent is grouped', (tester) async {
+      await tester.pumpWidget(
+          appWith(found: place(beds: 1, cheapest: 12500, dearest: 12500)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.text('\u20b112,500'), findsOneWidget);
     });
 
     testWidgets('a full house says so rather than showing nothing', (
@@ -6991,8 +7035,8 @@ void _tenantLeaseTests() {
       await openMyPlace(tester);
 
       expect(find.text('Before you moved in'), findsOneWidget);
-      expect(find.text('₱5000'), findsOneWidget);
-      expect(find.text('₱2500'), findsOneWidget);
+      expect(find.text('₱5,000'), findsOneWidget);
+      expect(find.text('₱2,500'), findsOneWidget);
     });
 
     /// The two are constantly muddled, and the difference only matters at the
@@ -7042,7 +7086,7 @@ void _tenantLeaseTests() {
       await openMyPlace(tester);
 
       expect(find.text('Deposit returned'), findsOneWidget);
-      expect(find.text('₱4500'), findsOneWidget);
+      expect(find.text('₱4,500'), findsOneWidget);
       expect(find.text('Withheld ₱500 for the window latch.'), findsOneWidget);
     });
 
@@ -7163,7 +7207,7 @@ void _tenantLeaseTests() {
       await openSheet(tester);
 
       expect(find.text('Settling the deposit'), findsOneWidget);
-      expect(find.textContaining('You took ₱5000'), findsOneWidget);
+      expect(find.textContaining('You took ₱5,000'), findsOneWidget);
     });
 
     /// Caught before it costs a round trip, and the server refuses it too.
@@ -7179,7 +7223,7 @@ void _tenantLeaseTests() {
       await tester.tap(find.text('End the tenancy'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('more than the ₱5000 you took'), findsOneWidget);
+      expect(find.textContaining('more than the ₱5,000 you took'), findsOneWidget);
       // Still on the sheet rather than having ended anything.
       expect(find.byType(EndTenancySheet), findsOneWidget);
     });
@@ -7540,7 +7584,7 @@ void _tenantLeaseTests() {
       final header = find.byType(LatticeHeader);
       expect(find.descendant(of: header, matching: find.text('Owed')),
           findsOneWidget);
-      expect(find.descendant(of: header, matching: find.text('₱4000')),
+      expect(find.descendant(of: header, matching: find.text('₱4,000')),
           findsOneWidget);
       expect(find.text('Monthly rent'), findsNothing);
     });
@@ -7582,7 +7626,7 @@ void _tenantLeaseTests() {
       expect(find.text('October 2026'), findsOneWidget);
       expect(find.text('Due'), findsWidgets);
       expect(find.text('Outstanding'), findsOneWidget);
-      expect(find.text('₱2500'), findsWidgets);
+      expect(find.text('₱2,500'), findsWidgets);
     });
 
     /// The number somebody actually opened the screen to find, so no client
@@ -7597,8 +7641,8 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      expect(find.text('₱1000'), findsOneWidget);
-      expect(find.text('₱1500'), findsOneWidget);
+      expect(find.text('₱1,000'), findsOneWidget);
+      expect(find.text('₱1,500'), findsOneWidget);
     });
 
     testWidgets('a settled month says so', (tester) async {
@@ -8000,7 +8044,7 @@ void _tenantLeaseTests() {
       await reachRent(tester);
 
       expect(find.text('Outstanding'), findsOneWidget);
-      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('₱5,000'), findsOneWidget);
     });
 
     /// A tenant who said they paid three days ago and has heard nothing is the
@@ -8012,7 +8056,7 @@ void _tenantLeaseTests() {
       await reachRent(tester);
 
       expect(find.text('One payment is waiting on you'), findsOneWidget);
-      expect(find.textContaining('₱2500 for October 2026'), findsOneWidget);
+      expect(find.textContaining('₱2,500 for October 2026'), findsOneWidget);
       expect(find.text('Paid by GCash'), findsOneWidget);
       expect(find.byKey(const ValueKey('confirm-p1')), findsOneWidget);
       expect(find.byKey(const ValueKey('reject-p1')), findsOneWidget);
@@ -8201,11 +8245,11 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Due'), findsOneWidget);
-      expect(find.text('₱5000'), findsOneWidget);
+      expect(find.text('₱5,000'), findsOneWidget);
       expect(find.text('Collected'), findsOneWidget);
-      expect(find.text('₱2500'), findsOneWidget);
+      expect(find.text('₱2,500'), findsOneWidget);
       expect(find.text('Owed in all'), findsOneWidget);
-      expect(find.text('₱7500'), findsOneWidget);
+      expect(find.text('₱7,500'), findsOneWidget);
     });
 
     /// Four zeroes read as a broken screen rather than an empty portfolio.
@@ -8246,7 +8290,7 @@ void _tenantLeaseTests() {
       expect(find.text('One tenant'), findsOneWidget);
       expect(find.text('Ana Reyes'), findsOneWidget);
       expect(find.textContaining('Bed 1, 2B · 2 months late'), findsOneWidget);
-      expect(find.text('₱5000'), findsWidgets);
+      expect(find.text('₱5,000'), findsWidgets);
     });
 
     testWidgets('one month late reads as one month', (tester) async {
@@ -8876,7 +8920,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Potential earnings'), findsOneWidget);
-      expect(find.text('₱7500'), findsOneWidget);
+      expect(find.text('₱7,500'), findsOneWidget);
     });
 
     /// A room off the market on purpose is not a vacancy anybody needs to
@@ -9097,9 +9141,9 @@ void _tenantLeaseTests() {
       ));
       await openRent(tester);
 
-      expect(inHeader(find.text('₱7500')), findsOneWidget);
-      expect(inHeader(find.text('₱2500')), findsOneWidget);
-      expect(inHeader(find.text('₱5000')), findsOneWidget);
+      expect(inHeader(find.text('₱7,500')), findsOneWidget);
+      expect(inHeader(find.text('₱2,500')), findsOneWidget);
+      expect(inHeader(find.text('₱5,000')), findsOneWidget);
     });
 
     testWidgets('a declared payment on the Rent tab says which account it went to',
@@ -9127,7 +9171,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith(roll([row(waiting: [claim()])]), api: api));
       await openRent(tester);
 
-      expect(find.text('Says they paid ₱2500 by GCash on 3 Sep'), findsOneWidget);
+      expect(find.text('Says they paid ₱2,500 by GCash on 3 Sep'), findsOneWidget);
       expect(find.text('Sent from my sister’s number.'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('confirm-pay1')));

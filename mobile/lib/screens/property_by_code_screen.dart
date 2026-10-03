@@ -145,12 +145,7 @@ class _Floor extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  // Null means the landlord never said, which is normal in a
-                  // single-storey house — not a floor called nothing.
-                  floor.floor == null ? 'Ground level' : 'Floor ${floor.floor}',
-                  style: LizmoType.rowName,
-                ),
+                Text(_floorLabel(floor.floor), style: LizmoType.rowName),
                 const SizedBox(height: 2),
                 Text(_whatIsFree(units, beds), style: LizmoType.rowSub),
               ],
@@ -161,6 +156,35 @@ class _Floor extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// "2nd floor", "Ground", "Ground level".
+  ///
+  /// The landlord writes this field themselves, so it arrives as "2" as often
+  /// as "Ground" or "Mezzanine". A number becomes an ordinary English floor;
+  /// anything else is shown as they wrote it, because "Roof deck floor" is not
+  /// a thing anybody says.
+  ///
+  /// Null means they never said, which is normal in a single-storey house —
+  /// not a floor called nothing.
+  static String _floorLabel(String? floor) {
+    final text = (floor ?? '').trim();
+    if (text.isEmpty) return 'Ground level';
+
+    final number = int.tryParse(text);
+    return number == null ? text : '${_ordinal(number)} floor';
+  }
+
+  /// 1st, 2nd, 3rd, 4th — and 11th, 12th, 13th, which break the pattern.
+  static String _ordinal(int number) {
+    final tens = number % 100;
+    if (tens >= 11 && tens <= 13) return '${number}th';
+    return switch (number % 10) {
+      1 => '${number}st',
+      2 => '${number}nd',
+      3 => '${number}rd',
+      _ => '${number}th',
+    };
   }
 
   static String _whatIsFree(int units, int beds) {
@@ -180,8 +204,8 @@ class _Floor extends StatelessWidget {
     if (cheapest == null) return 'Price not set';
 
     final money = cheapest == dearest
-        ? '₱$cheapest'
-        : '₱$cheapest–₱$dearest';
+        ? LizmoMoney.peso(cheapest)
+        : '${LizmoMoney.peso(cheapest)}–${LizmoMoney.peso(dearest)}';
     return (floor.utilitiesOnTop ?? false)
         ? '$money + utilities'
         : money;

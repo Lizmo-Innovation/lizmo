@@ -255,9 +255,7 @@ class _PropertyCard extends StatelessWidget {
   /// "Not set" rather than ₱0, which would claim the property is free.
   static String _rentLabel(num? rent) {
     if (rent == null) return '—';
-    final asDouble = rent.toDouble();
-    final whole = asDouble == asDouble.roundToDouble();
-    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+    return LizmoMoney.peso(rent);
   }
 
   static String _kindLabel(PropertyResponse property) =>
@@ -278,8 +276,5 @@ String _portfolioRent(List<PropertyResponse>? properties) {
     total = (total ?? 0) + rent;
   }
 
-  if (total == null) return '—';
-  final asDouble = total.toDouble();
-  final whole = asDouble == asDouble.roundToDouble();
-  return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+  return LizmoMoney.peso(total);
 }

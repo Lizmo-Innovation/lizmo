@@ -117,14 +117,14 @@ class _MonthRow extends StatelessWidget {
               Expanded(
                 child: _Figure(
                   label: 'Due',
-                  value: '₱${_money(period.amountDue)}',
+                  value: LizmoMoney.peso(period.amountDue),
                   ink: ink,
                 ),
               ),
               Expanded(
                 child: _Figure(
                   label: 'Paid',
-                  value: '₱${_money(period.amountPaid)}',
+                  value: LizmoMoney.peso(period.amountPaid),
                   ink: ink,
                 ),
               ),
@@ -133,7 +133,7 @@ class _MonthRow extends StatelessWidget {
                   // The number somebody actually came to find, so no screen
                   // has to do the subtraction and none can get it wrong.
                   label: 'Outstanding',
-                  value: '₱${_money(period.outstanding)}',
+                  value: LizmoMoney.peso(period.outstanding),
                   ink: ink,
                 ),
               ),
@@ -170,7 +170,6 @@ class _MonthRow extends StatelessWidget {
     return overdue ? LizmoStatus.overdue : LizmoStatus.vacant;
   }
 
-  static String _money(num? amount) => (amount ?? 0).toStringAsFixed(0);
 
   static String _readable(DateTime? date) {
     if (date == null) return '—';

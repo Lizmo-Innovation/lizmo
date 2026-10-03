@@ -123,7 +123,7 @@ class _Figures extends StatelessWidget {
                 // earnings" invites reading as the whole portfolio's potential
                 // rather than the empty part of it.
                 label: 'Potential earnings',
-                value: '₱${emptyRent.toStringAsFixed(0)}',
+                value: LizmoMoney.peso(emptyRent),
                 ink: empty > 0 ? LizmoColors.ink : LizmoColors.teal900,
               ),
             ),
@@ -220,7 +220,7 @@ class _VacancyRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '₱${(row.emptyRent ?? 0).toStringAsFixed(0)}',
+                LizmoMoney.peso((row.emptyRent ?? 0)),
                 style: LizmoType.dataMedium.copyWith(color: LizmoColors.slate),
               ),
               const SizedBox(width: 4),

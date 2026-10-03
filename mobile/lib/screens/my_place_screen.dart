@@ -132,7 +132,7 @@ class _Tenancy extends StatelessWidget {
               ),
               _Fact(
                 label: 'Rent',
-                value: '₱${(lease.rentAmount ?? 0).toStringAsFixed(0)} a month',
+                value: '${LizmoMoney.peso((lease.rentAmount ?? 0))} a month',
               ),
               _Fact(label: 'Rent day', value: 'The ${_ordinal(lease.dueDateDay ?? 1)}'),
               _Fact(label: 'Started', value: _date(lease.startDate)),
@@ -247,7 +247,7 @@ class _UpfrontMoney extends StatelessWidget {
           if (lease.depositAmount != null) ...[
             _Fact(
               label: 'Deposit',
-              value: '₱${lease.depositAmount!.toStringAsFixed(0)}',
+              value: LizmoMoney.peso(lease.depositAmount!),
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -261,7 +261,7 @@ class _UpfrontMoney extends StatelessWidget {
           if (lease.advanceAmount != null) ...[
             _Fact(
               label: 'Advance rent',
-              value: '₱${lease.advanceAmount!.toStringAsFixed(0)}',
+              value: LizmoMoney.peso(lease.advanceAmount!),
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -276,7 +276,7 @@ class _UpfrontMoney extends StatelessWidget {
             const Divider(height: 20, color: Color(0xFFE3E8E6)),
             _Fact(
               label: 'Deposit returned',
-              value: '₱${lease.depositReturned!.toStringAsFixed(0)}',
+              value: LizmoMoney.peso(lease.depositReturned!),
             ),
             if ((lease.depositSettlement ?? '').isNotEmpty)
               Padding(

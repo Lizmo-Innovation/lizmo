@@ -206,9 +206,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     }
 
     if (total == null) return '—';
-    final asDouble = total.toDouble();
-    final whole = asDouble == asDouble.roundToDouble();
-    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+    return LizmoMoney.peso(total);
   }
 }
 
@@ -463,9 +461,7 @@ class _UnitCard extends StatelessWidget {
   String _rentLabel() {
     final rent = unit.potentialMonthlyRent;
     if (rent == null) return '—';
-    final asDouble = rent.toDouble();
-    final whole = asDouble == asDouble.roundToDouble();
-    return '₱${whole ? asDouble.toStringAsFixed(0) : asDouble.toStringAsFixed(2)}';
+    return LizmoMoney.peso(rent);
   }
 }
 

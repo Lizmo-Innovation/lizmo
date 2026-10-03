@@ -91,14 +91,14 @@ class _Figures extends StatelessWidget {
             Expanded(
               child: _Figure(
                 label: 'Due',
-                value: '₱${due.toStringAsFixed(0)}',
+                value: LizmoMoney.peso(due),
                 ink: LizmoColors.ink,
               ),
             ),
             Expanded(
               child: _Figure(
                 label: 'Collected',
-                value: '₱${collected.toStringAsFixed(0)}',
+                value: LizmoMoney.peso(collected),
                 ink: collected >= due && due > 0
                     ? LizmoColors.teal900
                     : LizmoColors.ink,
@@ -110,7 +110,7 @@ class _Figures extends StatelessWidget {
                 // three past months and paid up for this one is not doing
                 // well, and one number cannot say both.
                 label: 'Owed in all',
-                value: '₱${outstanding.toStringAsFixed(0)}',
+                value: LizmoMoney.peso(outstanding),
                 ink: outstanding > 0 ? LizmoColors.ink : LizmoColors.teal900,
               ),
             ),
@@ -289,7 +289,7 @@ class _WaitingRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '₱${(row.amount ?? 0).toStringAsFixed(0)}',
+                LizmoMoney.peso((row.amount ?? 0)),
                 style: LizmoType.dataMedium
                     .copyWith(color: LizmoColors.amberText),
               ),
@@ -350,7 +350,7 @@ class _ArrearsRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '₱${(row.outstanding ?? 0).toStringAsFixed(0)}',
+                LizmoMoney.peso((row.outstanding ?? 0)),
                 style: LizmoType.dataMedium.copyWith(color: LizmoColors.red),
               ),
               const SizedBox(width: 4),

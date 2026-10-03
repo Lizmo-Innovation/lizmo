@@ -258,13 +258,13 @@ class _UpfrontMoney extends ConsumerWidget {
           'Deposit',
           lease.depositAmount == null
               ? null
-              : '₱${lease.depositAmount!.toStringAsFixed(0)}',
+              : LizmoMoney.peso(lease.depositAmount!),
         ),
         _Fact(
           'Advance rent',
           lease.advanceAmount == null
               ? null
-              : '₱${lease.advanceAmount!.toStringAsFixed(0)}',
+              : LizmoMoney.peso(lease.advanceAmount!),
         ),
       ],
       subtitle: 'The deposit goes back when they move out. The advance pays '

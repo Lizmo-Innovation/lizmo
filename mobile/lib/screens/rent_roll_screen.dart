@@ -128,7 +128,7 @@ class _RentRollScreenState extends ConsumerState<RentRollScreen> {
 
   /// A figure, or a dash while it is not known.
   static String _peso(num? amount) =>
-      amount == null ? '—' : '₱${amount.toStringAsFixed(0)}';
+      amount == null ? '—' : LizmoMoney.peso(amount);
 }
 
 /// `2026-09`, the way the API names a month.
@@ -419,8 +419,8 @@ class _RentRowState extends ConsumerState<_RentRow> {
   static String _amountLine(BillingPeriodResponse period) {
     final due = period.amountDue ?? 0;
     final left = period.outstanding ?? 0;
-    if (left <= 0 || left == due) return '₱${due.toStringAsFixed(0)}';
-    return '₱${left.toStringAsFixed(0)} of ₱${due.toStringAsFixed(0)} left';
+    if (left <= 0 || left == due) return LizmoMoney.peso(due);
+    return '${LizmoMoney.peso(left)} of ${LizmoMoney.peso(due)} left';
   }
 }
 
@@ -486,7 +486,7 @@ class _Waiting extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Says they paid ₱${(payment.amount ?? 0).toStringAsFixed(0)} by $how'
+            'Says they paid ${LizmoMoney.peso((payment.amount ?? 0))} by $how'
             '${paidOn == null ? '' : ' on ${_day(paidOn)}'}',
             style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
           ),

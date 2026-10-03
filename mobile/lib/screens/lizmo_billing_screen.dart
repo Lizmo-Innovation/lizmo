@@ -232,9 +232,9 @@ class _Line extends StatelessWidget {
     final units = line.occupiedUnits ?? 0;
     final counted = [
       if (beds > 0)
-        '$beds ${beds == 1 ? 'bed' : 'beds'} × ₱${(line.bedRate ?? 0).toStringAsFixed(0)}',
+        '$beds ${beds == 1 ? 'bed' : 'beds'} × ${LizmoMoney.peso((line.bedRate ?? 0))}',
       if (units > 0)
-        '$units ${units == 1 ? 'unit' : 'units'} × ₱${(line.unitRate ?? 0).toStringAsFixed(0)}',
+        '$units ${units == 1 ? 'unit' : 'units'} × ${LizmoMoney.peso((line.unitRate ?? 0))}',
     ].join(' + ');
     final invoice = line.invoiceNumber;
 
@@ -257,7 +257,7 @@ class _Line extends StatelessWidget {
                     style: LizmoType.rowName
                         .copyWith(fontSize: 13, color: LizmoColors.ink)),
               ),
-              Text('₱${(line.amountDue ?? 0).toStringAsFixed(0)}',
+              Text(LizmoMoney.peso((line.amountDue ?? 0)),
                   style: LizmoType.dataMedium.copyWith(color: LizmoColors.ink)),
             ],
           ),
@@ -320,7 +320,7 @@ class _Figure extends StatelessWidget {
       children: [
         Text(label, style: LizmoType.rowSub.copyWith(fontSize: 11)),
         const SizedBox(height: 2),
-        Text('₱${(amount ?? 0).toStringAsFixed(0)}',
+        Text(LizmoMoney.peso((amount ?? 0)),
             style: LizmoType.dataMedium.copyWith(color: LizmoColors.ink)),
       ],
     );
@@ -354,7 +354,7 @@ class _Sent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '₱${(payment.amountPaid ?? 0).toStringAsFixed(0)} sent '
+            '${LizmoMoney.peso((payment.amountPaid ?? 0))} sent '
             '${lizmoDay(payment.paymentDate)} · $what',
             style: LizmoType.rowSub.copyWith(color: ink),
           ),
