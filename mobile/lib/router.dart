@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'app_version.dart';
 import 'auth/active_role.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/login_screen.dart';
@@ -39,6 +40,7 @@ import 'screens/my_place_screen.dart';
 import 'screens/tenant_payments_screen.dart';
 import 'screens/tenant_shell.dart';
 import 'screens/unit_utilities_screen.dart';
+import 'screens/update_screen.dart';
 
 /// Route paths, named so a typo is a compile error rather than a blank screen.
 abstract final class Routes {
@@ -120,6 +122,9 @@ abstract final class Routes {
   static const forgotPassword = '/forgot-password';
 
   static const noProfile = '/no-profile';
+
+  /// Where a build too old to be used ends up, and stays.
+  static const update = '/update';
 
   /// Reachable without a session. Anything else redirects to login.
   static const signedOutAllowed = {login, register, forgotPassword};
@@ -221,12 +226,15 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refresh = AuthRefreshNotifier(ref);
   ref.onDispose(refresh.dispose);
 
+  final version = VersionRefreshNotifier(ref);
+  ref.onDispose(version.dispose);
+
   final gate = ref.watch(splashGateProvider);
   final reachable = ref.watch(backendHealthProvider);
 
   return GoRouter(
     initialLocation: Routes.splash,
-    refreshListenable: Listenable.merge([refresh, gate]),
+    refreshListenable: Listenable.merge([refresh, gate, version]),
     // The redirect is the only place that decides what a user may see. Screens
     // never push or pop themselves between signed-in and signed-out, so a
     // session ending anywhere lands the user on login without every screen
@@ -246,6 +254,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (location == Routes.landlord) {
         return Routes.landlordHome;
       }
+
+      // Before anything about who this is: a build that is no longer allowed
+      // in does not get to sign in either.
+      //
+      // A check still in flight is not held for separately. The splash's own
+      // few seconds are the wait, and they are nearly always enough; on a slow
+      // connection the answer lands later and takes the person to the update
+      // screen from wherever they got to. Holding until an answer arrives
+      // would mean a stalled request stranding somebody on a splash screen,
+      // which is the one failure worse than a late redirect.
+      if (ref.read(appVersionProvider) is AppTooOld) {
+        return location == Routes.update ? null : Routes.update;
+      }
+      // Nothing else belongs on the update screen, including somebody who got
+      // there and then had the minimum lowered under them.
+      if (location == Routes.update) return Routes.splash;
 
       // Nor while the backend is out of contact. Every screen past this point
       // is a view onto the API, so login would only fail and a restored
@@ -275,6 +299,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.splash,
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: Routes.update,
+        builder: (context, state) => const UpdateScreen(),
       ),
       GoRoute(
         path: Routes.login,

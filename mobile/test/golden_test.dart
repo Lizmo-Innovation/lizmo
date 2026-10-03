@@ -14,6 +14,8 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/splash_screen.dart';
+import 'package:lizmo/screens/update_screen.dart';
+import 'package:lizmo/app_version.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
 
 /// Renders each role's home screen for visual review.
@@ -22,6 +24,15 @@ import 'package:lizmo/tenant/tenant_providers.dart';
 /// Renders with real type now that the fonts are bundled in lizmo_ui, so a
 /// typography regression is visible here. Tagged `golden` and excluded from CI:
 /// they are generated on Windows and rasterise differently on Linux.
+class _PinnedVersion extends AppVersionGate {
+  _PinnedVersion(this._state);
+
+  final AppVersionCheck _state;
+
+  @override
+  AppVersionCheck build() => _state;
+}
+
 class _PinnedHealth extends BackendHealth {
   _PinnedHealth(this._state);
 
@@ -373,6 +384,58 @@ void main() {
     await expectLater(
       find.byType(SplashScreen),
       matchesGoldenFile('goldens/splash_offline.png'),
+    );
+  });
+
+  testWidgets('too old to use', (tester) async {
+    _phone(tester);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        appVersionProvider.overrideWith(() => _PinnedVersion(const AppTooOld(
+            'https://play.google.com/store/apps/details?id=app.lizmo'))),
+      ],
+      child: const MaterialApp(home: UpdateScreen()),
+    ));
+    // The mark is an asset, and decoding one is real async work: without a
+    // real-time turn it is still blank when the frame is captured.
+    await tester.runAsync(() async {
+      await precacheImage(
+          const AssetImage('assets/icon/icon_foreground.png'),
+          tester.element(find.byType(UpdateScreen)));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await expectLater(
+      find.byType(UpdateScreen),
+      matchesGoldenFile('goldens/too_old.png'),
+    );
+  });
+
+  /// Nobody has set a link for this platform, so there is nothing to tap.
+  testWidgets('too old with nowhere to send them', (tester) async {
+    _phone(tester);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        appVersionProvider.overrideWith(() => _PinnedVersion(const AppTooOld(null))),
+      ],
+      child: const MaterialApp(home: UpdateScreen()),
+    ));
+    // The mark is an asset, and decoding one is real async work: without a
+    // real-time turn it is still blank when the frame is captured.
+    await tester.runAsync(() async {
+      await precacheImage(
+          const AssetImage('assets/icon/icon_foreground.png'),
+          tester.element(find.byType(UpdateScreen)));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await expectLater(
+      find.byType(UpdateScreen),
+      matchesGoldenFile('goldens/too_old_no_link.png'),
     );
   });
 

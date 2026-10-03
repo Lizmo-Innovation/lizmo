@@ -50,7 +50,26 @@ import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
 import 'package:lizmo/screens/maintenance_inbox_screen.dart';
 import 'package:lizmo/screens/maintenance_report_screen.dart';
+import 'package:lizmo/screens/update_screen.dart';
+import 'package:lizmo/app_version.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:http/http.dart' show MultipartFile;
+
+/// Answers what the oldest allowed build is, or refuses to.
+class _FakeVersionApi extends AdminApi {
+  _FakeVersionApi({this.answer, this.fails = false});
+
+  final AppVersion? answer;
+  final bool fails;
+  int calls = 0;
+
+  @override
+  Future<AppVersion?> getAppVersion({Future<void>? abortTrigger}) async {
+    calls++;
+    if (fails) throw ApiException(500, 'nope');
+    return answer;
+  }
+}
 
 /// Serves a fixed reachability, and becomes reachable when retried.
 class _FakeHealth extends BackendHealth {
@@ -3782,6 +3801,178 @@ void main() {
       expect(find.byTooltip('Edit unit'), findsOneWidget);
       expect(find.byTooltip('More'), findsOneWidget);
       expect(find.byTooltip('Back'), findsOneWidget);
+    });
+  });
+
+  group('a build too old to be used', () {
+    const play = 'https://play.google.com/store/apps/details?id=app.lizmo';
+    const appStore = 'https://apps.apple.com/app/lizmo';
+
+    Widget appOn(
+      int installed, {
+      AppVersion? allowed,
+      bool fails = false,
+      List<Uri>? opened,
+    }) =>
+        ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            appVersionApiProvider.overrideWithValue(
+                _FakeVersionApi(answer: allowed, fails: fails)),
+            installedBuildProvider.overrideWithValue(() async => installed),
+            openLinkProvider.overrideWithValue((uri) async {
+              opened?.add(uri);
+              return true;
+            }),
+            propertiesProvider
+                .overrideWith((ref) async => const <PropertyResponse>[]),
+            myTenantProfileProvider.overrideWith((ref) async =>
+                TenantProfileResponse(
+                    contactPhone: '09170000001', readyForALease: true)),
+            myTenantDocumentsProvider
+                .overrideWith((ref) async => const <TenantDocumentResponse>[]),
+            myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    /// Signed in, and stopped anyway: a build we have refused is one whose
+    /// payments we would rather it did not send.
+    testWidgets('an older build is stopped, session or no session',
+        (tester) async {
+      await tester.pumpWidget(appOn(3,
+          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UpdateScreen), findsOneWidget);
+      expect(find.byType(TenantHomeScreen), findsNothing);
+      expect(find.text('Time to update Lizmo'), findsOneWidget);
+    });
+
+    testWidgets('the oldest allowed build itself carries on', (tester) async {
+      await tester.pumpWidget(appOn(7,
+          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(UpdateScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('a newer build carries on', (tester) async {
+      await tester.pumpWidget(appOn(9,
+          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    /// What every operator has until they set one.
+    testWidgets('a minimum of zero turns the check off', (tester) async {
+      await tester.pumpWidget(appOn(1, allowed: AppVersion(minimumBuild: 0)));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    /// Being locked out of your own tenancy because a request failed is worse
+    /// than running a build we would rather you had replaced.
+    testWidgets('a check that fails opens the app', (tester) async {
+      await tester.pumpWidget(appOn(1, fails: true));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(UpdateScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the button opens the Android link', (tester) async {
+      final opened = <Uri>[];
+      await tester.pumpWidget(appOn(3,
+          allowed: AppVersion(
+              minimumBuild: 7, androidUpdateUrl: play, iosUpdateUrl: appStore),
+          opened: opened));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('open-update-link')));
+      await tester.pumpAndSettle();
+
+      expect(opened, [Uri.parse(play)]);
+    });
+
+    testWidgets('an iPhone is sent to the App Store', (tester) async {
+      final opened = <Uri>[];
+      // Put back before the body ends: the binding checks these are unset
+      // before any tearDown of ours runs.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(appOn(3,
+            allowed: AppVersion(
+                minimumBuild: 7, androidUpdateUrl: play, iosUpdateUrl: appStore),
+            opened: opened));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const ValueKey('open-update-link')));
+        await tester.pumpAndSettle();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+
+      expect(opened, [Uri.parse(appStore)]);
+    });
+
+    /// A button that opens nothing is worse than no button: it reads as the
+    /// app being broken rather than as an update being due.
+    testWidgets('no link for this platform means no button', (tester) async {
+      await tester.pumpWidget(appOn(3,
+          allowed: AppVersion(minimumBuild: 7, iosUpdateUrl: appStore)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UpdateScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('open-update-link')), findsNothing);
+      expect(find.textContaining('from your app store'), findsOneWidget);
+    });
+
+    /// Blank is how the console clears a link, and it has to read the same as
+    /// never having set one.
+    testWidgets('a blank link counts as no link', (tester) async {
+      await tester.pumpWidget(appOn(3,
+          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: '  ')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('open-update-link')), findsNothing);
+    });
+
+    /// Nothing else can be reached while the app is refused, including by a
+    /// stale deep link.
+    testWidgets('no route gets past the update screen', (tester) async {
+      final container = ProviderContainer(overrides: [
+        authControllerProvider
+            .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+        appVersionApiProvider.overrideWithValue(_FakeVersionApi(
+            answer: AppVersion(minimumBuild: 7, androidUpdateUrl: play))),
+        installedBuildProvider.overrideWithValue(() async => 3),
+        propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
+      ]);
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+          container: container, child: const LizmoApp()));
+      await tester.pumpAndSettle();
+
+      container.read(routerProvider).go(Routes.tenantHome);
+      await tester.pumpAndSettle();
+      expect(find.byType(UpdateScreen), findsOneWidget);
+
+      container.read(routerProvider).go(Routes.login);
+      await tester.pumpAndSettle();
+      expect(find.byType(UpdateScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
     });
   });
 

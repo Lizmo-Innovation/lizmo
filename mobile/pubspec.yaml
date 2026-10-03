@@ -75,6 +75,16 @@ dependencies:
   path_provider: ^2.1.6
   mobile_scanner: ^7.4.0
 
+  # The build number of the running app, which is what the server's minimum is
+  # compared against. Read from the platform rather than from pubspec: a
+  # constant compiled in here would be whatever was true when the Dart was
+  # written, not what was installed.
+  package_info_plus: ^8.1.1
+
+  # Opens the store listing when a build is too old to carry on. share_plus
+  # cannot open a URL, so this is its own dependency.
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

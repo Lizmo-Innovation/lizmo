@@ -41,5 +41,12 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- So the update screen can hand the store link to a browser or to
+             Play. Without this, Android 11 and later hide every such activity
+             from us and the button does nothing. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>
