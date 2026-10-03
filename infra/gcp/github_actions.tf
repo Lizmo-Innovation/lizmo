@@ -80,3 +80,13 @@ resource "google_service_account_iam_member" "deployer_acts_as_api" {
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.deployer.email}"
 }
+
+# The same for the console, which has its own identity for the same reason the
+# API does. Its absence is what stopped the console being deployed at all: the
+# revision would have run as the default compute account, and the deployer is
+# not allowed to act as that.
+resource "google_service_account_iam_member" "deployer_acts_as_admin" {
+  service_account_id = google_service_account.admin.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}

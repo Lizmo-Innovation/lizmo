@@ -10,6 +10,21 @@
 # server-side against the platform_admins table, and a signed-out visitor sees
 # a login screen.
 
+# The console's own runtime identity.
+#
+# Without one, Cloud Run gives a revision the project's default compute service
+# account -- which carries Editor on most projects, and which the deployer is
+# deliberately not allowed to act as, so the deploy failed outright. A service
+# that serves static files over nginx needs no permission at all, so this
+# account is granted none: it exists to be an identity that is not Editor.
+resource "google_service_account" "admin" {
+  project      = var.project_id
+  account_id   = "lizmo-admin"
+  display_name = "Lizmo admin console (Cloud Run)"
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_cloud_run_v2_service" "admin" {
   project  = var.project_id
   name     = var.admin_service_name
@@ -19,6 +34,8 @@ resource "google_cloud_run_v2_service" "admin" {
   deletion_protection = false
 
   template {
+    service_account = google_service_account.admin.email
+
     scaling {
       # Static files with no cold-start cost worth paying for.
       min_instance_count = 0
