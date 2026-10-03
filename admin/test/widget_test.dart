@@ -719,6 +719,178 @@ void main() {
     });
   });
 
+  group('which app builds are allowed in', () {
+    Widget screen(_FakeChannelsApi api, PlatformSettings seed) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.admin}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            landlordsProvider.overrideWith((ref) async => const []),
+            invitationsProvider.overrideWith((ref) async => const []),
+            landlordProvider.overrideWith((ref, id) async => null),
+            platformPaymentsProvider.overrideWith((ref) async => const []),
+            platformSettingsProvider.overrideWith((ref) async => seed),
+            paymentChannelsProvider.overrideWith((ref) async => const []),
+            adminApiProvider.overrideWithValue(api),
+          ],
+          child: const LizmoAdminApp(),
+        );
+
+    Future<void> open(WidgetTester tester, _FakeChannelsApi api,
+        {PlatformSettings? seed}) async {
+      _desktop(tester);
+      await tester.pumpWidget(screen(
+          api, seed ?? PlatformSettings(supportEmail: 'help@lizmo.test')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(InkWell, 'Settings'));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.byKey(const ValueKey('app-version-card')),
+        find.byType(ListView),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    String fieldText(WidgetTester tester, String key) => tester
+        .widget<TextFormField>(find.byKey(ValueKey(key)))
+        .controller!
+        .text;
+
+    testWidgets('shows what is set now', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api,
+          seed: PlatformSettings(
+            supportEmail: 'help@lizmo.test',
+            minimumAppBuild: 7,
+            androidUpdateUrl:
+                'https://play.google.com/store/apps/details?id=app.lizmo',
+          ));
+
+      expect(fieldText(tester, 'minimum-app-build'), '7');
+      expect(fieldText(tester, 'android-update-url'),
+          'https://play.google.com/store/apps/details?id=app.lizmo');
+    });
+
+    /// Nobody has set one, so the field reads zero rather than empty: zero is
+    /// what is in force, and an empty box looks like a question.
+    testWidgets('an unset minimum reads as zero', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      expect(fieldText(tester, 'minimum-app-build'), '0');
+      expect(find.byKey(const ValueKey('nowhere-to-send')), findsNothing);
+    });
+
+    testWidgets('saving sends the minimum and both links', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('minimum-app-build')), '7');
+      await tester.enterText(find.byKey(const ValueKey('android-update-url')),
+          'https://play.google.com/store/apps/details?id=app.lizmo');
+      await tester.enterText(find.byKey(const ValueKey('ios-update-url')),
+          'https://apps.apple.com/app/lizmo');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+
+      expect(api.saved.single.minimumAppBuild, 7);
+      expect(api.saved.single.androidUpdateUrl,
+          'https://play.google.com/store/apps/details?id=app.lizmo');
+      expect(api.saved.single.iosUpdateUrl, 'https://apps.apple.com/app/lizmo');
+      // Still carries the address, which the same save writes.
+      expect(api.saved.single.supportEmail, 'help@lizmo.test');
+    });
+
+    /// Emptying the box is how an operator turns the check off, so it has to
+    /// reach the server as zero rather than as "leave it alone".
+    testWidgets('an emptied minimum turns the check off', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api,
+          seed: PlatformSettings(
+              supportEmail: 'help@lizmo.test', minimumAppBuild: 7));
+
+      await tester.enterText(find.byKey(const ValueKey('minimum-app-build')), '');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+
+      expect(api.saved.single.minimumAppBuild, 0);
+    });
+
+    testWidgets('a link that is not a link never reaches the server',
+        (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      await tester.enterText(find.byKey(const ValueKey('android-update-url')),
+          'play.google.com/store/apps/details?id=app.lizmo');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A link has to start with https://'), findsOneWidget);
+      expect(api.saved, isEmpty);
+    });
+
+    testWidgets('a build number that is not a number is refused',
+        (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('minimum-app-build')), '1.9');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter a build number, like 7'), findsOneWidget);
+      expect(api.saved, isEmpty);
+    });
+
+    /// One save carries every setting on the screen, so a bad link cannot be
+    /// smuggled past by pressing the other Save.
+    testWidgets('a bad link also stops the save beside the address',
+        (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('android-update-url')), 'nope');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+      expect(api.saved, isEmpty);
+
+      await tester.dragUntilVisible(
+        find.byKey(const ValueKey('payment-instructions')),
+        find.byType(ListView),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('save-payment-instructions')));
+      await tester.pumpAndSettle();
+
+      expect(api.saved, isEmpty);
+    });
+
+    /// A minimum nobody can act on is worse than no minimum: the person is
+    /// stopped and then offered no way out.
+    testWidgets('a minimum with no link to offer says so', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('minimum-app-build')), '7');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('nowhere-to-send')), findsOneWidget);
+      expect(find.textContaining('Android or iOS'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const ValueKey('android-update-url')),
+          'https://play.google.com/store/apps/details?id=app.lizmo');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Nothing to send iOS to'), findsOneWidget);
+    });
+  });
+
   group('payment channels', () {
     Widget settings(
       _FakeChannelsApi api, {
@@ -1308,6 +1480,7 @@ class _FakeChannelsApi extends AdminApi {
   _FakeChannelsApi(List<PaymentChannelResponse> channels) : channels = [...channels];
 
   final List<PaymentChannelResponse> channels;
+  final saved = <PlatformSettings>[];
   final added = <PaymentChannelRequest>[];
   final updated = <(String, PaymentChannelRequest)>[];
   final deleted = <String>[];
@@ -1320,6 +1493,15 @@ class _FakeChannelsApi extends AdminApi {
     Future<void>? abortTrigger,
   }) async =>
       [...channels];
+
+  @override
+  Future<PlatformSettings?> updatePlatformSettings(
+    PlatformSettings platformSettings, {
+    Future<void>? abortTrigger,
+  }) async {
+    saved.add(platformSettings);
+    return platformSettings;
+  }
 
   @override
   Future<PaymentChannelResponse?> addPaymentChannel(
