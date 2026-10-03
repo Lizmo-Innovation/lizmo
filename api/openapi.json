@@ -5283,12 +5283,19 @@
                         "type": "string",
                         "example": "GCash 0917 123 4567 (Lizmo Innovation)"
                     },
-                    "minimumAppBuild": {
-                        "minimum": 0,
-                        "type": "integer",
-                        "description": "The oldest app build allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent.",
-                        "format": "int32",
-                        "example": 7
+                    "minimumAndroidVersion": {
+                        "maxLength": 20,
+                        "minLength": 0,
+                        "type": "string",
+                        "description": "The oldest Android version allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent; blank stops Android being checked.",
+                        "example": "1.1.1"
+                    },
+                    "minimumIosVersion": {
+                        "maxLength": 20,
+                        "minLength": 0,
+                        "type": "string",
+                        "description": "The same for iOS, separately: releases drift apart.",
+                        "example": "1.1.0"
                     },
                     "androidUpdateUrl": {
                         "maxLength": 500,
@@ -7319,10 +7326,13 @@
             "AppVersion": {
                 "type": "object",
                 "properties": {
-                    "minimumBuild": {
-                        "type": "integer",
-                        "format": "int32",
-                        "example": 7
+                    "minimumAndroidVersion": {
+                        "type": "string",
+                        "example": "1.1.1"
+                    },
+                    "minimumIosVersion": {
+                        "type": "string",
+                        "example": "1.1.0"
                     },
                     "androidUpdateUrl": {
                         "type": "string",

@@ -32,7 +32,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _versionKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _instructions = TextEditingController();
-  final _minimumBuild = TextEditingController();
+  final _minimumAndroid = TextEditingController();
+  final _minimumIos = TextEditingController();
   final _android = TextEditingController();
   final _ios = TextEditingController();
 
@@ -45,7 +46,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     _email.dispose();
     _instructions.dispose();
-    _minimumBuild.dispose();
+    _minimumAndroid.dispose();
+    _minimumIos.dispose();
     _android.dispose();
     _ios.dispose();
     super.dispose();
@@ -70,9 +72,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             PlatformSettings(
               supportEmail: _email.text.trim(),
               paymentInstructions: _instructions.text.trim(),
-              // Blank is zero: the field is seeded from the server, so an
-              // operator who empties it means the check off, not untouched.
-              minimumAppBuild: int.tryParse(_minimumBuild.text.trim()) ?? 0,
+              // Blank is sent, not omitted: the fields are seeded from the
+              // server, so an operator who empties one means that platform
+              // unchecked, rather than left alone.
+              minimumAndroidVersion: _minimumAndroid.text.trim(),
+              minimumIosVersion: _minimumIos.text.trim(),
               androidUpdateUrl: _android.text.trim(),
               iosUpdateUrl: _ios.text.trim(),
             ),
@@ -96,7 +100,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         case AsyncData(:final value):
           _email.text = value?.supportEmail ?? '';
           _instructions.text = value?.paymentInstructions ?? '';
-          _minimumBuild.text = '${value?.minimumAppBuild ?? 0}';
+          _minimumAndroid.text = value?.minimumAndroidVersion ?? '';
+          _minimumIos.text = value?.minimumIosVersion ?? '';
           _android.text = value?.androidUpdateUrl ?? '';
           _ios.text = value?.iosUpdateUrl ?? '';
           _seeded = true;
@@ -261,76 +266,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Which app builds are allowed in',
+                  Text('Which app versions are allowed in',
                       style: LizmoType.sectionHeading),
                   const SizedBox(height: 4),
                   Text(
                     'The app asks for this when it opens. Anybody on an older '
-                    'build is stopped at the splash screen and sent to update, '
-                    'so raising this locks out everybody who has not updated '
-                    'yet \u2014 including people mid-payment. Zero lets '
-                    'everybody in.',
+                    'version is stopped at the splash screen and sent to '
+                    'update, so raising one locks out everybody who has not '
+                    'updated yet \u2014 including people mid-payment. Leave a '
+                    'version empty and that platform is not checked at all.',
                     style: LizmoType.rowSub,
                   ),
-                  const SizedBox(height: 16),
-                  Text('Oldest build allowed', style: LizmoType.rowName),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: 170,
-                    child: TextFormField(
-                      key: const ValueKey('minimum-app-build'),
-                      controller: _minimumBuild,
-                      keyboardType: TextInputType.number,
-                      autocorrect: false,
-                      style: LizmoType.rowName,
-                      decoration: _field('0'),
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        final text = (value ?? '').trim();
-                        if (text.isEmpty) return null;
-                        final build = int.tryParse(text);
-                        if (build == null) {
-                          return 'Enter a build number, like 7';
-                        }
-                        if (build < 0) return 'A build number cannot be negative';
-                        return null;
-                      },
-                    ),
+                  const SizedBox(height: 18),
+                  _platform(
+                    'Android',
+                    version: const ValueKey('minimum-android-version'),
+                    minimum: _minimumAndroid,
+                    link: const ValueKey('android-update-url'),
+                    url: _android,
+                    hint: 'https://play.google.com/store/apps/details?id=app.lizmo',
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'The build number, not the version name: it only ever goes '
-                    'up, and 1.10 against 1.9 is a comparison somebody has to '
-                    'get right.',
-                    style: LizmoType.rowSub,
+                  const SizedBox(height: 18),
+                  _platform(
+                    'iOS',
+                    version: const ValueKey('minimum-ios-version'),
+                    minimum: _minimumIos,
+                    link: const ValueKey('ios-update-url'),
+                    url: _ios,
+                    hint: 'https://apps.apple.com/app/lizmo',
                   ),
-                  const SizedBox(height: 16),
-                  Text('Where an app that is too old goes',
-                      style: LizmoType.rowName),
-                  const SizedBox(height: 10),
-                  _link('Android', const ValueKey('android-update-url'), _android,
-                      'https://play.google.com/store/apps/details?id=app.lizmo'),
-                  const SizedBox(height: 12),
-                  _link('iOS', const ValueKey('ios-update-url'), _ios,
-                      'https://apps.apple.com/app/lizmo'),
-                  if (_nowhereToSend.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      key: const ValueKey('nowhere-to-send'),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: LizmoColors.amberBg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Nothing to send $_nowhereToSend to. Somebody stopped '
-                        'on that phone is told to update with nowhere to go, so '
-                        'add the link or put the minimum back to 0.',
-                        style: LizmoType.rowSub
-                            .copyWith(color: LizmoColors.amberText),
-                      ),
-                    ),
-                  ],
                   if (_saved) ...[
                     const SizedBox(height: 12),
                     Text('Saved. The app reads it the next time it opens.',
@@ -372,19 +336,112 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Which phones would be turned away with nowhere to go, if any.
+  /// One platform's pair: how old is too old, and where that phone goes.
   ///
-  /// A minimum nobody can act on is worse than no minimum: the app stops the
-  /// person and then has no button to offer them.
-  String get _nowhereToSend {
-    final build = int.tryParse(_minimumBuild.text.trim()) ?? 0;
-    if (build <= 0) return '';
-    final missing = [
-      if (_android.text.trim().isEmpty) 'Android',
-      if (_ios.text.trim().isEmpty) 'iOS',
-    ];
-    return missing.join(' or ');
+  /// Kept apart from the other platform's because releases drift. An iOS
+  /// build can sit in review for a week after the Android one has shipped,
+  /// and one shared minimum would turn away every iPhone for a fix nobody
+  /// can install yet.
+  Widget _platform(
+    String name, {
+    required Key version,
+    required TextEditingController minimum,
+    required Key link,
+    required TextEditingController url,
+    required String hint,
+  }) {
+    // A minimum nobody can act on is worse than no minimum: the person is
+    // stopped and then offered no way out.
+    final nowhereToGo = minimum.text.trim().isNotEmpty && url.text.trim().isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(name, style: LizmoType.rowName),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 160,
+              child: _labelled(
+                'Oldest version allowed',
+                TextFormField(
+                  key: version,
+                  controller: minimum,
+                  autocorrect: false,
+                  style: LizmoType.rowName,
+                  decoration: _field('1.1.1'),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    final text = (value ?? '').trim();
+                    if (text.isEmpty) return null;
+                    // What the app can compare: digits and dots, up to three
+                    // parts. Anything else would be stored and then quietly
+                    // ignored by every phone that read it.
+                    if (!RegExp(r'^\d{1,5}(\.\d{1,5}){0,2}$').hasMatch(text)) {
+                      return 'Digits and dots, like 1.1.1';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _labelled(
+                'Where to update',
+                TextFormField(
+                  key: link,
+                  controller: url,
+                  autocorrect: false,
+                  maxLength: 500,
+                  style: LizmoType.rowName,
+                  decoration: _field(hint).copyWith(counterText: ''),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    final text = (value ?? '').trim();
+                    if (text.isEmpty) return null;
+                    if (!text.startsWith('https://') &&
+                        !text.startsWith('http://')) {
+                      return 'A link has to start with https://';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (nowhereToGo) ...[
+          const SizedBox(height: 10),
+          Container(
+            key: ValueKey('nowhere-to-send-${name.toLowerCase()}'),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: LizmoColors.amberBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Nothing to send $name to. Somebody stopped on that phone is '
+              'told to update with nowhere to go, so add the link or clear '
+              'the version.',
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+            ),
+          ),
+        ],
+      ],
+    );
   }
+
+  Widget _labelled(String label, Widget field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: LizmoType.rowSub),
+          const SizedBox(height: 6),
+          field,
+        ],
+      );
 
   Widget _card({required Widget child, Key? key}) => Container(
         key: key,
@@ -395,40 +452,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           border: Border.all(color: const Color(0xFFE3E8E6)),
         ),
         child: child,
-      );
-
-  Widget _link(String label, Key key, TextEditingController controller,
-          String hint) =>
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 70,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 13),
-              child: Text(label, style: LizmoType.rowSub),
-            ),
-          ),
-          Expanded(
-            child: TextFormField(
-              key: key,
-              controller: controller,
-              autocorrect: false,
-              maxLength: 500,
-              style: LizmoType.rowName,
-              decoration: _field(hint).copyWith(counterText: ''),
-              onChanged: (_) => setState(() {}),
-              validator: (value) {
-                final text = (value ?? '').trim();
-                if (text.isEmpty) return null;
-                if (!text.startsWith('https://') && !text.startsWith('http://')) {
-                  return 'A link has to start with https://';
-                }
-                return null;
-              },
-            ),
-          ),
-        ],
       );
 
   InputDecoration _field(String hint) {

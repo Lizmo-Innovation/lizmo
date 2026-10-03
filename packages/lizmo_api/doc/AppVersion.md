@@ -8,7 +8,8 @@ import 'package:lizmo_api/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**minimumBuild** | **int** |  | [optional] 
+**minimumAndroidVersion** | **String** |  | [optional] 
+**minimumIosVersion** | **String** |  | [optional] 
 **androidUpdateUrl** | **String** |  | [optional] 
 **iosUpdateUrl** | **String** |  | [optional] 
 

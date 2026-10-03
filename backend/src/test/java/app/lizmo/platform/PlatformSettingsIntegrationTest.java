@@ -76,26 +76,27 @@ class PlatformSettingsIntegrationTest extends IntegrationTest {
      */
     @Test
     void anybody_can_ask_what_the_oldest_allowed_app_is() throws Exception {
-        setMinimum(accounts.admin("Lizmo Staff").token(), 7);
+        setMinimums(accounts.admin("Lizmo Staff").token(), "1.1.1", "1.1.0");
 
         // No token: the app asks before anybody signs in.
         mvc.perform(get("/api/v1/platform/app-version"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.minimumBuild").value(7));
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("1.1.1"))
+                .andExpect(jsonPath("$.minimumIosVersion").value("1.1.0"));
     }
 
     /**
      * An operator who has never set one turns nobody away. Asserted on the
-     * service rather than the endpoint, because the row these tests share
-     * cannot be unset once another test has written it.
+     * service rather than the endpoint, because the rows these tests share
+     * cannot be unset once another test has written them.
      */
     @Test
     void an_unset_minimum_lets_everybody_in() {
-        settings.findById(PlatformSettingsService.MINIMUM_APP_BUILD)
+        settings.findById(PlatformSettingsService.MINIMUM_ANDROID_VERSION)
                 .ifPresent(settings::delete);
 
-        org.assertj.core.api.Assertions.assertThat(platformSettings.minimumAppBuild())
-                .isZero();
+        org.assertj.core.api.Assertions.assertThat(platformSettings.minimumAndroidVersion())
+                .isNull();
     }
 
     @Test
@@ -107,16 +108,30 @@ class PlatformSettingsIntegrationTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"supportEmail":"help@lizmo.test",
-                                 "minimumAppBuild":7,
+                                 "minimumAndroidVersion":"1.1.1",
                                  "androidUpdateUrl":"https://play.google.com/store/apps/details?id=app.lizmo"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.minimumAppBuild").value(7));
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("1.1.1"));
 
         mvc.perform(get("/api/v1/platform/app-version"))
-                .andExpect(jsonPath("$.minimumBuild").value(7))
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("1.1.1"))
                 .andExpect(jsonPath("$.androidUpdateUrl")
                         .value("https://play.google.com/store/apps/details?id=app.lizmo"));
+    }
+
+    /**
+     * The two platforms are set apart, because they ship apart: an iOS
+     * release can sit in review for a week after the Android one is out.
+     */
+    @Test
+    void stopping_android_leaves_ios_alone() throws Exception {
+        String adminToken = accounts.admin("Lizmo Staff").token();
+        setMinimums(adminToken, "1.2.0", "");
+
+        mvc.perform(get("/api/v1/platform/app-version"))
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("1.2.0"))
+                .andExpect(jsonPath("$.minimumIosVersion").doesNotExist());
     }
 
     /**
@@ -126,28 +141,59 @@ class PlatformSettingsIntegrationTest extends IntegrationTest {
     @Test
     void settings_left_out_are_left_alone() throws Exception {
         String adminToken = accounts.admin("Lizmo Staff").token();
-        setMinimum(adminToken, 7);
+        setMinimums(adminToken, "1.1.1", "1.1.0");
 
         mvc.perform(put("/api/v1/admin/settings")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"supportEmail\":\"help@lizmo.test\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.minimumAppBuild").value(7));
-
-        mvc.perform(get("/api/v1/platform/app-version"))
-                .andExpect(jsonPath("$.minimumBuild").value(7));
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("1.1.1"))
+                .andExpect(jsonPath("$.minimumIosVersion").value("1.1.0"));
     }
 
-    /** Back to letting everybody in, which is what zero is for. */
+    /** Back to letting everybody in, which is what blank is for. */
     @Test
     void the_check_can_be_turned_off_again() throws Exception {
         String adminToken = accounts.admin("Lizmo Staff").token();
-        setMinimum(adminToken, 7);
-        setMinimum(adminToken, 0);
+        setMinimums(adminToken, "1.1.1", "1.1.0");
+        setMinimums(adminToken, "", "");
 
         mvc.perform(get("/api/v1/platform/app-version"))
-                .andExpect(jsonPath("$.minimumBuild").value(0));
+                .andExpect(jsonPath("$.minimumAndroidVersion").doesNotExist())
+                .andExpect(jsonPath("$.minimumIosVersion").doesNotExist());
+    }
+
+    /**
+     * Stored and then quietly ignored by every app that fetches it is the
+     * worst outcome: a minimum the operator believes is in force and is not.
+     */
+    @Test
+    void a_version_the_app_could_not_read_is_refused() throws Exception {
+        String adminToken = accounts.admin("Lizmo Staff").token();
+
+        for (String bad : new String[] {"v1.1.1", "1.0.0-beta", "1.1.1.1", "latest"}) {
+            mvc.perform(put("/api/v1/admin/settings")
+                            .header("Authorization", "Bearer " + adminToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"supportEmail":"help@lizmo.test","minimumAndroidVersion":"%s"}
+                                    """.formatted(bad)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message")
+                            .value(org.hamcrest.Matchers.containsString("1.1.1")));
+        }
+    }
+
+    /** Fewer parts are a version too: 1.2 is as valid as 1.2.0. */
+    @Test
+    void a_shorter_version_is_fine() throws Exception {
+        String adminToken = accounts.admin("Lizmo Staff").token();
+        setMinimums(adminToken, "2", "1.2");
+
+        mvc.perform(get("/api/v1/platform/app-version"))
+                .andExpect(jsonPath("$.minimumAndroidVersion").value("2"))
+                .andExpect(jsonPath("$.minimumIosVersion").value("1.2"));
     }
 
     /**
@@ -192,26 +238,15 @@ class PlatformSettingsIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.iosUpdateUrl").doesNotExist());
     }
 
-    @Test
-    void a_negative_build_is_refused() throws Exception {
-        String adminToken = accounts.admin("Lizmo Staff").token();
-
+    private void setMinimums(String adminToken, String android, String ios) throws Exception {
         mvc.perform(put("/api/v1/admin/settings")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"supportEmail":"help@lizmo.test","minimumAppBuild":-1}
-                                """))
-                .andExpect(status().isBadRequest());
-    }
-
-    private void setMinimum(String adminToken, int build) throws Exception {
-        mvc.perform(put("/api/v1/admin/settings")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"supportEmail":"help@lizmo.test","minimumAppBuild":%d}
-                                """.formatted(build)))
+                                {"supportEmail":"help@lizmo.test",
+                                 "minimumAndroidVersion":"%s",
+                                 "minimumIosVersion":"%s"}
+                                """.formatted(android, ios)))
                 .andExpect(status().isOk());
     }
 }

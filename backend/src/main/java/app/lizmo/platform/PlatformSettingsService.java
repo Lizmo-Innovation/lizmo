@@ -89,14 +89,26 @@ public class PlatformSettingsService {
     // ---- the app people are running ------------------------------------------------
 
     /**
-     * The oldest build of the mobile app allowed to carry on.
+     * The oldest version of the Android app allowed to carry on.
      *
-     * <p>A build number rather than a version name: it only ever goes up, the
-     * stores already count it, and "1.10" against "1.9" is a comparison
-     * somebody has to get right. Zero, the default, means nobody is turned
-     * away -- a setting nobody has filled in should not lock out every phone.
+     * <p>A version name rather than a build number, because this is what an
+     * operator has in front of them: it is what the store lists, what the
+     * about screen shows, and what somebody reads off a phone when they ring
+     * up. A field nobody can fill in confidently is one that gets the wrong
+     * number typed into it.
+     *
+     * <p>Kept per platform because the two drift apart on their own. An iOS
+     * release can sit in review for a week after the Android one has shipped,
+     * and a minimum that stopped both at once would turn away every iPhone
+     * for a fix they cannot yet install.
+     *
+     * <p>Blank -- what an operator who has never set one has -- means that
+     * platform is not checked at all.
      */
-    public static final String MINIMUM_APP_BUILD = "minimum_app_build";
+    public static final String MINIMUM_ANDROID_VERSION = "minimum_app_version_android";
+
+    /** The same for iOS. See {@link #MINIMUM_ANDROID_VERSION}. */
+    public static final String MINIMUM_IOS_VERSION = "minimum_app_version_ios";
 
     /** Where an Android phone goes to get a newer one. */
     public static final String ANDROID_UPDATE_URL = "android_update_url";
@@ -105,40 +117,33 @@ public class PlatformSettingsService {
     public static final String IOS_UPDATE_URL = "ios_update_url";
 
     @Transactional(readOnly = true)
-    public int minimumAppBuild() {
-        return settings.findById(MINIMUM_APP_BUILD)
-                .map(PlatformSetting::getValue)
-                .filter(StringUtils::hasText)
-                .map(value -> {
-                    try {
-                        return Integer.parseInt(value.trim());
-                    } catch (NumberFormatException notANumber) {
-                        // Stored by an older console, or by hand. Nobody is
-                        // locked out over something unreadable.
-                        return 0;
-                    }
-                })
-                .orElse(0);
+    public String minimumAndroidVersion() {
+        return text(MINIMUM_ANDROID_VERSION);
+    }
+
+    @Transactional(readOnly = true)
+    public String minimumIosVersion() {
+        return text(MINIMUM_IOS_VERSION);
     }
 
     @Transactional
-    public int changeMinimumAppBuild(Integer value, UUID admin) {
-        int build = value == null ? 0 : value;
-        if (build < 0) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "A build number cannot be negative.");
-        }
-        return (int) store(MINIMUM_APP_BUILD, String.valueOf(build), admin, Integer::parseInt);
+    public String changeMinimumAndroidVersion(String value, UUID admin) {
+        return changeMinimumVersion(MINIMUM_ANDROID_VERSION, value, admin);
+    }
+
+    @Transactional
+    public String changeMinimumIosVersion(String value, UUID admin) {
+        return changeMinimumVersion(MINIMUM_IOS_VERSION, value, admin);
     }
 
     @Transactional(readOnly = true)
     public String androidUpdateUrl() {
-        return url(ANDROID_UPDATE_URL);
+        return text(ANDROID_UPDATE_URL);
     }
 
     @Transactional(readOnly = true)
     public String iosUpdateUrl() {
-        return url(IOS_UPDATE_URL);
+        return text(IOS_UPDATE_URL);
     }
 
     @Transactional
@@ -151,7 +156,26 @@ public class PlatformSettingsService {
         return changeUpdateUrl(IOS_UPDATE_URL, value, admin);
     }
 
-    private String url(String key) {
+    /**
+     * Digits and dots, up to three parts: 1, 1.2, 1.1.1.
+     *
+     * <p>Strict because the phone has to compare it. Something it cannot read
+     * -- "v1.1.1", "1.0.0-beta", a date -- is refused here rather than being
+     * stored and quietly ignored by every app that fetches it, which is a
+     * minimum an operator believes is in force and is not.
+     *
+     * <p>Blank clears it, which is how a platform stops being checked.
+     */
+    private String changeMinimumVersion(String key, String value, UUID admin) {
+        String version = value == null ? "" : value.trim();
+        if (!version.isEmpty() && !version.matches("\\d{1,5}(\\.\\d{1,5}){0,2}")) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "A version is digits and dots, like 1.1.1.");
+        }
+        return save(key, version, admin);
+    }
+
+    private String text(String key) {
         return settings.findById(key)
                 .map(PlatformSetting::getValue)
                 .filter(StringUtils::hasText)
@@ -173,19 +197,15 @@ public class PlatformSettingsService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "Keep the update link under 500 characters.");
         }
-        PlatformSetting setting = settings.findById(key)
-                .orElseGet(() -> new PlatformSetting(key, link, admin));
-        setting.change(link, admin);
-        settings.save(setting);
-        return link.isEmpty() ? null : link;
+        return save(key, link, admin);
     }
 
-    private long store(String key, String value, UUID admin,
-            java.util.function.ToIntFunction<String> read) {
+    /** Null back rather than empty: nothing set and set to nothing are one state. */
+    private String save(String key, String value, UUID admin) {
         PlatformSetting setting = settings.findById(key)
                 .orElseGet(() -> new PlatformSetting(key, value, admin));
         setting.change(value, admin);
         settings.save(setting);
-        return read.applyAsInt(value);
+        return value.isEmpty() ? null : value;
     }
 }

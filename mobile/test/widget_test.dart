@@ -3804,12 +3804,12 @@ void main() {
     });
   });
 
-  group('a build too old to be used', () {
+  group('a version too old to be used', () {
     const play = 'https://play.google.com/store/apps/details?id=app.lizmo';
     const appStore = 'https://apps.apple.com/app/lizmo';
 
     Widget appOn(
-      int installed, {
+      String installed, {
       AppVersion? allowed,
       bool fails = false,
       List<Uri>? opened,
@@ -3821,7 +3821,7 @@ void main() {
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
             appVersionApiProvider.overrideWithValue(
                 _FakeVersionApi(answer: allowed, fails: fails)),
-            installedBuildProvider.overrideWithValue(() async => installed),
+            installedVersionProvider.overrideWithValue(() async => installed),
             openLinkProvider.overrideWithValue((uri) async {
               opened?.add(uri);
               return true;
@@ -3838,12 +3838,13 @@ void main() {
           child: const LizmoApp(),
         );
 
-    /// Signed in, and stopped anyway: a build we have refused is one whose
+    /// Signed in, and stopped anyway: a version we have refused is one whose
     /// payments we would rather it did not send.
-    testWidgets('an older build is stopped, session or no session',
+    testWidgets('an older version is stopped, session or no session',
         (tester) async {
-      await tester.pumpWidget(appOn(3,
-          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+      await tester.pumpWidget(appOn('1.1.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.1', androidUpdateUrl: play)));
       await tester.pumpAndSettle();
 
       expect(find.byType(UpdateScreen), findsOneWidget);
@@ -3851,9 +3852,21 @@ void main() {
       expect(find.text('Time to update Lizmo'), findsOneWidget);
     });
 
-    testWidgets('the oldest allowed build itself carries on', (tester) async {
-      await tester.pumpWidget(appOn(7,
-          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+    /// What a string comparison gets wrong, and the reason this is done part
+    /// by part.
+    testWidgets('1.9.0 is older than 1.10.0', (tester) async {
+      await tester.pumpWidget(appOn('1.9.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.10.0', androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UpdateScreen), findsOneWidget);
+    });
+
+    testWidgets('the oldest allowed version itself carries on', (tester) async {
+      await tester.pumpWidget(appOn('1.1.1',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.1', androidUpdateUrl: play)));
       await tester.pumpAndSettle();
       await _openProperties(tester);
 
@@ -3861,9 +3874,21 @@ void main() {
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
-    testWidgets('a newer build carries on', (tester) async {
-      await tester.pumpWidget(appOn(9,
-          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: play)));
+    testWidgets('a newer version carries on', (tester) async {
+      await tester.pumpWidget(appOn('2.0.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.1', androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    /// A missing part is a zero, so these are one version rather than two.
+    testWidgets('1.1 and 1.1.0 are the same version', (tester) async {
+      await tester.pumpWidget(appOn('1.1',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.0', androidUpdateUrl: play)));
       await tester.pumpAndSettle();
       await _openProperties(tester);
 
@@ -3871,51 +3896,53 @@ void main() {
     });
 
     /// What every operator has until they set one.
-    testWidgets('a minimum of zero turns the check off', (tester) async {
-      await tester.pumpWidget(appOn(1, allowed: AppVersion(minimumBuild: 0)));
+    testWidgets('no minimum for this platform turns the check off',
+        (tester) async {
+      await tester.pumpWidget(appOn('1.0.0',
+          allowed: AppVersion(androidUpdateUrl: play)));
       await tester.pumpAndSettle();
       await _openProperties(tester);
 
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
-    /// Being locked out of your own tenancy because a request failed is worse
-    /// than running a build we would rather you had replaced.
-    testWidgets('a check that fails opens the app', (tester) async {
-      await tester.pumpWidget(appOn(1, fails: true));
-      await tester.pumpAndSettle();
-      await _openProperties(tester);
+    /// The two platforms ship apart, so an Android minimum says nothing about
+    /// an iPhone -- which may be waiting on a review that has not cleared.
+    testWidgets("an iPhone ignores Android's minimum", (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await tester.pumpWidget(appOn('1.0.0',
+            allowed: AppVersion(
+                minimumAndroidVersion: '2.0.0',
+                androidUpdateUrl: play,
+                iosUpdateUrl: appStore)));
+        await tester.pumpAndSettle();
+        await _openProperties(tester);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
 
       expect(find.byType(UpdateScreen), findsNothing);
       expect(find.byType(TenantHomeScreen), findsOneWidget);
     });
 
-    testWidgets('the button opens the Android link', (tester) async {
-      final opened = <Uri>[];
-      await tester.pumpWidget(appOn(3,
-          allowed: AppVersion(
-              minimumBuild: 7, androidUpdateUrl: play, iosUpdateUrl: appStore),
-          opened: opened));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('open-update-link')));
-      await tester.pumpAndSettle();
-
-      expect(opened, [Uri.parse(play)]);
-    });
-
-    testWidgets('an iPhone is sent to the App Store', (tester) async {
+    testWidgets('an iPhone is stopped by its own minimum, and sent to the '
+        'App Store', (tester) async {
       final opened = <Uri>[];
       // Put back before the body ends: the binding checks these are unset
       // before any tearDown of ours runs.
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
-        await tester.pumpWidget(appOn(3,
+        await tester.pumpWidget(appOn('1.0.0',
             allowed: AppVersion(
-                minimumBuild: 7, androidUpdateUrl: play, iosUpdateUrl: appStore),
+                minimumAndroidVersion: '',
+                minimumIosVersion: '1.1.0',
+                androidUpdateUrl: play,
+                iosUpdateUrl: appStore),
             opened: opened));
         await tester.pumpAndSettle();
 
+        expect(find.byType(UpdateScreen), findsOneWidget);
         await tester.tap(find.byKey(const ValueKey('open-update-link')));
         await tester.pumpAndSettle();
       } finally {
@@ -3925,26 +3952,56 @@ void main() {
       expect(opened, [Uri.parse(appStore)]);
     });
 
+    /// Being locked out of your own tenancy because a request failed is worse
+    /// than running a version we would rather you had replaced.
+    testWidgets('a check that fails opens the app', (tester) async {
+      await tester.pumpWidget(appOn('1.0.0', fails: true));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(UpdateScreen), findsNothing);
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    /// The console refuses these, but a row written by hand could still carry
+    /// one, and it must not lock out every phone.
+    testWidgets('a version nobody can read opens the app', (tester) async {
+      await tester.pumpWidget(appOn('1.0.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: 'latest', androidUpdateUrl: play)));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+
+      expect(find.byType(TenantHomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the button opens the Android link', (tester) async {
+      final opened = <Uri>[];
+      await tester.pumpWidget(appOn('1.0.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.1',
+              androidUpdateUrl: play,
+              iosUpdateUrl: appStore),
+          opened: opened));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('open-update-link')));
+      await tester.pumpAndSettle();
+
+      expect(opened, [Uri.parse(play)]);
+    });
+
     /// A button that opens nothing is worse than no button: it reads as the
     /// app being broken rather than as an update being due.
     testWidgets('no link for this platform means no button', (tester) async {
-      await tester.pumpWidget(appOn(3,
-          allowed: AppVersion(minimumBuild: 7, iosUpdateUrl: appStore)));
+      await tester.pumpWidget(appOn('1.0.0',
+          allowed: AppVersion(
+              minimumAndroidVersion: '1.1.1', iosUpdateUrl: appStore)));
       await tester.pumpAndSettle();
 
       expect(find.byType(UpdateScreen), findsOneWidget);
       expect(find.byKey(const ValueKey('open-update-link')), findsNothing);
       expect(find.textContaining('from your app store'), findsOneWidget);
-    });
-
-    /// Blank is how the console clears a link, and it has to read the same as
-    /// never having set one.
-    testWidgets('a blank link counts as no link', (tester) async {
-      await tester.pumpWidget(appOn(3,
-          allowed: AppVersion(minimumBuild: 7, androidUpdateUrl: '  ')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('open-update-link')), findsNothing);
     });
 
     /// Nothing else can be reached while the app is refused, including by a
@@ -3955,8 +4012,9 @@ void main() {
             .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         appVersionApiProvider.overrideWithValue(_FakeVersionApi(
-            answer: AppVersion(minimumBuild: 7, androidUpdateUrl: play))),
-        installedBuildProvider.overrideWithValue(() async => 3),
+            answer: AppVersion(
+                minimumAndroidVersion: '1.1.1', androidUpdateUrl: play))),
+        installedVersionProvider.overrideWithValue(() async => '1.0.0'),
         propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
       ]);
       addTearDown(container.dispose);
@@ -3973,6 +4031,28 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(UpdateScreen), findsOneWidget);
       expect(find.byType(LoginScreen), findsNothing);
+    });
+  });
+
+  group('comparing two versions', () {
+    test('part by part, not as text', () {
+      expect(compareVersions('1.9.0', '1.10.0'), isNegative);
+      expect(compareVersions('1.10.0', '1.9.0'), isPositive);
+      expect(compareVersions('2.0.0', '1.99.99'), isPositive);
+    });
+
+    test('a missing part is a zero', () {
+      expect(compareVersions('1.1', '1.1.0'), 0);
+      expect(compareVersions('1', '1.0.0'), 0);
+      expect(compareVersions('1.1', '1.1.1'), isNegative);
+    });
+
+    /// Null, so the caller opens the app rather than deciding on nonsense.
+    test('anything that is not digits and dots is null', () {
+      expect(compareVersions('v1.1.1', '1.1.1'), isNull);
+      expect(compareVersions('1.1.1', '1.0.0-beta'), isNull);
+      expect(compareVersions('', '1.0.0'), isNull);
+      expect(compareVersions('latest', '1.0.0'), isNull);
     });
   });
 

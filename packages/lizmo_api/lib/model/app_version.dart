@@ -13,7 +13,8 @@ part of openapi.api;
 class AppVersion {
   /// Returns a new [AppVersion] instance.
   AppVersion({
-    this.minimumBuild,
+    this.minimumAndroidVersion,
+    this.minimumIosVersion,
     this.androidUpdateUrl,
     this.iosUpdateUrl,
   });
@@ -24,7 +25,15 @@ class AppVersion {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  int? minimumBuild;
+  String? minimumAndroidVersion;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? minimumIosVersion;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -44,26 +53,33 @@ class AppVersion {
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is AppVersion &&
-    other.minimumBuild == minimumBuild &&
+    other.minimumAndroidVersion == minimumAndroidVersion &&
+    other.minimumIosVersion == minimumIosVersion &&
     other.androidUpdateUrl == androidUpdateUrl &&
     other.iosUpdateUrl == iosUpdateUrl;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (minimumBuild == null ? 0 : minimumBuild!.hashCode) +
+    (minimumAndroidVersion == null ? 0 : minimumAndroidVersion!.hashCode) +
+    (minimumIosVersion == null ? 0 : minimumIosVersion!.hashCode) +
     (androidUpdateUrl == null ? 0 : androidUpdateUrl!.hashCode) +
     (iosUpdateUrl == null ? 0 : iosUpdateUrl!.hashCode);
 
   @override
-  String toString() => 'AppVersion[minimumBuild=$minimumBuild, androidUpdateUrl=$androidUpdateUrl, iosUpdateUrl=$iosUpdateUrl]';
+  String toString() => 'AppVersion[minimumAndroidVersion=$minimumAndroidVersion, minimumIosVersion=$minimumIosVersion, androidUpdateUrl=$androidUpdateUrl, iosUpdateUrl=$iosUpdateUrl]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
-    if (this.minimumBuild != null) {
-      json[r'minimumBuild'] = this.minimumBuild;
+    if (this.minimumAndroidVersion != null) {
+      json[r'minimumAndroidVersion'] = this.minimumAndroidVersion;
     } else {
-      json[r'minimumBuild'] = null;
+      json[r'minimumAndroidVersion'] = null;
+    }
+    if (this.minimumIosVersion != null) {
+      json[r'minimumIosVersion'] = this.minimumIosVersion;
+    } else {
+      json[r'minimumIosVersion'] = null;
     }
     if (this.androidUpdateUrl != null) {
       json[r'androidUpdateUrl'] = this.androidUpdateUrl;
@@ -93,7 +109,8 @@ class AppVersion {
       }());
 
       return AppVersion(
-        minimumBuild: mapValueOfType<int>(json, r'minimumBuild'),
+        minimumAndroidVersion: mapValueOfType<String>(json, r'minimumAndroidVersion'),
+        minimumIosVersion: mapValueOfType<String>(json, r'minimumIosVersion'),
         androidUpdateUrl: mapValueOfType<String>(json, r'androidUpdateUrl'),
         iosUpdateUrl: mapValueOfType<String>(json, r'iosUpdateUrl'),
       );

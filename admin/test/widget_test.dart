@@ -719,7 +719,10 @@ void main() {
     });
   });
 
-  group('which app builds are allowed in', () {
+  group('which app versions are allowed in', () {
+    const play = 'https://play.google.com/store/apps/details?id=app.lizmo';
+    const appStore = 'https://apps.apple.com/app/lizmo';
+
     Widget screen(_FakeChannelsApi api, PlatformSettings seed) => ProviderScope(
           overrides: [
             authControllerProvider
@@ -757,65 +760,90 @@ void main() {
         .controller!
         .text;
 
-    testWidgets('shows what is set now', (tester) async {
+    testWidgets('shows what is set now, per platform', (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api,
           seed: PlatformSettings(
             supportEmail: 'help@lizmo.test',
-            minimumAppBuild: 7,
-            androidUpdateUrl:
-                'https://play.google.com/store/apps/details?id=app.lizmo',
+            minimumAndroidVersion: '1.1.1',
+            minimumIosVersion: '1.1.0',
+            androidUpdateUrl: play,
           ));
 
-      expect(fieldText(tester, 'minimum-app-build'), '7');
-      expect(fieldText(tester, 'android-update-url'),
-          'https://play.google.com/store/apps/details?id=app.lizmo');
+      expect(fieldText(tester, 'minimum-android-version'), '1.1.1');
+      expect(fieldText(tester, 'minimum-ios-version'), '1.1.0');
+      expect(fieldText(tester, 'android-update-url'), play);
     });
 
-    /// Nobody has set one, so the field reads zero rather than empty: zero is
-    /// what is in force, and an empty box looks like a question.
-    testWidgets('an unset minimum reads as zero', (tester) async {
+    /// Nobody has set one, and an empty box is what "not checked" looks like.
+    testWidgets('an unset minimum is empty, and warns about nothing',
+        (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api);
 
-      expect(fieldText(tester, 'minimum-app-build'), '0');
-      expect(find.byKey(const ValueKey('nowhere-to-send')), findsNothing);
+      expect(fieldText(tester, 'minimum-android-version'), '');
+      expect(find.byKey(const ValueKey('nowhere-to-send-android')), findsNothing);
+      expect(find.byKey(const ValueKey('nowhere-to-send-ios')), findsNothing);
     });
 
-    testWidgets('saving sends the minimum and both links', (tester) async {
+    testWidgets('saving sends both minimums and both links', (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api);
 
       await tester.enterText(
-          find.byKey(const ValueKey('minimum-app-build')), '7');
-      await tester.enterText(find.byKey(const ValueKey('android-update-url')),
-          'https://play.google.com/store/apps/details?id=app.lizmo');
-      await tester.enterText(find.byKey(const ValueKey('ios-update-url')),
-          'https://apps.apple.com/app/lizmo');
+          find.byKey(const ValueKey('minimum-android-version')), '1.1.1');
+      await tester.enterText(
+          find.byKey(const ValueKey('android-update-url')), play);
+      await tester.enterText(
+          find.byKey(const ValueKey('minimum-ios-version')), '1.1.0');
+      await tester.enterText(
+          find.byKey(const ValueKey('ios-update-url')), appStore);
       await tester.tap(find.byKey(const ValueKey('save-app-version')));
       await tester.pumpAndSettle();
 
-      expect(api.saved.single.minimumAppBuild, 7);
-      expect(api.saved.single.androidUpdateUrl,
-          'https://play.google.com/store/apps/details?id=app.lizmo');
-      expect(api.saved.single.iosUpdateUrl, 'https://apps.apple.com/app/lizmo');
+      expect(api.saved.single.minimumAndroidVersion, '1.1.1');
+      expect(api.saved.single.minimumIosVersion, '1.1.0');
+      expect(api.saved.single.androidUpdateUrl, play);
+      expect(api.saved.single.iosUpdateUrl, appStore);
       // Still carries the address, which the same save writes.
       expect(api.saved.single.supportEmail, 'help@lizmo.test');
     });
 
-    /// Emptying the box is how an operator turns the check off, so it has to
-    /// reach the server as zero rather than as "leave it alone".
-    testWidgets('an emptied minimum turns the check off', (tester) async {
+    /// One platform is stopped while the other is not, which is the whole
+    /// reason they are separate fields.
+    testWidgets('android can be checked while ios is not', (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api,
           seed: PlatformSettings(
-              supportEmail: 'help@lizmo.test', minimumAppBuild: 7));
+            supportEmail: 'help@lizmo.test',
+            minimumAndroidVersion: '1.1.1',
+            androidUpdateUrl: play,
+          ));
 
-      await tester.enterText(find.byKey(const ValueKey('minimum-app-build')), '');
       await tester.tap(find.byKey(const ValueKey('save-app-version')));
       await tester.pumpAndSettle();
 
-      expect(api.saved.single.minimumAppBuild, 0);
+      expect(api.saved.single.minimumAndroidVersion, '1.1.1');
+      expect(api.saved.single.minimumIosVersion, '');
+    });
+
+    /// Emptying the box is how an operator stops checking a platform, so it
+    /// has to reach the server as blank rather than as "leave it alone".
+    testWidgets('an emptied minimum turns that platform off', (tester) async {
+      final api = _FakeChannelsApi([]);
+      await open(tester, api,
+          seed: PlatformSettings(
+            supportEmail: 'help@lizmo.test',
+            minimumAndroidVersion: '1.1.1',
+            androidUpdateUrl: play,
+          ));
+
+      await tester.enterText(
+          find.byKey(const ValueKey('minimum-android-version')), '');
+      await tester.tap(find.byKey(const ValueKey('save-app-version')));
+      await tester.pumpAndSettle();
+
+      expect(api.saved.single.minimumAndroidVersion, '');
     });
 
     testWidgets('a link that is not a link never reaches the server',
@@ -832,29 +860,30 @@ void main() {
       expect(api.saved, isEmpty);
     });
 
-    testWidgets('a build number that is not a number is refused',
-        (tester) async {
+    /// Stored and then ignored by every phone that read it is the worst
+    /// outcome: a minimum the operator believes is in force and is not.
+    testWidgets('a version the app could not read is refused', (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api);
 
       await tester.enterText(
-          find.byKey(const ValueKey('minimum-app-build')), '1.9');
+          find.byKey(const ValueKey('minimum-ios-version')), 'v1.1.1');
       await tester.tap(find.byKey(const ValueKey('save-app-version')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter a build number, like 7'), findsOneWidget);
+      expect(find.text('Digits and dots, like 1.1.1'), findsOneWidget);
       expect(api.saved, isEmpty);
     });
 
-    /// One save carries every setting on the screen, so a bad link cannot be
-    /// smuggled past by pressing the other Save.
-    testWidgets('a bad link also stops the save beside the address',
+    /// One save carries every setting on the screen, so a bad version cannot
+    /// be smuggled past by pressing the other Save.
+    testWidgets('a bad version also stops the save beside the address',
         (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api);
 
       await tester.enterText(
-          find.byKey(const ValueKey('android-update-url')), 'nope');
+          find.byKey(const ValueKey('minimum-android-version')), 'latest');
       await tester.tap(find.byKey(const ValueKey('save-app-version')));
       await tester.pumpAndSettle();
       expect(api.saved, isEmpty);
@@ -862,7 +891,7 @@ void main() {
       await tester.dragUntilVisible(
         find.byKey(const ValueKey('payment-instructions')),
         find.byType(ListView),
-        const Offset(0, -80),
+        const Offset(0, 80),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('save-payment-instructions')));
@@ -873,21 +902,23 @@ void main() {
 
     /// A minimum nobody can act on is worse than no minimum: the person is
     /// stopped and then offered no way out.
-    testWidgets('a minimum with no link to offer says so', (tester) async {
+    testWidgets('a minimum with no link to offer says so, for that platform '
+        'alone', (tester) async {
       final api = _FakeChannelsApi([]);
       await open(tester, api);
 
       await tester.enterText(
-          find.byKey(const ValueKey('minimum-app-build')), '7');
+          find.byKey(const ValueKey('minimum-android-version')), '1.1.1');
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('nowhere-to-send')), findsOneWidget);
-      expect(find.textContaining('Android or iOS'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nowhere-to-send-android')), findsOneWidget);
+      // iOS is not being checked, so there is nothing to warn about.
+      expect(find.byKey(const ValueKey('nowhere-to-send-ios')), findsNothing);
 
-      await tester.enterText(find.byKey(const ValueKey('android-update-url')),
-          'https://play.google.com/store/apps/details?id=app.lizmo');
+      await tester.enterText(
+          find.byKey(const ValueKey('android-update-url')), play);
       await tester.pumpAndSettle();
-      expect(find.textContaining('Nothing to send iOS to'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nowhere-to-send-android')), findsNothing);
     });
   });
 

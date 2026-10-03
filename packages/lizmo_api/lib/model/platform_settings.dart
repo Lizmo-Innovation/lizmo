@@ -15,7 +15,8 @@ class PlatformSettings {
   PlatformSettings({
     required this.supportEmail,
     this.paymentInstructions,
-    this.minimumAppBuild,
+    this.minimumAndroidVersion,
+    this.minimumIosVersion,
     this.androidUpdateUrl,
     this.iosUpdateUrl,
   });
@@ -30,16 +31,23 @@ class PlatformSettings {
   ///
   String? paymentInstructions;
 
-  /// The oldest app build allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent.
-  ///
-  /// Minimum value: 0
+  /// The oldest Android version allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent; blank stops Android being checked.
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  int? minimumAppBuild;
+  String? minimumAndroidVersion;
+
+  /// The same for iOS, separately: releases drift apart.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? minimumIosVersion;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -61,7 +69,8 @@ class PlatformSettings {
   bool operator ==(Object other) => identical(this, other) || other is PlatformSettings &&
     other.supportEmail == supportEmail &&
     other.paymentInstructions == paymentInstructions &&
-    other.minimumAppBuild == minimumAppBuild &&
+    other.minimumAndroidVersion == minimumAndroidVersion &&
+    other.minimumIosVersion == minimumIosVersion &&
     other.androidUpdateUrl == androidUpdateUrl &&
     other.iosUpdateUrl == iosUpdateUrl;
 
@@ -70,12 +79,13 @@ class PlatformSettings {
     // ignore: unnecessary_parenthesis
     (supportEmail.hashCode) +
     (paymentInstructions == null ? 0 : paymentInstructions!.hashCode) +
-    (minimumAppBuild == null ? 0 : minimumAppBuild!.hashCode) +
+    (minimumAndroidVersion == null ? 0 : minimumAndroidVersion!.hashCode) +
+    (minimumIosVersion == null ? 0 : minimumIosVersion!.hashCode) +
     (androidUpdateUrl == null ? 0 : androidUpdateUrl!.hashCode) +
     (iosUpdateUrl == null ? 0 : iosUpdateUrl!.hashCode);
 
   @override
-  String toString() => 'PlatformSettings[supportEmail=$supportEmail, paymentInstructions=$paymentInstructions, minimumAppBuild=$minimumAppBuild, androidUpdateUrl=$androidUpdateUrl, iosUpdateUrl=$iosUpdateUrl]';
+  String toString() => 'PlatformSettings[supportEmail=$supportEmail, paymentInstructions=$paymentInstructions, minimumAndroidVersion=$minimumAndroidVersion, minimumIosVersion=$minimumIosVersion, androidUpdateUrl=$androidUpdateUrl, iosUpdateUrl=$iosUpdateUrl]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -85,10 +95,15 @@ class PlatformSettings {
     } else {
       json[r'paymentInstructions'] = null;
     }
-    if (this.minimumAppBuild != null) {
-      json[r'minimumAppBuild'] = this.minimumAppBuild;
+    if (this.minimumAndroidVersion != null) {
+      json[r'minimumAndroidVersion'] = this.minimumAndroidVersion;
     } else {
-      json[r'minimumAppBuild'] = null;
+      json[r'minimumAndroidVersion'] = null;
+    }
+    if (this.minimumIosVersion != null) {
+      json[r'minimumIosVersion'] = this.minimumIosVersion;
+    } else {
+      json[r'minimumIosVersion'] = null;
     }
     if (this.androidUpdateUrl != null) {
       json[r'androidUpdateUrl'] = this.androidUpdateUrl;
@@ -122,7 +137,8 @@ class PlatformSettings {
       return PlatformSettings(
         supportEmail: mapValueOfType<String>(json, r'supportEmail')!,
         paymentInstructions: mapValueOfType<String>(json, r'paymentInstructions'),
-        minimumAppBuild: mapValueOfType<int>(json, r'minimumAppBuild'),
+        minimumAndroidVersion: mapValueOfType<String>(json, r'minimumAndroidVersion'),
+        minimumIosVersion: mapValueOfType<String>(json, r'minimumIosVersion'),
         androidUpdateUrl: mapValueOfType<String>(json, r'androidUpdateUrl'),
         iosUpdateUrl: mapValueOfType<String>(json, r'iosUpdateUrl'),
       );

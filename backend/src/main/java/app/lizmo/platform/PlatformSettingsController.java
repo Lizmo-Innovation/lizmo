@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
@@ -61,7 +60,8 @@ public class PlatformSettingsController {
     @ApiResponse(responseCode = "200", description = "The minimum, and where to update")
     public AppVersion appVersion() {
         return new AppVersion(
-                settings.minimumAppBuild(),
+                settings.minimumAndroidVersion(),
+                settings.minimumIosVersion(),
                 settings.androidUpdateUrl(),
                 settings.iosUpdateUrl());
     }
@@ -72,7 +72,8 @@ public class PlatformSettingsController {
         return new PlatformSettings(
                 settings.supportEmail(),
                 settings.paymentInstructions(),
-                settings.minimumAppBuild(),
+                settings.minimumAndroidVersion(),
+                settings.minimumIosVersion(),
                 settings.androidUpdateUrl(),
                 settings.iosUpdateUrl());
     }
@@ -90,10 +91,14 @@ public class PlatformSettingsController {
                 ? settings.paymentInstructions()
                 : settings.changePaymentInstructions(
                         body.paymentInstructions(), currentUser.requireId());
-        int minimumBuild = body.minimumAppBuild() == null
-                ? settings.minimumAppBuild()
-                : settings.changeMinimumAppBuild(
-                        body.minimumAppBuild(), currentUser.requireId());
+        String minimumAndroid = body.minimumAndroidVersion() == null
+                ? settings.minimumAndroidVersion()
+                : settings.changeMinimumAndroidVersion(
+                        body.minimumAndroidVersion(), currentUser.requireId());
+        String minimumIos = body.minimumIosVersion() == null
+                ? settings.minimumIosVersion()
+                : settings.changeMinimumIosVersion(
+                        body.minimumIosVersion(), currentUser.requireId());
         String android = body.androidUpdateUrl() == null
                 ? settings.androidUpdateUrl()
                 : settings.changeAndroidUpdateUrl(
@@ -101,20 +106,27 @@ public class PlatformSettingsController {
         String ios = body.iosUpdateUrl() == null
                 ? settings.iosUpdateUrl()
                 : settings.changeIosUpdateUrl(body.iosUpdateUrl(), currentUser.requireId());
-        return new PlatformSettings(email, instructions, minimumBuild, android, ios);
+        return new PlatformSettings(
+                email, instructions, minimumAndroid, minimumIos, android, ios);
     }
 
     @Schema(description = "Where to write to Lizmo")
     public record SupportContact(String email) {}
 
     /**
-      * @param minimumBuild the oldest build allowed to carry on. 0 turns the
-      *                     check off, which is what an operator who has never
-      *                     set one has.
+      * @param minimumAndroidVersion the oldest Android version allowed to carry
+      *                              on. Null means Android is not checked,
+      *                              which is what an operator who has never set
+      *                              one has.
+      * @param minimumIosVersion     the same for iOS. The two are separate
+      *                              because releases drift apart: an iOS build
+      *                              can sit in review for a week after the
+      *                              Android one has shipped.
       */
     @Schema(description = "What the app checks when it opens")
     public record AppVersion(
-            @Schema(example = "7") int minimumBuild,
+            @Schema(example = "1.1.1") String minimumAndroidVersion,
+            @Schema(example = "1.1.0") String minimumIosVersion,
             @Schema(example = "https://play.google.com/store/apps/details?id=app.lizmo")
             String androidUpdateUrl,
             String iosUpdateUrl) {}
@@ -126,10 +138,14 @@ public class PlatformSettingsController {
             @Size(max = 1000)
             @Schema(example = "GCash 0917 123 4567 (Lizmo Innovation)")
             String paymentInstructions,
-            @Min(0) @Schema(example = "7",
-                    description = "The oldest app build allowed in. Raising it locks out "
-                            + "everybody on an older one, so it is left alone when not sent.")
-            Integer minimumAppBuild,
+            @Size(max = 20) @Schema(example = "1.1.1",
+                    description = "The oldest Android version allowed in. Raising it locks "
+                            + "out everybody on an older one, so it is left alone when not "
+                            + "sent; blank stops Android being checked.")
+            String minimumAndroidVersion,
+            @Size(max = 20) @Schema(example = "1.1.0",
+                    description = "The same for iOS, separately: releases drift apart.")
+            String minimumIosVersion,
             @Size(max = 500) String androidUpdateUrl,
             @Size(max = 500) String iosUpdateUrl) {}
 }

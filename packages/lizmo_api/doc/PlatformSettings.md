@@ -10,7 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **supportEmail** | **String** |  | 
 **paymentInstructions** | **String** |  | [optional] 
-**minimumAppBuild** | **int** | The oldest app build allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent. | [optional] 
+**minimumAndroidVersion** | **String** | The oldest Android version allowed in. Raising it locks out everybody on an older one, so it is left alone when not sent; blank stops Android being checked. | [optional] 
+**minimumIosVersion** | **String** | The same for iOS, separately: releases drift apart. | [optional] 
 **androidUpdateUrl** | **String** |  | [optional] 
 **iosUpdateUrl** | **String** |  | [optional] 
 
