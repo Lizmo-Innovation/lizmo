@@ -190,20 +190,29 @@ class _Waiting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final where = request.bedLabel == null
-        ? 'Unit ${request.unitNumber}'
-        : '${request.bedLabel}, ${request.unitNumber}';
+    final place = request.propertyName ?? 'a property';
+
+    // Scanning a code names no room — the floors show counts, not rooms — so
+    // this is the usual shape now, and "Unit null" is what it used to read.
+    final detail = request.unitNumber == null
+        ? 'You asked about $place. Your landlord has not answered yet. They '
+            'choose which room when they do.'
+        : 'You asked for ${_where(request)} at $place. Your landlord has not '
+            'answered yet.';
 
     return _Card(
       colour: LizmoColors.white,
       textColour: LizmoColors.ink,
       icon: Icons.hourglass_empty,
       title: 'Waiting for a reply',
-      detail: 'You asked for $where at ${request.propertyName ?? 'a property'}. '
-          'Your landlord has not answered yet.',
+      detail: detail,
     );
   }
 }
+
+String _where(RentalRequestResponse request) => request.bedLabel == null
+    ? 'Unit ${request.unitNumber}'
+    : '${request.bedLabel}, ${request.unitNumber}';
 
 class _Settled extends StatelessWidget {
   const _Settled({required this.lease});

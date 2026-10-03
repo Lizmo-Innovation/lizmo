@@ -4132,6 +4132,58 @@ class _RecordingTenantProfileApi extends TenantProfileApi {
 }
 
 void _tenantProfileTests() {
+  group('waiting on a landlord', () {
+    Widget appWith(RentalRequestResponse request) => ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            myTenantProfileProvider.overrideWith((ref) async =>
+                TenantProfileResponse(
+                    contactPhone: '09170000001', readyForALease: true)),
+            myTenantDocumentsProvider
+                .overrideWith((ref) async => const <TenantDocumentResponse>[]),
+            myNotificationsProvider
+                .overrideWith((ref) async => const <NotificationResponse>[]),
+            myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+            myRentalRequestsProvider.overrideWith((ref) async => [request]),
+          ],
+          child: const LizmoApp(),
+        );
+
+    RentalRequestResponse asked({String? unitNumber, String? bedLabel}) =>
+        RentalRequestResponse(
+          id: 'r1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: unitNumber,
+          bedLabel: bedLabel,
+          status: RentalRequestResponseStatusEnum.PENDING,
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+        );
+
+    /// Scanning a code names no room — the floors show counts, not rooms — so
+    /// this is the usual shape now. It read "You asked for Unit null".
+    testWidgets('asking about a place names the place, not a null room',
+        (tester) async {
+      await tester.pumpWidget(appWith(asked()));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('null'), findsNothing);
+      expect(find.textContaining('You asked about Sunrise Apartments'),
+          findsOneWidget);
+      // And says who settles the room, which is the landlord.
+      expect(find.textContaining('choose which room'), findsOneWidget);
+    });
+
+    testWidgets('a request for one room still names it', (tester) async {
+      await tester.pumpWidget(appWith(asked(unitNumber: '2B', bedLabel: 'Bed 1')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Bed 1, 2B'), findsOneWidget);
+    });
+  });
+
   group('tenant profile', () {
     Widget appWith(
       TenantProfileResponse profile, {
