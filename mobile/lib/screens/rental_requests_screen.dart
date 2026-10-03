@@ -128,11 +128,19 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
   Future<void> _confirmAccept() async {
     final request = widget.request;
 
+    // A request about the place names no room, so the landlord picks one
+    // here, from what is actually free right now.
+    final rooms = request.unitId == null
+        ? await ref.read(freeRoomsProvider(request.propertyId!).future)
+        : null;
+    if (!mounted) return;
+
     final terms = await AcceptTermsSheet.show(
       context,
       tenantName: request.tenantName ?? 'this tenant',
       slot: _slot(request),
       askingRent: request.askingRent,
+      rooms: rooms,
     );
 
     if (terms == null) return;
@@ -140,6 +148,10 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
   }
 
   static String _slot(RentalRequestForLandlord request) {
+    if (request.unitNumber == null) {
+      // They asked about the place, so there is no room to name yet.
+      return request.propertyName ?? 'this property';
+    }
     return request.bedLabel == null
         ? 'unit ${request.unitNumber}'
         : '${request.bedLabel} in ${request.unitNumber}';
@@ -165,7 +177,12 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
         children: [
           Text(request.tenantName ?? 'A tenant', style: LizmoType.rowName),
           const SizedBox(height: 2),
-          Text('for ${_slot(request)}', style: LizmoType.rowSub),
+          Text(
+            request.unitNumber == null
+                ? 'asked about ${_slot(request)}'
+                : 'for ${_slot(request)}',
+            style: LizmoType.rowSub,
+          ),
 
           const SizedBox(height: 12),
           _Facts(request: request),

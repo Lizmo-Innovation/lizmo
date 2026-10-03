@@ -367,3 +367,68 @@ final leasePaymentDetailsProvider = FutureProvider.autoDispose
     throw ApiFailure.from(error);
   }
 });
+
+/// One room a landlord can give somebody: a whole unit, or one bed in a
+/// shared room.
+///
+/// Built for the moment a landlord accepts a request about the property, where
+/// the tenant named no room because they were never shown any.
+class FreeRoom {
+  const FreeRoom({
+    required this.unitId,
+    required this.bedId,
+    required this.label,
+    required this.rent,
+  });
+
+  final String unitId;
+
+  /// Null when the whole unit is being let.
+  final String? bedId;
+
+  /// How a landlord says it: "Unit 1A", "Bed 2 in 2B".
+  final String label;
+  final num? rent;
+}
+
+/// Every room in a property that could be let today.
+///
+/// Composed here rather than on the server: the landlord's own unit and bed
+/// lists already say it, and the beds of a shared room are read only for the
+/// rooms that have them.
+final freeRoomsProvider =
+    FutureProvider.autoDispose.family<List<FreeRoom>, String>((ref, propertyId) async {
+  final units = await ref.watch(unitsProvider(propertyId).future);
+  final rooms = <FreeRoom>[];
+
+  for (final unit in units) {
+    final id = unit.id;
+    if (id == null || unit.status == UnitResponseStatusEnum.MAINTENANCE) continue;
+
+    if (unit.rentalMode == UnitResponseRentalModeEnum.WHOLE_UNIT) {
+      if (unit.status == UnitResponseStatusEnum.VACANT) {
+        rooms.add(FreeRoom(
+          unitId: id,
+          bedId: null,
+          label: 'Unit ${unit.unitNumber ?? ''}'.trim(),
+          rent: unit.rent,
+        ));
+      }
+      continue;
+    }
+
+    // A shared room is never given whole, however empty it is: the landlord
+    // chose to let it bed by bed.
+    for (final bed in await ref.watch(bedsProvider(id).future)) {
+      if (bed.id == null || bed.status != BedResponseStatusEnum.VACANT) continue;
+      rooms.add(FreeRoom(
+        unitId: id,
+        bedId: bed.id,
+        label: '${bed.bedLabel ?? 'Bed'} in ${unit.unitNumber ?? ''}'.trim(),
+        // A bed with no price of its own asks its unit's.
+        rent: bed.rent ?? unit.rent,
+      ));
+    }
+  }
+  return rooms;
+});

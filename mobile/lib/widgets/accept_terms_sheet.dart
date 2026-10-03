@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../property/property_providers.dart';
+
 /// The terms a landlord is accepting on, settled before the lease exists.
 ///
 /// Accepting used to be a yes/no dialog that said "at the asking rent" — words,
@@ -18,11 +20,17 @@ class AcceptTermsSheet extends StatefulWidget {
     required this.tenantName,
     required this.slot,
     required this.askingRent,
+    this.rooms,
   });
 
   final String tenantName;
   final String slot;
   final num? askingRent;
+
+  /// The rooms to choose from, when the tenant asked about the place and named
+  /// none. Null when the request already names one, and the picker is not
+  /// shown at all.
+  final List<FreeRoom>? rooms;
 
   /// Returns the terms, or null if the landlord backed out.
   static Future<AcceptRequest?> show(
@@ -30,6 +38,7 @@ class AcceptTermsSheet extends StatefulWidget {
     required String tenantName,
     required String slot,
     required num? askingRent,
+    List<FreeRoom>? rooms,
   }) {
     return showModalBottomSheet<AcceptRequest>(
       context: context,
@@ -47,6 +56,7 @@ class AcceptTermsSheet extends StatefulWidget {
           tenantName: tenantName,
           slot: slot,
           askingRent: askingRent,
+          rooms: rooms,
         ),
       ),
     );
@@ -65,6 +75,10 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   );
 
   late DateTime _start = DateTime.now();
+
+  /// Chosen by the landlord when the tenant named no room. Null until they do,
+  /// which is what keeps Accept off.
+  FreeRoom? _room;
 
   final _deposit = TextEditingController();
   final _advance = TextEditingController();
@@ -98,10 +112,33 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     if (picked != null) setState(() => _start = picked);
   }
 
+  /// The room, and the rent that comes with it.
+  ///
+  /// The rent follows the room rather than being retyped: a landlord moving
+  /// from a 2,500 bed to a 7,500 unit means the unit's price, and leaving the
+  /// old figure there is how the wrong rent gets written into a lease.
+  void _chooseRoom(FreeRoom? room) {
+    setState(() {
+      _room = room;
+      if (room?.rent != null) {
+        _rent.text = room!.rent!.toStringAsFixed(0);
+      }
+    });
+  }
+
+  /// Whether the landlord has said everything this acceptance needs.
+  ///
+  /// A room, when the tenant named none: the server refuses it otherwise, and
+  /// a button that fails after the tap reads as the app being broken.
+  bool get _ready => widget.rooms == null || _room != null;
+
   void _accept() {
+    if (!_ready) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     Navigator.of(context).pop(AcceptRequest(
+      unitId: _room?.unitId,
+      bedId: _room?.bedId,
       rentAmount: num.parse(_rent.text.trim()),
       startDate: DateTime.utc(_start.year, _start.month, _start.day),
       // Left null when untouched. A landlord who took no deposit and one who
@@ -154,11 +191,42 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'They will hold ${widget.slot}. Anyone else waiting on it will '
-                'be told it has gone.',
+                widget.rooms == null
+                    ? 'They will hold ${widget.slot}. Anyone else waiting on '
+                        'it will be told it has gone.'
+                    : 'They asked about the place rather than a room, so '
+                        'choose which one they get.',
                 style: LizmoType.rowSub,
               ),
               const SizedBox(height: 20),
+
+              if (widget.rooms case final rooms?) ...[
+                _Label('Which room'),
+                const SizedBox(height: 6),
+                if (rooms.isEmpty)
+                  Container(
+                    key: const ValueKey('no-free-rooms'),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: LizmoColors.amberBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      'Nothing is free here now. Decline, or free a room first.',
+                      style:
+                          LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                    ),
+                  )
+                else
+                  for (final room in rooms)
+                    _RoomChoice(
+                      room: room,
+                      chosen: identical(room, _room),
+                      onTap: () => _chooseRoom(room),
+                    ),
+                const SizedBox(height: 18),
+              ],
 
               _Label('Monthly rent'),
               const SizedBox(height: 6),
@@ -264,7 +332,12 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               ),
 
               const SizedBox(height: 22),
-              PrimaryActionButton(label: 'Accept and create the lease', onPressed: _accept),
+              PrimaryActionButton(
+                key: const ValueKey('accept-and-create'),
+                label: 'Accept and create the lease',
+                // Off until a room is chosen, when one is needed.
+                onPressed: _ready ? _accept : null,
+              ),
               const SizedBox(height: 8),
               Center(
                 child: TextButton(
@@ -396,6 +469,67 @@ class _MoneyField extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// One room on offer, and whether it is the one chosen.
+class _RoomChoice extends StatelessWidget {
+  const _RoomChoice({
+    required this.room,
+    required this.chosen,
+    required this.onTap,
+  });
+
+  final FreeRoom room;
+  final bool chosen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        key: ValueKey('room-${room.bedId ?? room.unitId}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: chosen ? LizmoColors.tealBg : LizmoColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: chosen ? LizmoColors.teal900 : const Color(0xFFE3E8E6),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                chosen ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                size: 18,
+                color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  room.label,
+                  style: LizmoType.rowName.copyWith(
+                    color: chosen ? LizmoColors.teal900 : LizmoColors.ink,
+                  ),
+                ),
+              ),
+              Text(
+                room.rent == null
+                    ? 'No price set'
+                    : '₱${room.rent!.toStringAsFixed(0)}',
+                style: LizmoType.rowSub.copyWith(
+                  color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -4954,6 +4954,22 @@ void _landlordRequestTests() {
       unitCount: 1,
     );
 
+    /// A request about the place, with no room named -- what scanning a code
+    /// now sends.
+    RentalRequestForLandlord aboutThePlace({String id = 'r1'}) =>
+        RentalRequestForLandlord(
+          id: id,
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          status: RentalRequestForLandlordStatusEnum.PENDING,
+          tenantId: 't1',
+          tenantName: 'Ana Reyes',
+          tenantPhone: '09171234567',
+          age: 27,
+          idType: RentalRequestForLandlordIdTypeEnum.PHILSYS,
+        );
+
     RentalRequestForLandlord request({
       String id = 'r1',
       String name = 'Ana Reyes',
@@ -4983,6 +4999,7 @@ void _landlordRequestTests() {
     Widget appWith({
       List<RentalRequestForLandlord> waiting = const [],
       _FakeAnsweringApi? answering,
+      List<FreeRoom>? free,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -4992,6 +5009,7 @@ void _landlordRequestTests() {
         propertiesProvider.overrideWith((ref) async => [property()]),
         propertyProvider('p1').overrideWith((ref) async => property()),
         unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+        if (free != null) freeRoomsProvider('p1').overrideWith((ref) async => free),
         pendingRequestsProvider('p1').overrideWith((ref) async => waiting),
         requestsToAnswerProvider.overrideWith((ref) async => waiting),
         propertyLeasesProvider('p1').overrideWith((ref) async => const <LeaseResponse>[]),
@@ -5215,6 +5233,127 @@ void _landlordRequestTests() {
       final accept = tester.widget<TextButton>(
           find.widgetWithText(TextButton, 'Accept'));
       expect(accept.onPressed, isNotNull);
+    });
+
+    // ---- a request about the place ----------------------------------------
+
+    FreeRoom room(String label, {String? bedId, num? rent = 2500}) => FreeRoom(
+          unitId: 'u1',
+          bedId: bedId,
+          label: label,
+          rent: rent,
+        );
+
+    Future<void> openTheRequest(WidgetTester tester) async {
+      await openProperty(tester);
+      await tester.tap(find.text('Somebody is asking about a room'));
+      await tester.pumpAndSettle();
+    }
+
+    /// They were shown counts per floor, not rooms, so the landlord says
+    /// which one they get.
+    testWidgets('accepting a request about the place asks which room',
+        (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(appWith(
+        waiting: [aboutThePlace()],
+        answering: answering,
+        free: [room('Bed 1 in 2B', bedId: 'b1'), room('Unit 1A', rent: 7500)],
+      ));
+      await openTheRequest(tester);
+
+      expect(find.text('asked about Sunrise Apartments'), findsOneWidget);
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('choose which one they get'), findsOneWidget);
+      expect(find.text('Bed 1 in 2B'), findsOneWidget);
+      expect(find.text('Unit 1A'), findsOneWidget);
+
+      // Nothing chosen yet, so there is nothing to accept on.
+      final button = tester.widget<PrimaryActionButton>(
+          find.byKey(const ValueKey('accept-and-create')));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('the room chosen is sent, with its rent', (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(appWith(
+        waiting: [aboutThePlace()],
+        answering: answering,
+        free: [room('Bed 1 in 2B', bedId: 'b1'), room('Unit 1A', rent: 7500)],
+      ));
+      await openTheRequest(tester);
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('room-u1')));
+      await tester.pumpAndSettle();
+      final accept = find.byKey(const ValueKey('accept-and-create'));
+      await tester.ensureVisible(accept);
+      await tester.pumpAndSettle();
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+
+      expect(answering.acceptedOn?.unitId, 'u1');
+      expect(answering.acceptedOn?.bedId, isNull);
+      // The rent follows the room: leaving a bed's price on a whole unit is
+      // how the wrong rent gets written into a lease.
+      expect(answering.acceptedOn?.rentAmount, 7500);
+    });
+
+    testWidgets('a bed carries its own id as well as its unit', (tester) async {
+      final answering = _FakeAnsweringApi();
+      await tester.pumpWidget(appWith(
+        waiting: [aboutThePlace()],
+        answering: answering,
+        free: [room('Bed 1 in 2B', bedId: 'b1')],
+      ));
+      await openTheRequest(tester);
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('room-b1')));
+      await tester.pumpAndSettle();
+      final accept = find.byKey(const ValueKey('accept-and-create'));
+      await tester.ensureVisible(accept);
+      await tester.pumpAndSettle();
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+
+      expect(answering.acceptedOn?.unitId, 'u1');
+      expect(answering.acceptedOn?.bedId, 'b1');
+    });
+
+    /// Everything went while the request waited.
+    testWidgets('nothing free says so instead of an empty picker',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        waiting: [aboutThePlace()],
+        free: const [],
+      ));
+      await openTheRequest(tester);
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('no-free-rooms')), findsOneWidget);
+      final button = tester.widget<PrimaryActionButton>(
+          find.byKey(const ValueKey('accept-and-create')));
+      expect(button.onPressed, isNull);
+    });
+
+    /// A request that already names a room is answered as it always was.
+    testWidgets('a request for one room asks nothing about which',
+        (tester) async {
+      await tester.pumpWidget(appWith(waiting: [request()]));
+      await openTheRequest(tester);
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Which room'), findsNothing);
+      final button = tester.widget<PrimaryActionButton>(
+          find.byKey(const ValueKey('accept-and-create')));
+      expect(button.onPressed, isNotNull);
     });
 
     testWidgets('accepting asks first, then sends', (tester) async {
