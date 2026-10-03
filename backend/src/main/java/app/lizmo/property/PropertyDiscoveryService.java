@@ -4,8 +4,6 @@ import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.property.dto.PropertyByCodeResponse;
 import app.lizmo.property.dto.VacancyFloor;
-import app.lizmo.property.dto.VacantBed;
-import app.lizmo.property.dto.VacantUnit;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,8 +60,7 @@ public class PropertyDiscoveryService {
      * is what decides which question a tenant is even being asked.
      */
     private List<VacancyFloor> vacanciesIn(UUID propertyId) {
-        Map<String, List<VacantUnit>> wholeByFloor = new LinkedHashMap<>();
-        Map<String, List<VacantBed>> bedsByFloor = new LinkedHashMap<>();
+        Map<String, Tally> byFloor = new LinkedHashMap<>();
 
         for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(propertyId)) {
             // Out of service is not on offer. A room being repainted should not
@@ -76,18 +73,16 @@ public class PropertyDiscoveryService {
             BigDecimal monthlyUtilities = monthlyUtilities(unit.getId());
             boolean included = unit.getUtilityBilling() == UtilityBilling.COMBINED;
 
+            boolean onTop = !included
+                    && monthlyUtilities != null
+                    && monthlyUtilities.signum() > 0;
+
             if (unit.getRentalMode() == RentalMode.WHOLE_UNIT) {
                 if (unit.getStatus() != UnitStatus.VACANT) {
                     continue;
                 }
-                wholeByFloor.computeIfAbsent(floor, key -> new ArrayList<>())
-                        .add(new VacantUnit(
-                                unit.getId(),
-                                unit.getUnitNumber(),
-                                unit.getRent(),
-                                unit.getSizeSqm(),
-                                monthlyUtilities,
-                                included));
+                byFloor.computeIfAbsent(floor, key -> new Tally())
+                        .wholeUnit(unit.getRent(), onTop);
                 continue;
             }
 
@@ -97,41 +92,62 @@ public class PropertyDiscoveryService {
                 if (bed.getStatus() != BedStatus.VACANT) {
                     continue;
                 }
-                bedsByFloor.computeIfAbsent(floor, key -> new ArrayList<>())
-                        .add(new VacantBed(
-                                unit.getId(),
-                                unit.getUnitNumber(),
-                                bed.getId(),
-                                bed.getBedLabel(),
-                                // Resolved here rather than passed through.
-                                // Null would read as free to anyone who does
-                                // not know a bed falls back to its unit's rent.
-                                bed.getRent() != null ? bed.getRent() : unit.getRent(),
-                                monthlyUtilities,
-                                included));
+                byFloor.computeIfAbsent(floor, key -> new Tally())
+                        // A bed with no price of its own asks its unit's.
+                        // Null would read as free to anyone who does not know
+                        // the fallback rule.
+                        .bed(bed.getRent() != null ? bed.getRent() : unit.getRent(), onTop);
             }
         }
 
-        List<String> floors = new ArrayList<>(wholeByFloor.keySet());
-        for (String floor : bedsByFloor.keySet()) {
-            if (!floors.contains(floor)) {
-                floors.add(floor);
-            }
-        }
+        List<String> floors = new ArrayList<>(byFloor.keySet());
         floors.sort(floorOrder());
 
         List<VacancyFloor> grouped = new ArrayList<>();
         for (String floor : floors) {
-            List<VacantUnit> whole =
-                    wholeByFloor.getOrDefault(floor, List.of());
-            List<VacantBed> bedspaces =
-                    bedsByFloor.getOrDefault(floor, List.of());
-            if (whole.isEmpty() && bedspaces.isEmpty()) {
+            Tally tally = byFloor.get(floor);
+            if (tally.vacantCount() == 0) {
                 continue;
             }
-            grouped.add(new VacancyFloor(floor, whole, bedspaces));
+            grouped.add(tally.on(floor));
         }
         return grouped;
+    }
+
+    /** What is free on one floor, while it is being counted. */
+    private static final class Tally {
+        private int wholeUnits;
+        private int beds;
+        private BigDecimal cheapest;
+        private BigDecimal dearest;
+        private boolean utilitiesOnTop;
+
+        void wholeUnit(BigDecimal rent, boolean onTop) {
+            wholeUnits++;
+            price(rent, onTop);
+        }
+
+        void bed(BigDecimal rent, boolean onTop) {
+            beds++;
+            price(rent, onTop);
+        }
+
+        private void price(BigDecimal rent, boolean onTop) {
+            utilitiesOnTop |= onTop;
+            if (rent == null) {
+                return;
+            }
+            cheapest = cheapest == null || rent.compareTo(cheapest) < 0 ? rent : cheapest;
+            dearest = dearest == null || rent.compareTo(dearest) > 0 ? rent : dearest;
+        }
+
+        int vacantCount() {
+            return wholeUnits + beds;
+        }
+
+        VacancyFloor on(String floor) {
+            return new VacancyFloor(floor, wholeUnits, beds, cheapest, dearest, utilitiesOnTop);
+        }
     }
 
     /**

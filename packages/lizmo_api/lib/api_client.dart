@@ -333,10 +333,6 @@ class ApiClient {
           return VacancyFloor.fromJson(value);
         case 'VacancyRow':
           return VacancyRow.fromJson(value);
-        case 'VacantBed':
-          return VacantBed.fromJson(value);
-        case 'VacantUnit':
-          return VacantUnit.fromJson(value);
         case 'WaitingPayment':
           return WaitingPayment.fromJson(value);
         default:

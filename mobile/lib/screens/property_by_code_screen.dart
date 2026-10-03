@@ -90,6 +90,11 @@ class _Place extends StatelessWidget {
         const SizedBox(height: 12),
 
         for (final floor in floors) _Floor(floor: floor),
+
+        if (free > 0) ...[
+          const SizedBox(height: 10),
+          _AskAboutThePlace(propertyId: place.id!),
+        ],
       ],
     );
   }
@@ -109,6 +114,12 @@ class _Place extends StatelessWidget {
   }
 }
 
+/// How much is free on one floor, and what it costs.
+///
+/// Counts rather than rooms: a stranger with the code used to be handed every
+/// unit number, every bed label and each one's price, which is more than
+/// anybody needs to decide whether to ask. Which room they get is settled with
+/// the landlord.
 class _Floor extends StatelessWidget {
   const _Floor({required this.floor});
 
@@ -116,71 +127,81 @@ class _Floor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
-          child: Text(
-            // Null means the landlord never said, which is normal in a
-            // single-storey house — not a floor called nothing.
-            floor.floor == null ? 'Ground level' : 'Floor ${floor.floor}',
-            style: LizmoType.rowSub.copyWith(
-              color: LizmoColors.slate,
-              letterSpacing: 1,
+    final beds = floor.beds ?? 0;
+    final units = floor.wholeUnits ?? 0;
+
+    return Container(
+      key: ValueKey('floor-${floor.floor ?? 'ground'}'),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: LizmoColors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [LizmoColors.cardShadow],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  // Null means the landlord never said, which is normal in a
+                  // single-storey house — not a floor called nothing.
+                  floor.floor == null ? 'Ground level' : 'Floor ${floor.floor}',
+                  style: LizmoType.rowName,
+                ),
+                const SizedBox(height: 2),
+                Text(_whatIsFree(units, beds), style: LizmoType.rowSub),
+              ],
             ),
           ),
-        ),
-        for (final unit in floor.wholeUnits)
-          _Vacancy(
-            title: 'Unit ${unit.unitNumber}',
-            subtitle: unit.sizeSqm == null ? null : '${unit.sizeSqm} sqm',
-            rent: unit.rent,
-            utilities: unit.monthlyUtilities,
-            utilitiesIncluded: unit.utilitiesIncluded ?? false,
-            unitId: unit.unitId!,
-            bedId: null,
-          ),
-        for (final bed in floor.bedspaces)
-          _Vacancy(
-            title: bed.bedLabel ?? 'Bed',
-            subtitle: 'in ${bed.unitNumber}',
-            rent: bed.rent,
-            utilities: bed.monthlyUtilities,
-            utilitiesIncluded: bed.utilitiesIncluded ?? false,
-            unitId: bed.unitId!,
-            bedId: bed.bedId,
-          ),
-      ],
+          const SizedBox(width: 12),
+          Text(_price(), style: LizmoType.rowSub.copyWith(color: LizmoColors.ink)),
+        ],
+      ),
     );
+  }
+
+  static String _whatIsFree(int units, int beds) {
+    final parts = [
+      if (units > 0) '$units ${units == 1 ? 'unit' : 'units'}',
+      if (beds > 0) '$beds ${beds == 1 ? 'bedspace' : 'bedspaces'}',
+    ];
+    return parts.isEmpty ? 'Nothing free' : '${parts.join(' and ')} free';
+  }
+
+  /// One price when every free room here asks the same, a range when they do
+  /// not. Utilities are flagged rather than added: they are charged per unit,
+  /// and adding them to a bed's rent would overstate it.
+  String _price() {
+    final cheapest = floor.cheapestRent;
+    final dearest = floor.dearestRent;
+    if (cheapest == null) return 'Price not set';
+
+    final money = cheapest == dearest
+        ? '₱$cheapest'
+        : '₱$cheapest–₱$dearest';
+    return (floor.utilitiesOnTop ?? false)
+        ? '$money + utilities'
+        : money;
   }
 }
 
-/// One bed or unit that is free, and the button that asks for it.
-class _Vacancy extends ConsumerStatefulWidget {
-  const _Vacancy({
-    required this.title,
-    required this.subtitle,
-    required this.rent,
-    required this.utilities,
-    required this.utilitiesIncluded,
-    required this.unitId,
-    required this.bedId,
-  });
+/// Asking about the place, with no room named.
+///
+/// The landlord chooses the room when they accept, which is how it gets
+/// settled on the phone anyway — and it is why nothing here names one.
+class _AskAboutThePlace extends ConsumerStatefulWidget {
+  const _AskAboutThePlace({required this.propertyId});
 
-  final String title;
-  final String? subtitle;
-  final num? rent;
-  final num? utilities;
-  final bool utilitiesIncluded;
-  final String unitId;
-  final String? bedId;
+  final String propertyId;
 
   @override
-  ConsumerState<_Vacancy> createState() => _VacancyState();
+  ConsumerState<_AskAboutThePlace> createState() => _AskAboutThePlaceState();
 }
 
-class _VacancyState extends ConsumerState<_Vacancy> {
+class _AskAboutThePlaceState extends ConsumerState<_AskAboutThePlace> {
   bool _asking = false;
   bool _asked = false;
 
@@ -190,7 +211,7 @@ class _VacancyState extends ConsumerState<_Vacancy> {
 
     try {
       await ref.read(askingForARoomApiProvider).sendRentalRequest(
-            RentalRequestCreate(unitId: widget.unitId, bedId: widget.bedId),
+            RentalRequestCreate(propertyId: widget.propertyId),
           );
       ref.invalidate(myRentalRequestsProvider);
       if (mounted) setState(() => _asked = true);
@@ -202,10 +223,10 @@ class _VacancyState extends ConsumerState<_Vacancy> {
       if (!mounted) return;
 
       if (failure.code == 'TENANT_PROFILE_INCOMPLETE' && !retrying) {
-        // A number is the whole of what asking takes, so it is asked here, on
-        // the room they are looking at, and the request goes again with no
-        // second tap. Retrying only once: a second refusal is a real problem
-        // and should be read, not looped over.
+        // A number is the whole of what asking takes, so it is asked here,
+        // on the place they are looking at, and the request goes again with
+        // no second tap. Retrying only once: a second refusal is a real
+        // problem and should be read, not looped over.
         await _askForANumberThenTryAgain();
         return;
       }
@@ -226,70 +247,47 @@ class _VacancyState extends ConsumerState<_Vacancy> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: LizmoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [LizmoColors.cardShadow],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.title, style: LizmoType.rowName),
-                if (widget.subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(widget.subtitle!, style: LizmoType.rowSub),
-                ],
-                const SizedBox(height: 4),
-                Text(_price(), style: LizmoType.rowSub),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (_asked)
-            Text(
-              'Asked',
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-            )
-          else if (_asking)
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: _ask,
+    if (_asked) {
+      return Container(
+        key: const ValueKey('asked-about-place'),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: LizmoColors.tealBg,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle_outline,
+                size: 18, color: LizmoColors.teal900),
+            const SizedBox(width: 10),
+            Expanded(
               child: Text(
-                'Ask for this',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.coral),
+                'Asked. The landlord will reply, and says which room you can '
+                'have.',
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
               ),
             ),
-        ],
-      ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PrimaryActionButton(
+          key: const ValueKey('ask-about-place'),
+          label: _asking ? 'Asking…' : 'Ask about this place',
+          onPressed: _asking ? null : _ask,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'The landlord picks which room, and you settle the rest between you.',
+          textAlign: TextAlign.center,
+          style: LizmoType.rowSub,
+        ),
+      ],
     );
-  }
-
-  /// What the tenant would actually hand over each month, which is what they
-  /// are really comparing — not the rent line on its own.
-  String _price() {
-    final rent = widget.rent;
-    if (rent == null) return 'Price not set';
-
-    final base = '₱$rent a month';
-    final utilities = widget.utilities;
-    if (utilities == null) return base;
-    return widget.utilitiesIncluded
-        ? '$base, utilities included'
-        : '$base, plus ₱$utilities utilities';
   }
 }
 

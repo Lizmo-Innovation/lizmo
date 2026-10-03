@@ -122,8 +122,6 @@ part 'model/utility_request.dart';
 part 'model/utility_response.dart';
 part 'model/vacancy_floor.dart';
 part 'model/vacancy_row.dart';
-part 'model/vacant_bed.dart';
-part 'model/vacant_unit.dart';
 part 'model/waiting_payment.dart';
 
 

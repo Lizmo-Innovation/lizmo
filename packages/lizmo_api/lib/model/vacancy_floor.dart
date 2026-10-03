@@ -14,8 +14,11 @@ class VacancyFloor {
   /// Returns a new [VacancyFloor] instance.
   VacancyFloor({
     this.floor,
-    this.wholeUnits = const [],
-    this.bedspaces = const [],
+    this.wholeUnits,
+    this.beds,
+    this.cheapestRent,
+    this.dearestRent,
+    this.utilitiesOnTop,
   });
 
   ///
@@ -26,25 +29,67 @@ class VacancyFloor {
   ///
   String? floor;
 
-  List<VacantUnit> wholeUnits;
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? wholeUnits;
 
-  List<VacantBed> bedspaces;
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? beds;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? cheapestRent;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? dearestRent;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? utilitiesOnTop;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is VacancyFloor &&
     other.floor == floor &&
-    _deepEquality.equals(other.wholeUnits, wholeUnits) &&
-    _deepEquality.equals(other.bedspaces, bedspaces);
+    other.wholeUnits == wholeUnits &&
+    other.beds == beds &&
+    other.cheapestRent == cheapestRent &&
+    other.dearestRent == dearestRent &&
+    other.utilitiesOnTop == utilitiesOnTop;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (floor == null ? 0 : floor!.hashCode) +
-    (wholeUnits.hashCode) +
-    (bedspaces.hashCode);
+    (wholeUnits == null ? 0 : wholeUnits!.hashCode) +
+    (beds == null ? 0 : beds!.hashCode) +
+    (cheapestRent == null ? 0 : cheapestRent!.hashCode) +
+    (dearestRent == null ? 0 : dearestRent!.hashCode) +
+    (utilitiesOnTop == null ? 0 : utilitiesOnTop!.hashCode);
 
   @override
-  String toString() => 'VacancyFloor[floor=$floor, wholeUnits=$wholeUnits, bedspaces=$bedspaces]';
+  String toString() => 'VacancyFloor[floor=$floor, wholeUnits=$wholeUnits, beds=$beds, cheapestRent=$cheapestRent, dearestRent=$dearestRent, utilitiesOnTop=$utilitiesOnTop]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -53,8 +98,31 @@ class VacancyFloor {
     } else {
       json[r'floor'] = null;
     }
+    if (this.wholeUnits != null) {
       json[r'wholeUnits'] = this.wholeUnits;
-      json[r'bedspaces'] = this.bedspaces;
+    } else {
+      json[r'wholeUnits'] = null;
+    }
+    if (this.beds != null) {
+      json[r'beds'] = this.beds;
+    } else {
+      json[r'beds'] = null;
+    }
+    if (this.cheapestRent != null) {
+      json[r'cheapestRent'] = this.cheapestRent;
+    } else {
+      json[r'cheapestRent'] = null;
+    }
+    if (this.dearestRent != null) {
+      json[r'dearestRent'] = this.dearestRent;
+    } else {
+      json[r'dearestRent'] = null;
+    }
+    if (this.utilitiesOnTop != null) {
+      json[r'utilitiesOnTop'] = this.utilitiesOnTop;
+    } else {
+      json[r'utilitiesOnTop'] = null;
+    }
     return json;
   }
 
@@ -74,8 +142,15 @@ class VacancyFloor {
 
       return VacancyFloor(
         floor: mapValueOfType<String>(json, r'floor'),
-        wholeUnits: VacantUnit.listFromJson(json[r'wholeUnits']),
-        bedspaces: VacantBed.listFromJson(json[r'bedspaces']),
+        wholeUnits: mapValueOfType<int>(json, r'wholeUnits'),
+        beds: mapValueOfType<int>(json, r'beds'),
+        cheapestRent: json[r'cheapestRent'] == null
+            ? null
+            : num.parse('${json[r'cheapestRent']}'),
+        dearestRent: json[r'dearestRent'] == null
+            ? null
+            : num.parse('${json[r'dearestRent']}'),
+        utilitiesOnTop: mapValueOfType<bool>(json, r'utilitiesOnTop'),
       );
     }
     return null;

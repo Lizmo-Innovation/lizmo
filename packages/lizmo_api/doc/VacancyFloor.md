@@ -9,8 +9,11 @@ import 'package:lizmo_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **floor** | **String** |  | [optional] 
-**wholeUnits** | [**List<VacantUnit>**](VacantUnit.md) |  | [optional] [default to const []]
-**bedspaces** | [**List<VacantBed>**](VacantBed.md) |  | [optional] [default to const []]
+**wholeUnits** | **int** |  | [optional] 
+**beds** | **int** |  | [optional] 
+**cheapestRent** | **num** |  | [optional] 
+**dearestRent** | **num** |  | [optional] 
+**utilitiesOnTop** | **bool** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

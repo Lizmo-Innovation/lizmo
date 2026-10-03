@@ -4551,8 +4551,12 @@ class _FakeAskingApi extends AskingForARoomApi {
 void _findingAPlaceTests() {
   group('finding a place', () {
     PropertyByCodeResponse place({
-      List<VacantBed> beds = const [],
-      List<VacantUnit> units = const [],
+      int beds = 0,
+      int units = 0,
+      num? cheapest = 2500,
+      num? dearest,
+      bool utilitiesOnTop = false,
+      String floor = '2',
     }) => PropertyByCodeResponse(
       id: 'p1',
       code: 'PHK7M4Q2',
@@ -4560,24 +4564,20 @@ void _findingAPlaceTests() {
       address: '12 Mabini St',
       type: PropertyByCodeResponseTypeEnum.BOARDING_HOUSE,
       usage: PropertyByCodeResponseUsageEnum.RESIDENTIAL,
-      vacantWholeUnits: units.length,
-      vacantBeds: beds.length,
+      vacantWholeUnits: units,
+      vacantBeds: beds,
       floors: [
-        if (beds.isNotEmpty || units.isNotEmpty)
-          VacancyFloor(floor: '2', wholeUnits: units, bedspaces: beds),
+        if (beds > 0 || units > 0)
+          VacancyFloor(
+            floor: floor,
+            wholeUnits: units,
+            beds: beds,
+            cheapestRent: cheapest,
+            dearestRent: dearest ?? cheapest,
+            utilitiesOnTop: utilitiesOnTop,
+          ),
       ],
     );
-
-    VacantBed bed({num? rent = 2500, num? utilities, bool included = false}) =>
-        VacantBed(
-          unitId: 'u1',
-          unitNumber: '2B',
-          bedId: 'b1',
-          bedLabel: 'Bed 1',
-          rent: rent,
-          monthlyUtilities: utilities,
-          utilitiesIncluded: included,
-        );
 
     Widget appWith({
       PropertyByCodeResponse? found,
@@ -4668,22 +4668,47 @@ void _findingAPlaceTests() {
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('a code finds the place and what is free', (tester) async {
-      await tester.pumpWidget(appWith(found: place(beds: [bed()])));
+    testWidgets('a code finds the place and how much is free', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 3)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Sunrise Apartments'), findsWidgets);
       expect(find.text('12 Mabini St'), findsOneWidget);
-      expect(find.text('1 space free'), findsOneWidget);
-      expect(find.text('Bed 1'), findsOneWidget);
+      expect(find.text('3 spaces free'), findsOneWidget);
       expect(find.text('Floor 2'), findsOneWidget);
+      expect(find.text('3 bedspaces free'), findsOneWidget);
+    });
+
+    /// The whole point: somebody with the code learns how much is free and
+    /// what it costs, not which rooms exist or which one is empty.
+    testWidgets('no room is named to somebody with the code', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 3, units: 1)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.textContaining('Bed '), findsNothing);
+      expect(find.textContaining('Unit '), findsNothing);
+      expect(find.text('1 unit and 3 bedspaces free'), findsOneWidget);
+    });
+
+    testWidgets('one price reads as one price, two as a range', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+      expect(find.text('\u20b12500'), findsOneWidget);
+
+      await tester.pumpWidget(
+          appWith(found: place(beds: 2, cheapest: 2500, dearest: 3200)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+      expect(find.text('\u20b12500\u2013\u20b13200'), findsOneWidget);
     });
 
     testWidgets('a full house says so rather than showing nothing', (
       tester,
     ) async {
-      await tester.pumpWidget(appWith(found: place()));
+      await tester.pumpWidget(appWith(found: place(beds: 0)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
@@ -4691,57 +4716,60 @@ void _findingAPlaceTests() {
       expect(find.text('Nothing free here at the moment'), findsOneWidget);
     });
 
-    testWidgets('the price is what the tenant would actually hand over', (
-      tester,
-    ) async {
-      await tester.pumpWidget(appWith(found: place(beds: [bed(utilities: 800)])));
-      await openFind(tester);
-      await enterCode(tester, 'PHK7M4Q2');
-
-      // Rent alone is not the comparison a tenant is making.
-      expect(find.text('P2500 a month, plus P800 utilities'), findsNothing);
-      expect(
-        find.textContaining('a month, plus'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('utilities folded into the rent are said so', (tester) async {
+    /// Rent alone is not what a tenant hands over, and utilities are charged
+    /// per unit, so they are flagged rather than added to a bed's price.
+    testWidgets('utilities charged on top are flagged', (tester) async {
       await tester.pumpWidget(
-        appWith(found: place(beds: [bed(utilities: 800, included: true)])),
-      );
+          appWith(found: place(beds: 2, utilitiesOnTop: true)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.textContaining('utilities included'), findsOneWidget);
+      expect(find.textContaining('+ utilities'), findsOneWidget);
     });
 
-    testWidgets('an unpriced bed says so rather than reading as free', (
+    testWidgets('utilities folded into the rent are not flagged', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.textContaining('+ utilities'), findsNothing);
+    });
+
+    testWidgets('an unpriced floor says so rather than reading as free', (
       tester,
     ) async {
-      await tester.pumpWidget(appWith(found: place(beds: [bed(rent: null)])));
+      await tester.pumpWidget(appWith(found: place(beds: 1, cheapest: null)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Price not set'), findsOneWidget);
     });
 
-    testWidgets('asking sends the unit and the bed', (tester) async {
+    testWidgets('asking names the place, not a room', (tester) async {
       final asking = _FakeAskingApi();
       await tester.pumpWidget(
-        appWith(found: place(beds: [bed()]), asking: asking),
+        appWith(found: place(beds: 2), asking: asking),
       );
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      await tester.tap(find.text('Ask for this'));
+      await tester.tap(find.byKey(const ValueKey('ask-about-place')));
       await tester.pumpAndSettle();
 
-      expect(asking.sent?.unitId, 'u1');
-      expect(asking.sent?.bedId, 'b1');
-      // The row stops offering it again once asked.
-      expect(find.text('Asked'), findsOneWidget);
-      expect(find.text('Ask for this'), findsNothing);
+      expect(asking.sent?.propertyId, 'p1');
+      expect(asking.sent?.unitId, isNull);
+      expect(asking.sent?.bedId, isNull);
+      // It stops offering once asked, and says what happens next.
+      expect(find.byKey(const ValueKey('asked-about-place')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ask-about-place')), findsNothing);
+    });
+
+    testWidgets('a full house offers nothing to ask for', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 0)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('ask-about-place')), findsNothing);
     });
 
     /// It used to send them to a profile form and leave them to find their
@@ -4758,12 +4786,12 @@ void _findingAPlaceTests() {
         ),
       );
       await tester.pumpWidget(
-        appWith(found: place(beds: [bed()]), asking: asking),
+        appWith(found: place(beds: 2), asking: asking),
       );
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      await tester.tap(find.text('Ask for this'));
+      await tester.tap(find.byKey(const ValueKey('ask-about-place')));
       // Not pumpAndSettle: the sheet's field takes focus, and a blinking
       // cursor never settles.
       await tester.pump();
@@ -4773,27 +4801,27 @@ void _findingAPlaceTests() {
       expect(find.byKey(const ValueKey('ask-phone-field')), findsOneWidget);
     });
 
-    testWidgets('a slot taken while reading is shown as it happened', (
+    testWidgets('a place filled while reading is shown as it happened', (
       tester,
     ) async {
       final asking = _FakeAskingApi(
         failWith: const ApiFailure(
           code: 'SLOT_UNAVAILABLE',
-          message: 'That bed has been taken.',
+          message: 'Nothing is free here at the moment.',
         ),
       );
       await tester.pumpWidget(
-        appWith(found: place(beds: [bed()]), asking: asking),
+        appWith(found: place(beds: 2), asking: asking),
       );
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      await tester.tap(find.text('Ask for this'));
+      await tester.tap(find.byKey(const ValueKey('ask-about-place')));
       await tester.pumpAndSettle();
 
-      expect(find.text('That bed has been taken.'), findsOneWidget);
+      expect(find.text('Nothing is free here at the moment.'), findsOneWidget);
       // And it is not marked as asked, because it was not.
-      expect(find.text('Asked'), findsNothing);
+      expect(find.byKey(const ValueKey('asked-about-place')), findsNothing);
     });
 
     testWidgets('a wrong code explains the alphabet', (tester) async {

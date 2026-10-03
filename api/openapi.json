@@ -6465,73 +6465,24 @@
                         "type": "string"
                     },
                     "wholeUnits": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/VacantUnit"
-                        }
+                        "type": "integer",
+                        "format": "int32"
                     },
-                    "bedspaces": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/VacantBed"
-                        }
-                    }
-                },
-                "description": "What is free on one floor"
-            },
-            "VacantBed": {
-                "type": "object",
-                "properties": {
-                    "unitId": {
-                        "type": "string",
-                        "format": "uuid"
+                    "beds": {
+                        "type": "integer",
+                        "format": "int32"
                     },
-                    "unitNumber": {
-                        "type": "string"
-                    },
-                    "bedId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "bedLabel": {
-                        "type": "string"
-                    },
-                    "rent": {
+                    "cheapestRent": {
                         "type": "number"
                     },
-                    "monthlyUtilities": {
+                    "dearestRent": {
                         "type": "number"
                     },
-                    "utilitiesIncluded": {
+                    "utilitiesOnTop": {
                         "type": "boolean"
                     }
                 },
-                "description": "A bed that is free"
-            },
-            "VacantUnit": {
-                "type": "object",
-                "properties": {
-                    "unitId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "unitNumber": {
-                        "type": "string"
-                    },
-                    "rent": {
-                        "type": "number"
-                    },
-                    "sizeSqm": {
-                        "type": "number"
-                    },
-                    "monthlyUtilities": {
-                        "type": "number"
-                    },
-                    "utilitiesIncluded": {
-                        "type": "boolean"
-                    }
-                },
-                "description": "A whole unit that is free"
+                "description": "How much is free on one floor, and what it costs"
             },
             "SupportContact": {
                 "type": "object",

@@ -40,8 +40,8 @@ public record PropertyByCodeResponse(
 
     public static PropertyByCodeResponse of(
             Property property, List<VacancyFloor> floors) {
-        int wholeUnits = floors.stream().mapToInt(floor -> floor.wholeUnits().size()).sum();
-        int beds = floors.stream().mapToInt(floor -> floor.bedspaces().size()).sum();
+        int wholeUnits = floors.stream().mapToInt(VacancyFloor::wholeUnits).sum();
+        int beds = floors.stream().mapToInt(VacancyFloor::beds).sum();
         return new PropertyByCodeResponse(
                 property.getId(),
                 property.getCode(),

@@ -94,8 +94,6 @@ doc/UtilityRequest.md
 doc/UtilityResponse.md
 doc/VacancyFloor.md
 doc/VacancyRow.md
-doc/VacantBed.md
-doc/VacantUnit.md
 doc/WaitingPayment.md
 git_push.sh
 lib/api.dart
@@ -200,11 +198,5 @@ lib/model/utility_request.dart
 lib/model/utility_response.dart
 lib/model/vacancy_floor.dart
 lib/model/vacancy_row.dart
-lib/model/vacant_bed.dart
-lib/model/vacant_unit.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
-test/admin_property_bed_test.dart
-test/admin_property_detail_test.dart
-test/admin_property_tenancy_test.dart
-test/admin_property_unit_test.dart

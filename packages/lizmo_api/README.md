@@ -252,8 +252,6 @@ Class | Method | HTTP request | Description
  - [UtilityResponse](doc//UtilityResponse.md)
  - [VacancyFloor](doc//VacancyFloor.md)
  - [VacancyRow](doc//VacancyRow.md)
- - [VacantBed](doc//VacantBed.md)
- - [VacantUnit](doc//VacantUnit.md)
  - [WaitingPayment](doc//WaitingPayment.md)
 
 

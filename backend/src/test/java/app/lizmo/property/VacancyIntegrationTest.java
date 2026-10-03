@@ -78,7 +78,7 @@ class VacancyIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void beds_are_offered_one_at_a_time_with_their_prices() throws Exception {
+    void beds_are_counted_by_floor_with_what_they_cost() throws Exception {
         addUnit("2B", "2", "BEDSPACE", ",\"capacity\":3,\"rent\":2500.00");
 
         lookup()
@@ -86,16 +86,36 @@ class VacancyIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.vacantWholeUnits").value(0))
                 .andExpect(jsonPath("$.floors.length()").value(1))
                 .andExpect(jsonPath("$.floors[0].floor").value("2"))
-                .andExpect(jsonPath("$.floors[0].bedspaces.length()").value(3))
-                // A bed with no price of its own reports its unit's, resolved
-                // here — null would read as free to anyone who did not know the
-                // fallback rule.
-                .andExpect(jsonPath("$.floors[0].bedspaces[0].rent").value(2500.00))
-                .andExpect(jsonPath("$.floors[0].bedspaces[0].bedLabel").exists());
+                .andExpect(jsonPath("$.floors[0].beds").value(3))
+                .andExpect(jsonPath("$.floors[0].wholeUnits").value(0))
+                // One price, so the range is that price twice. A bed with none
+                // of its own asks its unit's -- null would read as free to
+                // anybody who did not know the fallback rule.
+                .andExpect(jsonPath("$.floors[0].cheapestRent").value(2500.00))
+                .andExpect(jsonPath("$.floors[0].dearestRent").value(2500.00));
+    }
+
+    /**
+     * The whole point of the change: a stranger with the code learns how much
+     * is free and what it costs, not which rooms exist or which one is empty.
+     */
+    @Test
+    void no_room_is_named_to_somebody_with_the_code() throws Exception {
+        addUnit("2B", "2", "BEDSPACE", ",\"capacity\":3,\"rent\":2500.00");
+        addUnit("101", "1", "WHOLE_UNIT", ",\"rent\":12000.00");
+
+        String body = lookup().andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(body)
+                .doesNotContain("2B")
+                .doesNotContain("101")
+                .doesNotContain("bedLabel")
+                .doesNotContain("unitId")
+                .doesNotContain("bedId");
     }
 
     @Test
-    void a_bed_priced_on_its_own_says_so() throws Exception {
+    void a_bed_priced_on_its_own_widens_the_range() throws Exception {
         String unitId = addUnit("2B", "2", "BEDSPACE", ",\"capacity\":2,\"rent\":2500.00");
 
         String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
@@ -111,22 +131,22 @@ class VacancyIntegrationTest extends IntegrationTest {
                                 """))
                 .andExpect(status().isOk());
 
-        // The bed by the window can cost more than the one by the door.
+        // The bed by the window can cost more than the one by the door, and
+        // the range says so without saying which bed is which.
         lookup()
-                .andExpect(jsonPath("$.floors[0].bedspaces[?(@.bedLabel == 'Window bed')].rent")
-                        .value(3200.00));
+                .andExpect(jsonPath("$.floors[0].cheapestRent").value(2500.00))
+                .andExpect(jsonPath("$.floors[0].dearestRent").value(3200.00));
     }
 
     @Test
-    void a_whole_unit_is_offered_entire() throws Exception {
+    void a_whole_unit_is_counted_as_one() throws Exception {
         addUnit("101", "1", "WHOLE_UNIT", ",\"rent\":12000.00,\"sizeSqm\":32.5");
 
         lookup()
                 .andExpect(jsonPath("$.vacantWholeUnits").value(1))
                 .andExpect(jsonPath("$.vacantBeds").value(0))
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].unitNumber").value("101"))
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].rent").value(12000.00))
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].sizeSqm").value(32.5));
+                .andExpect(jsonPath("$.floors[0].wholeUnits").value(1))
+                .andExpect(jsonPath("$.floors[0].cheapestRent").value(12000.00));
     }
 
     @Test
@@ -164,7 +184,7 @@ class VacancyIntegrationTest extends IntegrationTest {
         // One broken bunk does not take the room off the market.
         lookup()
                 .andExpect(jsonPath("$.vacantBeds").value(2))
-                .andExpect(jsonPath("$.floors[0].bedspaces.length()").value(2));
+                .andExpect(jsonPath("$.floors[0].beds").value(2));
     }
 
     @Test
@@ -211,22 +231,35 @@ class VacancyIntegrationTest extends IntegrationTest {
                                 """))
                 .andExpect(status().isOk());
 
-        // Only the switched-on ones, and the tenant is told these are on top of
-        // the rent rather than inside it.
+        // Said as a warning on the floor rather than a figure per room: the
+        // rent shown is not the whole of what gets handed over each month.
         lookup()
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].monthlyUtilities").value(1200))
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].utilitiesIncluded").value(false));
+                .andExpect(jsonPath("$.floors[0].utilitiesOnTop").value(true));
     }
 
     @Test
-    void a_unit_charging_no_utilities_says_nothing_rather_than_zero() throws Exception {
+    void a_unit_charging_no_utilities_warns_about_none() throws Exception {
         addUnit("101", "1", "WHOLE_UNIT", ",\"rent\":12000.00");
 
-        // Null, not 0. "The landlord has not set any" and "they cost nothing"
-        // are different statements, and the app renders them differently.
-        lookup()
-                .andExpect(jsonPath("$.floors[0].wholeUnits[0].monthlyUtilities")
-                        .doesNotExist());
+        // Nothing on top, so the rent is the whole of it.
+        lookup().andExpect(jsonPath("$.floors[0].utilitiesOnTop").value(false));
+    }
+
+    /** Folded into the rent is not "on top", however much it is. */
+    @Test
+    void utilities_inside_the_rent_are_not_on_top() throws Exception {
+        String unitId = addUnit("101", "1", "WHOLE_UNIT", ",\"rent\":12000.00");
+
+        mvc.perform(put("/api/v1/units/" + unitId + "/utilities")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"billing":"COMBINED","utilities":[
+                                  {"kind":"WIFI","enabled":true,"amount":800}]}
+                                """))
+                .andExpect(status().isOk());
+
+        lookup().andExpect(jsonPath("$.floors[0].utilitiesOnTop").value(false));
     }
 
     @Test
@@ -237,7 +270,7 @@ class VacancyIntegrationTest extends IntegrationTest {
         // the landlord chose to let it bed by bed.
         lookup()
                 .andExpect(jsonPath("$.vacantWholeUnits").value(0))
-                .andExpect(jsonPath("$.floors[0].wholeUnits.length()").value(0))
+                .andExpect(jsonPath("$.floors[0].wholeUnits").value(0))
                 .andExpect(jsonPath("$.vacantBeds").value(4));
     }
 
@@ -247,13 +280,16 @@ class VacancyIntegrationTest extends IntegrationTest {
         addUnit("2B", "2", "BEDSPACE", ",\"capacity\":3,\"rent\":2500.00");
         addUnit("2C", "2", "BEDSPACE", ",\"capacity\":2,\"rent\":2200.00");
 
-        // The headline figure a screen leads with is derived from the same lists
+        // The headline figure a screen leads with is added up from the floors
         // below it, so the two cannot drift.
         lookup()
                 .andExpect(jsonPath("$.vacantWholeUnits").value(1))
                 .andExpect(jsonPath("$.vacantBeds").value(5))
                 .andExpect(jsonPath("$.floors.length()").value(2))
-                .andExpect(jsonPath("$.floors[1].bedspaces.length()").value(5));
+                .andExpect(jsonPath("$.floors[1].beds").value(5))
+                // Two rooms on that floor at different prices.
+                .andExpect(jsonPath("$.floors[1].cheapestRent").value(2200.00))
+                .andExpect(jsonPath("$.floors[1].dearestRent").value(2500.00));
     }
 
     @Test
