@@ -276,12 +276,18 @@ class LeaseIntegrationTest extends IntegrationTest {
     void a_tenancy_stopped_early_is_recorded_as_such() throws Exception {
         String lease = let(anaToken, bedUnitId, bed1);
 
+        // Relative to today, not a date typed into the test. A fixed one was
+        // in the future when this was written and in the past by October,
+        // which failed as a lease ending before it began -- a test that
+        // rots on a calendar rather than on the behaviour it guards.
+        String leavingDay = LocalDate.now().plusDays(10).toString();
+
         // Two different things to look back on. Flattening them would lose the
         // only record of which happened.
-        endLease(lease, "{\"terminated\":true,\"endDate\":\"2026-09-30\"}")
+        endLease(lease, "{\"terminated\":true,\"endDate\":\"%s\"}".formatted(leavingDay))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("TERMINATED"))
-                .andExpect(jsonPath("$.endDate").value("2026-09-30"));
+                .andExpect(jsonPath("$.endDate").value(leavingDay));
     }
 
     @Test
