@@ -69,6 +69,16 @@ public enum NotificationType {
 
     /** To the landlord: an admin refused their payment, and why. */
     PLATFORM_PAYMENT_REJECTED,
+    /**
+     * To whichever side did not write it: there is something new in a
+     * conversation about a property.
+     *
+     * <p>Carries no name and does not quote the message. It is read on a lock
+     * screen, and what somebody said about where they want to live is not for
+     * whoever is holding the phone.
+     */
+    INQUIRY_MESSAGE,
+
     NEW_NOTICE_POSTED,
     LEASE_EXPIRING,
     STAFF_ASSIGNED
