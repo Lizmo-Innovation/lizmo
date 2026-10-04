@@ -368,20 +368,12 @@ class MaintenanceIntegrationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         String bed = json.readTree(beds).get(bedIndex).get("id").asText();
 
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
-                                .formatted(LocalDate.now(clock))))
-                .andExpect(status().isOk());
+        letRoom(
+                landlordToken,
+                tenantToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed),
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
+                        .formatted(LocalDate.now(clock)));
     }
 
     private void makeReadyForALease(String token) throws Exception {

@@ -489,21 +489,12 @@ class LandlordPaymentChannelIntegrationTest extends IntegrationTest {
         String otherUnit = json.readTree(unit).get("id").asText();
 
         makeReadyForALease(tenantToken);
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\"}".formatted(otherUnit)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + elena.token())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rentAmount\":7500.00,\"startDate\":\"%s\"}"
-                                .formatted(LocalDate.now(clock))))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                elena.token(),
+                tenantToken,
+                "{\"unitId\":\"%s\"}".formatted(otherUnit),
+                "{\"rentAmount\":7500.00,\"startDate\":\"%s\"}"
+                                .formatted(LocalDate.now(clock)));
         return json.readTree(lease).get("id").asText();
     }
 
@@ -592,21 +583,12 @@ class LandlordPaymentChannelIntegrationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         String bed = json.readTree(beds).get(0).get("id").asText();
 
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + elena.token())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
-                                .formatted(LocalDate.now(clock))))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                elena.token(),
+                tenantToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed),
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
+                                .formatted(LocalDate.now(clock)));
         return json.readTree(lease).get("id").asText();
     }
 

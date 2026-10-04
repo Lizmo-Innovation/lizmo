@@ -204,21 +204,15 @@ class AdminPropertyIntegrationTest extends IntegrationTest {
         return json.readTree(beds).get(index).get("id").asText();
     }
 
-    /** A tenant asks, the landlord accepts. Returns the lease id. */
-    private String let(String tenantToken, String request) throws Exception {
-        String asked = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        return idOf(mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(asked).get("id").asText() + "/accept")
-                .header("Authorization", "Bearer " + elena.token())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
-                        .formatted(LocalDate.now(clock)))));
+    /** A tenant asks, the landlord writes the lease. Returns the lease id. */
+    private String let(String tenantToken, String room) throws Exception {
+        String lease = letRoom(
+                elena.token(),
+                tenantToken,
+                room,
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
+                        .formatted(LocalDate.now(clock)));
+        return json.readTree(lease).get("id").asText();
     }
 
     private String idOf(ResultActions actions) throws Exception {

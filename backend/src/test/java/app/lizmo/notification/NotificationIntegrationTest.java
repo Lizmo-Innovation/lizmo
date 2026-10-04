@@ -87,17 +87,17 @@ class NotificationIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].type").value("REQUEST_RECEIVED"))
+                .andExpect(jsonPath("$[0].type").value("INQUIRY_MESSAGE"))
                 .andExpect(jsonPath("$[0].unread").value(true))
-                .andExpect(jsonPath("$[0].relatedEntityType").value("RENTAL_REQUEST"));
+                .andExpect(jsonPath("$[0].relatedEntityType").value("INQUIRY"));
     }
 
     /**
-     * A request is answered on its property, and the notification only knew
-     * the request. Without the property, tapping it could open nothing.
+     * A conversation happens on a property, and the notification only knew the
+     * conversation. Without the property, tapping it could open nothing.
      */
     @Test
-    void a_request_leads_the_landlord_to_its_property() throws Exception {
+    void a_message_leads_the_landlord_to_its_property() throws Exception {
         ask(anaToken);
 
         mvc.perform(get("/api/v1/me/notifications")
@@ -120,7 +120,9 @@ class NotificationIntegrationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(body).doesNotContainIgnoringCase("ana");
-        assertThat(body).contains("Bed 1 in 2B");
+        // Nor what they said, which is the other half of the same rule.
+        assertThat(body).doesNotContain("Anything free?");
+        assertThat(body).contains("Sunrise Apartments");
     }
 
     @Test
@@ -135,18 +137,11 @@ class NotificationIntegrationTest extends IntegrationTest {
     // ---- the landlord answers ---------------------------------------------
 
     @Test
-    void accepting_tells_the_tenant_the_terms() throws Exception {
-        String request = ask(anaToken);
-
-        mvc.perform(post("/api/v1/rental-requests/" + request + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(TERMS))
-                .andExpect(status().isOk());
+    void a_tenancy_tells_the_tenant_the_terms() throws Exception {
+        giveThemTheBed(ask(anaToken));
 
         String body = mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].type").value("REQUEST_ACCEPTED"))
                 .andExpect(jsonPath("$[0].relatedEntityType").value("LEASE"))
                 .andExpect(jsonPath("$[0].leaseId").isNotEmpty())
@@ -158,36 +153,39 @@ class NotificationIntegrationTest extends IntegrationTest {
                 .contains("5th").contains("2026-03-05");
     }
 
+    /**
+     * A conversation that simply stops being answered is what this whole
+     * change exists to fix, so ending one says so.
+     */
     @Test
-    void declining_tells_the_tenant() throws Exception {
-        String request = ask(anaToken);
+    void closing_tells_the_tenant() throws Exception {
+        String thread = ask(anaToken);
 
-        mvc.perform(post("/api/v1/rental-requests/" + request + "/decline")
+        mvc.perform(post("/api/v1/inquiries/" + thread + "/close")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk());
 
         mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + anaToken))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].type").value("REQUEST_DECLINED"));
+                .andExpect(jsonPath("$[0].type").value("REQUEST_DECLINED"))
+                .andExpect(jsonPath("$[0].relatedEntityType").value("INQUIRY"));
     }
 
-    /** The one this feature was built for. */
+    /**
+     * Nobody else is turned away by it. A conversation is about a building,
+     * not a room, so somebody else asking about the same place has lost
+     * nothing -- the landlord may well have another room for them.
+     */
     @Test
-    void losing_the_bed_to_somebody_else_is_not_silent() throws Exception {
+    void somebody_else_asking_is_not_told_anything() throws Exception {
         String anas = ask(anaToken);
         ask(beaToken);
 
-        mvc.perform(post("/api/v1/rental-requests/" + anas + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(TERMS))
-                .andExpect(status().isOk());
+        giveThemTheBed(anas);
 
         mvc.perform(get("/api/v1/me/notifications")
                         .header("Authorization", "Bearer " + beaToken))
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].type").value("REQUEST_SUPERSEDED"));
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     // ---- reading ----------------------------------------------------------
@@ -254,15 +252,26 @@ class NotificationIntegrationTest extends IntegrationTest {
 
     // ---- fixtures ---------------------------------------------------------
 
-    /** @return the request id */
+    /** @return the conversation id */
     private String ask(String token) throws Exception {
-        String created = mvc.perform(post("/api/v1/me/rental-requests")
+        String created = mvc.perform(post("/api/v1/inquiries")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed1)))
+                        .content("{\"propertyId\":\"%s\",\"message\":\"Anything free?\"}"
+                                .formatted(propertyId)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(created).get("id").asText();
+        return json.readTree(created).get("inquiry").get("id").asText();
+    }
+
+    /** The landlord writing the bed into a tenancy. */
+    private void giveThemTheBed(String thread) throws Exception {
+        mvc.perform(post("/api/v1/inquiries/" + thread + "/lease")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\",%s"
+                                .formatted(unitId, bed1, TERMS.trim().substring(1))))
+                .andExpect(status().isOk());
     }
 
     private String newestFor(String token) throws Exception {

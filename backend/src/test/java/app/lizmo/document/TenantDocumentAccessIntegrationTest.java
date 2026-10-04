@@ -110,19 +110,12 @@ class TenantDocumentAccessIntegrationTest extends IntegrationTest {
 
     /** @return the lease id */
     private String let(String tenantToken) throws Exception {
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
-                                .formatted(unitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                landlordToken,
+                tenantToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
+                                .formatted(unitId, bedId),
+                null);
         return json.readTree(lease).get("id").asText();
     }
 

@@ -6,6 +6,8 @@ import app.lizmo.inquiry.dto.InquiryDtos.InquirySummary;
 import app.lizmo.inquiry.dto.InquiryDtos.InquiryThread;
 import app.lizmo.inquiry.dto.InquiryDtos.NewMessage;
 import app.lizmo.inquiry.dto.InquiryDtos.StartInquiry;
+import app.lizmo.lease.dto.AcceptRequest;
+import app.lizmo.lease.dto.LeaseResponse;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -39,10 +41,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class InquiryController {
 
     private final InquiryService service;
+    private final InquiryLeaseService tenancies;
     private final CurrentUser currentUser;
 
-    public InquiryController(InquiryService service, CurrentUser currentUser) {
+    public InquiryController(
+            InquiryService service,
+            InquiryLeaseService tenancies,
+            CurrentUser currentUser) {
         this.service = service;
+        this.tenancies = tenancies;
         this.currentUser = currentUser;
     }
 
@@ -103,6 +110,26 @@ public class InquiryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markRead(@PathVariable UUID id) {
         service.markRead(id, currentUser.requireId());
+    }
+
+    @PostMapping("/{id}/lease")
+    @Operation(operationId = "startLeaseFromInquiry",
+            summary = "Write the tenancy they agreed on",
+            description = "The landlord, from inside the conversation. The room has to "
+                    + "be named here: the tenant was never shown which rooms exist. "
+                    + "Everything else defaults to the asking rent, today, and the day "
+                    + "of the month they move in.")
+    @ApiResponse(responseCode = "200", description = "The new tenancy",
+            content = @Content(schema = @Schema(implementation = LeaseResponse.class)))
+    @ApiResponse(responseCode = "409",
+            description = "The room has gone, or the tenant is not ready",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "404", description = "Not your property",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public LeaseResponse startLease(
+            @PathVariable UUID id,
+            @Valid @RequestBody(required = false) AcceptRequest terms) {
+        return tenancies.start(id, currentUser.requireId(), terms);
     }
 
     @PostMapping("/{id}/close")

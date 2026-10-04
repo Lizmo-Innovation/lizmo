@@ -216,6 +216,7 @@ public class InquiryService {
         if (inquiry.getStatus() == InquiryStatus.OPEN) {
             inquiry.close(clock.instant());
             inquiries.save(inquiry);
+            tellItIsOver(inquiry, userId);
         }
 
         return summarise(inquiry, userId, latestMessage(inquiry.getId()));
@@ -289,6 +290,33 @@ public class InquiryService {
                 fromTenant
                         ? "There is a new message about %s.".formatted(property.getName())
                         : "There is a new message about %s.".formatted(property.getName()),
+                NotificationEntityType.INQUIRY,
+                inquiry.getId());
+    }
+
+    /**
+     * Tells the other side it is over.
+     *
+     * <p>A conversation that simply stops being answered is the thing this
+     * whole change exists to fix. Whoever closed it can say why in the thread
+     * first; this is the plain fact that it happened.
+     */
+    private void tellItIsOver(Inquiry inquiry, UUID closedBy) {
+        boolean byTenant = inquiry.getTenantId().equals(closedBy);
+        Property property = properties.findById(inquiry.getPropertyId()).orElse(null);
+        String place = property == null ? "a property" : property.getName();
+
+        notifications.raise(
+                byTenant
+                        ? (property == null ? null : property.getLandlordId())
+                        : inquiry.getTenantId(),
+                NotificationType.REQUEST_DECLINED,
+                byTenant ? "They are not looking any more" : "That one is closed",
+                byTenant
+                        ? "Somebody has closed their conversation about %s.".formatted(place)
+                        : "The landlord has closed the conversation about %s. You can "
+                                .formatted(place)
+                                + "look for somewhere else in Lizmo.",
                 NotificationEntityType.INQUIRY,
                 inquiry.getId());
     }

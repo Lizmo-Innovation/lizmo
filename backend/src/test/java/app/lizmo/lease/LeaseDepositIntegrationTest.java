@@ -31,6 +31,7 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
     private String landlordToken;
     private String anaToken;
 
+    private String propertyId;
     private String unitId;
     private String bedId;
 
@@ -49,8 +50,9 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        String unit = mvc.perform(post("/api/v1/properties/"
-                        + json.readTree(property).get("id").asText() + "/units")
+        propertyId = json.readTree(property).get("id").asText();
+
+        String unit = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
                         .header("Authorization", "Bearer " + landlordToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -280,20 +282,23 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
 
     // ---- fixtures ---------------------------------------------------------
 
+    /**
+     * The landlord writing the lease, with the deposit and advance under test
+     * in the terms. Unlike {@code letRoom}, the response is handed back
+     * unchecked: half of these are about a refusal.
+     */
     private ResultActions accept(String terms) throws Exception {
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + anaToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
-                                .formatted(unitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+        String thread = askAbout(anaToken, propertyId);
 
-        return mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(terms));
+        com.fasterxml.jackson.databind.node.ObjectNode body =
+                (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(terms);
+        body.put("unitId", unitId);
+        body.put("bedId", bedId);
+
+        return mvc.perform(post("/api/v1/inquiries/" + thread + "/lease")
+                .header("Authorization", "Bearer " + landlordToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body.toString()));
     }
 
     private String leaseFrom(ResultActions accepted) throws Exception {

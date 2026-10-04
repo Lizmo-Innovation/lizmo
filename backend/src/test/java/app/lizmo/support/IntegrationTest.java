@@ -54,4 +54,75 @@ public abstract class IntegrationTest {
     /** Somebody to be signed in as. See {@link Accounts}. */
     @Autowired
     protected Accounts accounts;
+
+    /**
+     * A tenancy, the way one now comes about: a conversation about the
+     * property, and the landlord writing the lease into it.
+     *
+     * <p>Here rather than copied into every test that needs somebody housed.
+     * Two steps and a room that has to be named by the landlord is more
+     * ceremony than a test about rent or maintenance should carry.
+     *
+     * @param roomJson  which room, as the lease endpoint takes it:
+     *                  {@code {"unitId":...}} and optionally {@code "bedId"}.
+     * @param termsJson rent, start date, deposit and so on, or null for the
+     *                  defaults.
+     * @return the lease, as the API describes it
+     */
+    protected String letRoom(
+            String landlordToken, String tenantToken, String roomJson, String termsJson)
+            throws Exception {
+
+        com.fasterxml.jackson.databind.node.ObjectNode room =
+                (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(roomJson);
+
+        // The thread is about the property; the room is named when the lease
+        // is written. The unit knows which property it is in.
+        String propertyId = json.readTree(mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .get("/api/v1/units/" + room.get("unitId").asText())
+                                .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString())
+                .get("propertyId").asText();
+
+        String thread = json.readTree(mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/inquiries")
+                                .header("Authorization", "Bearer " + tenantToken)
+                                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                                .content("{\"propertyId\":\"%s\"}".formatted(propertyId)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isCreated())
+                .andReturn().getResponse().getContentAsString())
+                .get("inquiry").get("id").asText();
+
+        com.fasterxml.jackson.databind.node.ObjectNode terms = termsJson == null
+                ? json.createObjectNode()
+                : (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(termsJson);
+        terms.setAll(room);
+
+        return mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/inquiries/" + thread + "/lease")
+                                .header("Authorization", "Bearer " + landlordToken)
+                                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                                .content(terms.toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isOk())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    /** The conversation alone, for a test about what happens before a lease. */
+    protected String askAbout(String tenantToken, String propertyId) throws Exception {
+        return json.readTree(mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/inquiries")
+                                .header("Authorization", "Bearer " + tenantToken)
+                                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                                .content("{\"propertyId\":\"%s\"}".formatted(propertyId)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isCreated())
+                .andReturn().getResponse().getContentAsString())
+                .get("inquiry").get("id").asText();
+    }
 }

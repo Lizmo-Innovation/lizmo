@@ -20,5 +20,5 @@ public interface LeaseRepository extends JpaRepository<Lease, UUID> {
 
     Optional<Lease> findByBedIdAndStatus(UUID bedId, LeaseStatus status);
 
-    Optional<Lease> findByRentalRequestId(UUID rentalRequestId);
+    Optional<Lease> findByInquiryIdAndStatus(UUID inquiryId, LeaseStatus status);
 }

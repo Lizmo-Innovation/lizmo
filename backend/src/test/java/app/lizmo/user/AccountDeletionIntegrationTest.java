@@ -342,20 +342,12 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
 
         readyForALease(ana.token());
 
-        String requestId = json.readTree(mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + ana.token())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
-                                .formatted(unitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString()).get("id").asText();
-
-        String leaseId = json.readTree(mvc.perform(post("/api/v1/rental-requests/" + requestId + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"monthlyRent\":2500.00,\"startDate\":\"2026-10-01\"}"))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString()).get("id").asText();
+        String leaseId = json.readTree(letRoom(
+                        landlordToken,
+                        ana.token(),
+                        "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bedId),
+                        "{\"startDate\":\"2026-10-01\"}"))
+                .get("id").asText();
 
         return new World(landlordToken, ana.token(), ana.id(), propertyId, leaseId);
     }

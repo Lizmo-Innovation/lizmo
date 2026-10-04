@@ -114,18 +114,7 @@ class LeaseIntegrationTest extends IntegrationTest {
         String body = bedId == null
                 ? "{\"unitId\":\"%s\"}".formatted(unitId)
                 : "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bedId);
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        String requestId = json.readTree(request).get("id").asText();
-
-        String lease = mvc.perform(post("/api/v1/rental-requests/" + requestId + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(landlordToken, tenantToken, body, null);
         return json.readTree(lease).get("id").asText();
     }
 

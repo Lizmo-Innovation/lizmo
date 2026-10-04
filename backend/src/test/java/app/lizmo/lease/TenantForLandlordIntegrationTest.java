@@ -31,6 +31,7 @@ import org.springframework.mock.web.MockMultipartFile;
  */
 class TenantForLandlordIntegrationTest extends IntegrationTest {
 
+    private String propertyId;
     private String landlordToken;
     private String otherLandlordToken;
     private String anaToken;
@@ -55,7 +56,7 @@ class TenantForLandlordIntegrationTest extends IntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        String propertyId = json.readTree(property).get("id").asText();
+        propertyId = json.readTree(property).get("id").asText();
 
         String unit = mvc.perform(post("/api/v1/properties/" + propertyId + "/units")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -102,21 +103,22 @@ class TenantForLandlordIntegrationTest extends IntegrationTest {
     }
 
     /**
-     * The same number the request view withholds. Worth asserting from both
-     * ends: the two records are deliberately different shapes, and a change
-     * that quietly made them the same would defeat the point of either.
+     * The same details the conversation withholds. Worth asserting from both
+     * ends: somebody asking and somebody housed are deliberately different
+     * shapes, and a change that quietly made them the same would defeat the
+     * point of either.
      */
     @Test
-    void a_pending_request_still_withholds_what_a_lease_releases()
+    void a_conversation_still_withholds_what_a_lease_releases()
             throws Exception {
-        String request = ask(anaToken);
+        String thread = ask(anaToken);
 
-        String pending = mvc.perform(get("/api/v1/rental-requests/" + request)
+        String asking = mvc.perform(get("/api/v1/inquiries/" + thread)
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        org.assertj.core.api.Assertions.assertThat(pending)
+        org.assertj.core.api.Assertions.assertThat(asking)
                 .doesNotContain("1234-5678-9012")
                 .doesNotContain("Rosa Dela Cruz");
     }
@@ -182,17 +184,11 @@ class TenantForLandlordIntegrationTest extends IntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + beaToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\"}"
-                                .formatted(json.readTree(otherUnit).get("id").asText())))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isOk());
+        letRoom(
+                landlordToken,
+                beaToken,
+                "{\"unitId\":\"%s\"}".formatted(json.readTree(otherUnit).get("id").asText()),
+                null);
 
         mvc.perform(get("/api/v1/me/tenants")
                         .header("Authorization", "Bearer " + landlordToken))
@@ -273,25 +269,18 @@ class TenantForLandlordIntegrationTest extends IntegrationTest {
 
     // ---- fixtures ---------------------------------------------------------
 
-    /** @return the request id */
+    /** @return the conversation id */
     private String ask(String tenantToken) throws Exception {
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
-                                .formatted(unitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(request).get("id").asText();
+        return askAbout(tenantToken, propertyId);
     }
 
     /** @return the lease id */
     private String let(String tenantToken) throws Exception {
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + ask(tenantToken) + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                landlordToken,
+                tenantToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bedId),
+                null);
         return json.readTree(lease).get("id").asText();
     }
 

@@ -103,9 +103,14 @@ public class Lease {
     @Column(nullable = false)
     private LeaseStatus status = LeaseStatus.ACTIVE;
 
-    /** The request that became this lease, where there was one. */
-    @Column(name = "rental_request_id", updatable = false)
-    private UUID rentalRequestId;
+    /**
+     * The conversation this tenancy came out of, where there was one.
+     *
+     * <p>Null for a tenancy written directly -- a boarding house moving onto
+     * Lizmo has tenants who never asked anybody anything.
+     */
+    @Column(name = "inquiry_id", updatable = false)
+    private UUID inquiryId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -123,9 +128,9 @@ public class Lease {
             BigDecimal rentAmount,
             short dueDateDay,
             LocalDate startDate,
-            UUID rentalRequestId) {
+            UUID inquiryId) {
         this(tenantId, unitId, bedId, rentAmount, dueDateDay, startDate,
-                rentalRequestId, null, null);
+                inquiryId, null, null);
     }
 
     public Lease(
@@ -135,7 +140,7 @@ public class Lease {
             BigDecimal rentAmount,
             short dueDateDay,
             LocalDate startDate,
-            UUID rentalRequestId,
+            UUID inquiryId,
             BigDecimal depositAmount,
             BigDecimal advanceAmount) {
         this.depositAmount = depositAmount;
@@ -146,7 +151,7 @@ public class Lease {
         this.rentAmount = rentAmount;
         this.dueDateDay = dueDateDay;
         this.startDate = startDate;
-        this.rentalRequestId = rentalRequestId;
+        this.inquiryId = inquiryId;
     }
 
     /**
@@ -251,8 +256,8 @@ public class Lease {
         return status;
     }
 
-    public UUID getRentalRequestId() {
-        return rentalRequestId;
+    public UUID getInquiryId() {
+        return inquiryId;
     }
 
     public Instant getCreatedAt() {

@@ -5,7 +5,7 @@ import app.lizmo.billing.PaymentRepository;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.notification.dto.NotificationResponse;
-import app.lizmo.rental.RentalRequestRepository;
+import app.lizmo.inquiry.InquiryRepository;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -33,19 +33,19 @@ public class NotificationService {
     private final NotificationRepository notifications;
     private final PaymentRepository payments;
     private final BillingPeriodRepository periods;
-    private final RentalRequestRepository requests;
+    private final InquiryRepository inquiries;
     private final Clock clock;
 
     public NotificationService(
             NotificationRepository notifications,
             PaymentRepository payments,
             BillingPeriodRepository periods,
-            RentalRequestRepository requests,
+            InquiryRepository inquiries,
             Clock clock) {
         this.notifications = notifications;
         this.payments = payments;
         this.periods = periods;
-        this.requests = requests;
+        this.inquiries = inquiries;
         this.clock = clock;
     }
 
@@ -94,9 +94,15 @@ public class NotificationService {
         periods.findAllById(idsOf(rows, NotificationEntityType.BILLING_PERIOD))
                 .forEach(period -> leaseOfPeriod.put(period.getId(), period.getLeaseId()));
 
-        Map<UUID, UUID> propertyOfRequest = new HashMap<>();
-        requests.findAllById(idsOf(rows, NotificationEntityType.RENTAL_REQUEST))
-                .forEach(request -> propertyOfRequest.put(request.getId(), request.getPropertyId()));
+        // Which property a conversation is about, so tapping the notification
+        // can open the place as well as the thread. Rows raised before threads
+        // existed point at a rental request, which is gone: they resolve to
+        // nothing rather than being rewritten, because they are a record of
+        // what happened.
+        Map<UUID, UUID> propertyOfInquiry = new HashMap<>();
+        inquiries.findAllById(idsOf(rows, NotificationEntityType.INQUIRY))
+                .forEach(inquiry -> propertyOfInquiry.put(
+                        inquiry.getId(), inquiry.getPropertyId()));
 
         return rows.stream()
                 .map(row -> {
@@ -108,8 +114,8 @@ public class NotificationService {
                         case BILLING_PERIOD -> leaseOfPeriod.get(about);
                         default -> null;
                     };
-                    UUID property = kind == NotificationEntityType.RENTAL_REQUEST
-                            ? propertyOfRequest.get(about)
+                    UUID property = kind == NotificationEntityType.INQUIRY
+                            ? propertyOfInquiry.get(about)
                             : null;
                     return NotificationResponse.of(row, lease, property);
                 })

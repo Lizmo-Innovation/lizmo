@@ -592,30 +592,20 @@ class PlatformBillingIntegrationTest extends IntegrationTest {
                         .header("Authorization", "Bearer " + landlordToken))
                 .andReturn().getResponse().getContentAsString();
         String bed = json.readTree(beds).get(bedIndex).get("id").asText();
-        accept(ask(tenantToken, "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(bedUnitId, bed)));
+        let(tenantToken, "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(bedUnitId, bed));
     }
 
     private void letWholeUnit(String tenantToken, String unitId) throws Exception {
-        accept(ask(tenantToken, "{\"unitId\":\"%s\"}".formatted(unitId)));
+        let(tenantToken, "{\"unitId\":\"%s\"}".formatted(unitId));
     }
 
-    private String ask(String tenantToken, String body) throws Exception {
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(request).get("id").asText();
-    }
-
-    private void accept(String request) throws Exception {
-        mvc.perform(post("/api/v1/rental-requests/" + request + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
-                                .formatted(LocalDate.now(clock))))
-                .andExpect(status().isOk());
+    private void let(String tenantToken, String room) throws Exception {
+        letRoom(
+                landlordToken,
+                tenantToken,
+                room,
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"}"
+                        .formatted(LocalDate.now(clock)));
     }
 
     private void makeReadyForALease(String token) throws Exception {

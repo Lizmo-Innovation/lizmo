@@ -335,21 +335,12 @@ class RentReminderIntegrationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         String bed = json.readTree(beds).get(0).get("id").asText();
 
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + anaToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rentAmount\":2500.00,\"startDate\":\"%s\"%s}"
-                                .formatted(start, extra == null ? "" : "," + extra)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                landlordToken,
+                anaToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(unitId, bed),
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"%s}"
+                                .formatted(start, extra == null ? "" : "," + extra));
         String id = json.readTree(lease).get("id").asText();
 
         // The schedule is written when somebody looks, and the job reads what

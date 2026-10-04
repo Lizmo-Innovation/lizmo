@@ -80,29 +80,31 @@ class PropertyLockIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.accountStatus").value("LOCKED"));
     }
 
-    private String askForTheBed() throws Exception {
-        return json.readTree(mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + tenantToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"unitId":"%s","bedId":"%s"}
-                                """.formatted(bedUnitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString()).get("id").asText();
+    /** @return the conversation they started */
+    private String askAboutThePlace() throws Exception {
+        return askAbout(tenantToken, propertyId);
+    }
+
+    /** The landlord trying to write the bed into a lease. */
+    private org.springframework.test.web.servlet.ResultActions giveThemTheBed(String thread)
+            throws Exception {
+        return mvc.perform(post("/api/v1/inquiries/" + thread + "/lease")
+                .header("Authorization", "Bearer " + landlordToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"unitId":"%s","bedId":"%s","startDate":"2026-10-01"}
+                        """.formatted(bedUnitId, bedId)));
     }
 
     // ---- what locking stops ------------------------------------------------
 
     @Test
     void a_locked_property_takes_no_new_tenants() throws Exception {
-        String requestId = askForTheBed();
+        String thread = askAboutThePlace();
         lockIt();
 
         // The point of the mechanism: an unpaid property does not grow.
-        mvc.perform(post("/api/v1/rental-requests/" + requestId + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"monthlyRent\":2500.00,\"startDate\":\"2026-10-01\"}"))
+        giveThemTheBed(thread)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED_UNPAID_INVOICE"));
     }
@@ -143,27 +145,24 @@ class PropertyLockIntegrationTest extends IntegrationTest {
 
     @Test
     void a_locked_property_can_still_answer_no() throws Exception {
-        String requestId = askForTheBed();
+        String thread = askAboutThePlace();
         lockIt();
 
         // The tenant waiting for an answer is not the one who owes Lizmo money.
-        // Blocking this leaves their request PENDING for ever, on a room they
-        // could be looking for elsewhere.
-        mvc.perform(post("/api/v1/rental-requests/" + requestId + "/decline")
+        // Blocking this leaves their conversation open for ever, about a room
+        // they could be looking for elsewhere.
+        mvc.perform(post("/api/v1/inquiries/" + thread + "/close")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DECLINED"));
+                .andExpect(jsonPath("$.status").value("CLOSED"));
     }
 
     @Test
     void a_locked_property_can_still_end_a_tenancy() throws Exception {
-        String requestId = askForTheBed();
-        String leaseId = json.readTree(mvc.perform(post("/api/v1/rental-requests/" + requestId + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"monthlyRent\":2500.00,\"startDate\":\"2026-10-01\"}"))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString()).get("id").asText();
+        String thread = askAboutThePlace();
+        String leaseId = json.readTree(giveThemTheBed(thread)
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString()).get("id").asText();
 
         lockIt();
 
@@ -184,7 +183,7 @@ class PropertyLockIntegrationTest extends IntegrationTest {
         mvc.perform(get("/api/v1/properties/" + propertyId)
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/properties/" + propertyId + "/rental-requests")
+        mvc.perform(get("/api/v1/inquiries")
                         .header("Authorization", "Bearer " + landlordToken))
                 .andExpect(status().isOk());
     }

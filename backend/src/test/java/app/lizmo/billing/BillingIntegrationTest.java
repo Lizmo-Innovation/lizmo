@@ -319,24 +319,15 @@ class BillingIntegrationTest extends IntegrationTest {
 
     /** @return the lease id */
     private String let(LocalDate start, String extraTerms) throws Exception {
-        String request = mvc.perform(post("/api/v1/me/rental-requests")
-                        .header("Authorization", "Bearer " + anaToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
-                                .formatted(unitId, bedId)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-
         String terms = "{\"rentAmount\":2500.00,\"startDate\":\"%s\"%s}".formatted(
                 start, extraTerms == null ? "" : "," + extraTerms);
 
-        String lease = mvc.perform(post("/api/v1/rental-requests/"
-                        + json.readTree(request).get("id").asText() + "/accept")
-                        .header("Authorization", "Bearer " + landlordToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(terms))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
+        String lease = letRoom(
+                landlordToken,
+                anaToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}"
+                                .formatted(unitId, bedId),
+                terms);
         return json.readTree(lease).get("id").asText();
     }
 
