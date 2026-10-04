@@ -38,6 +38,7 @@ import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/screens/delete_account_screen.dart';
 import 'package:lizmo/screens/notifications_screen.dart';
+import 'package:lizmo/screens/inquiries_screen.dart';
 import 'package:lizmo/screens/inquiry_screen.dart';
 import 'package:lizmo/inquiry/inquiry_providers.dart';
 import 'package:lizmo/screens/tenant_payments_screen.dart';
@@ -5690,6 +5691,87 @@ void _landlordRequestTests() {
       await open(tester, api);
 
       expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    // ---- the whole list ---------------------------------------------------
+
+    /// Today shows what is still going. This is everything, including what is
+    /// over -- "what did that person say in March" is a real question, and the
+    /// card is a to-do list rather than an archive.
+    testWidgets('every conversation is listed, waiting on you first',
+        (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        summary(id: 'i3', withName: 'Carla Diaz', unread: false,
+            status: InquirySummaryStatusEnum.CLOSED),
+        summary(id: 'i2', withName: 'Bea Santos', unread: false,
+            status: InquirySummaryStatusEnum.LEASED),
+        summary(withName: 'Ana Reyes'),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Conversations').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiriesScreen), findsOneWidget);
+
+      final ana = tester.getTopLeft(find.byKey(const ValueKey('thread-i1'))).dy;
+      final bea = tester.getTopLeft(find.byKey(const ValueKey('thread-i2'))).dy;
+      final carla = tester.getTopLeft(find.byKey(const ValueKey('thread-i3'))).dy;
+
+      // Unanswered, then the tenancy, then what is over.
+      expect(ana, lessThan(bea));
+      expect(bea, lessThan(carla));
+      expect(find.text('Renting'), findsOneWidget);
+      expect(find.text('Ended'), findsOneWidget);
+    });
+
+    testWidgets('a conversation in the list opens it', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [summary()]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Conversations').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('thread-i1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    testWidgets('nothing yet says what will appear here', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Conversations').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing here yet'), findsOneWidget);
+    });
+
+    /// A card on a dashboard, not an inbox: a landlord with twenty of them
+    /// would have nothing else on the screen.
+    testWidgets('Today shows three and offers the rest', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        for (var i = 1; i <= 5; i++)
+          summary(id: 'i$i', withName: 'Asker $i', unread: i == 1),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('inquiry-i1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('inquiry-i5')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('all-conversations')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiriesScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('thread-i5')), findsOneWidget);
     });
 
     /// The tenant's side: the card that said only "waiting for a reply" now

@@ -103,7 +103,27 @@ class _Queue extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          for (final thread in threads) _ThreadRow(thread: thread),
+          // The three oldest-waiting, not all of them: this is a card on a
+          // dashboard, and a landlord with twenty conversations would have
+          // nothing else on the screen.
+          for (final thread in threads.take(3)) _ThreadRow(thread: thread),
+          if (threads.length > 3)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('all-conversations'),
+                onPressed: () => context.push(Routes.inquiries),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  'All ${threads.length} conversations',
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                ),
+              ),
+            ),
         ],
       ),
     );

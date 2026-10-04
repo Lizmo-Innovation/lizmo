@@ -111,8 +111,26 @@ class TenantHomeScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                   ],
 
-                  for (final thread in waiting) ...[
+                  // The two most recent. Somebody looking at six places at
+                  // once has a list for that, and Home is for what is next.
+                  for (final thread in waiting.take(2)) ...[
                     _Waiting(thread: thread),
+                    const SizedBox(height: 12),
+                  ],
+
+                  if (waiting.length > 2) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        key: const ValueKey('all-conversations'),
+                        onPressed: () => context.push(Routes.inquiries),
+                        child: Text(
+                          'All ${waiting.length} conversations',
+                          style: LizmoType.rowSub
+                              .copyWith(color: LizmoColors.teal900),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                   ],
 

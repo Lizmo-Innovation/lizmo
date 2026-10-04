@@ -15,6 +15,7 @@ import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_share_screen.dart';
+import 'screens/inquiries_screen.dart';
 import 'screens/inquiry_screen.dart';
 import 'screens/rent_roll_screen.dart';
 import 'screens/landlord_home_screen.dart';
@@ -122,6 +123,12 @@ abstract final class Routes {
   static const forgotPassword = '/forgot-password';
 
   static const noProfile = '/no-profile';
+
+  /// Every conversation this account is in, from either side.
+  ///
+  /// Top level for the same reason one conversation is: it serves a landlord
+  /// and a tenant alike, so it cannot belong to either one's tabs.
+  static const inquiries = '/conversations';
 
   /// One conversation about a place.
   ///
@@ -309,6 +316,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.update,
         builder: (context, state) => const UpdateScreen(),
+      ),
+      GoRoute(
+        path: Routes.inquiries,
+        builder: (context, state) => const InquiriesScreen(),
       ),
       GoRoute(
         path: '/inquiry/:id',
