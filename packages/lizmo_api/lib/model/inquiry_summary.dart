@@ -10,19 +10,18 @@
 
 part of openapi.api;
 
-class RentalRequestResponse {
-  /// Returns a new [RentalRequestResponse] instance.
-  RentalRequestResponse({
+class InquirySummary {
+  /// Returns a new [InquirySummary] instance.
+  InquirySummary({
     this.id,
     this.propertyId,
     this.propertyName,
-    this.unitId,
-    this.unitNumber,
-    this.bedId,
-    this.bedLabel,
+    this.withName,
     this.status,
+    this.lastMessage,
+    this.lastMessageAt,
+    this.unread,
     this.createdAt,
-    this.decidedAt,
   });
 
   ///
@@ -55,7 +54,9 @@ class RentalRequestResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? unitId;
+  String? withName;
+
+  InquirySummaryStatusEnum? status;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -63,7 +64,7 @@ class RentalRequestResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? unitNumber;
+  String? lastMessage;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -71,7 +72,7 @@ class RentalRequestResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? bedId;
+  DateTime? lastMessageAt;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -79,9 +80,7 @@ class RentalRequestResponse {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? bedLabel;
-
-  RentalRequestResponseStatusEnum? status;
+  bool? unread;
 
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -91,26 +90,17 @@ class RentalRequestResponse {
   ///
   DateTime? createdAt;
 
-  ///
-  /// Please note: This property should have been non-nullable! Since the specification file
-  /// does not include a default value (using the "default:" property), however, the generated
-  /// source code must fall back to having a nullable type.
-  /// Consider adding a "default:" property in the specification file to hide this note.
-  ///
-  DateTime? decidedAt;
-
   @override
-  bool operator ==(Object other) => identical(this, other) || other is RentalRequestResponse &&
+  bool operator ==(Object other) => identical(this, other) || other is InquirySummary &&
     other.id == id &&
     other.propertyId == propertyId &&
     other.propertyName == propertyName &&
-    other.unitId == unitId &&
-    other.unitNumber == unitNumber &&
-    other.bedId == bedId &&
-    other.bedLabel == bedLabel &&
+    other.withName == withName &&
     other.status == status &&
-    other.createdAt == createdAt &&
-    other.decidedAt == decidedAt;
+    other.lastMessage == lastMessage &&
+    other.lastMessageAt == lastMessageAt &&
+    other.unread == unread &&
+    other.createdAt == createdAt;
 
   @override
   int get hashCode =>
@@ -118,16 +108,15 @@ class RentalRequestResponse {
     (id == null ? 0 : id!.hashCode) +
     (propertyId == null ? 0 : propertyId!.hashCode) +
     (propertyName == null ? 0 : propertyName!.hashCode) +
-    (unitId == null ? 0 : unitId!.hashCode) +
-    (unitNumber == null ? 0 : unitNumber!.hashCode) +
-    (bedId == null ? 0 : bedId!.hashCode) +
-    (bedLabel == null ? 0 : bedLabel!.hashCode) +
+    (withName == null ? 0 : withName!.hashCode) +
     (status == null ? 0 : status!.hashCode) +
-    (createdAt == null ? 0 : createdAt!.hashCode) +
-    (decidedAt == null ? 0 : decidedAt!.hashCode);
+    (lastMessage == null ? 0 : lastMessage!.hashCode) +
+    (lastMessageAt == null ? 0 : lastMessageAt!.hashCode) +
+    (unread == null ? 0 : unread!.hashCode) +
+    (createdAt == null ? 0 : createdAt!.hashCode);
 
   @override
-  String toString() => 'RentalRequestResponse[id=$id, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, status=$status, createdAt=$createdAt, decidedAt=$decidedAt]';
+  String toString() => 'InquirySummary[id=$id, propertyId=$propertyId, propertyName=$propertyName, withName=$withName, status=$status, lastMessage=$lastMessage, lastMessageAt=$lastMessageAt, unread=$unread, createdAt=$createdAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -146,48 +135,43 @@ class RentalRequestResponse {
     } else {
       json[r'propertyName'] = null;
     }
-    if (this.unitId != null) {
-      json[r'unitId'] = this.unitId;
+    if (this.withName != null) {
+      json[r'withName'] = this.withName;
     } else {
-      json[r'unitId'] = null;
-    }
-    if (this.unitNumber != null) {
-      json[r'unitNumber'] = this.unitNumber;
-    } else {
-      json[r'unitNumber'] = null;
-    }
-    if (this.bedId != null) {
-      json[r'bedId'] = this.bedId;
-    } else {
-      json[r'bedId'] = null;
-    }
-    if (this.bedLabel != null) {
-      json[r'bedLabel'] = this.bedLabel;
-    } else {
-      json[r'bedLabel'] = null;
+      json[r'withName'] = null;
     }
     if (this.status != null) {
       json[r'status'] = this.status;
     } else {
       json[r'status'] = null;
     }
+    if (this.lastMessage != null) {
+      json[r'lastMessage'] = this.lastMessage;
+    } else {
+      json[r'lastMessage'] = null;
+    }
+    if (this.lastMessageAt != null) {
+      json[r'lastMessageAt'] = this.lastMessageAt!.toUtc().toIso8601String();
+    } else {
+      json[r'lastMessageAt'] = null;
+    }
+    if (this.unread != null) {
+      json[r'unread'] = this.unread;
+    } else {
+      json[r'unread'] = null;
+    }
     if (this.createdAt != null) {
       json[r'createdAt'] = this.createdAt!.toUtc().toIso8601String();
     } else {
       json[r'createdAt'] = null;
     }
-    if (this.decidedAt != null) {
-      json[r'decidedAt'] = this.decidedAt!.toUtc().toIso8601String();
-    } else {
-      json[r'decidedAt'] = null;
-    }
     return json;
   }
 
-  /// Returns a new [RentalRequestResponse] instance and imports its values from
+  /// Returns a new [InquirySummary] instance and imports its values from
   /// [value] if it's a [Map], null otherwise.
   // ignore: prefer_constructors_over_static_methods
-  static RentalRequestResponse? fromJson(dynamic value) {
+  static InquirySummary? fromJson(dynamic value) {
     if (value is Map) {
       final json = value.cast<String, dynamic>();
 
@@ -198,27 +182,26 @@ class RentalRequestResponse {
         return true;
       }());
 
-      return RentalRequestResponse(
+      return InquirySummary(
         id: mapValueOfType<String>(json, r'id'),
         propertyId: mapValueOfType<String>(json, r'propertyId'),
         propertyName: mapValueOfType<String>(json, r'propertyName'),
-        unitId: mapValueOfType<String>(json, r'unitId'),
-        unitNumber: mapValueOfType<String>(json, r'unitNumber'),
-        bedId: mapValueOfType<String>(json, r'bedId'),
-        bedLabel: mapValueOfType<String>(json, r'bedLabel'),
-        status: RentalRequestResponseStatusEnum.fromJson(json[r'status']),
+        withName: mapValueOfType<String>(json, r'withName'),
+        status: InquirySummaryStatusEnum.fromJson(json[r'status']),
+        lastMessage: mapValueOfType<String>(json, r'lastMessage'),
+        lastMessageAt: mapDateTime(json, r'lastMessageAt', r''),
+        unread: mapValueOfType<bool>(json, r'unread'),
         createdAt: mapDateTime(json, r'createdAt', r''),
-        decidedAt: mapDateTime(json, r'decidedAt', r''),
       );
     }
     return null;
   }
 
-  static List<RentalRequestResponse> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <RentalRequestResponse>[];
+  static List<InquirySummary> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <InquirySummary>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = RentalRequestResponse.fromJson(row);
+        final value = InquirySummary.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -227,12 +210,12 @@ class RentalRequestResponse {
     return result.toList(growable: growable);
   }
 
-  static Map<String, RentalRequestResponse> mapFromJson(dynamic json) {
-    final map = <String, RentalRequestResponse>{};
+  static Map<String, InquirySummary> mapFromJson(dynamic json) {
+    final map = <String, InquirySummary>{};
     if (json is Map && json.isNotEmpty) {
       json = json.cast<String, dynamic>(); // ignore: parameter_assignments
       for (final entry in json.entries) {
-        final value = RentalRequestResponse.fromJson(entry.value);
+        final value = InquirySummary.fromJson(entry.value);
         if (value != null) {
           map[entry.key] = value;
         }
@@ -241,14 +224,14 @@ class RentalRequestResponse {
     return map;
   }
 
-  // maps a json object with a list of RentalRequestResponse-objects as value to a dart map
-  static Map<String, List<RentalRequestResponse>> mapListFromJson(dynamic json, {bool growable = false,}) {
-    final map = <String, List<RentalRequestResponse>>{};
+  // maps a json object with a list of InquirySummary-objects as value to a dart map
+  static Map<String, List<InquirySummary>> mapListFromJson(dynamic json, {bool growable = false,}) {
+    final map = <String, List<InquirySummary>>{};
     if (json is Map && json.isNotEmpty) {
       // ignore: parameter_assignments
       json = json.cast<String, dynamic>();
       for (final entry in json.entries) {
-        map[entry.key] = RentalRequestResponse.listFromJson(entry.value, growable: growable,);
+        map[entry.key] = InquirySummary.listFromJson(entry.value, growable: growable,);
       }
     }
     return map;
@@ -260,16 +243,14 @@ class RentalRequestResponse {
 }
 
 
-enum RentalRequestResponseStatusEnum {
-  PENDING._(r'PENDING'),
-  ACCEPTED._(r'ACCEPTED'),
-  DECLINED._(r'DECLINED'),
-  WITHDRAWN._(r'WITHDRAWN'),
-  SUPERSEDED._(r'SUPERSEDED'),
+enum InquirySummaryStatusEnum {
+  OPEN._(r'OPEN'),
+  CLOSED._(r'CLOSED'),
+  LEASED._(r'LEASED'),
   ;
 
   /// Instantiate a new enum with the provided value.
-  const RentalRequestResponseStatusEnum._(this._value);
+  const InquirySummaryStatusEnum._(this._value);
 
   /// The underlying value of this enum member.
   final String _value;
@@ -280,17 +261,17 @@ enum RentalRequestResponseStatusEnum {
   /// Encodes this enum as a value suitable for JSON.
   String toJson() => _value;
 
-  /// Returns the instance of [RentalRequestResponseStatusEnum] that was successfully decoded
+  /// Returns the instance of [InquirySummaryStatusEnum] that was successfully decoded
   /// from the passed [value] on success, null otherwise.
-  static RentalRequestResponseStatusEnum? fromJson(dynamic value) => RentalRequestResponseStatusEnumTypeTransformer().decode(value);
+  static InquirySummaryStatusEnum? fromJson(dynamic value) => InquirySummaryStatusEnumTypeTransformer().decode(value);
 
-  /// Returns a [List] containing instances of [RentalRequestResponseStatusEnum]
+  /// Returns a [List] containing instances of [InquirySummaryStatusEnum]
   /// that were successfully decoded from the passed [JSON][json].
-  static List<RentalRequestResponseStatusEnum> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <RentalRequestResponseStatusEnum>[];
+  static List<InquirySummaryStatusEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <InquirySummaryStatusEnum>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = RentalRequestResponseStatusEnum.fromJson(row);
+        final value = InquirySummaryStatusEnum.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -300,16 +281,16 @@ enum RentalRequestResponseStatusEnum {
   }
 }
 
-/// Transformation class that can [encode] an instance of [RentalRequestResponseStatusEnum] to String,
-/// and [decode] dynamic data back to [RentalRequestResponseStatusEnum].
-class RentalRequestResponseStatusEnumTypeTransformer {
-  factory RentalRequestResponseStatusEnumTypeTransformer() => _instance ??= const RentalRequestResponseStatusEnumTypeTransformer._();
+/// Transformation class that can [encode] an instance of [InquirySummaryStatusEnum] to String,
+/// and [decode] dynamic data back to [InquirySummaryStatusEnum].
+class InquirySummaryStatusEnumTypeTransformer {
+  factory InquirySummaryStatusEnumTypeTransformer() => _instance ??= const InquirySummaryStatusEnumTypeTransformer._();
 
-  const RentalRequestResponseStatusEnumTypeTransformer._();
+  const InquirySummaryStatusEnumTypeTransformer._();
 
-  String encode(RentalRequestResponseStatusEnum data) => data._value;
+  String encode(InquirySummaryStatusEnum data) => data._value;
 
-  /// Returns the instance of [RentalRequestResponseStatusEnum] that was successfully decoded
+  /// Returns the instance of [InquirySummaryStatusEnum] that was successfully decoded
   /// from the passed [data] value on success, null otherwise.
   ///
   /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
@@ -318,17 +299,15 @@ class RentalRequestResponseStatusEnumTypeTransformer {
   ///
   /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
   /// and users are still using an old app with the old code.
-  RentalRequestResponseStatusEnum? decode(dynamic data, {bool allowNull = true}) {
-    if (data is RentalRequestResponseStatusEnum) {
+  InquirySummaryStatusEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is InquirySummaryStatusEnum) {
       return data;
     }
     if (data != null) {
       switch (data) {
-        case r'PENDING': return RentalRequestResponseStatusEnum.PENDING;
-        case r'ACCEPTED': return RentalRequestResponseStatusEnum.ACCEPTED;
-        case r'DECLINED': return RentalRequestResponseStatusEnum.DECLINED;
-        case r'WITHDRAWN': return RentalRequestResponseStatusEnum.WITHDRAWN;
-        case r'SUPERSEDED': return RentalRequestResponseStatusEnum.SUPERSEDED;
+        case r'OPEN': return InquirySummaryStatusEnum.OPEN;
+        case r'CLOSED': return InquirySummaryStatusEnum.CLOSED;
+        case r'LEASED': return InquirySummaryStatusEnum.LEASED;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
@@ -339,7 +318,7 @@ class RentalRequestResponseStatusEnumTypeTransformer {
   }
 
   /// The singleton instance of this transformer.
-  static RentalRequestResponseStatusEnumTypeTransformer? _instance;
+  static InquirySummaryStatusEnumTypeTransformer? _instance;
 }
 
 

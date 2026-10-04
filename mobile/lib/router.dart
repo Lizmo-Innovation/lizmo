@@ -15,7 +15,7 @@ import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_share_screen.dart';
-import 'screens/rental_requests_screen.dart';
+import 'screens/inquiry_screen.dart';
 import 'screens/rent_roll_screen.dart';
 import 'screens/landlord_home_screen.dart';
 import 'screens/landlord_shell.dart';
@@ -123,6 +123,13 @@ abstract final class Routes {
 
   static const noProfile = '/no-profile';
 
+  /// One conversation about a place.
+  ///
+  /// Top level and over the tabs, on both sides: it is the same screen for
+  /// the landlord and the tenant, and a conversation is a place you go rather
+  /// than a panel inside something else.
+  static String inquiry(String id) => '/inquiry/$id';
+
   /// Where a build too old to be used ends up, and stays.
   static const update = '/update';
 
@@ -164,7 +171,6 @@ abstract final class Detail {
   static const notifications = 'notifications';
   static String tenancy(String leaseId) => 'lease/$leaseId';
   static String property(String id) => 'property/$id';
-  static String requests(String propertyId) => 'property/$propertyId/requests';
   static String share(String propertyId) => 'property/$propertyId/share';
   static String unit(String propertyId, String unitId) =>
       'property/$propertyId/unit/$unitId';
@@ -303,6 +309,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.update,
         builder: (context, state) => const UpdateScreen(),
+      ),
+      GoRoute(
+        path: '/inquiry/:id',
+        builder: (context, state) =>
+            InquiryScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: Routes.login,
@@ -527,12 +538,6 @@ List<RouteBase> _landlordDetails() => [
           propertyId: state.pathParameters['propertyId']!,
         ),
         routes: [
-          GoRoute(
-            path: 'requests',
-            builder: (context, state) => RentalRequestsScreen(
-              propertyId: state.pathParameters['propertyId']!,
-            ),
-          ),
           GoRoute(
             path: 'share',
             builder: (context, state) => PropertyShareScreen(

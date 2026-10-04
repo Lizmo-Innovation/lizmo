@@ -12,10 +12,6 @@
     ],
     "tags": [
         {
-            "name": "Requests to answer",
-            "description": "What is waiting for a landlord"
-        },
-        {
             "name": "Maintenance to handle",
             "description": "What tenants have reported"
         },
@@ -26,6 +22,10 @@
         {
             "name": "Lizmo billing",
             "description": "What a landlord owes Lizmo"
+        },
+        {
+            "name": "Asking about a place",
+            "description": "Conversations about a property"
         },
         {
             "name": "Leases",
@@ -78,10 +78,6 @@
         {
             "name": "Rent",
             "description": "What is owed, and what has come in"
-        },
-        {
-            "name": "Asking for a room",
-            "description": "Requests a tenant has sent"
         }
     ],
     "paths": {
@@ -1121,101 +1117,6 @@
                 }
             }
         },
-        "/api/v1/rental-requests/{id}/decline": {
-            "post": {
-                "tags": [
-                    "Requests to answer"
-                ],
-                "summary": "Say no",
-                "description": "Frees nothing, because a request never held anything.",
-                "operationId": "declineRentalRequest",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The declined request",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RentalRequestForLandlord"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/rental-requests/{id}/accept": {
-            "post": {
-                "tags": [
-                    "Requests to answer"
-                ],
-                "summary": "Say yes, and create the lease",
-                "description": "Terms are optional and default to the asking rent, today, and the day of the month the tenant moves in. Everyone else still waiting on the same bed or unit is superseded.",
-                "operationId": "acceptRentalRequest",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AcceptRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "The new lease",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LeaseResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not your property",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "The bed or unit has gone",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/properties": {
             "get": {
                 "tags": [
@@ -1439,103 +1340,6 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/rental-requests": {
-            "get": {
-                "tags": [
-                    "Asking for a room"
-                ],
-                "summary": "What I have asked for",
-                "operationId": "listMyRentalRequests",
-                "responses": {
-                    "200": {
-                        "description": "Newest first",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/RentalRequestResponse"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "Asking for a room"
-                ],
-                "summary": "Ask for a bed or a unit",
-                "description": "Needs a complete tenant profile. Omit bedId to ask for the whole unit.",
-                "operationId": "sendRentalRequest",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RentalRequestCreate"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "The request, waiting on the landlord",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RentalRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Profile incomplete, slot taken, or already asked",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/me/rental-requests/{id}/withdraw": {
-            "post": {
-                "tags": [
-                    "Asking for a room"
-                ],
-                "summary": "Change my mind",
-                "description": "Only while it is still waiting on the landlord.",
-                "operationId": "withdrawRentalRequest",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The withdrawn request",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RentalRequestResponse"
                                 }
                             }
                         }
@@ -2664,6 +2468,244 @@
                 }
             }
         },
+        "/api/v1/inquiries": {
+            "get": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "My conversations",
+                "description": "Both sides: threads I started, and threads about places I let. Most recently spoken in first.",
+                "operationId": "listMyInquiries",
+                "responses": {
+                    "200": {
+                        "description": "The list",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/InquirySummary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "Ask about a place",
+                "description": "Starts the conversation, or reopens the one that already exists with this landlord about this property. Needs a contact number, so they can ring back.",
+                "operationId": "startInquiry",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartInquiry"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The conversation",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquiryThread"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "No contact number yet",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}/read": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "Mark it seen",
+                "description": "For a list the reader has been through without opening every thread.",
+                "operationId": "markInquiryRead",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Marked"
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}/messages": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "Say something",
+                "operationId": "sendInquiryMessage",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewMessage"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "What was said",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquiryMessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Empty, too long, or closed",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}/lease": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "Write the tenancy they agreed on",
+                "description": "The landlord, from inside the conversation. The room has to be named here: the tenant was never shown which rooms exist. Everything else defaults to the asking rent, today, and the day of the month they move in.",
+                "operationId": "startLeaseFromInquiry",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The new tenancy",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your property",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The room has gone, or the tenant is not ready",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}/close": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "End it",
+                "description": "From either side. Asking about the place again reopens it.",
+                "operationId": "closeInquiry",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The closed conversation",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquirySummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/register/start": {
             "post": {
                 "tags": [
@@ -3495,128 +3537,6 @@
                 }
             }
         },
-        "/api/v1/rental-requests": {
-            "get": {
-                "tags": [
-                    "Requests to answer"
-                ],
-                "summary": "Everybody waiting on this landlord, across every property",
-                "description": "Pending only, oldest first across every property the caller owns. Empty for an account that owns none.",
-                "operationId": "listRentalRequestsToAnswer",
-                "responses": {
-                    "200": {
-                        "description": "The requests",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/RentalRequestForLandlord"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/rental-requests/{id}": {
-            "get": {
-                "tags": [
-                    "Requests to answer"
-                ],
-                "summary": "One request in full",
-                "operationId": "getRentalRequest",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The request",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RentalRequestForLandlord"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not yours, or no such request",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/properties/{propertyId}/rental-requests": {
-            "get": {
-                "tags": [
-                    "Requests to answer"
-                ],
-                "summary": "Who has asked about this property",
-                "description": "Pending only by default, oldest first: a queue is answered in the order people joined it.",
-                "operationId": "listRentalRequestsForProperty",
-                "parameters": [
-                    {
-                        "name": "propertyId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    },
-                    {
-                        "name": "pendingOnly",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The requests",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/RentalRequestForLandlord"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not your property",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/properties/{propertyId}/leases": {
             "get": {
                 "tags": [
@@ -4340,6 +4260,49 @@
                     },
                     "404": {
                         "description": "Not your lease",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}": {
+            "get": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "One conversation",
+                "description": "Everything said in it. Reading it marks it seen for whoever asked.",
+                "operationId": "readInquiry",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The conversation",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquiryThread"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not yours, or not there",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -5310,105 +5273,6 @@
                 },
                 "description": "Settings the console owns"
             },
-            "RentalRequestForLandlord": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "propertyId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "propertyName": {
-                        "type": "string"
-                    },
-                    "unitId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "unitNumber": {
-                        "type": "string"
-                    },
-                    "bedId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "bedLabel": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "PENDING",
-                            "ACCEPTED",
-                            "DECLINED",
-                            "WITHDRAWN",
-                            "SUPERSEDED"
-                        ]
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "decidedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "tenantId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "tenantName": {
-                        "type": "string"
-                    },
-                    "tenantPhone": {
-                        "type": "string"
-                    },
-                    "birthdate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "occupation": {
-                        "type": "string"
-                    },
-                    "permanentAddress": {
-                        "type": "string"
-                    },
-                    "age": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "idType": {
-                        "type": "string",
-                        "enum": [
-                            "PHILSYS",
-                            "UMID",
-                            "SSS",
-                            "GSIS",
-                            "DRIVERS_LICENSE",
-                            "PASSPORT",
-                            "PHILHEALTH",
-                            "POSTAL",
-                            "VOTERS",
-                            "TIN",
-                            "PRC",
-                            "OTHER"
-                        ]
-                    },
-                    "tenantStillNeeds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "askingRent": {
-                        "type": "number"
-                    }
-                },
-                "description": "A request waiting on the landlord"
-            },
             "AcceptRequest": {
                 "type": "object",
                 "properties": {
@@ -5564,76 +5428,6 @@
                     }
                 },
                 "description": "A photograph a tenant has uploaded about themselves"
-            },
-            "RentalRequestCreate": {
-                "type": "object",
-                "properties": {
-                    "propertyId": {
-                        "type": "string",
-                        "description": "The property asked about. Omit when naming a unit",
-                        "format": "uuid"
-                    },
-                    "unitId": {
-                        "type": "string",
-                        "description": "Omit to ask about the property as a whole",
-                        "format": "uuid"
-                    },
-                    "bedId": {
-                        "type": "string",
-                        "description": "Omit to ask for the whole unit",
-                        "format": "uuid"
-                    }
-                },
-                "description": "A request about a property, or for one room in it"
-            },
-            "RentalRequestResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "propertyId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "propertyName": {
-                        "type": "string"
-                    },
-                    "unitId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "unitNumber": {
-                        "type": "string"
-                    },
-                    "bedId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "bedLabel": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "PENDING",
-                            "ACCEPTED",
-                            "DECLINED",
-                            "WITHDRAWN",
-                            "SUPERSEDED"
-                        ]
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "decidedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "description": "A request a tenant has sent"
             },
             "PlatformInvoiceLine": {
                 "type": "object",
@@ -6813,6 +6607,7 @@
                             "PLATFORM_PROPERTY_LOCKED",
                             "PLATFORM_PAYMENT_CONFIRMED",
                             "PLATFORM_PAYMENT_REJECTED",
+                            "INQUIRY_MESSAGE",
                             "NEW_NOTICE_POSTED",
                             "LEASE_EXPIRING",
                             "STAFF_ASSIGNED"
@@ -6831,6 +6626,7 @@
                         "type": "string",
                         "enum": [
                             "RENTAL_REQUEST",
+                            "INQUIRY",
                             "LEASE",
                             "BILLING_PERIOD",
                             "PAYMENT",
@@ -7343,6 +7139,168 @@
                     }
                 },
                 "description": "What the app checks when it opens"
+            },
+            "StartInquiry": {
+                "required": [
+                    "propertyId"
+                ],
+                "type": "object",
+                "properties": {
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "message": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string"
+                    }
+                },
+                "description": "Asking about a property"
+            },
+            "Applicant": {
+                "type": "object",
+                "properties": {
+                    "tenantId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "age": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "occupation": {
+                        "type": "string"
+                    },
+                    "permanentAddress": {
+                        "type": "string"
+                    },
+                    "idType": {
+                        "type": "string",
+                        "enum": [
+                            "PHILSYS",
+                            "UMID",
+                            "SSS",
+                            "GSIS",
+                            "DRIVERS_LICENSE",
+                            "PASSPORT",
+                            "PHILHEALTH",
+                            "POSTAL",
+                            "VOTERS",
+                            "TIN",
+                            "PRC",
+                            "OTHER"
+                        ]
+                    },
+                    "stillNeeds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "description": "The person asking, as the landlord sees them"
+            },
+            "InquiryMessageResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "sentAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "mine": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "Something somebody said"
+            },
+            "InquirySummary": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "withName": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "OPEN",
+                            "CLOSED",
+                            "LEASED"
+                        ]
+                    },
+                    "lastMessage": {
+                        "type": "string"
+                    },
+                    "lastMessageAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "unread": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A conversation, as it appears in a list"
+            },
+            "InquiryThread": {
+                "type": "object",
+                "properties": {
+                    "inquiry": {
+                        "$ref": "#/components/schemas/InquirySummary"
+                    },
+                    "messages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InquiryMessageResponse"
+                        }
+                    },
+                    "applicant": {
+                        "$ref": "#/components/schemas/Applicant"
+                    }
+                },
+                "description": "A conversation and its messages"
+            },
+            "NewMessage": {
+                "required": [
+                    "body"
+                ],
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Is the bed on the second floor still free?"
+                    }
+                },
+                "description": "Something to say"
             }
         }
     }

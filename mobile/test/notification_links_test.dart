@@ -8,12 +8,16 @@ NotificationResponse _news(
   NotificationResponseTypeEnum type, {
   String? leaseId,
   String? propertyId,
+  NotificationResponseRelatedEntityTypeEnum? entity,
+  String? entityId,
 }) =>
     NotificationResponse(
       id: 'n1',
       type: type,
       leaseId: leaseId,
       propertyId: propertyId,
+      relatedEntityType: entity,
+      relatedEntityId: entityId,
     );
 
 /// Where tapping a notification goes, decided without a widget in sight.
@@ -24,14 +28,17 @@ void main() {
   group('a landlord', () {
     test('somebody asking opens the requests for that property', () {
       final to = destinationOf(
-        _news(NotificationResponseTypeEnum.REQUEST_RECEIVED, propertyId: 'p1'),
+        _news(NotificationResponseTypeEnum.INQUIRY_MESSAGE,
+            entity: NotificationResponseRelatedEntityTypeEnum.INQUIRY,
+            entityId: 'i1'),
         LizmoProfile.landlord,
       );
 
+      // The conversation itself, from either side: it is where both the
+      // answer and the next thing to say live.
       expect(
         to,
-        isA<OpenDetail>()
-            .having((d) => d.detail, 'detail', Detail.requests('p1')),
+        isA<OpenScreen>().having((d) => d.path, 'path', Routes.inquiry('i1')),
       );
     });
 

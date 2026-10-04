@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
@@ -33,7 +34,7 @@ class TenantHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(myTenantProfileProvider);
-    final requests = ref.watch(myRentalRequestsProvider);
+    final threads = ref.watch(myInquiriesProvider);
     final leases = ref.watch(myLeasesProvider);
 
     final lease = leases.valueOrNull?.firstOrNull;
@@ -42,8 +43,10 @@ class TenantHomeScreen extends ConsumerWidget {
         : ref.watch(myBillingProvider(lease.id!)).valueOrNull;
     final owed = months?.fold<num>(
         0, (sum, month) => sum + (month.outstanding ?? 0));
-    final waiting = (requests.valueOrNull ?? const <RentalRequestResponse>[])
-        .where((request) => request.status == RentalRequestResponseStatusEnum.PENDING)
+    // A conversation they are in and nobody has ended. The landlord may have
+    // replied in it — that is still "going on", and the card says which.
+    final waiting = (threads.valueOrNull ?? const <InquirySummary>[])
+        .where((thread) => thread.status == InquirySummaryStatusEnum.OPEN)
         .toList();
     final details = profile.valueOrNull;
     // Two different gaps, and only one of them is worth saying at a time.
@@ -51,8 +54,7 @@ class TenantHomeScreen extends ConsumerWidget {
     // waiting, an unfinished profile is what the landlord is held up by.
     final noNumber = details != null && (details.contactPhone ?? '').isEmpty;
     final holdingUpALandlord = details?.readyForALease == false &&
-        (requests.valueOrNull ?? const <RentalRequestResponse>[]).any(
-            (request) => request.status == RentalRequestResponseStatusEnum.PENDING);
+        waiting.isNotEmpty;
     final unfinished = noNumber || holdingUpALandlord;
 
     final nothingToSay = !unfinished && waiting.isEmpty && lease == null;
@@ -94,7 +96,7 @@ class TenantHomeScreen extends ConsumerWidget {
             child: RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(myTenantProfileProvider);
-                ref.invalidate(myRentalRequestsProvider);
+                ref.invalidate(myInquiriesProvider);
                 ref.invalidate(myLeasesProvider);
                 if (lease != null) {
                   ref.invalidate(myBillingProvider(lease.id!));
@@ -109,8 +111,8 @@ class TenantHomeScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                   ],
 
-                  for (final request in waiting) ...[
-                    _Waiting(request: request),
+                  for (final thread in waiting) ...[
+                    _Waiting(thread: thread),
                     const SizedBox(height: 12),
                   ],
 
@@ -183,36 +185,35 @@ class _FinishYourProfile extends StatelessWidget {
 /// The one genuinely silent part of the app before this screen existed: a
 /// tenant asked for a bed, closed the app, and had no way to find out what
 /// happened. The endpoint has always been there.
+/// A conversation the tenant is in, on the screen they open first.
+///
+/// It used to say only that somebody was waiting on a landlord, with nothing
+/// to do about it. Now it opens the conversation, which is where both the
+/// answer and the next thing to say live.
 class _Waiting extends StatelessWidget {
-  const _Waiting({required this.request});
+  const _Waiting({required this.thread});
 
-  final RentalRequestResponse request;
+  final InquirySummary thread;
 
   @override
   Widget build(BuildContext context) {
-    final place = request.propertyName ?? 'a property';
-
-    // Scanning a code names no room — the floors show counts, not rooms — so
-    // this is the usual shape now, and "Unit null" is what it used to read.
-    final detail = request.unitNumber == null
-        ? 'You asked about $place. Your landlord has not answered yet. They '
-            'choose which room when they do.'
-        : 'You asked for ${_where(request)} at $place. Your landlord has not '
-            'answered yet.';
+    final place = thread.propertyName ?? 'a property';
+    final unread = thread.unread ?? false;
+    final said = thread.lastMessage;
 
     return _Card(
-      colour: LizmoColors.white,
-      textColour: LizmoColors.ink,
-      icon: Icons.hourglass_empty,
-      title: 'Waiting for a reply',
-      detail: detail,
+      colour: unread ? LizmoColors.tealBg : LizmoColors.white,
+      textColour: unread ? LizmoColors.teal900 : LizmoColors.ink,
+      icon: unread ? Icons.mark_chat_unread_outlined : Icons.hourglass_empty,
+      title: unread ? 'They have replied' : 'Waiting for a reply',
+      detail: said == null
+          ? 'You asked about $place. Say what you are looking for.'
+          : '$place · $said',
+      actionLabel: 'Open',
+      onAction: (context) => context.push(Routes.inquiry(thread.id!)),
     );
   }
 }
-
-String _where(RentalRequestResponse request) => request.bedLabel == null
-    ? 'Unit ${request.unitNumber}'
-    : '${request.bedLabel}, ${request.unitNumber}';
 
 class _Settled extends StatelessWidget {
   const _Settled({required this.lease});

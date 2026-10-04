@@ -12,6 +12,7 @@ import 'package:lizmo/screens/payment_channels_screen.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
+import 'package:lizmo/inquiry/inquiry_providers.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/splash_screen.dart';
 import 'package:lizmo/screens/update_screen.dart';
@@ -62,15 +63,16 @@ Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-        requestsToAnswerProvider.overrideWith((ref) async => [
-              RentalRequestForLandlord(
-                id: 'r1',
+        myInquiriesProvider.overrideWith((ref) async => [
+              InquirySummary(
+                id: 'i1',
                 propertyId: 'p1',
                 propertyName: 'Sunrise Apartments',
-                unitId: 'u1',
-                unitNumber: '2B',
-                bedLabel: 'Bed 3',
-                tenantName: 'Miguel Cruz',
+                withName: 'Miguel Cruz',
+                status: InquirySummaryStatusEnum.OPEN,
+                lastMessage: 'Is there a bed free in November?',
+                lastMessageAt: DateTime.now().subtract(const Duration(hours: 5)),
+                unread: true,
                 createdAt: DateTime.now().subtract(const Duration(days: 2)),
               ),
             ]),
@@ -183,15 +185,16 @@ Widget _detailApp() => ProviderScope(
           ))),
         ),
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-        requestsToAnswerProvider.overrideWith((ref) async => [
-              RentalRequestForLandlord(
-                id: 'r1',
+        myInquiriesProvider.overrideWith((ref) async => [
+              InquirySummary(
+                id: 'i1',
                 propertyId: 'p1',
                 propertyName: 'Sunrise Apartments',
-                unitId: 'u1',
-                unitNumber: '2B',
-                bedLabel: 'Bed 3',
-                tenantName: 'Miguel Cruz',
+                withName: 'Miguel Cruz',
+                status: InquirySummaryStatusEnum.OPEN,
+                lastMessage: 'Is there a bed free in November?',
+                lastMessageAt: DateTime.now().subtract(const Duration(hours: 5)),
+                unread: true,
                 createdAt: DateTime.now().subtract(const Duration(days: 2)),
               ),
             ]),
@@ -495,8 +498,8 @@ void main() {
           myTenantDocumentsProvider.overrideWith(
             (ref) async => const <TenantDocumentResponse>[],
           ),
-          myRentalRequestsProvider.overrideWith(
-            (ref) async => const <RentalRequestResponse>[],
+          myInquiriesProvider.overrideWith(
+            (ref) async => const <InquirySummary>[],
           ),
           myLeasesProvider.overrideWith((ref) async => [
                 LeaseResponse(
@@ -657,8 +660,8 @@ void main() {
         ),
         maintenanceToHandleProvider
             .overrideWith((ref) async => const <MaintenanceReportResponse>[]),
-        requestsToAnswerProvider
-            .overrideWith((ref) async => const <RentalRequestForLandlord>[]),
+        myInquiriesProvider
+            .overrideWith((ref) async => const <InquirySummary>[]),
         myLizmoStatementsProvider
             .overrideWith((ref) async => const <PlatformStatementResponse>[]),
         propertiesProvider.overrideWith((ref) async => [

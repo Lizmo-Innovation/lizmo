@@ -54,10 +54,6 @@ final findingAPlaceApiProvider = Provider<FindingAPlaceApi>((ref) {
   return FindingAPlaceApi(ref.watch(apiClientProvider));
 });
 
-final askingForARoomApiProvider = Provider<AskingForARoomApi>((ref) {
-  return AskingForARoomApi(ref.watch(apiClientProvider));
-});
-
 /// A property found by the code on its gate, with what is free inside it.
 ///
 /// Keyed by the code rather than an id, because the code is all a tenant has:
@@ -77,17 +73,6 @@ final propertyByCodeProvider = FutureProvider.autoDispose
       );
     }
     return property;
-  } catch (error) {
-    throw ApiFailure.from(error);
-  }
-});
-
-/// What this tenant has asked for, newest first.
-final myRentalRequestsProvider =
-    FutureProvider.autoDispose<List<RentalRequestResponse>>((ref) async {
-  try {
-    return await ref.watch(askingForARoomApiProvider).listMyRentalRequests() ??
-        const [];
   } catch (error) {
     throw ApiFailure.from(error);
   }

@@ -82,9 +82,13 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**updatePaymentChannel**](doc//AdminApi.md#updatepaymentchannel) | **PUT** /api/v1/admin/platform-payment-channels/{id} | Change a payment channel
 *AdminApi* | [**updatePlatformSettings**](doc//AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
 *AdminApi* | [**uploadPaymentChannelQr**](doc//AdminApi.md#uploadpaymentchannelqr) | **POST** /api/v1/admin/platform-payment-channels/{id}/qr | Set a channel's QR
-*AskingForARoomApi* | [**listMyRentalRequests**](doc//AskingForARoomApi.md#listmyrentalrequests) | **GET** /api/v1/me/rental-requests | What I have asked for
-*AskingForARoomApi* | [**sendRentalRequest**](doc//AskingForARoomApi.md#sendrentalrequest) | **POST** /api/v1/me/rental-requests | Ask for a bed or a unit
-*AskingForARoomApi* | [**withdrawRentalRequest**](doc//AskingForARoomApi.md#withdrawrentalrequest) | **POST** /api/v1/me/rental-requests/{id}/withdraw | Change my mind
+*AskingAboutAPlaceApi* | [**closeInquiry**](doc//AskingAboutAPlaceApi.md#closeinquiry) | **POST** /api/v1/inquiries/{id}/close | End it
+*AskingAboutAPlaceApi* | [**listMyInquiries**](doc//AskingAboutAPlaceApi.md#listmyinquiries) | **GET** /api/v1/inquiries | My conversations
+*AskingAboutAPlaceApi* | [**markInquiryRead**](doc//AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
+*AskingAboutAPlaceApi* | [**readInquiry**](doc//AskingAboutAPlaceApi.md#readinquiry) | **GET** /api/v1/inquiries/{id} | One conversation
+*AskingAboutAPlaceApi* | [**sendInquiryMessage**](doc//AskingAboutAPlaceApi.md#sendinquirymessage) | **POST** /api/v1/inquiries/{id}/messages | Say something
+*AskingAboutAPlaceApi* | [**startInquiry**](doc//AskingAboutAPlaceApi.md#startinquiry) | **POST** /api/v1/inquiries | Ask about a place
+*AskingAboutAPlaceApi* | [**startLeaseFromInquiry**](doc//AskingAboutAPlaceApi.md#startleasefrominquiry) | **POST** /api/v1/inquiries/{id}/lease | Write the tenancy they agreed on
 *AuthApi* | [**completePasswordReset**](doc//AuthApi.md#completepasswordreset) | **POST** /api/v1/auth/password-reset/complete | Set a new password
 *AuthApi* | [**login**](doc//AuthApi.md#login) | **POST** /api/v1/auth/login | Sign in with email or phone plus password
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
@@ -150,11 +154,6 @@ Class | Method | HTTP request | Description
 *RentApi* | [**listMyPayments**](doc//RentApi.md#listmypayments) | **GET** /api/v1/me/leases/{leaseId}/payments | What I have paid
 *RentApi* | [**recordPayment**](doc//RentApi.md#recordpayment) | **POST** /api/v1/leases/{leaseId}/payments | Record money I received
 *RentApi* | [**rejectPayment**](doc//RentApi.md#rejectpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/reject | Say it did not arrive
-*RequestsToAnswerApi* | [**acceptRentalRequest**](doc//RequestsToAnswerApi.md#acceptrentalrequest) | **POST** /api/v1/rental-requests/{id}/accept | Say yes, and create the lease
-*RequestsToAnswerApi* | [**declineRentalRequest**](doc//RequestsToAnswerApi.md#declinerentalrequest) | **POST** /api/v1/rental-requests/{id}/decline | Say no
-*RequestsToAnswerApi* | [**getRentalRequest**](doc//RequestsToAnswerApi.md#getrentalrequest) | **GET** /api/v1/rental-requests/{id} | One request in full
-*RequestsToAnswerApi* | [**listRentalRequestsForProperty**](doc//RequestsToAnswerApi.md#listrentalrequestsforproperty) | **GET** /api/v1/properties/{propertyId}/rental-requests | Who has asked about this property
-*RequestsToAnswerApi* | [**listRentalRequestsToAnswer**](doc//RequestsToAnswerApi.md#listrentalrequeststoanswer) | **GET** /api/v1/rental-requests | Everybody waiting on this landlord, across every property
 *SigningUpApi* | [**acceptInvitation**](doc//SigningUpApi.md#acceptinvitation) | **POST** /api/v1/auth/invitations/accept | Become a landlord
 *SigningUpApi* | [**completeRegistration**](doc//SigningUpApi.md#completeregistration) | **POST** /api/v1/auth/register/complete | Finish signing up
 *SigningUpApi* | [**getInvitation**](doc//SigningUpApi.md#getinvitation) | **GET** /api/v1/auth/invitations/{token} | What this invitation is for
@@ -187,6 +186,7 @@ Class | Method | HTTP request | Description
  - [AdminPropertyUnit](doc//AdminPropertyUnit.md)
  - [ApiError](doc//ApiError.md)
  - [AppVersion](doc//AppVersion.md)
+ - [Applicant](doc//Applicant.md)
  - [ArrearsRow](doc//ArrearsRow.md)
  - [AuthResponse](doc//AuthResponse.md)
  - [AwaitingRow](doc//AwaitingRow.md)
@@ -198,6 +198,9 @@ Class | Method | HTTP request | Description
  - [CompletePasswordResetRequest](doc//CompletePasswordResetRequest.md)
  - [CompleteRegistrationRequest](doc//CompleteRegistrationRequest.md)
  - [EndLeaseRequest](doc//EndLeaseRequest.md)
+ - [InquiryMessageResponse](doc//InquiryMessageResponse.md)
+ - [InquirySummary](doc//InquirySummary.md)
+ - [InquiryThread](doc//InquiryThread.md)
  - [InvitationDetailsResponse](doc//InvitationDetailsResponse.md)
  - [InvitationSentResponse](doc//InvitationSentResponse.md)
  - [InviteLandlordRequest](doc//InviteLandlordRequest.md)
@@ -209,6 +212,7 @@ Class | Method | HTTP request | Description
  - [MaintenanceNote](doc//MaintenanceNote.md)
  - [MaintenanceReportResponse](doc//MaintenanceReportResponse.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
+ - [NewMessage](doc//NewMessage.md)
  - [NotificationResponse](doc//NotificationResponse.md)
  - [OccupancySummary](doc//OccupancySummary.md)
  - [PaymentChannelOrder](doc//PaymentChannelOrder.md)
@@ -232,10 +236,8 @@ Class | Method | HTTP request | Description
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RentRoll](doc//RentRoll.md)
  - [RentRollRow](doc//RentRollRow.md)
- - [RentalRequestCreate](doc//RentalRequestCreate.md)
- - [RentalRequestForLandlord](doc//RentalRequestForLandlord.md)
- - [RentalRequestResponse](doc//RentalRequestResponse.md)
  - [ReportProblemRequest](doc//ReportProblemRequest.md)
+ - [StartInquiry](doc//StartInquiry.md)
  - [StartPasswordResetRequest](doc//StartPasswordResetRequest.md)
  - [StartPasswordResetResponse](doc//StartPasswordResetResponse.md)
  - [StartRegistrationRequest](doc//StartRegistrationRequest.md)

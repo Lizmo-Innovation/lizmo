@@ -15,7 +15,8 @@ import '../widgets/notification_bell.dart';
 import '../widgets/occupancy_card.dart';
 import '../widgets/repairs_card.dart';
 import '../widgets/role_switcher.dart';
-import '../widgets/requests_card.dart';
+import '../inquiry/inquiry_providers.dart';
+import '../widgets/inquiries_card.dart';
 
 /// The landlord's day: what needs them, then how things stand.
 ///
@@ -39,7 +40,7 @@ class LandlordHomeScreen extends ConsumerWidget {
       AuthSignedIn(:final session) => session,
       _ => null,
     };
-    final requests = ref.watch(requestsToAnswerProvider).valueOrNull;
+    final threads = ref.watch(myInquiriesProvider).valueOrNull;
     final rent = ref.watch(collectionsProvider).valueOrNull;
     final lizmo = ref.watch(myLizmoStatementsProvider).valueOrNull;
     final repairs = ref.watch(maintenanceToHandleProvider).valueOrNull;
@@ -48,8 +49,13 @@ class LandlordHomeScreen extends ConsumerWidget {
     // Only once every answer is in. Unknown is not nothing, and "nothing
     // needs you" over a queue that failed to load would be a lie told at the
     // worst possible moment.
-    final caughtUp = requests != null &&
-        requests.isEmpty &&
+    // What is waiting on them: a conversation where the other side spoke
+    // last. A thread they have already answered is not a chore.
+    final unanswered =
+        threads?.where((thread) => thread.unread ?? false).length;
+
+    final caughtUp = unanswered != null &&
+        unanswered == 0 &&
         rent != null &&
         (rent.awaitingConfirmation ?? 0) == 0 &&
         rent.inArrears.isEmpty &&
@@ -76,7 +82,7 @@ class LandlordHomeScreen extends ConsumerWidget {
             ),
             stats: [
               LatticeHeaderStat(
-                value: _count(requests?.length),
+                value: _count(unanswered),
                 label: 'To answer',
               ),
               LatticeHeaderStat(
@@ -101,7 +107,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(propertiesProvider);
                 ref.invalidate(collectionsProvider);
                 ref.invalidate(occupancyProvider);
-                ref.invalidate(requestsToAnswerProvider);
+                ref.invalidate(myInquiriesProvider);
                 ref.invalidate(myLizmoStatementsProvider);
                 ref.invalidate(maintenanceToHandleProvider);
                 ref.invalidate(myPaymentChannelsProvider);
@@ -116,7 +122,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                   // People asking come first: they are the most perishable.
                   // Somebody told nothing for a week has found a room
                   // elsewhere. Each card renders nothing when it has nothing.
-                  const RequestsCard(),
+                  const InquiriesCard(),
                   const ConfirmPaymentsCard(),
                   // Before arrears: a tenant is living with it now, and
                   // arrears can wait a day.

@@ -5,6 +5,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
@@ -240,8 +241,18 @@ class _WaitingRequests extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final waiting = ref.watch(pendingRequestsProvider(propertyId)).valueOrNull;
-    if (waiting == null || waiting.isEmpty) {
+    // This property's share of the landlord's conversations, unanswered
+     // first. The list is already loaded for Today, so this costs nothing.
+    final threads = ref.watch(myInquiriesProvider).valueOrNull;
+    final waiting = threads == null
+        ? const <InquirySummary>[]
+        : [
+            for (final thread in threads)
+              if (thread.propertyId == propertyId &&
+                  thread.status == InquirySummaryStatusEnum.OPEN)
+                thread,
+          ];
+    if (waiting.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -252,7 +263,12 @@ class _WaitingRequests extends ConsumerWidget {
         color: LizmoColors.amberBg,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          onTap: () => context.openInTab(Detail.requests(propertyId)),
+          // Straight into the oldest unanswered one: a list of two is not
+          // worth a screen of its own when the card is already a list.
+          onTap: () => context.push(Routes.inquiry(
+              (waiting.firstWhere((thread) => thread.unread ?? false,
+                      orElse: () => waiting.first))
+                  .id!)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),

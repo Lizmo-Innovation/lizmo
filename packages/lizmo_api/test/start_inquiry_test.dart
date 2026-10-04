@@ -11,19 +11,18 @@
 import 'package:lizmo_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for RentalRequestCreate
+// tests for StartInquiry
 void main() {
-  // final instance = RentalRequestCreate();
+  // final instance = StartInquiry();
 
-  group('test RentalRequestCreate', () {
-    // String unitId
-    test('to test the property `unitId`', () async {
+  group('test StartInquiry', () {
+    // String propertyId
+    test('to test the property `propertyId`', () async {
       // TODO
     });
 
-    // Omit to ask for the whole unit
-    // String bedId
-    test('to test the property `bedId`', () async {
+    // String message
+    test('to test the property `message`', () async {
       // TODO
     });
 

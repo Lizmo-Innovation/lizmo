@@ -22,6 +22,17 @@ final class OpenDetail extends NotificationDestination {
   final String detail;
 }
 
+/// A screen that lives above the tabs rather than inside one.
+///
+/// A conversation is the case: the same screen serves both sides, so it
+/// cannot belong to a landlord tab or a tenant one.
+final class OpenScreen extends NotificationDestination {
+  const OpenScreen(this.path);
+
+  /// A full path from [Routes].
+  final String path;
+}
+
 /// One of the tenant's tabs. A tab rather than a detail, because a tenant's
 /// rent and their place are each a tab of their own already.
 final class SwitchTab extends NotificationDestination {
@@ -65,10 +76,11 @@ NotificationDestination? _forLandlord(
     return report == null ? null : OpenDetail(Detail.maintenance(report));
   }
 
-  // A request is answered on its property, among any others for it.
-  if (type == 'REQUEST_RECEIVED') {
-    final property = notification.propertyId;
-    return property == null ? null : OpenDetail(Detail.requests(property));
+  // Anything about a conversation opens that conversation, from either side:
+  // it is where both the answer and the next thing to say live.
+  if (notification.relatedEntityType?.toJson() == 'INQUIRY') {
+    final thread = notification.relatedEntityId;
+    return thread == null ? null : OpenScreen(Routes.inquiry(thread));
   }
 
   // Anything else about a tenancy opens the tenant, which is where its rent

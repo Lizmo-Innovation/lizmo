@@ -272,6 +272,7 @@ enum NotificationResponseTypeEnum {
   PLATFORM_PROPERTY_LOCKED._(r'PLATFORM_PROPERTY_LOCKED'),
   PLATFORM_PAYMENT_CONFIRMED._(r'PLATFORM_PAYMENT_CONFIRMED'),
   PLATFORM_PAYMENT_REJECTED._(r'PLATFORM_PAYMENT_REJECTED'),
+  INQUIRY_MESSAGE._(r'INQUIRY_MESSAGE'),
   NEW_NOTICE_POSTED._(r'NEW_NOTICE_POSTED'),
   LEASE_EXPIRING._(r'LEASE_EXPIRING'),
   STAFF_ASSIGNED._(r'STAFF_ASSIGNED'),
@@ -350,6 +351,7 @@ class NotificationResponseTypeEnumTypeTransformer {
         case r'PLATFORM_PROPERTY_LOCKED': return NotificationResponseTypeEnum.PLATFORM_PROPERTY_LOCKED;
         case r'PLATFORM_PAYMENT_CONFIRMED': return NotificationResponseTypeEnum.PLATFORM_PAYMENT_CONFIRMED;
         case r'PLATFORM_PAYMENT_REJECTED': return NotificationResponseTypeEnum.PLATFORM_PAYMENT_REJECTED;
+        case r'INQUIRY_MESSAGE': return NotificationResponseTypeEnum.INQUIRY_MESSAGE;
         case r'NEW_NOTICE_POSTED': return NotificationResponseTypeEnum.NEW_NOTICE_POSTED;
         case r'LEASE_EXPIRING': return NotificationResponseTypeEnum.LEASE_EXPIRING;
         case r'STAFF_ASSIGNED': return NotificationResponseTypeEnum.STAFF_ASSIGNED;
@@ -370,6 +372,7 @@ class NotificationResponseTypeEnumTypeTransformer {
 
 enum NotificationResponseRelatedEntityTypeEnum {
   RENTAL_REQUEST._(r'RENTAL_REQUEST'),
+  INQUIRY._(r'INQUIRY'),
   LEASE._(r'LEASE'),
   BILLING_PERIOD._(r'BILLING_PERIOD'),
   PAYMENT._(r'PAYMENT'),
@@ -436,6 +439,7 @@ class NotificationResponseRelatedEntityTypeEnumTypeTransformer {
     if (data != null) {
       switch (data) {
         case r'RENTAL_REQUEST': return NotificationResponseRelatedEntityTypeEnum.RENTAL_REQUEST;
+        case r'INQUIRY': return NotificationResponseRelatedEntityTypeEnum.INQUIRY;
         case r'LEASE': return NotificationResponseRelatedEntityTypeEnum.LEASE;
         case r'BILLING_PERIOD': return NotificationResponseRelatedEntityTypeEnum.BILLING_PERIOD;
         case r'PAYMENT': return NotificationResponseRelatedEntityTypeEnum.PAYMENT;

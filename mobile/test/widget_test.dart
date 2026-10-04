@@ -38,7 +38,8 @@ import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/screens/delete_account_screen.dart';
 import 'package:lizmo/screens/notifications_screen.dart';
-import 'package:lizmo/screens/rental_requests_screen.dart';
+import 'package:lizmo/screens/inquiry_screen.dart';
+import 'package:lizmo/inquiry/inquiry_providers.dart';
 import 'package:lizmo/screens/tenant_payments_screen.dart';
 import 'package:lizmo/screens/tenant_profile_screen.dart';
 import 'package:lizmo/widgets/section_tab_bar.dart';
@@ -4133,7 +4134,7 @@ class _RecordingTenantProfileApi extends TenantProfileApi {
 
 void _tenantProfileTests() {
   group('waiting on a landlord', () {
-    Widget appWith(RentalRequestResponse request) => ProviderScope(
+    Widget appWith(InquirySummary thread) => ProviderScope(
           overrides: [
             authControllerProvider
                 .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.tenant}))),
@@ -4146,41 +4147,42 @@ void _tenantProfileTests() {
             myNotificationsProvider
                 .overrideWith((ref) async => const <NotificationResponse>[]),
             myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
-            myRentalRequestsProvider.overrideWith((ref) async => [request]),
+            myInquiriesProvider.overrideWith((ref) async => [thread]),
           ],
           child: const LizmoApp(),
         );
 
-    RentalRequestResponse asked({String? unitNumber, String? bedLabel}) =>
-        RentalRequestResponse(
-          id: 'r1',
+    InquirySummary asked({String? lastMessage, bool unread = false}) =>
+        InquirySummary(
+          id: 'i1',
           propertyId: 'p1',
           propertyName: 'Sunrise Apartments',
-          unitNumber: unitNumber,
-          bedLabel: bedLabel,
-          status: RentalRequestResponseStatusEnum.PENDING,
+          withName: 'Elena Bautista',
+          status: InquirySummaryStatusEnum.OPEN,
+          lastMessage: lastMessage,
+          unread: unread,
           createdAt: DateTime.now().subtract(const Duration(days: 2)),
         );
 
-    /// Scanning a code names no room — the floors show counts, not rooms — so
-    /// this is the usual shape now. It read "You asked for Unit null".
-    testWidgets('asking about a place names the place, not a null room',
+    /// Nothing said yet: the card is the nudge to say something, since a
+    /// conversation nobody has opened is the one a landlord never answers.
+    testWidgets('a conversation with nothing in it asks for a word',
         (tester) async {
       await tester.pumpWidget(appWith(asked()));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('null'), findsNothing);
-      expect(find.textContaining('You asked about Sunrise Apartments'),
-          findsOneWidget);
-      // And says who settles the room, which is the landlord.
-      expect(find.textContaining('choose which room'), findsOneWidget);
+      expect(find.text('Waiting for a reply'), findsOneWidget);
+      expect(find.textContaining('Say what you are looking for'), findsOneWidget);
     });
 
-    testWidgets('a request for one room still names it', (tester) async {
-      await tester.pumpWidget(appWith(asked(unitNumber: '2B', bedLabel: 'Bed 1')));
+    testWidgets('a reply is said plainly, with what they wrote', (tester) async {
+      await tester.pumpWidget(appWith(
+          asked(lastMessage: 'Yes, from the 15th', unread: true)));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Bed 1, 2B'), findsOneWidget);
+      expect(find.text('They have replied'), findsOneWidget);
+      expect(find.textContaining('Yes, from the 15th'), findsOneWidget);
     });
   });
 
@@ -4189,7 +4191,7 @@ void _tenantProfileTests() {
       TenantProfileResponse profile, {
       _RecordingTenantProfileApi? api,
       List<TenantDocumentResponse> documents = const [],
-      List<RentalRequestResponse> requests = const [],
+      List<InquirySummary> threads = const [],
     }) =>
         ProviderScope(
           overrides: [
@@ -4198,7 +4200,7 @@ void _tenantProfileTests() {
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
             myTenantProfileProvider.overrideWith((ref) async => profile),
             myTenantDocumentsProvider.overrideWith((ref) async => documents),
-            myRentalRequestsProvider.overrideWith((ref) async => requests),
+            myInquiriesProvider.overrideWith((ref) async => threads),
             if (api != null) tenantProfileApiProvider.overrideWithValue(api),
           ],
           child: const LizmoApp(),
@@ -4293,17 +4295,17 @@ void _tenantProfileTests() {
       expect(find.text('A landlord is waiting on you'), findsNothing);
     });
 
-    testWidgets('a request waiting on an unfinished profile says who is held up',
-        (tester) async {
+    testWidgets('a conversation waiting on an unfinished profile says who is '
+        'held up', (tester) async {
       await tester.pumpWidget(appWith(
         TenantProfileResponse(contactPhone: '09170000001', readyForALease: false),
-        requests: [
-          RentalRequestResponse(
-            id: 'r1',
+        threads: [
+          InquirySummary(
+            id: 'i1',
+            propertyId: 'p1',
             propertyName: 'Sunrise Apartments',
-            unitNumber: '2B',
-            bedLabel: 'Bed 3',
-            status: RentalRequestResponseStatusEnum.PENDING,
+            withName: 'Elena Bautista',
+            status: InquirySummaryStatusEnum.OPEN,
           ),
         ],
       ));
@@ -4843,30 +4845,45 @@ void _propertyShareTests() {
   });
 }
 
-/// Records what a tenant asked for, and can refuse the way the API does.
-class _FakeAskingApi extends AskingForARoomApi {
+/// Records what a tenant asked about, and can refuse the way the API does.
+class _FakeAskingApi extends AskingAboutAPlaceApi {
   _FakeAskingApi({this.failWith});
 
   final ApiFailure? failWith;
-  RentalRequestCreate? sent;
+  StartInquiry? sent;
 
   @override
-  Future<RentalRequestResponse?> sendRentalRequest(
-    RentalRequestCreate request, {
+  Future<InquiryThread?> startInquiry(
+    StartInquiry startInquiry, {
     Future<void>? abortTrigger,
   }) async {
     if (failWith != null) throw failWith!;
-    sent = request;
-    return RentalRequestResponse(
-      id: 'r1',
-      unitId: request.unitId,
-      bedId: request.bedId,
-      status: RentalRequestResponseStatusEnum.PENDING,
+    sent = startInquiry;
+    return InquiryThread(
+      inquiry: InquirySummary(
+        id: 'i1',
+        propertyId: startInquiry.propertyId,
+        propertyName: 'Sunrise Apartments',
+        status: InquirySummaryStatusEnum.OPEN,
+      ),
+      messages: const [],
     );
   }
 
   @override
-  Future<List<RentalRequestResponse>?> listMyRentalRequests({
+  Future<InquiryThread?> readInquiry(String id, {Future<void>? abortTrigger}) async =>
+      InquiryThread(
+        inquiry: InquirySummary(
+          id: id,
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          status: InquirySummaryStatusEnum.OPEN,
+        ),
+        messages: const [],
+      );
+
+  @override
+  Future<List<InquirySummary>?> listMyInquiries({
     Future<void>? abortTrigger,
   }) async => const [];
 }
@@ -4922,7 +4939,7 @@ void _findingAPlaceTests() {
           if (lookupFails != null) throw lookupFails;
           return found ?? place();
         }),
-        if (asking != null) askingForARoomApiProvider.overrideWithValue(asking),
+        if (asking != null) inquiriesApiProvider.overrideWithValue(asking),
       ],
       child: const LizmoApp(),
     );
@@ -5112,7 +5129,11 @@ void _findingAPlaceTests() {
       expect(find.text('Price not set'), findsOneWidget);
     });
 
-    testWidgets('asking names the place, not a room', (tester) async {
+    /// The button starts the conversation and drops the tenant into it: the
+    /// next thing to do is say what they are looking for, and a tenant left on
+    /// the vacancy screen has nowhere to say it.
+    testWidgets('asking names the place and opens the conversation',
+        (tester) async {
       final asking = _FakeAskingApi();
       await tester.pumpWidget(
         appWith(found: place(beds: 2), asking: asking),
@@ -5124,11 +5145,7 @@ void _findingAPlaceTests() {
       await tester.pumpAndSettle();
 
       expect(asking.sent?.propertyId, 'p1');
-      expect(asking.sent?.unitId, isNull);
-      expect(asking.sent?.bedId, isNull);
-      // It stops offering once asked, and says what happens next.
-      expect(find.byKey(const ValueKey('asked-about-place')), findsOneWidget);
-      expect(find.byKey(const ValueKey('ask-about-place')), findsNothing);
+      expect(find.byType(InquiryScreen), findsOneWidget);
     });
 
     testWidgets('a full house offers nothing to ask for', (tester) async {
@@ -5187,8 +5204,8 @@ void _findingAPlaceTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nothing is free here at the moment.'), findsOneWidget);
-      // And it is not marked as asked, because it was not.
-      expect(find.byKey(const ValueKey('asked-about-place')), findsNothing);
+      // And no conversation was opened, because none was started.
+      expect(find.byType(InquiryScreen), findsNothing);
     });
 
     testWidgets('a wrong code explains the alphabet', (tester) async {
@@ -5275,42 +5292,86 @@ void _scanningTests() {
   });
 }
 
-/// Answers requests the way the API does, and records what was answered.
-class _FakeAnsweringApi extends RequestsToAnswerApi {
-  _FakeAnsweringApi({this.failWith});
+/// Stands in for the conversation endpoints: records what was said, what was
+/// closed, and the terms a tenancy was written on.
+class _FakeInquiriesApi extends AskingAboutAPlaceApi {
+  _FakeInquiriesApi({
+    this.thread,
+    this.failWith,
+  });
 
+  InquiryThread? thread;
   final ApiFailure? failWith;
-  String? accepted;
-  AcceptRequest? acceptedOn;
-  String? declined;
+
+  final said = <String>[];
+  String? closed;
+  String? leased;
+  AcceptRequest? leasedOn;
+  StartInquiry? started;
 
   @override
-  Future<LeaseResponse?> acceptRentalRequest(
+  Future<InquiryThread?> readInquiry(String id, {Future<void>? abortTrigger}) async {
+    if (thread == null) {
+      throw const ApiFailure(code: 'NOT_FOUND', message: 'No such conversation.');
+    }
+    return thread;
+  }
+
+  @override
+  Future<InquiryMessageResponse?> sendInquiryMessage(
+    String id,
+    NewMessage newMessage, {
+    Future<void>? abortTrigger,
+  }) async {
+    if (failWith != null) throw failWith!;
+    said.add(newMessage.body);
+    return InquiryMessageResponse(
+      id: 'm${said.length}',
+      body: newMessage.body,
+      sentAt: DateTime.now(),
+      mine: true,
+    );
+  }
+
+  @override
+  Future<LeaseResponse?> startLeaseFromInquiry(
     String id, {
     AcceptRequest? acceptRequest,
     Future<void>? abortTrigger,
   }) async {
     if (failWith != null) throw failWith!;
-    accepted = id;
-    acceptedOn = acceptRequest;
+    leased = id;
+    leasedOn = acceptRequest;
     return LeaseResponse(id: 'l1', status: LeaseResponseStatusEnum.ACTIVE);
   }
 
   @override
-  Future<RentalRequestForLandlord?> declineRentalRequest(
-    String id, {
+  Future<InquirySummary?> closeInquiry(String id, {Future<void>? abortTrigger}) async {
+    closed = id;
+    return InquirySummary(id: id, status: InquirySummaryStatusEnum.CLOSED);
+  }
+
+  @override
+  Future<InquiryThread?> startInquiry(
+    StartInquiry startInquiry, {
     Future<void>? abortTrigger,
   }) async {
-    declined = id;
-    return RentalRequestForLandlord(
-      id: id,
-      status: RentalRequestForLandlordStatusEnum.DECLINED,
+    if (failWith != null) throw failWith!;
+    started = startInquiry;
+    return InquiryThread(
+      inquiry: InquirySummary(
+        id: 'i1',
+        propertyId: startInquiry.propertyId,
+        propertyName: 'Sunrise Apartments',
+        status: InquirySummaryStatusEnum.OPEN,
+      ),
+      messages: const [],
     );
   }
 }
 
 void _landlordRequestTests() {
-  group('answering requests', () {
+  group('a conversation about a place', () {
     PropertyResponse property() => PropertyResponse(
       id: 'p1',
       name: 'Sunrise Apartments',
@@ -5321,552 +5382,332 @@ void _landlordRequestTests() {
       unitCount: 1,
     );
 
-    /// A request about the place, with no room named -- what scanning a code
-    /// now sends.
-    RentalRequestForLandlord aboutThePlace({String id = 'r1'}) =>
-        RentalRequestForLandlord(
+    InquirySummary summary({
+      String id = 'i1',
+      String withName = 'Ana Reyes',
+      InquirySummaryStatusEnum status = InquirySummaryStatusEnum.OPEN,
+      String? lastMessage = 'Is there a bed free in November?',
+      bool unread = true,
+    }) =>
+        InquirySummary(
           id: id,
           propertyId: 'p1',
           propertyName: 'Sunrise Apartments',
+          withName: withName,
+          status: status,
+          lastMessage: lastMessage,
+          lastMessageAt: DateTime.now().subtract(const Duration(hours: 2)),
+          unread: unread,
           createdAt: DateTime.now().subtract(const Duration(days: 1)),
-          status: RentalRequestForLandlordStatusEnum.PENDING,
-          tenantId: 't1',
-          tenantName: 'Ana Reyes',
-          tenantPhone: '09171234567',
-          age: 27,
-          idType: RentalRequestForLandlordIdTypeEnum.PHILSYS,
         );
 
-    RentalRequestForLandlord request({
-      String id = 'r1',
-      String name = 'Ana Reyes',
-      String? bedLabel = 'Bed 1',
-      List<String> stillNeeds = const [],
-    }) => RentalRequestForLandlord(
-      tenantStillNeeds: stillNeeds,
-      id: id,
-      propertyId: 'p1',
-      propertyName: 'Sunrise Apartments',
-      unitId: 'u1',
-      unitNumber: '2B',
-      bedId: bedLabel == null ? null : 'b1',
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      bedLabel: bedLabel,
-      status: RentalRequestForLandlordStatusEnum.PENDING,
-      tenantId: 't1',
-      tenantName: name,
-      tenantPhone: '09171234567',
-      occupation: 'Nurse',
-      permanentAddress: 'Naga City',
-      age: 27,
-      idType: RentalRequestForLandlordIdTypeEnum.PHILSYS,
-      askingRent: 2500,
-    );
+    Applicant applicant({List<String> stillNeeds = const []}) => Applicant(
+          tenantId: 't1',
+          name: 'Ana Reyes',
+          phone: '09171234567',
+          age: 27,
+          occupation: 'Nurse',
+          permanentAddress: 'Naga City',
+          idType: ApplicantIdTypeEnum.PHILSYS,
+          stillNeeds: stillNeeds,
+        );
+
+    InquiryThread thread({
+      Applicant? who,
+      InquirySummaryStatusEnum status = InquirySummaryStatusEnum.OPEN,
+      List<InquiryMessageResponse>? messages,
+    }) =>
+        InquiryThread(
+          inquiry: summary(status: status),
+          applicant: who,
+          messages: messages ??
+              [
+                InquiryMessageResponse(
+                  id: 'm1',
+                  body: 'Is there a bed free in November?',
+                  sentAt: DateTime.now().subtract(const Duration(hours: 3)),
+                  mine: who == null,
+                ),
+                InquiryMessageResponse(
+                  id: 'm2',
+                  body: 'Yes, from the 15th. Want to see it Saturday?',
+                  sentAt: DateTime.now().subtract(const Duration(hours: 2)),
+                  mine: who != null,
+                ),
+              ],
+        );
 
     Widget appWith({
-      List<RentalRequestForLandlord> waiting = const [],
-      _FakeAnsweringApi? answering,
-      List<FreeRoom>? free,
-    }) => ProviderScope(
-      overrides: [
-        authControllerProvider.overrideWith(
-          () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
-        ),
-        tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-        propertiesProvider.overrideWith((ref) async => [property()]),
-        propertyProvider('p1').overrideWith((ref) async => property()),
-        unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
-        if (free != null) freeRoomsProvider('p1').overrideWith((ref) async => free),
-        pendingRequestsProvider('p1').overrideWith((ref) async => waiting),
-        requestsToAnswerProvider.overrideWith((ref) async => waiting),
-        propertyLeasesProvider('p1').overrideWith((ref) async => const <LeaseResponse>[]),
-        if (answering != null)
-          requestsToAnswerApiProvider.overrideWithValue(answering),
-      ],
-      child: const LizmoApp(),
-    );
+      required _FakeInquiriesApi api,
+      Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
+      List<InquirySummary> inbox = const [],
+      List<FreeRoom> free = const [],
+    }) =>
+        ProviderScope(
+          overrides: [
+            authControllerProvider
+                .overrideWith(() => _FakeAuth(_signedIn(profiles))),
+            tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+            propertiesProvider.overrideWith((ref) async => [property()]),
+            propertyProvider('p1').overrideWith((ref) async => property()),
+            unitsProvider('p1')
+                .overrideWith((ref) async => const <UnitResponse>[]),
+            propertyLeasesProvider('p1')
+                .overrideWith((ref) async => const <LeaseResponse>[]),
+            freeRoomsProvider('p1').overrideWith((ref) async => free),
+            myTenantProfileProvider.overrideWith((ref) async =>
+                TenantProfileResponse(
+                    contactPhone: '09170000001', readyForALease: true)),
+            myTenantDocumentsProvider
+                .overrideWith((ref) async => const <TenantDocumentResponse>[]),
+            myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
+            myInquiriesProvider.overrideWith((ref) async => inbox),
+            inquiriesApiProvider.overrideWithValue(api),
+          ],
+          child: const LizmoApp(),
+        );
 
-    Future<void> openProperty(WidgetTester tester) async {
+    /// Opens the thread through the app, the way a tap on Today's card does.
+    Future<void> open(WidgetTester tester, _FakeInquiriesApi api,
+        {Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
+        List<FreeRoom> free = const []}) async {
+      await tester.pumpWidget(appWith(
+          api: api, profiles: profiles, free: free, inbox: [summary()]));
       await tester.pumpAndSettle();
-      await _openProperties(tester);
-      await tester.tap(find.text('Sunrise Apartments'));
+
+      if (profiles.contains(LizmoProfile.landlord)) {
+        await tester.tap(find.byKey(const ValueKey('inquiry-i1')));
+      } else {
+        await tester.tap(find.text('Open'));
+      }
       await tester.pumpAndSettle();
     }
 
-    testWidgets('no strip when nobody is waiting', (tester) async {
-      await tester.pumpWidget(appWith());
-      await openProperty(tester);
+    // ---- reading one ------------------------------------------------------
 
-      // A row that permanently reads "0 requests" is one a landlord learns to
-      // stop seeing.
-      expect(find.textContaining('asking about'), findsNothing);
-    });
-
-    testWidgets('one person waiting reads as one person', (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openProperty(tester);
-
-      expect(find.text('Somebody is asking about a room'), findsOneWidget);
-    });
-
-    Finder inCard(Finder finder) => find.descendant(
-          of: find.byKey(const ValueKey('requests-card')),
-          matching: finder,
-        );
-
-    /// The queue lived inside each property, so a landlord had to open every
-    /// building to find out whether anybody was asking.
-    testWidgets('Today lists everybody waiting, and where', (tester) async {
-      await tester.pumpWidget(appWith(waiting: [
-        request(),
-        request(id: 'r2', name: 'Bea Santos', bedLabel: null),
-      ]));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('requests-card')), findsOneWidget);
-      expect(inCard(find.text('2 waiting for your answer')), findsOneWidget);
-      expect(inCard(find.text('Ana Reyes')), findsOneWidget);
-      expect(inCard(find.text('Bed 1, 2B · Sunrise Apartments')), findsOneWidget);
-      expect(inCard(find.text('Unit 2B · Sunrise Apartments')), findsOneWidget);
-      // How long, which is what makes one of these urgent.
-      expect(inCard(find.text('3 days')), findsNWidgets(2));
-    });
-
-    /// A card that permanently reads "nobody waiting" is one a landlord learns
-    /// to stop seeing.
-    testWidgets('nobody waiting leaves the card off Today', (tester) async {
-      await tester.pumpWidget(appWith());
-      await tester.pumpAndSettle();
-
-      expect(find.byType(LandlordHomeScreen), findsOneWidget);
-      expect(find.byKey(const ValueKey('requests-card')), findsNothing);
-    });
-
-    testWidgets('a person waiting opens that property\'s queue, inside Today',
+    testWidgets('both sides of the conversation are there, in order',
         (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await tester.pumpAndSettle();
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
 
-      await tester.tap(find.byKey(const ValueKey('request-r1')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(RentalRequestsScreen), findsOneWidget);
-      expect(_tabIndex(tester), 0);
-      // Where the answering happens.
-      expect(find.text('Accept'), findsOneWidget);
+      expect(find.text('Is there a bed free in November?'), findsOneWidget);
+      expect(find.text('Yes, from the 15th. Want to see it Saturday?'),
+          findsOneWidget);
+      expect(find.byType(InquiryScreen), findsOneWidget);
     });
 
-    /// Hidden, a failure would read as nobody waiting.
-    testWidgets('a queue that cannot be read says so', (tester) async {
-      await tester.pumpWidget(ProviderScope(
-        overrides: [
-          authControllerProvider.overrideWith(
-            () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
-          ),
-          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-          propertiesProvider.overrideWith((ref) async => [property()]),
-          requestsToAnswerProvider.overrideWith((ref) async => throw const ApiFailure(
-              code: 'NETWORK_UNAVAILABLE', message: 'no signal')),
-        ],
-        child: const LizmoApp(),
-      ));
-      await tester.pumpAndSettle();
+    /// The ID type without its number, no photographs, no emergency contact.
+    /// Anyone can print a code and stick it on a gate.
+    testWidgets('the landlord sees who is asking', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
 
-      expect(inCard(find.text('Requests')), findsOneWidget);
-      expect(inCard(find.text('no signal')), findsOneWidget);
-    });
-
-    testWidgets('several are counted', (tester) async {
-      await tester.pumpWidget(
-        appWith(waiting: [request(), request(id: 'r2', name: 'Bea')]),
-      );
-      await openProperty(tester);
-
-      expect(find.text('2 people are asking about rooms'), findsOneWidget);
-    });
-
-    testWidgets('the strip opens the queue', (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Requests'), findsOneWidget);
-      expect(find.text('Ana Reyes'), findsOneWidget);
-      expect(find.text('for Bed 1 in 2B'), findsOneWidget);
-    });
-
-    testWidgets('answering the last one empties the queue', (tester) async {
-      // The only way to see the empty state, and the right one: the strip is
-      // hidden when nothing is waiting, so a landlord reaches it by clearing
-      // the queue rather than by opening an empty screen. It also checks the
-      // list refreshes after an answer instead of showing a stale row.
-      var waiting = [request()];
-      await tester.pumpWidget(ProviderScope(
-        overrides: [
-          authControllerProvider.overrideWith(
-            () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
-          ),
-          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
-          propertiesProvider.overrideWith((ref) async => [property()]),
-          propertyProvider('p1').overrideWith((ref) async => property()),
-          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
-          propertyLeasesProvider('p1')
-              .overrideWith((ref) async => const <LeaseResponse>[]),
-          pendingRequestsProvider('p1').overrideWith((ref) async => waiting),
-          requestsToAnswerProvider.overrideWith((ref) async => waiting),
-          requestsToAnswerApiProvider.overrideWithValue(_FakeAnsweringApi()),
-        ],
-        child: const LizmoApp(),
-      ));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      waiting = const [];
-      await tester.tap(find.text('Decline'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Nobody waiting'), findsOneWidget);
-      expect(find.textContaining('scans your code'), findsOneWidget);
-    });
-
-    testWidgets('the landlord is told enough to decide', (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Nurse'), findsOneWidget);
-      expect(find.text('Naga City'), findsOneWidget);
-      // Their own number: arranging a viewing is the next thing that happens.
+      expect(find.byKey(const ValueKey('applicant')), findsOneWidget);
+      expect(find.text('Ana Reyes'), findsWidgets);
+      expect(find.textContaining('27 years old'), findsOneWidget);
       expect(find.text('09171234567'), findsOneWidget);
-      // The age, not a date to do arithmetic on.
-      expect(find.text('27 years old'), findsOneWidget);
-      // What they carry, without the number.
-      expect(find.text('PHILSYS'), findsOneWidget);
     });
 
-    testWidgets('the emergency contact is not part of an application',
-        (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
+    testWidgets('the tenant sees no panel about themselves', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread());
+      await open(tester, api, profiles: {LizmoProfile.tenant});
 
-      // A third person who never used Lizmo and never agreed to anything.
-      // Who to ring if something happens to somebody who does not live here
-      // yet is no use to a landlord deciding whether to let them.
-      expect(find.textContaining('In an emergency'), findsNothing);
-      expect(find.textContaining('Rosa'), findsNothing);
+      expect(find.byKey(const ValueKey('applicant')), findsNothing);
+      expect(find.byKey(const ValueKey('start-lease')), findsNothing);
     });
 
-    /// The server refuses it, so a button that fails after the tap would read
-    /// as the app being broken rather than as somebody else still owing
-    /// something.
-    testWidgets('a tenant who has not finished cannot be accepted yet',
-        (tester) async {
-      await tester.pumpWidget(appWith(waiting: [
-        request(stillNeeds: const ['their ID details', 'a photo of their ID']),
-      ]));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
+    // ---- saying something -------------------------------------------------
+
+    testWidgets('a message is sent and the box emptied', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
+
+      await tester.enterText(find.byKey(const ValueKey('message-field')),
+          'Saturday at two suits me');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
       await tester.pumpAndSettle();
+
+      expect(api.said, ['Saturday at two suits me']);
+      expect(
+          tester.widget<TextField>(find.byKey(const ValueKey('message-field')))
+              .controller!
+              .text,
+          isEmpty);
+    });
+
+    testWidgets('an empty message is not sent', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
+
+      await tester.enterText(find.byKey(const ValueKey('message-field')), '   ');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(api.said, isEmpty);
+    });
+
+    testWidgets('a message that fails says so and keeps the words',
+        (tester) async {
+      final api = _FakeInquiriesApi(
+        thread: thread(who: applicant()),
+        failWith: const ApiFailure(code: 'NETWORK', message: 'No connection.'),
+      );
+      await open(tester, api);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-field')), 'Still interested');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No connection.'), findsOneWidget);
+      // Retyping what you just wrote is the worst possible answer to a
+      // failed send.
+      expect(
+          tester.widget<TextField>(find.byKey(const ValueKey('message-field')))
+              .controller!
+              .text,
+          'Still interested');
+    });
+
+    // ---- writing the tenancy ----------------------------------------------
+
+    testWidgets('a tenant who has not finished cannot be leased to yet',
+        (tester) async {
+      final api = _FakeInquiriesApi(
+          thread: thread(who: applicant(stillNeeds: ['an emergency contact'])));
+      await open(tester, api);
 
       expect(find.byKey(const ValueKey('tenant-still-needs')), findsOneWidget);
+      expect(find.textContaining('an emergency contact'), findsOneWidget);
       expect(
-        find.textContaining(
-            'accept once they add their ID details and a photo of their ID'),
-        findsOneWidget,
-      );
-
-      final accept = tester.widget<TextButton>(
-          find.widgetWithText(TextButton, 'Accept'));
-      expect(accept.onPressed, isNull);
-      // Declining still works: a landlord is not trapped by somebody else's
-      // unfinished form.
-      final decline = tester.widget<TextButton>(
-          find.widgetWithText(TextButton, 'Decline'));
-      expect(decline.onPressed, isNotNull);
+          tester
+              .widget<PrimaryActionButton>(
+                  find.byKey(const ValueKey('start-lease')))
+              .onPressed,
+          isNull);
     });
 
-    testWidgets('a finished tenant is accepted as before', (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('tenant-still-needs')), findsNothing);
-      final accept = tester.widget<TextButton>(
-          find.widgetWithText(TextButton, 'Accept'));
-      expect(accept.onPressed, isNotNull);
-    });
-
-    // ---- a request about the place ----------------------------------------
-
-    FreeRoom room(String label, {String? bedId, num? rent = 2500}) => FreeRoom(
-          unitId: 'u1',
-          bedId: bedId,
-          label: label,
-          rent: rent,
-        );
-
-    Future<void> openTheRequest(WidgetTester tester) async {
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-    }
-
-    /// They were shown counts per floor, not rooms, so the landlord says
-    /// which one they get.
-    testWidgets('accepting a request about the place asks which room',
+    testWidgets('the landlord picks the room, and it is sent with the rent',
         (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(appWith(
-        waiting: [aboutThePlace()],
-        answering: answering,
-        free: [room('Bed 1 in 2B', bedId: 'b1'), room('Unit 1A', rent: 7500)],
-      ));
-      await openTheRequest(tester);
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api, free: const [
+        FreeRoom(unitId: 'u1', bedId: 'b1', label: 'Unit 2B · Bed 1', rent: 2500),
+        FreeRoom(unitId: 'u2', bedId: null, label: 'Unit 3A', rent: 12500),
+      ]);
 
-      expect(find.text('asked about Sunrise Apartments'), findsOneWidget);
-      await tester.tap(find.text('Accept'));
+      await tester.tap(find.byKey(const ValueKey('start-lease')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('choose which one they get'), findsOneWidget);
-      expect(find.text('Bed 1 in 2B'), findsOneWidget);
-      expect(find.text('Unit 1A'), findsOneWidget);
-
-      // Nothing chosen yet, so there is nothing to accept on.
-      final button = tester.widget<PrimaryActionButton>(
-          find.byKey(const ValueKey('accept-and-create')));
-      expect(button.onPressed, isNull);
-    });
-
-    testWidgets('the room chosen is sent, with its rent', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(appWith(
-        waiting: [aboutThePlace()],
-        answering: answering,
-        free: [room('Bed 1 in 2B', bedId: 'b1'), room('Unit 1A', rent: 7500)],
-      ));
-      await openTheRequest(tester);
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('room-u1')));
-      await tester.pumpAndSettle();
-      final accept = find.byKey(const ValueKey('accept-and-create'));
-      await tester.ensureVisible(accept);
-      await tester.pumpAndSettle();
-      await tester.tap(accept);
-      await tester.pumpAndSettle();
-
-      expect(answering.acceptedOn?.unitId, 'u1');
-      expect(answering.acceptedOn?.bedId, isNull);
-      // The rent follows the room: leaving a bed's price on a whole unit is
-      // how the wrong rent gets written into a lease.
-      expect(answering.acceptedOn?.rentAmount, 7500);
-    });
-
-    testWidgets('a bed carries its own id as well as its unit', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(appWith(
-        waiting: [aboutThePlace()],
-        answering: answering,
-        free: [room('Bed 1 in 2B', bedId: 'b1')],
-      ));
-      await openTheRequest(tester);
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
+      // The tenant was never shown the rooms, so this is where one is chosen.
+      expect(find.text('Which room'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('room-b1')));
       await tester.pumpAndSettle();
+
+      // The sheet is taller than the phone: the button is below the fold.
       final accept = find.byKey(const ValueKey('accept-and-create'));
       await tester.ensureVisible(accept);
       await tester.pumpAndSettle();
       await tester.tap(accept);
       await tester.pumpAndSettle();
 
-      expect(answering.acceptedOn?.unitId, 'u1');
-      expect(answering.acceptedOn?.bedId, 'b1');
+      expect(api.leased, 'i1');
+      expect(api.leasedOn?.unitId, 'u1');
+      expect(api.leasedOn?.bedId, 'b1');
+      expect(api.leasedOn?.rentAmount, 2500);
     });
 
-    /// Everything went while the request waited.
-    testWidgets('nothing free says so instead of an empty picker',
+    testWidgets('a conversation that already has a tenancy says so',
         (tester) async {
+      final api = _FakeInquiriesApi(
+          thread: thread(
+              who: applicant(), status: InquirySummaryStatusEnum.LEASED));
+      await open(tester, api);
+
+      expect(find.byKey(const ValueKey('already-leased')), findsOneWidget);
+      expect(find.byKey(const ValueKey('start-lease')), findsNothing);
+      // Still talking, though: it is the same two people.
+      expect(find.byKey(const ValueKey('message-field')), findsOneWidget);
+    });
+
+    // ---- ending it --------------------------------------------------------
+
+    testWidgets('closing asks first, and backing out closes nothing',
+        (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('close-inquiry')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep it open'));
+      await tester.pumpAndSettle();
+      expect(api.closed, isNull);
+
+      await tester.tap(find.byKey(const ValueKey('close-inquiry')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('confirm-close-inquiry')));
+      await tester.pumpAndSettle();
+
+      expect(api.closed, 'i1');
+    });
+
+    testWidgets('a closed conversation takes nothing more', (tester) async {
+      final api = _FakeInquiriesApi(
+          thread: thread(
+              who: applicant(), status: InquirySummaryStatusEnum.CLOSED));
+      await open(tester, api);
+
+      expect(find.byKey(const ValueKey('inquiry-closed')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-field')), findsNothing);
+      expect(find.byKey(const ValueKey('close-inquiry')), findsNothing);
+    });
+
+    // ---- the way in -------------------------------------------------------
+
+    testWidgets('Today lists who is waiting on an answer', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        summary(),
+        summary(id: 'i2', withName: 'Bea Santos', unread: false),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
+      expect(find.text('1 waiting on you'), findsOneWidget);
+      expect(find.text('Ana Reyes'), findsWidgets);
+      expect(find.text('Bea Santos'), findsOneWidget);
+    });
+
+    testWidgets('nobody asking leaves the card off Today', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('inquiries-card')), findsNothing);
+    });
+
+    testWidgets('a conversation on Today opens it', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
+
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// The tenant's side: the card that said only "waiting for a reply" now
+    /// opens the conversation, and says when the landlord has written.
+    testWidgets('the tenant is told there is a reply, and can open it',
+        (tester) async {
+      final api = _FakeInquiriesApi(thread: thread());
       await tester.pumpWidget(appWith(
-        waiting: [aboutThePlace()],
-        free: const [],
-      ));
-      await openTheRequest(tester);
-      await tester.tap(find.text('Accept'));
+          api: api,
+          profiles: {LizmoProfile.tenant},
+          inbox: [summary(withName: 'Elena Bautista')]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('no-free-rooms')), findsOneWidget);
-      final button = tester.widget<PrimaryActionButton>(
-          find.byKey(const ValueKey('accept-and-create')));
-      expect(button.onPressed, isNull);
-    });
+      expect(find.text('They have replied'), findsOneWidget);
 
-    /// A request that already names a room is answered as it always was.
-    testWidgets('a request for one room asks nothing about which',
-        (tester) async {
-      await tester.pumpWidget(appWith(waiting: [request()]));
-      await openTheRequest(tester);
-      await tester.tap(find.text('Accept'));
+      await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-
-      expect(find.text('Which room'), findsNothing);
-      final button = tester.widget<PrimaryActionButton>(
-          find.byKey(const ValueKey('accept-and-create')));
-      expect(button.onPressed, isNotNull);
-    });
-
-    testWidgets('accepting asks first, then sends', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
-      // The terms are settled first: accepting gives away a room, tells
-      // everybody else it has gone, and writes a rent into a lease.
-      expect(find.text('Accept Ana Reyes'), findsOneWidget);
-      expect(answering.accepted, isNull);
-
-      // Filled in from what the tenant was looking at, rather than left blank
-      // for somebody to retype. Read off the field itself: the placeholder
-      // carries the same number, so find.text would match twice.
-      expect(
-        tester.widget<EditableText>(find.byType(EditableText).first)
-            .controller.text,
-        '2500',
-      );
-
-      // The sheet scrolls now that it carries deposit and advance, so the
-      // button can start below the fold.
-      await tester.ensureVisible(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-
-      expect(answering.accepted, 'r1');
-      expect(answering.acceptedOn?.rentAmount, 2500);
-      expect(answering.acceptedOn?.startDate, isNotNull);
-    });
-
-    testWidgets('the rent can be changed before accepting', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
-      // A landlord who agreed something else on the phone should not have to
-      // change the listing to record it.
-      await tester.enterText(find.byType(TextFormField).first, '3000');
-      // The sheet scrolls now that it carries deposit and advance, so the
-      // button can start below the fold.
-      await tester.ensureVisible(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-
-      expect(answering.acceptedOn?.rentAmount, 3000);
-    });
-
-    testWidgets('a rent of nothing is refused', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextFormField).first, '0');
-      // The sheet scrolls now that it carries deposit and advance, so the
-      // button can start below the fold.
-      await tester.ensureVisible(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept and create the lease'));
-      await tester.pump();
-
-      // Zero would read as free for the life of the lease.
-      expect(find.text('The rent has to be more than nothing'), findsOneWidget);
-      expect(answering.accepted, isNull);
-    });
-
-    testWidgets('backing out of the terms accepts nothing', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Not yet'));
-      await tester.pumpAndSettle();
-
-      expect(answering.accepted, isNull);
-    });
-
-    testWidgets('declining does not ask', (tester) async {
-      final answering = _FakeAnsweringApi();
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-
-      // Declining takes nothing away from anybody and is easily done again.
-      await tester.tap(find.text('Decline'));
-      await tester.pumpAndSettle();
-
-      expect(answering.declined, 'r1');
-    });
-
-    testWidgets('a bed taken while the screen was open is explained', (
-      tester,
-    ) async {
-      final answering = _FakeAnsweringApi(
-        failWith: const ApiFailure(
-          code: 'SLOT_UNAVAILABLE',
-          message: 'That bed is already let.',
-        ),
-      );
-      await tester.pumpWidget(
-        appWith(waiting: [request()], answering: answering),
-      );
-      await openProperty(tester);
-      await tester.tap(find.text('Somebody is asking about a room'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept'));
-      await tester.pumpAndSettle();
-      // The sheet scrolls now that it carries deposit and advance, so the
-      // button can start below the fold.
-      await tester.ensureVisible(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Accept and create the lease'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('That bed is already let.'), findsOneWidget);
+      expect(find.byType(InquiryScreen), findsOneWidget);
     });
   });
 }
@@ -6080,8 +5921,8 @@ void _tenantLeaseTests() {
           (ref) async => const <TenantDocumentResponse>[],
         ),
         myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith((ref) async => news),
       ],
@@ -6223,9 +6064,20 @@ void _tenantLeaseTests() {
               (ref) async => const <PropertyResponse>[],
             ),
             myNotificationsProvider.overrideWith((ref) async => [news]),
-            pendingRequestsProvider('p1').overrideWith(
-              (ref) async => const <RentalRequestForLandlord>[],
+            myInquiriesProvider.overrideWith(
+              (ref) async => const <InquirySummary>[],
             ),
+            inquiriesApiProvider.overrideWithValue(_FakeInquiriesApi(
+              thread: InquiryThread(
+                inquiry: InquirySummary(
+                  id: 'i1',
+                  propertyId: 'p1',
+                  propertyName: 'Sunrise Apartments',
+                  status: InquirySummaryStatusEnum.OPEN,
+                ),
+                messages: const [],
+              ),
+            )),
             ..._tenancyL1(),
           ],
           child: const LizmoApp(),
@@ -6258,25 +6110,26 @@ void _tenantLeaseTests() {
       expect(find.byType(NotificationsScreen), findsOneWidget);
     });
 
-    testWidgets('a landlord told somebody is asking is taken to the requests',
+    testWidgets('a landlord told somebody wrote is taken to the conversation',
         (tester) async {
       await tester.pumpWidget(landlordWith(NotificationResponse(
         id: 'n1',
-        type: NotificationResponseTypeEnum.REQUEST_RECEIVED,
-        title: 'Somebody wants a room',
-        message: 'Bed 1 in 2B.',
+        type: NotificationResponseTypeEnum.INQUIRY_MESSAGE,
+        title: 'Somebody is asking about your place',
+        message: 'There is a new message about Sunrise Apartments.',
         unread: false,
+        relatedEntityType: NotificationResponseRelatedEntityTypeEnum.INQUIRY,
+        relatedEntityId: 'i1',
         propertyId: 'p1',
         createdAt: DateTime.now(),
       )));
       await tester.pumpAndSettle();
       await openTheBell(tester);
 
-      await tester.tap(find.text('Somebody wants a room'));
+      await tester.tap(find.text('Somebody is asking about your place'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(RentalRequestsScreen), findsOneWidget);
-      expect(_tabIndex(tester), 0);
+      expect(find.byType(InquiryScreen), findsOneWidget);
     });
   });
 
@@ -6590,8 +6443,8 @@ void _tenantLeaseTests() {
           myTenantProfileProvider.overrideWith(
             (ref) async => TenantProfileResponse(contactPhone: '09170000001', readyForALease: true),
           ),
-          myRentalRequestsProvider.overrideWith(
-            (ref) async => const <RentalRequestResponse>[],
+          myInquiriesProvider.overrideWith(
+            (ref) async => const <InquirySummary>[],
           ),
           myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
           myNotificationsProvider.overrideWith(
@@ -6936,8 +6789,8 @@ void _tenantLeaseTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
@@ -7062,8 +6915,8 @@ void _tenantLeaseTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
@@ -7361,8 +7214,8 @@ void _tenantLeaseTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
@@ -7812,8 +7665,8 @@ void _tenantLeaseTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
@@ -8230,7 +8083,7 @@ void _tenantLeaseTests() {
       int waiting = 0,
       List<ArrearsRow> arrears = const [],
       List<AwaitingRow> awaiting = const [],
-      List<RentalRequestForLandlord>? requests,
+      List<InquirySummary>? threads,
       List<PlatformStatementResponse> lizmo = const [],
       // Pinned to none unless a test says; null leaves it unread.
       List<MaintenanceReportResponse>? repairs = const [],
@@ -8279,8 +8132,8 @@ void _tenantLeaseTests() {
               inArrears: arrears,
               awaiting: awaiting,
             )),
-        if (requests != null)
-          requestsToAnswerProvider.overrideWith((ref) async => requests),
+        if (threads != null)
+          myInquiriesProvider.overrideWith((ref) async => threads),
         if (repairsFail != null)
           maintenanceToHandleProvider.overrideWith((ref) async => throw repairsFail)
         else if (repairs != null)
@@ -8433,35 +8286,36 @@ void _tenantLeaseTests() {
 
     // ---- Today as a to-do list ------------------------------------------
 
-    RentalRequestForLandlord asking({List<String> stillNeeds = const []}) =>
-        RentalRequestForLandlord(
-          id: 'r1',
+    InquirySummary asking({bool unread = true}) => InquirySummary(
+          id: 'i1',
           propertyId: 'p1',
           propertyName: 'Sunrise Apartments',
-          unitNumber: '2B',
-          tenantName: 'Miguel Cruz',
+          withName: 'Miguel Cruz',
+          status: InquirySummaryStatusEnum.OPEN,
+          lastMessage: 'Is there a bed free in November?',
+          lastMessageAt: DateTime.now(),
+          unread: unread,
           createdAt: DateTime.now(),
-          tenantStillNeeds: stillNeeds,
         );
 
-    /// Known before opening it: a landlord who taps in expecting to answer
-    /// should not find out there that they cannot.
-    testWidgets('a request waiting on its tenant says so on Today',
+    /// A conversation where they spoke last is one nobody has answered, and
+    /// that is what Today counts.
+    testWidgets('an unanswered conversation is marked on Today',
         (tester) async {
-      await tester.pumpWidget(appWith(
-        requests: [asking(stillNeeds: const ['a photo of their ID'])],
-      ));
+      await tester.pumpWidget(appWith(threads: [asking()]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('request-waiting-on-tenant')),
-          findsOneWidget);
+      expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
+      expect(find.text('1 waiting on you'), findsOneWidget);
     });
 
-    testWidgets('a request that can be answered is not marked', (tester) async {
-      await tester.pumpWidget(appWith(requests: [asking()]));
+    testWidgets('one already answered is listed without a nudge',
+        (tester) async {
+      await tester.pumpWidget(appWith(threads: [asking(unread: false)]));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('request-waiting-on-tenant')), findsNothing);
+      expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
+      expect(find.text('1 waiting on you'), findsNothing);
     });
 
     Finder inHeader(Finder finder) =>
@@ -8472,7 +8326,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith(
         waiting: 2,
         arrears: [behind()],
-        requests: [asking()],
+        threads: [asking()],
       ));
       await tester.pumpAndSettle();
 
@@ -8491,7 +8345,7 @@ void _tenantLeaseTests() {
     });
 
     testWidgets('nothing waiting says so outright', (tester) async {
-      await tester.pumpWidget(appWith(requests: const []));
+      await tester.pumpWidget(appWith(threads: const []));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('all-caught-up')), findsOneWidget);
@@ -8499,7 +8353,7 @@ void _tenantLeaseTests() {
     });
 
     testWidgets('anything waiting means no all-clear', (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], waiting: 1));
+      await tester.pumpWidget(appWith(threads: const [], waiting: 1));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
@@ -8547,7 +8401,7 @@ void _tenantLeaseTests() {
     /// A tenant living with a broken fan is somebody waiting, and Today used
     /// to say "Nothing needs you" over them.
     testWidgets('a new repair is on Today, and opens', (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], repairs: [repair('m1')]));
+      await tester.pumpWidget(appWith(threads: const [], repairs: [repair('m1')]));
       await tester.pumpAndSettle();
 
       expect(inRepairs(find.text('Repairs')), findsOneWidget);
@@ -8569,7 +8423,7 @@ void _tenantLeaseTests() {
     /// The fix did not hold, which says more than how long ago.
     testWidgets('a reopened repair says it was reopened', (tester) async {
       await tester.pumpWidget(appWith(
-          requests: const [], repairs: [repair('m1', reopened: true)]));
+          threads: const [], repairs: [repair('m1', reopened: true)]));
       await tester.pumpAndSettle();
 
       expect(inRepairs(find.text('Reopened')), findsOneWidget);
@@ -8577,7 +8431,7 @@ void _tenantLeaseTests() {
 
     testWidgets('the header counts repairs apart from requests', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: [asking()],
+        threads: [asking()],
         repairs: [repair('m1'), repair('m2', reopened: true)],
       ));
       await tester.pumpAndSettle();
@@ -8591,7 +8445,7 @@ void _tenantLeaseTests() {
     /// In progress is the landlord's own work; fixed is the tenant's move.
     testWidgets('work already started or finished is not listed',
         (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], repairs: [
+      await tester.pumpWidget(appWith(threads: const [], repairs: [
         repair('m1',
             description: 'Sink leaking',
             status: MaintenanceReportResponseStatusEnum.IN_PROGRESS),
@@ -8606,7 +8460,7 @@ void _tenantLeaseTests() {
     });
 
     testWidgets('work in progress is one line, not a row', (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], repairs: [
+      await tester.pumpWidget(appWith(threads: const [], repairs: [
         repair('m1'),
         repair('m2',
             description: 'Sink leaking',
@@ -8621,7 +8475,7 @@ void _tenantLeaseTests() {
     /// Today is a summary; the Maintenance tab has them all.
     testWidgets('only the three that have waited longest are listed',
         (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], repairs: [
+      await tester.pumpWidget(appWith(threads: const [], repairs: [
         repair('m1', description: 'Newest', hoursAgo: 1),
         repair('m2', description: 'Oldest', hoursAgo: 80),
         repair('m3', description: 'Middle', hoursAgo: 30),
@@ -8638,7 +8492,7 @@ void _tenantLeaseTests() {
     });
 
     testWidgets('see all opens the Maintenance tab', (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], repairs: [
+      await tester.pumpWidget(appWith(threads: const [], repairs: [
         repair('m1'),
         repair('m2', status: MaintenanceReportResponseStatusEnum.IN_PROGRESS),
       ]));
@@ -8656,7 +8510,7 @@ void _tenantLeaseTests() {
     testWidgets('repairs that cannot be read say so, and are no all-clear',
         (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         repairsFail: const ApiFailure(code: 'NETWORK_UNAVAILABLE', message: 'no signal'),
       ));
       await tester.pumpAndSettle();
@@ -8684,7 +8538,7 @@ void _tenantLeaseTests() {
     /// An empty Today told a new landlord nothing about what to do next.
     testWidgets('a landlord with no property is told to add one',
         (tester) async {
-      await tester.pumpWidget(appWith(requests: const [], properties: const []));
+      await tester.pumpWidget(appWith(threads: const [], properties: const []));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('get-started-first-property')), findsOneWidget);
@@ -8693,7 +8547,7 @@ void _tenantLeaseTests() {
 
     testWidgets('a new property lists what is left to do', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments')],
       ));
       await tester.pumpAndSettle();
@@ -8708,7 +8562,7 @@ void _tenantLeaseTests() {
     /// Three coral buttons would be three things shouting.
     testWidgets('only the next step is a button', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
       ));
       await tester.pumpAndSettle();
@@ -8719,7 +8573,7 @@ void _tenantLeaseTests() {
 
     testWidgets('the next step opens where it is done', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments')],
       ));
       await tester.pumpAndSettle();
@@ -8733,7 +8587,7 @@ void _tenantLeaseTests() {
     /// An account switched off is one no tenant can see.
     testWidgets('a hidden account does not tick paying', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
         channels: [_myChannel(visible: false, properties: ['p1'])],
       ));
@@ -8744,7 +8598,7 @@ void _tenantLeaseTests() {
 
     testWidgets('an account used here ticks paying', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
         channels: [_myChannel(properties: ['p1'])],
       ));
@@ -8757,7 +8611,7 @@ void _tenantLeaseTests() {
     testWidgets('somebody asking to rent ticks sharing the code',
         (tester) async {
       await tester.pumpWidget(appWith(
-        requests: [asking()],
+        threads: [asking()],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
         channels: [_myChannel(properties: ['p1'])],
       ));
@@ -8769,7 +8623,7 @@ void _tenantLeaseTests() {
     testWidgets('a property somebody lives in has its code ticked',
         (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
         channels: [_myChannel(properties: ['p1'])],
         occupied: 1,
@@ -8783,7 +8637,7 @@ void _tenantLeaseTests() {
     /// on the first.
     testWidgets('each unfinished property gets its own card', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [
           aProperty('p1', 'Sunrise Apartments'),
           aProperty('p2', 'Sunset Residences', units: 3),
@@ -8799,7 +8653,7 @@ void _tenantLeaseTests() {
     /// Scaffolding, not a permanent part of Today.
     testWidgets('nothing is shown once a property is set up', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments', units: 2)],
         channels: [_myChannel(properties: ['p1'])],
         occupied: 1,
@@ -8813,7 +8667,7 @@ void _tenantLeaseTests() {
     /// A step ticked and then unticked reads as the app losing what was done.
     testWidgets('nothing is shown until every answer is in', (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         properties: [aProperty('p1', 'Sunrise Apartments')],
         channels: null,
       ));
@@ -8863,7 +8717,7 @@ void _tenantLeaseTests() {
     /// learns that from the lock has learned it too late.
     testWidgets('a Lizmo statement to pay is on Today', (tester) async {
       await tester.pumpWidget(
-          appWith(requests: const [], lizmo: [statement(overdue: true)]));
+          appWith(threads: const [], lizmo: [statement(overdue: true)]));
       await tester.pumpAndSettle();
 
       expect(
@@ -8877,7 +8731,7 @@ void _tenantLeaseTests() {
     testWidgets('a statement already paid for is not asked for again',
         (tester) async {
       await tester.pumpWidget(appWith(
-        requests: const [],
+        threads: const [],
         lizmo: [statement(paymentStatus: 'PENDING_VERIFICATION')],
       ));
       await tester.pumpAndSettle();
@@ -8887,16 +8741,16 @@ void _tenantLeaseTests() {
     });
 
     testWidgets('what needs you comes before the figures', (tester) async {
-      await tester.pumpWidget(appWith(arrears: [behind()], requests: [asking()]));
+      await tester.pumpWidget(appWith(arrears: [behind()], threads: [asking()]));
       await tester.pumpAndSettle();
 
-      final requestsTop =
-          tester.getTopLeft(find.byKey(const ValueKey('requests-card'))).dy;
+      final conversationsTop =
+          tester.getTopLeft(find.byKey(const ValueKey('inquiries-card'))).dy;
       final arrearsTop =
           tester.getTopLeft(find.byKey(const ValueKey('arrears-card'))).dy;
       final figuresTop = tester.getTopLeft(find.text('Collections')).dy;
 
-      expect(requestsTop, lessThan(arrearsTop));
+      expect(conversationsTop, lessThan(arrearsTop));
       expect(arrearsTop, lessThan(figuresTop));
     });
   });
@@ -8950,8 +8804,8 @@ void _tenantLeaseTests() {
               vacancies: vacancies,
             )),
         unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
-        pendingRequestsProvider('p1')
-            .overrideWith((ref) async => const <RentalRequestForLandlord>[]),
+        myInquiriesProvider
+            .overrideWith((ref) async => const <InquirySummary>[]),
       ],
       child: const LizmoApp(),
     );
@@ -9404,8 +9258,8 @@ void _tenantLeaseTests() {
         myTenantDocumentsProvider.overrideWith(
           (ref) async => const <TenantDocumentResponse>[],
         ),
-        myRentalRequestsProvider.overrideWith(
-          (ref) async => const <RentalRequestResponse>[],
+        myInquiriesProvider.overrideWith(
+          (ref) async => const <InquirySummary>[],
         ),
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],

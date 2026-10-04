@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/payment_channel_providers.dart';
+import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
@@ -42,7 +43,7 @@ class GettingStartedSection extends ConsumerWidget {
     // Both are already read by Today; neither adds a request of its own.
     final channels = ref.watch(myPaymentChannelsProvider).valueOrNull;
     final occupancy = ref.watch(occupancyProvider).valueOrNull;
-    final asking = ref.watch(requestsToAnswerProvider).valueOrNull;
+    final asking = ref.watch(myInquiriesProvider).valueOrNull;
     // Until every answer is in, nothing: a step ticked and then unticked a
     // moment later reads as the app losing what was done.
     if (channels == null || occupancy == null || asking == null) {
@@ -56,7 +57,7 @@ class GettingStartedSection extends ConsumerWidget {
     final lived = {
       for (final row in occupancy.vacancies)
         if ((row.occupied ?? 0) > 0) row.propertyId,
-      for (final request in asking) request.propertyId,
+      for (final thread in asking) thread.propertyId,
     };
 
     final cards = <Widget>[];

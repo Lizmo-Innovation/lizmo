@@ -4,6 +4,10 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../inquiry/inquiry_providers.dart';
+import '../router.dart';
 import '../widgets/ask_for_number_sheet.dart';
 import '../tenant/tenant_providers.dart';
 
@@ -234,14 +238,20 @@ class _AskAboutThePlaceState extends ConsumerState<_AskAboutThePlace> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await ref.read(askingForARoomApiProvider).sendRentalRequest(
-            RentalRequestCreate(propertyId: widget.propertyId),
+      final thread = await ref.read(inquiriesApiProvider).startInquiry(
+            StartInquiry(propertyId: widget.propertyId),
           );
-      ref.invalidate(myRentalRequestsProvider);
-      if (mounted) setState(() => _asked = true);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Sent. The landlord will reply.')),
-      );
+      ref.invalidate(myInquiriesProvider);
+      if (!mounted) return;
+      setState(() => _asked = true);
+
+      // Straight into the conversation rather than a message saying one has
+      // started: the next thing to do is say what they want, and a tenant
+      // left on the vacancy screen has nowhere to say it.
+      final id = thread?.inquiry?.id;
+      if (id != null) {
+        await context.push(Routes.inquiry(id));
+      }
     } catch (error) {
       final failure = ApiFailure.from(error);
       if (!mounted) return;

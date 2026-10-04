@@ -10,81 +10,94 @@
 
 part of openapi.api;
 
-class RentalRequestCreate {
-  /// Returns a new [RentalRequestCreate] instance.
-  RentalRequestCreate({
-    this.propertyId,
-    this.unitId,
-    this.bedId,
+class InquiryMessageResponse {
+  /// Returns a new [InquiryMessageResponse] instance.
+  InquiryMessageResponse({
+    this.id,
+    this.body,
+    this.sentAt,
+    this.mine,
   });
 
-  /// The property asked about. Omit when naming a unit
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? propertyId;
+  String? id;
 
-  /// Omit to ask about the property as a whole
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? unitId;
+  String? body;
 
-  /// Omit to ask for the whole unit
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
   /// does not include a default value (using the "default:" property), however, the generated
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
-  String? bedId;
+  DateTime? sentAt;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? mine;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is RentalRequestCreate &&
-    other.propertyId == propertyId &&
-    other.unitId == unitId &&
-    other.bedId == bedId;
+  bool operator ==(Object other) => identical(this, other) || other is InquiryMessageResponse &&
+    other.id == id &&
+    other.body == body &&
+    other.sentAt == sentAt &&
+    other.mine == mine;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (propertyId == null ? 0 : propertyId!.hashCode) +
-    (unitId == null ? 0 : unitId!.hashCode) +
-    (bedId == null ? 0 : bedId!.hashCode);
+    (id == null ? 0 : id!.hashCode) +
+    (body == null ? 0 : body!.hashCode) +
+    (sentAt == null ? 0 : sentAt!.hashCode) +
+    (mine == null ? 0 : mine!.hashCode);
 
   @override
-  String toString() => 'RentalRequestCreate[propertyId=$propertyId, unitId=$unitId, bedId=$bedId]';
+  String toString() => 'InquiryMessageResponse[id=$id, body=$body, sentAt=$sentAt, mine=$mine]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
-    if (this.propertyId != null) {
-      json[r'propertyId'] = this.propertyId;
+    if (this.id != null) {
+      json[r'id'] = this.id;
     } else {
-      json[r'propertyId'] = null;
+      json[r'id'] = null;
     }
-    if (this.unitId != null) {
-      json[r'unitId'] = this.unitId;
+    if (this.body != null) {
+      json[r'body'] = this.body;
     } else {
-      json[r'unitId'] = null;
+      json[r'body'] = null;
     }
-    if (this.bedId != null) {
-      json[r'bedId'] = this.bedId;
+    if (this.sentAt != null) {
+      json[r'sentAt'] = this.sentAt!.toUtc().toIso8601String();
     } else {
-      json[r'bedId'] = null;
+      json[r'sentAt'] = null;
+    }
+    if (this.mine != null) {
+      json[r'mine'] = this.mine;
+    } else {
+      json[r'mine'] = null;
     }
     return json;
   }
 
-  /// Returns a new [RentalRequestCreate] instance and imports its values from
+  /// Returns a new [InquiryMessageResponse] instance and imports its values from
   /// [value] if it's a [Map], null otherwise.
   // ignore: prefer_constructors_over_static_methods
-  static RentalRequestCreate? fromJson(dynamic value) {
+  static InquiryMessageResponse? fromJson(dynamic value) {
     if (value is Map) {
       final json = value.cast<String, dynamic>();
 
@@ -95,20 +108,21 @@ class RentalRequestCreate {
         return true;
       }());
 
-      return RentalRequestCreate(
-        propertyId: mapValueOfType<String>(json, r'propertyId'),
-        unitId: mapValueOfType<String>(json, r'unitId'),
-        bedId: mapValueOfType<String>(json, r'bedId'),
+      return InquiryMessageResponse(
+        id: mapValueOfType<String>(json, r'id'),
+        body: mapValueOfType<String>(json, r'body'),
+        sentAt: mapDateTime(json, r'sentAt', r''),
+        mine: mapValueOfType<bool>(json, r'mine'),
       );
     }
     return null;
   }
 
-  static List<RentalRequestCreate> listFromJson(dynamic json, {bool growable = false,}) {
-    final result = <RentalRequestCreate>[];
+  static List<InquiryMessageResponse> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <InquiryMessageResponse>[];
     if (json is List && json.isNotEmpty) {
       for (final row in json) {
-        final value = RentalRequestCreate.fromJson(row);
+        final value = InquiryMessageResponse.fromJson(row);
         if (value != null) {
           result.add(value);
         }
@@ -117,12 +131,12 @@ class RentalRequestCreate {
     return result.toList(growable: growable);
   }
 
-  static Map<String, RentalRequestCreate> mapFromJson(dynamic json) {
-    final map = <String, RentalRequestCreate>{};
+  static Map<String, InquiryMessageResponse> mapFromJson(dynamic json) {
+    final map = <String, InquiryMessageResponse>{};
     if (json is Map && json.isNotEmpty) {
       json = json.cast<String, dynamic>(); // ignore: parameter_assignments
       for (final entry in json.entries) {
-        final value = RentalRequestCreate.fromJson(entry.value);
+        final value = InquiryMessageResponse.fromJson(entry.value);
         if (value != null) {
           map[entry.key] = value;
         }
@@ -131,14 +145,14 @@ class RentalRequestCreate {
     return map;
   }
 
-  // maps a json object with a list of RentalRequestCreate-objects as value to a dart map
-  static Map<String, List<RentalRequestCreate>> mapListFromJson(dynamic json, {bool growable = false,}) {
-    final map = <String, List<RentalRequestCreate>>{};
+  // maps a json object with a list of InquiryMessageResponse-objects as value to a dart map
+  static Map<String, List<InquiryMessageResponse>> mapListFromJson(dynamic json, {bool growable = false,}) {
+    final map = <String, List<InquiryMessageResponse>>{};
     if (json is Map && json.isNotEmpty) {
       // ignore: parameter_assignments
       json = json.cast<String, dynamic>();
       for (final entry in json.entries) {
-        map[entry.key] = RentalRequestCreate.listFromJson(entry.value, growable: growable,);
+        map[entry.key] = InquiryMessageResponse.listFromJson(entry.value, growable: growable,);
       }
     }
     return map;

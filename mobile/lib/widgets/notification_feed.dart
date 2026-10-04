@@ -142,6 +142,8 @@ class _Row extends ConsumerWidget {
     switch (destination) {
       case OpenDetail(:final detail):
         context.openInTab(detail);
+      case OpenScreen(:final path):
+        context.push(path);
       case SwitchTab(:final tab):
         // Close the notifications before switching. Left open they would
         // still be sitting in this tab the next time the tenant came back.

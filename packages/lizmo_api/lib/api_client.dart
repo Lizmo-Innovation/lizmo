@@ -201,6 +201,8 @@ class ApiClient {
           return ApiError.fromJson(value);
         case 'AppVersion':
           return AppVersion.fromJson(value);
+        case 'Applicant':
+          return Applicant.fromJson(value);
         case 'ArrearsRow':
           return ArrearsRow.fromJson(value);
         case 'AuthResponse':
@@ -223,6 +225,12 @@ class ApiClient {
           return CompleteRegistrationRequest.fromJson(value);
         case 'EndLeaseRequest':
           return EndLeaseRequest.fromJson(value);
+        case 'InquiryMessageResponse':
+          return InquiryMessageResponse.fromJson(value);
+        case 'InquirySummary':
+          return InquirySummary.fromJson(value);
+        case 'InquiryThread':
+          return InquiryThread.fromJson(value);
         case 'InvitationDetailsResponse':
           return InvitationDetailsResponse.fromJson(value);
         case 'InvitationSentResponse':
@@ -245,6 +253,8 @@ class ApiClient {
           return MaintenanceReportResponse.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'NewMessage':
+          return NewMessage.fromJson(value);
         case 'NotificationResponse':
           return NotificationResponse.fromJson(value);
         case 'OccupancySummary':
@@ -291,14 +301,10 @@ class ApiClient {
           return RentRoll.fromJson(value);
         case 'RentRollRow':
           return RentRollRow.fromJson(value);
-        case 'RentalRequestCreate':
-          return RentalRequestCreate.fromJson(value);
-        case 'RentalRequestForLandlord':
-          return RentalRequestForLandlord.fromJson(value);
-        case 'RentalRequestResponse':
-          return RentalRequestResponse.fromJson(value);
         case 'ReportProblemRequest':
           return ReportProblemRequest.fromJson(value);
+        case 'StartInquiry':
+          return StartInquiry.fromJson(value);
         case 'StartPasswordResetRequest':
           return StartPasswordResetRequest.fromJson(value);
         case 'StartPasswordResetResponse':

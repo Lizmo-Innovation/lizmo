@@ -11,11 +11,11 @@
 import 'package:lizmo_api/api.dart';
 import 'package:test/test.dart';
 
-// tests for RentalRequestResponse
+// tests for InquirySummary
 void main() {
-  // final instance = RentalRequestResponse();
+  // final instance = InquirySummary();
 
-  group('test RentalRequestResponse', () {
+  group('test InquirySummary', () {
     // String id
     test('to test the property `id`', () async {
       // TODO
@@ -31,23 +31,8 @@ void main() {
       // TODO
     });
 
-    // String unitId
-    test('to test the property `unitId`', () async {
-      // TODO
-    });
-
-    // String unitNumber
-    test('to test the property `unitNumber`', () async {
-      // TODO
-    });
-
-    // String bedId
-    test('to test the property `bedId`', () async {
-      // TODO
-    });
-
-    // String bedLabel
-    test('to test the property `bedLabel`', () async {
+    // String withName
+    test('to test the property `withName`', () async {
       // TODO
     });
 
@@ -56,13 +41,23 @@ void main() {
       // TODO
     });
 
-    // DateTime createdAt
-    test('to test the property `createdAt`', () async {
+    // String lastMessage
+    test('to test the property `lastMessage`', () async {
       // TODO
     });
 
-    // DateTime decidedAt
-    test('to test the property `decidedAt`', () async {
+    // DateTime lastMessageAt
+    test('to test the property `lastMessageAt`', () async {
+      // TODO
+    });
+
+    // bool unread
+    test('to test the property `unread`', () async {
+      // TODO
+    });
+
+    // DateTime createdAt
+    test('to test the property `createdAt`', () async {
       // TODO
     });
 
