@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
+import '../screens/tenants_screen.dart';
 
 /// Conversations waiting on this landlord, across every property.
 ///
@@ -72,13 +73,13 @@ class _Frame extends StatelessWidget {
   }
 }
 
-class _Queue extends StatelessWidget {
+class _Queue extends ConsumerWidget {
   const _Queue({required this.threads});
 
   final List<InquirySummary> threads;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final unanswered = threads.where((t) => t.unread ?? false).length;
 
     return _Frame(
@@ -112,7 +113,12 @@ class _Queue extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: TextButton(
                 key: const ValueKey('all-conversations'),
-                onPressed: () => context.push(Routes.inquiries),
+                onPressed: () {
+                  // Straight to the half that holds them, rather than
+                  // landing on Renting and leaving them to find the control.
+                  ref.read(tenantsTabProvider.notifier).state = true;
+                  context.go(Routes.tenants);
+                },
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   minimumSize: Size.zero,

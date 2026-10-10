@@ -101,19 +101,6 @@ class AccountSheet extends ConsumerWidget {
                 },
               ),
 
-            // Both sides: the same list read from opposite ends. Here as well
-            // as on Today, because Today shows only what is still going and
-            // "what did they say in March" is a different question.
-            _SheetAction(
-              icon: Icons.forum_outlined,
-              label: 'Conversations',
-              colour: LizmoColors.ink,
-              onTap: () {
-                Navigator.of(context).pop();
-                context.push(Routes.inquiries);
-              },
-            ),
-
             // Not buried, deliberately. An app that makes leaving hard is an
             // app people leave badly -- by uninstalling, which deletes nothing
             // and leaves their ID photographs where they were.

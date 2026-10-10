@@ -7,6 +7,7 @@ class SectionTab {
     required this.key,
     required this.icon,
     required this.label,
+    this.unread = false,
   });
 
   /// Keyed so a test can address the tab rather than its label, which often
@@ -14,6 +15,11 @@ class SectionTab {
   final Key key;
   final IconData icon;
   final String label;
+
+  /// Something on this section nobody has read. A dot rather than a count:
+  /// the number is on the screen itself, and a badge reading 11 on a 65px
+  /// tab is a smudge.
+  final bool unread;
 }
 
 /// The bar that switches between a product's sections.
@@ -53,6 +59,7 @@ class SectionTabBar extends StatelessWidget {
                   key: tab.key,
                   icon: tab.icon,
                   label: tab.label,
+                  unread: tab.unread,
                   selected: position == index,
                   onTap: () => onTap(position),
                 ),
@@ -69,12 +76,14 @@ class _Tab extends StatelessWidget {
     super.key,
     required this.icon,
     required this.label,
+    required this.unread,
     required this.selected,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final bool unread;
   final bool selected;
   final VoidCallback onTap;
 
@@ -90,7 +99,29 @@ class _Tab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 22, color: colour),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, size: 22, color: colour),
+                if (unread)
+                  Positioned(
+                    top: -1,
+                    right: -2,
+                    child: Container(
+                      key: const ValueKey('tab-unread'),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: LizmoColors.coral,
+                        shape: BoxShape.circle,
+                        // A ring, so the dot reads as a dot against the icon
+                        // rather than as part of it.
+                        border: Border.all(color: LizmoColors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(
               label,

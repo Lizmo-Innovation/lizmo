@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
 import '../widgets/section_tab_bar.dart';
 
 /// The landlord's five sections, and the bar that switches between them.
@@ -10,7 +12,7 @@ import '../widgets/section_tab_bar.dart';
 /// then a bed, and switching to Tenants and back returns to the bed rather than
 /// to the property list. That is what [StatefulShellRoute] buys, and it is why
 /// the tabs are a shell rather than three top-level routes.
-class LandlordShell extends StatelessWidget {
+class LandlordShell extends ConsumerWidget {
   const LandlordShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
@@ -50,12 +52,25 @@ class LandlordShell extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Tenants holds the conversations as well as the tenancies, so the dot
+    // belongs on it: somebody asking is waiting on an answer.
+    final unread = ref.watch(unreadInquiriesProvider) > 0;
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: shell,
       bottomNavigationBar: SectionTabBar(
-        tabs: _tabs,
+        tabs: [
+          for (final tab in _tabs)
+            tab.key == const ValueKey('tab-tenants')
+                ? SectionTab(
+                    key: tab.key,
+                    icon: tab.icon,
+                    label: tab.label,
+                    unread: unread,
+                  )
+                : tab,
+        ],
         index: shell.currentIndex,
         // initialLocation: tapping the tab you are already on returns it to its
         // root, which is what a second tap on a tab means everywhere else.

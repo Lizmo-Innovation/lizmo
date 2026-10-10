@@ -123,7 +123,10 @@ class TenantHomeScreen extends ConsumerWidget {
                       alignment: Alignment.centerLeft,
                       child: TextButton(
                         key: const ValueKey('all-conversations'),
-                        onPressed: () => context.push(Routes.inquiries),
+                        // The tab, not a pushed copy: it is a section of
+                        // the app now, and Back from a pushed list would
+                        // land here again.
+                        onPressed: () => context.go(Routes.tenantMessages),
                         child: Text(
                           'All ${waiting.length} conversations',
                           style: LizmoType.rowSub

@@ -38,7 +38,6 @@ import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/notifications/notification_providers.dart';
 import 'package:lizmo/screens/delete_account_screen.dart';
 import 'package:lizmo/screens/notifications_screen.dart';
-import 'package:lizmo/screens/inquiries_screen.dart';
 import 'package:lizmo/screens/inquiry_screen.dart';
 import 'package:lizmo/inquiry/inquiry_providers.dart';
 import 'package:lizmo/screens/tenant_payments_screen.dart';
@@ -5500,6 +5499,19 @@ void _landlordRequestTests() {
           child: const LizmoApp(),
         );
 
+    /// The landlord's conversations live in the Asking half of Tenants.
+    Future<void> openAsking(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+      // The header stat is also labelled Asking; the segment is the one
+      // inside the control.
+      await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('tenants-segment')),
+        matching: find.textContaining('Asking'),
+      ));
+      await tester.pumpAndSettle();
+    }
+
     /// Opens the thread through the app, the way a tap on Today's card does.
     Future<void> open(WidgetTester tester, _FakeInquiriesApi api,
         {Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
@@ -5741,12 +5753,7 @@ void _landlordRequestTests() {
         summary(withName: 'Ana Reyes'),
       ]));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Account'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Conversations').last);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(InquiriesScreen), findsOneWidget);
+      await openAsking(tester);
 
       final ana = tester.getTopLeft(find.byKey(const ValueKey('thread-i1'))).dy;
       final bea = tester.getTopLeft(find.byKey(const ValueKey('thread-i2'))).dy;
@@ -5755,7 +5762,15 @@ void _landlordRequestTests() {
       // Unanswered, then the tenancy, then what is over.
       expect(ana, lessThan(bea));
       expect(bea, lessThan(carla));
-      expect(find.text('Renting'), findsOneWidget);
+      // The chips on the rows. "Renting" is also the other segment's label,
+      // so this counts the chip inside the list.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('thread-i2')),
+          matching: find.text('Renting'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Ended'), findsOneWidget);
     });
 
@@ -5763,10 +5778,7 @@ void _landlordRequestTests() {
       final api = _FakeInquiriesApi(thread: thread(who: applicant()));
       await tester.pumpWidget(appWith(api: api, inbox: [summary()]));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Account'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Conversations').last);
-      await tester.pumpAndSettle();
+      await openAsking(tester);
 
       await tester.tap(find.byKey(const ValueKey('thread-i1')));
       await tester.pumpAndSettle();
@@ -5778,10 +5790,7 @@ void _landlordRequestTests() {
       final api = _FakeInquiriesApi(thread: thread(who: applicant()));
       await tester.pumpWidget(appWith(api: api));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Account'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Conversations').last);
-      await tester.pumpAndSettle();
+      await openAsking(tester);
 
       expect(find.text('Nothing here yet'), findsOneWidget);
     });
@@ -5802,7 +5811,7 @@ void _landlordRequestTests() {
       await tester.tap(find.byKey(const ValueKey('all-conversations')));
       await tester.pumpAndSettle();
 
-      expect(find.byType(InquiriesScreen), findsOneWidget);
+      // Straight to the half that holds them, not to Renting.
       expect(find.byKey(const ValueKey('thread-i5')), findsOneWidget);
     });
 

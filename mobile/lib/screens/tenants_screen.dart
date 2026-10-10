@@ -4,18 +4,28 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
+import 'inquiries_screen.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 
-/// The people renting from this landlord.
+/// Which half of the Tenants tab is showing.
 ///
-/// This screen used to say "Leases are not built yet", which stopped being
-/// true some time ago and nobody moved the copy. Worse than out of date: a
-/// landlord with three tenants was being told the feature housing them did not
-/// exist.
+/// Held outside the screen so the Conversations card on Today can open the
+/// Asking half directly, rather than landing somebody on Renting and leaving
+/// them to find the control.
+final tenantsTabProvider =
+    StateProvider<bool>((ref) => false); // true = Asking
+
+/// The people renting from this landlord, and the people asking to.
+///
+/// Both halves are the same question — who are my tenants, now and possibly —
+/// which is why they share a tab rather than taking two. Asking first when
+/// somebody is waiting on an answer: a conversation is perishable in a way a
+/// running tenancy is not.
 ///
 /// One row per live tenancy, across every property. Tapping one opens the
 /// person — which is the only route in the app to their emergency contact.
@@ -29,6 +39,11 @@ class TenantsScreen extends ConsumerWidget {
       _ => null,
     };
     final tenants = ref.watch(myTenantsProvider);
+    final threads = ref.watch(myInquiriesProvider).valueOrNull;
+    final asking = threads
+        ?.where((thread) => thread.status == InquirySummaryStatusEnum.OPEN)
+        .length;
+    final showAsking = ref.watch(tenantsTabProvider);
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -51,9 +66,38 @@ class TenantsScreen extends ConsumerWidget {
                 value: tenants.valueOrNull?.length.toString() ?? '—',
                 label: 'Renting now',
               ),
+              LatticeHeaderStat(
+                value: asking?.toString() ?? '—',
+                label: 'Asking',
+              ),
             ],
           ),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: SegmentedButton<bool>(
+              key: const ValueKey('tenants-segment'),
+              segments: [
+                ButtonSegment(
+                  value: true,
+                  label: Text(asking == null ? 'Asking' : 'Asking ($asking)'),
+                ),
+                const ButtonSegment(value: false, label: Text('Renting')),
+              ],
+              selected: {showAsking},
+              showSelectedIcon: false,
+              onSelectionChanged: (choice) =>
+                  ref.read(tenantsTabProvider.notifier).state = choice.first,
+            ),
+          ),
+          if (showAsking)
+            const Expanded(
+              child: InquiriesList(
+                emptyDetail: 'Somebody who scans your code and asks about the '
+                    'place appears here.',
+              ),
+            )
+          else
+            Expanded(
             child: tenants.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => LizmoMessageState(

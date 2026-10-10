@@ -22,6 +22,16 @@ class LizmoApp extends ConsumerWidget {
           surface: LizmoColors.canvas,
         ),
         scaffoldBackgroundColor: LizmoColors.canvas,
+        // Segment labels fell back to the system font, which is the one place
+        // in the app where text was not Manrope. Set here rather than on each
+        // control, so the next one is right without anybody remembering.
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: ButtonStyle(
+            textStyle: WidgetStatePropertyAll(
+              LizmoType.rowName.copyWith(fontSize: 13),
+            ),
+          ),
+        ),
         useMaterial3: true,
       ),
     );

@@ -15,7 +15,7 @@ import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_share_screen.dart';
-import 'screens/inquiries_screen.dart';
+import 'screens/inquiries_screen.dart' show TenantMessagesScreen;
 import 'screens/inquiry_screen.dart';
 import 'screens/rent_roll_screen.dart';
 import 'screens/landlord_home_screen.dart';
@@ -59,6 +59,13 @@ abstract final class Routes {
   static const tenantPlace = '/tenant/place';
 
   static const tenantPayments = '/tenant/payments';
+
+  /// Everybody they have asked, and whatever came back.
+  ///
+  /// Its own tab because somebody looking for a room asks four landlords at
+  /// once, and their answers were two cards on Home under everything else.
+  static const tenantMessages = '/tenant/messages';
+
   static const tenantMaintenance = '/tenant/maintenance';
 
   /// The tenant's own profile.
@@ -124,12 +131,6 @@ abstract final class Routes {
 
   static const noProfile = '/no-profile';
 
-  /// Every conversation this account is in, from either side.
-  ///
-  /// Top level for the same reason one conversation is: it serves a landlord
-  /// and a tenant alike, so it cannot belong to either one's tabs.
-  static const inquiries = '/conversations';
-
   /// One conversation about a place.
   ///
   /// Top level and over the tabs, on both sides: it is the same screen for
@@ -153,6 +154,7 @@ abstract final class Routes {
     tenantHome,
     tenantPlace,
     tenantPayments,
+    tenantMessages,
     tenantMaintenance,
   ];
 
@@ -318,10 +320,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UpdateScreen(),
       ),
       GoRoute(
-        path: Routes.inquiries,
-        builder: (context, state) => const InquiriesScreen(),
-      ),
-      GoRoute(
         path: '/inquiry/:id',
         builder: (context, state) =>
             InquiryScreen(id: state.pathParameters['id']!),
@@ -430,6 +428,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   ..._tenantDetails(),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.tenantMessages,
+                builder: (context, state) => const TenantMessagesScreen(),
+                routes: _tenantDetails(),
               ),
             ],
           ),

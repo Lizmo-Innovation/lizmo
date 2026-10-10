@@ -7,75 +7,72 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
+import '../widgets/account_sheet.dart';
+import '../widgets/notification_bell.dart';
+import '../widgets/role_switcher.dart';
 
 /// Every conversation, from whichever end the reader is at.
 ///
-/// Today's card shows only the live ones, which is right for a to-do list and
-/// wrong for "what did that person say in March". This is the whole list:
-/// still going, housed, and ended, in that order, because a conversation
-/// nobody has answered is more urgent than one that is over.
-class InquiriesScreen extends ConsumerWidget {
-  const InquiriesScreen({super.key});
+/// A tenant asks several landlords and a landlord fields several tenants, so
+/// this is a list rather than a card: still going, housed, and ended, in that
+/// order, because a conversation nobody has answered is more urgent than one
+/// that is over.
+///
+/// Used twice: as the tenant's Messages tab, and as the Asking half of the
+/// landlord's Tenants tab, which is why the header is not in here.
+class InquiriesList extends ConsumerWidget {
+  const InquiriesList({super.key, this.emptyDetail});
+
+  /// What to say when there are none, which differs by who is reading.
+  final String? emptyDetail;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(myInquiriesProvider);
 
-    return Scaffold(
-      backgroundColor: LizmoColors.canvas,
-      appBar: AppBar(
-        backgroundColor: LizmoColors.teal900,
-        foregroundColor: LizmoColors.white,
-        elevation: 0,
-        title: Text('Conversations',
-            style: LizmoType.screenTitle.copyWith(fontSize: 18)),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(myInquiriesProvider),
-          child: switch (threads) {
-            AsyncData(:final value) when value.isEmpty => const LizmoMessageState(
-                tone: LizmoMessageTone.neutral,
-                icon: Icons.chat_bubble_outline,
-                title: 'Nothing here yet',
-                detail: 'Conversations about a place appear here, from the '
-                    'first message to the day somebody moves in.',
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(myInquiriesProvider),
+      child: switch (threads) {
+        AsyncData(:final value) when value.isEmpty => LizmoMessageState(
+            tone: LizmoMessageTone.neutral,
+            icon: Icons.chat_bubble_outline,
+            title: 'Nothing here yet',
+            detail: emptyDetail ??
+                'Conversations about a place appear here, from the first '
+                    'message to the day somebody moves in.',
+          ),
+        AsyncData(:final value) => ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: [
+              for (final thread in ordered(value)) _ThreadRow(thread: thread),
+            ],
+          ),
+        AsyncError(:final error) => LizmoMessageState(
+            icon: Icons.cloud_off_outlined,
+            tone: LizmoMessageTone.problem,
+            title: 'Could not read your conversations',
+            detail: ApiFailure.from(error).message,
+            actionLabel: 'Try again',
+            onAction: () => ref.invalidate(myInquiriesProvider),
+          ),
+        _ => const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
               ),
-            AsyncData(:final value) => ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  for (final thread in _ordered(value))
-                    _ThreadRow(thread: thread),
-                ],
-              ),
-            AsyncError(:final error) => LizmoMessageState(
-                icon: Icons.cloud_off_outlined,
-                tone: LizmoMessageTone.problem,
-                title: 'Could not read your conversations',
-                detail: ApiFailure.from(error).message,
-                actionLabel: 'Try again',
-                onAction: () => ref.invalidate(myInquiriesProvider),
-              ),
-            _ => const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
-                  ),
-                ),
-              ),
-          },
-        ),
-      ),
+            ),
+          ),
+      },
     );
   }
 
   /// Waiting on you first, then the rest of the live ones, then tenancies,
   /// then what is over. Within each, the server's order — most recently
   /// spoken in.
-  static List<InquirySummary> _ordered(List<InquirySummary> threads) {
+  static List<InquirySummary> ordered(List<InquirySummary> threads) {
     int rank(InquirySummary thread) {
       if (thread.status == InquirySummaryStatusEnum.OPEN) {
         return (thread.unread ?? false) ? 0 : 1;
@@ -86,6 +83,59 @@ class InquiriesScreen extends ConsumerWidget {
     final sorted = [...threads];
     sorted.sort((a, b) => rank(a).compareTo(rank(b)));
     return sorted;
+  }
+}
+
+/// The tenant's Messages tab.
+///
+/// Somebody looking for a room is asking four landlords at once, and until
+/// this tab existed their answers lived on cards on Home, two at a time,
+/// under whatever else needed them that morning.
+class TenantMessagesScreen extends ConsumerWidget {
+  const TenantMessagesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = switch (ref.watch(authControllerProvider)) {
+      AuthSignedIn(:final session) => session,
+      _ => null,
+    };
+    final threads = ref.watch(myInquiriesProvider).valueOrNull;
+    final waiting =
+        threads?.where((thread) => thread.unread ?? false).length;
+
+    return Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: Column(
+        children: [
+          LatticeHeader(
+            eyebrow: session?.name ?? 'Lizmo',
+            title: 'Messages',
+            trailing: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RoleSwitcher(),
+                SizedBox(width: 4),
+                NotificationBell(),
+                AccountButton(),
+              ],
+            ),
+            stats: [
+              LatticeHeaderStat(
+                value: waiting?.toString() ?? '—',
+                label: 'New replies',
+              ),
+            ],
+          ),
+          const Expanded(
+            child: InquiriesList(
+              emptyDetail: 'Scan a place you like and ask about it. Whatever '
+                  'the landlord says back lands here.',
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
