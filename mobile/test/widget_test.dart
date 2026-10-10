@@ -5507,7 +5507,7 @@ void _landlordRequestTests() {
       // inside the control.
       await tester.tap(find.descendant(
         of: find.byKey(const ValueKey('tenants-segment')),
-        matching: find.textContaining('Asking'),
+        matching: find.textContaining('Inquiries'),
       ));
       await tester.pumpAndSettle();
     }

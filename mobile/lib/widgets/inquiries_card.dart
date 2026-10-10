@@ -114,8 +114,8 @@ class _Queue extends ConsumerWidget {
               child: TextButton(
                 key: const ValueKey('all-conversations'),
                 onPressed: () {
-                  // Straight to the half that holds them, rather than
-                  // landing on Renting and leaving them to find the control.
+                  // Straight to the Inquiries half, rather than landing
+                  // on Renting and leaving them to find the control.
                   ref.read(tenantsTabProvider.notifier).state = true;
                   context.go(Routes.tenants);
                 },

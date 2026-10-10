@@ -18,7 +18,7 @@ import '../widgets/role_switcher.dart';
 /// order, because a conversation nobody has answered is more urgent than one
 /// that is over.
 ///
-/// Used twice: as the tenant's Messages tab, and as the Asking half of the
+/// Used twice: as the tenant's Messages tab, and as the Inquiries half of
 /// landlord's Tenants tab, which is why the header is not in here.
 class InquiriesList extends ConsumerWidget {
   const InquiriesList({super.key, this.emptyDetail});

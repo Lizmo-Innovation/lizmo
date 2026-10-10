@@ -15,15 +15,15 @@ import '../widgets/role_switcher.dart';
 /// Which half of the Tenants tab is showing.
 ///
 /// Held outside the screen so the Conversations card on Today can open the
-/// Asking half directly, rather than landing somebody on Renting and leaving
-/// them to find the control.
+/// Inquiries half directly, rather than landing somebody on Renting and
+/// leaving them to find the control.
 final tenantsTabProvider =
-    StateProvider<bool>((ref) => false); // true = Asking
+    StateProvider<bool>((ref) => false); // true = Inquiries
 
 /// The people renting from this landlord, and the people asking to.
 ///
 /// Both halves are the same question — who are my tenants, now and possibly —
-/// which is why they share a tab rather than taking two. Asking first when
+/// which is why they share a tab rather than taking two. Inquiries first when
 /// somebody is waiting on an answer: a conversation is perishable in a way a
 /// running tenancy is not.
 ///
@@ -43,7 +43,7 @@ class TenantsScreen extends ConsumerWidget {
     final asking = threads
         ?.where((thread) => thread.status == InquirySummaryStatusEnum.OPEN)
         .length;
-    final showAsking = ref.watch(tenantsTabProvider);
+    final showInquiries = ref.watch(tenantsTabProvider);
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -68,7 +68,7 @@ class TenantsScreen extends ConsumerWidget {
               ),
               LatticeHeaderStat(
                 value: asking?.toString() ?? '—',
-                label: 'Asking',
+                label: 'Inquiries',
               ),
             ],
           ),
@@ -79,17 +79,18 @@ class TenantsScreen extends ConsumerWidget {
               segments: [
                 ButtonSegment(
                   value: true,
-                  label: Text(asking == null ? 'Asking' : 'Asking ($asking)'),
+                  label: Text(
+                      asking == null ? 'Inquiries' : 'Inquiries ($asking)'),
                 ),
                 const ButtonSegment(value: false, label: Text('Renting')),
               ],
-              selected: {showAsking},
+              selected: {showInquiries},
               showSelectedIcon: false,
               onSelectionChanged: (choice) =>
                   ref.read(tenantsTabProvider.notifier).state = choice.first,
             ),
           ),
-          if (showAsking)
+          if (showInquiries)
             const Expanded(
               child: InquiriesList(
                 emptyDetail: 'Somebody who scans your code and asks about the '
