@@ -4,6 +4,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import 'date_field.dart';
 
 /// The terms a landlord is accepting on, settled before the lease exists.
 ///
@@ -100,17 +101,6 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     return amount == null || amount <= 0 ? null : amount;
   }
 
-  Future<void> _pickStart() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _start,
-      // A tenancy can start a little in the past — somebody who moved in on
-      // Saturday and is being written up on Monday — and a long way ahead.
-      firstDate: DateTime.now().subtract(const Duration(days: 60)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null) setState(() => _start = picked);
-  }
 
   /// The room, and the rent that comes with it.
   ///
@@ -259,26 +249,17 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               const SizedBox(height: 18),
               _Label('Tenancy starts'),
               const SizedBox(height: 6),
-              InkWell(
-                onTap: _pickStart,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: LizmoColors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE3E8E6)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event_outlined,
-                          size: 18, color: LizmoColors.slate),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(_readable(_start), style: LizmoType.rowName)),
-                      const Icon(Icons.arrow_drop_down, color: LizmoColors.slate),
-                    ],
-                  ),
-                ),
+              LizmoDateField(
+                fieldKey: const ValueKey('start-date'),
+                value: _start,
+                // A half-typed date leaves the old one standing: the rent day
+                // below reads from it, and it must not flicker to today.
+                onChanged: (date) => setState(() => _start = date ?? _start),
+                // A tenancy can start a little in the past — somebody who
+                // moved in on Saturday and is being written up on Monday —
+                // and a long way ahead.
+                firstDate: DateTime.now().subtract(const Duration(days: 60)),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
               ),
               const SizedBox(height: 6),
               Text(
@@ -350,14 +331,6 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
         ),
       ),
     );
-  }
-
-  static String _readable(DateTime date) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   static String _ordinal(int day) {

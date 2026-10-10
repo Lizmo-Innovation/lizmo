@@ -7,6 +7,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../tenant/id_labels.dart';
+import '../widgets/date_field.dart';
 import '../tenant/tenant_providers.dart';
 
 /// What a tenant tells a landlord before signing a lease.
@@ -74,25 +75,6 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
     _seeded = true;
   }
 
-  Future<void> _pickBirthdate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _birthdate ?? DateTime.utc(now.year - 25, now.month, now.day),
-      firstDate: DateTime.utc(1900, 1, 2),
-      // The API refuses a birthdate in the future, so the calendar does not
-      // offer one.
-      lastDate: DateTime.utc(now.year, now.month, now.day),
-    );
-    if (picked == null) return;
-
-    // Held as UTC midnight. The generated client formats birthdate through
-    // toUtc(), and local midnight in Manila is the previous day in UTC — which
-    // would quietly save everyone a day older than they are.
-    setState(
-      () => _birthdate = DateTime.utc(picked.year, picked.month, picked.day),
-    );
-  }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -236,7 +218,22 @@ class _TenantProfileScreenState extends ConsumerState<TenantProfileScreen> {
                 const SizedBox(height: 24),
                 const _SectionHeading('About you'),
                 const SizedBox(height: 10),
-                _BirthdateField(value: _birthdate, onTap: _pickBirthdate),
+                Text('Birthdate',
+                    style: LizmoType.rowName.copyWith(fontSize: 13)),
+                const SizedBox(height: 6),
+                LizmoDateField(
+                  fieldKey: const ValueKey('birthdate-field'),
+                  value: _birthdate,
+                  // Held as UTC midnight. The generated client formats this
+                  // through toUtc(), and local midnight in Manila is the
+                  // previous day in UTC — which would quietly save everyone a
+                  // day older than they are.
+                  onChanged: (date) => setState(() => _birthdate = date),
+                  firstDate: DateTime.utc(1900, 1, 2),
+                  // The API refuses a birthdate in the future.
+                  lastDate: DateTime.utc(
+                      DateTime.now().year, DateTime.now().month, DateTime.now().day),
+                ),
                 const SizedBox(height: 14),
                 _Field(
                   controller: _occupation,
@@ -542,72 +539,6 @@ class _Field extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tapping opens a calendar rather than asking anyone to type a date.
-class _BirthdateField extends StatelessWidget {
-  const _BirthdateField({required this.value, required this.onTap});
-
-  final DateTime? value;
-  final VoidCallback onTap;
-
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: LizmoColors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Birthdate',
-                      style: LizmoType.rowName.copyWith(fontSize: 13),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      // Not set reads as a dash, never as a date.
-                      value == null
-                          ? '—'
-                          : '${_months[value!.month - 1]} ${value!.day}, ${value!.year}',
-                      style: LizmoType.rowSub,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.calendar_today_outlined,
-                size: 18,
-                color: LizmoColors.slate,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

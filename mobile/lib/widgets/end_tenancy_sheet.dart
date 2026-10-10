@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'date_field.dart';
+
 /// Ending a tenancy, and settling up in the same breath.
 ///
 /// Nothing in the app could do this before. The endpoint existed and was
@@ -71,17 +73,6 @@ class _EndTenancySheetState extends State<EndTenancySheet> {
     super.dispose();
   }
 
-  Future<void> _pickEnd() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _end,
-      // A move-out is usually recorded after it happened, sometimes weeks
-      // after, and occasionally booked a little ahead.
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-    );
-    if (picked != null) setState(() => _end = picked);
-  }
 
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -138,31 +129,14 @@ class _EndTenancySheetState extends State<EndTenancySheet> {
               const SizedBox(height: 20),
               _Label('Last day'),
               const SizedBox(height: 6),
-              InkWell(
-                key: const ValueKey('end-date'),
-                onTap: _pickEnd,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: LizmoColors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE3E8E6)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event_outlined,
-                          size: 18, color: LizmoColors.slate),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child:
-                              Text(_readable(_end), style: LizmoType.rowName)),
-                      const Icon(Icons.arrow_drop_down,
-                          color: LizmoColors.slate),
-                    ],
-                  ),
-                ),
+              LizmoDateField(
+                fieldKey: const ValueKey('end-date'),
+                value: _end,
+                onChanged: (date) => setState(() => _end = date ?? _end),
+                // A move-out is usually recorded after it happened, sometimes
+                // weeks after, and occasionally booked a little ahead.
+                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                lastDate: DateTime.now().add(const Duration(days: 90)),
               ),
 
               const SizedBox(height: 18),
@@ -299,14 +273,6 @@ class _EndTenancySheetState extends State<EndTenancySheet> {
         ),
       ),
     );
-  }
-
-  static String _readable(DateTime date) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }
 

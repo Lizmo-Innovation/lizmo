@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import 'date_field.dart';
+
 /// A landlord writing down money they received themselves.
 ///
 /// Cash handed over at the door had nowhere to go: the backend could record
@@ -74,10 +76,6 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
     RecordPaymentRequestPaymentMethodEnum.OTHER: 'Something else',
   };
 
-  static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June', 'July',
-    'August', 'September', 'October', 'November', 'December',
-  ];
 
   static DateTime _today() {
     final now = DateTime.now();
@@ -91,18 +89,6 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
-    final today = _today();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _receivedOn,
-      // A landlord writes down on Monday the cash they were handed on
-      // Saturday, and sometimes much later. Never in the future.
-      firstDate: DateTime(today.year - 1, today.month, today.day),
-      lastDate: today,
-    );
-    if (picked != null) setState(() => _receivedOn = picked);
-  }
 
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -122,7 +108,6 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isToday = _receivedOn == _today();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -183,22 +168,16 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
               const SizedBox(height: 18),
               const _Label('Received on'),
               const SizedBox(height: 6),
-              OutlinedButton.icon(
-                key: const ValueKey('record-date'),
-                onPressed: _pickDate,
-                icon: const Icon(Icons.event_outlined, size: 18),
-                label: Text(
-                  isToday
-                      ? 'Today'
-                      : '${_receivedOn.day} ${_months[_receivedOn.month - 1]} '
-                          '${_receivedOn.year}',
-                  style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: LizmoColors.teal900,
-                  side: const BorderSide(color: Color(0xFFE3E8E6)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
+              LizmoDateField(
+                fieldKey: const ValueKey('record-date'),
+                value: _receivedOn,
+                onChanged: (date) =>
+                    setState(() => _receivedOn = date ?? _receivedOn),
+                // A landlord writes down on Monday the cash they were handed
+                // on Saturday, and sometimes much later. Never in the future.
+                firstDate: DateTime(
+                    _today().year - 1, _today().month, _today().day),
+                lastDate: _today(),
               ),
 
               const SizedBox(height: 18),

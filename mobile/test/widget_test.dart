@@ -4362,17 +4362,49 @@ void _tenantProfileTests() {
         containsAll(['Rosa Dela Cruz', 'Nurse at Bicol Medical Center',
             'Mother', '09171234567', '1234-5678-9012']),
       );
-      expect(find.text('April 12, 1998'), findsOneWidget);
+      // Typed, not read out: the field is the same box somebody edits.
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('birthdate-field')))
+            .controller
+            ?.text,
+        '04/12/1998',
+      );
       expect(find.text('PhilSys (National ID)'), findsWidgets);
     });
 
-    testWidgets('an unset birthdate reads as a dash, never as a date',
-        (tester) async {
+    testWidgets('an unset birthdate is empty, never today', (tester) async {
       await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
       await openProfile(tester);
 
-      // Null is not a date, and certainly not today.
-      expect(find.text('—'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('birthdate-field')))
+            .controller
+            ?.text,
+        isEmpty,
+      );
+      // And says what shape to type it in, rather than leaving them guessing.
+      expect(find.text('MM/DD/YYYY'), findsOneWidget);
+    });
+
+    /// The reason this field exists: scrolling a calendar back to 1998 is
+    /// miserable, and the picker's own keyboard mode refused what it was given.
+    testWidgets('a birthday can be typed', (tester) async {
+      await tester.pumpWidget(appWith(TenantProfileResponse(readyForALease: false)));
+      await openProfile(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('birthdate-field')), '04121998');
+      await tester.pump();
+
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('birthdate-field')))
+            .controller
+            ?.text,
+        '04/12/1998',
+      );
     });
 
     testWidgets('the banner says what a lease still needs', (tester) async {
