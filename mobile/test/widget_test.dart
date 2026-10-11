@@ -5301,6 +5301,98 @@ void _findingAPlaceTests() {
           lessThan(tester.getTopLeft(find.text('12 Mabini St')).dy));
     });
 
+    /// The name used to live only in the app bar, at eighteen pixels, cut to
+    /// an ellipsis and gone the moment anybody scrolled.
+    testWidgets('the place is named in the body, not only the bar',
+        (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      final name = find.text('Sunrise Apartments');
+      expect(name, findsOneWidget);
+      // Above the address, and below where a floating back button sits.
+      expect(tester.getTopLeft(name).dy,
+          lessThan(tester.getTopLeft(find.text('12 Mabini St')).dy));
+      expect(find.byTooltip('Back'), findsOneWidget);
+    });
+
+    /// Taxonomy, so it is a chip rather than a line competing with the
+    /// address for the same attention.
+    testWidgets('what kind of place it is reads as a chip', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('property-kind')), findsOneWidget);
+      expect(find.text('Residential · Boarding House'), findsOneWidget);
+    });
+
+    /// With the bar floating over the body, a place with no photograph would
+    /// put its own name under the back button.
+    testWidgets('a place with no photos still clears the bar', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      final name = tester.getRect(find.text('Sunrise Apartments'));
+      final back = tester.getRect(find.byTooltip('Back'));
+      expect(name.top, greaterThanOrEqualTo(back.bottom),
+          reason: 'the name should start below the floating back button');
+    });
+
+    /// Eight dots at seven pixels is a smudge nobody can count.
+    testWidgets('several photos are counted, and the count follows the swipe',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+          found: place(beds: 2, photos: const [
+        'https://example.invalid/front.jpg',
+        'https://example.invalid/kitchen.jpg',
+        'https://example.invalid/stairs.jpg',
+      ])));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('photo-count')), findsOneWidget);
+      expect(find.text('1/3'), findsOneWidget);
+
+      await tester.drag(find.byKey(const ValueKey('property-photos')),
+          const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2/3'), findsOneWidget);
+    });
+
+    /// One photograph is not a set to count through.
+    testWidgets('a single photo is not counted', (tester) async {
+      await tester.pumpWidget(appWith(
+          found: place(
+              beds: 2, photos: const ['https://example.invalid/front.jpg'])));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('property-photos')), findsOneWidget);
+      expect(find.byKey(const ValueKey('photo-count')), findsNothing);
+    });
+
+    /// A strip proves a room exists. It does not show the damp in the corner,
+    /// which is what somebody deciding to travel across town is looking for.
+    testWidgets('a photo opens as large as the screen allows', (tester) async {
+      await tester.pumpWidget(appWith(
+          found: place(
+              beds: 2, photos: const ['https://example.invalid/front.jpg'])));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      await tester.tap(find.byKey(const ValueKey('property-photos')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FullScreenImage), findsOneWidget);
+      // Named, or it is a picture of a building with nothing saying which.
+      expect(find.text('Sunrise Apartments'), findsWidgets);
+      expect(find.byKey(const ValueKey('close-photo')), findsOneWidget);
+    });
+
     /// Most places have none, and an empty strip would be a grey box where
     /// the building should be.
     testWidgets('a place with no photos shows no strip', (tester) async {

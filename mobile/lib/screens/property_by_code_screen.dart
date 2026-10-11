@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
 import '../widgets/ask_for_number_sheet.dart';
+import '../widgets/full_screen_image.dart';
 import '../tenant/tenant_providers.dart';
 
 /// What a tenant sees after entering the code: the place, and what is free.
@@ -24,41 +25,84 @@ class PropertyByCodeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final property = ref.watch(propertyByCodeProvider(code));
 
+    // Everything except a photograph still needs the bar's height kept
+    // clear: it floats over the body now rather than pushing it down.
+    final under = MediaQuery.paddingOf(context).top + kToolbarHeight;
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
+      // The photograph is the top of the screen. A teal bar across it was a
+      // slab over the one thing somebody came to look at.
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: LizmoColors.teal900,
-        foregroundColor: LizmoColors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          property.valueOrNull?.name ?? 'Finding…',
-          style: LizmoType.screenTitle.copyWith(fontSize: 18),
-        ),
+        scrolledUnderElevation: 0,
+        // No title: the name is in the body now, where it survives a scroll
+        // and is not cut to eighteen pixels of ellipsis.
+        leading: const _BackOverPhoto(),
       ),
-      body: SafeArea(
-        child: switch (property) {
-          AsyncData(:final value) => _Place(place: value),
-          AsyncError(:final error) => _NotFound(failure: ApiFailure.from(error)),
-          _ => const Center(
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+      body: switch (property) {
+        AsyncData(:final value) => _Place(place: value, under: under),
+        AsyncError(:final error) => Padding(
+            padding: EdgeInsets.only(top: under),
+            child: _NotFound(failure: ApiFailure.from(error)),
+          ),
+        _ => Padding(
+            padding: EdgeInsets.only(top: under),
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
+                ),
               ),
             ),
           ),
-        },
+      },
+    );
+  }
+}
+
+/// Back, over a photograph that might be white sky or a dark stairwell.
+///
+/// A bare white arrow vanishes against the first and a bare dark one against
+/// the second, so it carries its own scrim and stops depending on whatever
+/// is underneath it.
+class _BackOverPhoto extends StatelessWidget {
+  const _BackOverPhoto();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: const BoxDecoration(
+          color: Colors.black38,
+          shape: BoxShape.circle,
+        ),
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          iconSize: 20,
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back, color: LizmoColors.white),
+          tooltip: 'Back',
+        ),
       ),
     );
   }
 }
 
 class _Place extends StatelessWidget {
-  const _Place({required this.place});
+  const _Place({required this.place, required this.under});
 
   final PropertyByCodeResponse place;
+
+  /// How much room the floating bar needs when no photograph covers it.
+  final double under;
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +112,17 @@ class _Place extends StatelessWidget {
     return ListView(
       // No side padding on the list itself: the photographs run edge to edge,
       // and everything under them is inset on its own.
-      padding: EdgeInsets.only(top: place.photos.isEmpty ? 16 : 0, bottom: 28),
+      // With no photograph to cover it, the floating bar gets its room back.
+      padding: EdgeInsets.only(
+        top: place.photos.isEmpty ? under + 8 : 0,
+        bottom: 28,
+      ),
       children: [
-        // First, before the address: this is the thing somebody decides on,
+        // First, before the name: this is the thing somebody decides on,
         // and until now the answer to "what does it look like" was a trip
         // across town to stand outside it.
         if (place.photos.isNotEmpty) ...[
-          _Photos(urls: place.photos),
+          _Photos(urls: place.photos, name: place.name ?? 'This place'),
           const SizedBox(height: 16),
         ],
         Padding(
@@ -82,15 +130,18 @@ class _Place extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-        Text(place.address ?? '', style: LizmoType.rowSub),
-        const SizedBox(height: 4),
+        // In the body rather than the bar. A name in a bar is cut to an
+        // ellipsis and gone the moment somebody scrolls, and this is the
+        // name of the thing they are reading about.
         Text(
-          _kind(place),
-          style: LizmoType.rowSub.copyWith(
-            color: LizmoColors.slate,
-            letterSpacing: 0.6,
-          ),
+          place.name ?? '',
+          style: LizmoType.screenTitle
+              .copyWith(fontSize: 22, color: LizmoColors.ink),
         ),
+        const SizedBox(height: 4),
+        Text(place.address ?? '', style: LizmoType.rowSub),
+        const SizedBox(height: 10),
+        _Kind(label: _kind(place)),
         if ((place.description ?? '').isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(place.description!, style: LizmoType.rowSub),
@@ -135,6 +186,38 @@ class _Place extends StatelessWidget {
   }
 }
 
+/// What kind of place this is, as a chip rather than a line of its own.
+///
+/// "Residential · Boarding House" is taxonomy, not news. Somebody scanning a
+/// code does want to know whether this is a boarding house or a block of
+/// flats, so it stays — quieter, and under the name rather than competing
+/// with the address for the same line of attention.
+class _Kind extends StatelessWidget {
+  const _Kind({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: const ValueKey('property-kind'),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: LizmoColors.tealBg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: LizmoType.rowSub
+              .copyWith(fontSize: 12, color: LizmoColors.teal900),
+        ),
+      ),
+    );
+  }
+}
+
 /// How much is free on one floor, and what it costs.
 ///
 /// Counts rather than rooms: a stranger with the code used to be handed every
@@ -147,9 +230,13 @@ class _Place extends StatelessWidget {
 /// afternoon travelling to a place wants the kitchen and the stairs as well
 /// as the front of the building.
 class _Photos extends StatefulWidget {
-  const _Photos({required this.urls});
+  const _Photos({required this.urls, required this.name});
 
   final List<String> urls;
+
+  /// Named on the enlarged photograph, which otherwise arrives as a picture
+  /// of a building with nothing saying which building.
+  final String name;
 
   @override
   State<_Photos> createState() => _PhotosState();
@@ -167,16 +254,27 @@ class _PhotosState extends State<_Photos> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
         SizedBox(
-            key: const ValueKey('property-photos'),
-            height: 260,
-            child: PageView.builder(
-              controller: _pages,
-              itemCount: widget.urls.length,
-              onPageChanged: (page) => setState(() => _showing = page),
-              itemBuilder: (context, index) => Container(
+          key: const ValueKey('property-photos'),
+          height: 260,
+          child: PageView.builder(
+            controller: _pages,
+            itemCount: widget.urls.length,
+            onPageChanged: (page) => setState(() => _showing = page),
+            itemBuilder: (context, index) => GestureDetector(
+              // A 260px strip shows that a room exists. It does not show the
+              // damp in the corner or how small the window really is, which
+              // is what somebody travelling across town wants to know.
+              onTap: () => FullScreenImage.show(
+                context,
+                widget.urls[index],
+                widget.name,
+                unavailable: 'That photograph could not be loaded. Close this '
+                    'and scan the code again.',
+              ),
+              child: Container(
                 color: LizmoColors.tealTint,
                 child: Image.network(
                   widget.urls[index],
@@ -206,27 +304,29 @@ class _PhotosState extends State<_Photos> {
                 ),
               ),
             ),
-        ),
-        if (widget.urls.length > 1) ...[
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < widget.urls.length; i++)
-                Container(
-                  width: 7,
-                  height: 7,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i == _showing
-                        ? LizmoColors.teal900
-                        : LizmoColors.teal900.withValues(alpha: 0.22),
-                  ),
-                ),
-            ],
           ),
-        ],
+        ),
+        // A count, not dots. Eight dots at seven pixels is a smudge nobody
+        // can count, and the number says plainly that there is more here to
+        // swipe through — which the dots never really did.
+        if (widget.urls.length > 1)
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: Container(
+              key: const ValueKey('photo-count'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${_showing + 1}/${widget.urls.length}',
+                style: LizmoType.rowSub
+                    .copyWith(fontSize: 12, color: LizmoColors.white),
+              ),
+            ),
+          ),
       ],
     );
   }
