@@ -50,6 +50,7 @@ import 'package:lizmo/platform/lizmo_billing_providers.dart';
 import 'package:lizmo/screens/lizmo_billing_screen.dart';
 import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
+import 'package:lizmo/widgets/rent_schedule_list.dart';
 import 'package:lizmo/screens/maintenance_inbox_screen.dart';
 import 'package:lizmo/screens/maintenance_report_screen.dart';
 import 'package:lizmo/screens/update_screen.dart';
@@ -6367,7 +6368,10 @@ void _landlordRequestTests() {
 
 void _tenantLeaseTests() {
   group('a tenant with a lease', () {
-    Widget appWith(List<LeaseResponse> leases) => ProviderScope(
+    Widget appWith(
+      List<LeaseResponse> leases, {
+      List<BillingPeriodResponse> months = const [],
+    }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
@@ -6380,14 +6384,17 @@ void _tenantLeaseTests() {
           (ref) async => const <TenantDocumentResponse>[],
         ),
         myLeasesProvider.overrideWith((ref) async => leases),
-        myBillingProvider('l1').overrideWith(
-          (ref) async => const <BillingPeriodResponse>[],
-        ),
+        myBillingProvider('l1').overrideWith((ref) async => months),
       ],
       child: const LizmoApp(),
     );
 
-    LeaseResponse lease({int dueDay = 5, String? bedLabel = 'Bed 1'}) =>
+    LeaseResponse lease({
+      int dueDay = 5,
+      String? bedLabel = 'Bed 1',
+      num? deposit,
+      num? advance,
+    }) =>
         LeaseResponse(
           id: 'l1',
           propertyName: 'Sunrise Apartments',
@@ -6396,8 +6403,104 @@ void _tenantLeaseTests() {
           bedLabel: bedLabel,
           rentAmount: 2500,
           dueDateDay: dueDay,
+          depositAmount: deposit,
+          advanceAmount: advance,
           status: LeaseResponseStatusEnum.ACTIVE,
         );
+
+    /// Server order: oldest first.
+    BillingPeriodResponse month(String label, int m,
+            {num paid = 0, bool overdue = false}) =>
+        BillingPeriodResponse(
+          id: 'b$m',
+          label: label,
+          periodStart: DateTime.utc(2026, m, 1),
+          periodEnd: DateTime.utc(2026, m + 1, 0),
+          dueDate: DateTime.utc(2026, m, 5),
+          amountDue: 2500,
+          amountPaid: paid,
+          outstanding: 2500 - paid,
+          status: paid >= 2500
+              ? BillingPeriodResponseStatusEnum.PAID
+              : BillingPeriodResponseStatusEnum.UNPAID,
+          overdue: overdue,
+        );
+
+    /// It showed on every tenancy, so a tenant with a deposit on record read
+    /// "not recorded yet" directly under the card recording it.
+    testWidgets('a recorded deposit is not called unrecorded', (tester) async {
+      await tester.pumpWidget(
+          appWith([lease(deposit: 5000, advance: 2500)]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Before you moved in'), findsOneWidget);
+      expect(find.byKey(const ValueKey('no-upfront-money')), findsNothing);
+      expect(find.textContaining('not recorded'), findsNothing);
+    });
+
+    testWidgets('no deposit on record says so, and promises nothing',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('no-upfront-money')), findsOneWidget);
+      // There is no such thing as house rules in the app.
+      expect(find.textContaining('house rules'), findsNothing);
+    });
+
+    /// Newest first put the one month that needed acting on below a month
+    /// already paid.
+    testWidgets('an overdue month comes before a paid one', (tester) async {
+      await tester.pumpWidget(appWith([lease()], months: [
+        month('July', 7, overdue: true),
+        month('August', 8, paid: 2500),
+        month('September', 9),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      double top(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(top('July'), lessThan(top('September')));
+      expect(top('September'), lessThan(top('August')));
+    });
+
+    /// Several late months are paid oldest first, so that is the order.
+    testWidgets('overdue months run oldest first', (tester) async {
+      await tester.pumpWidget(appWith([lease()], months: [
+        month('June', 6, overdue: true),
+        month('July', 7, overdue: true),
+        month('August', 8),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      double top(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(top('June'), lessThan(top('July')));
+      expect(top('July'), lessThan(top('August')));
+    });
+
+    /// Home said it; the tab that exists for rent made them add it up.
+    testWidgets('the Rent tab says what is owed, and how much is late',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()], months: [
+        month('July', 7, overdue: true),
+        month('August', 8, paid: 2500),
+        month('September', 9),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Owed'), findsOneWidget);
+      expect(find.text('₱5,000'), findsOneWidget);
+      expect(find.text('Overdue'), findsWidgets);
+    });
 
     /// The lease facts live on My place now, not on the home screen. Home
     /// answers "what needs me"; this answers "where do I live".
@@ -8199,8 +8302,14 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      expect(find.text('₱1,000'), findsOneWidget);
-      expect(find.text('₱1,500'), findsOneWidget);
+      // On the month itself: the header totals what is owed as well, and
+      // with one month that is the same ₱1,500.
+      Finder onTheMonth(String money) => find.descendant(
+            of: find.byType(RentScheduleList),
+            matching: find.text(money),
+          );
+      expect(onTheMonth('₱1,000'), findsOneWidget);
+      expect(onTheMonth('₱1,500'), findsOneWidget);
     });
 
     testWidgets('a settled month says so', (tester) async {
@@ -8233,7 +8342,14 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      expect(find.text('Overdue'), findsOneWidget);
+      // Scoped to the chip: "Overdue" also labels the header's total.
+      expect(
+        find.descendant(
+          of: find.byType(StatusChip),
+          matching: find.text('Overdue'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Due'), findsWidgets);
     });
 

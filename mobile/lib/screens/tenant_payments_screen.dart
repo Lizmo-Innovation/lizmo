@@ -28,17 +28,41 @@ class TenantPaymentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lease = ref.watch(myLeasesProvider).valueOrNull?.firstOrNull;
+    final months = lease == null
+        ? null
+        : ref.watch(myBillingProvider(lease.id!)).valueOrNull;
+    // The number a tenant opens this tab to find. Home already said it; the
+    // tab that exists for rent made them add up the cards themselves.
+    final owed =
+        months?.fold<num>(0, (sum, month) => sum + (month.outstanding ?? 0));
+    final late = months
+        ?.where((month) => month.overdue == true)
+        .fold<num>(0, (sum, month) => sum + (month.outstanding ?? 0));
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: Column(
         children: [
-          const LatticeHeader(
+          LatticeHeader(
             eyebrow: 'Lizmo',
             title: 'Rent',
+            // A dash until the months are in, rather than a zero that would
+            // read as "nothing owed".
+            stats: lease == null
+                ? const []
+                : [
+                    LatticeHeaderStat(
+                      value: owed == null ? '—' : LizmoMoney.peso(owed),
+                      label: 'Owed',
+                    ),
+                    LatticeHeaderStat(
+                      value: late == null ? '—' : LizmoMoney.peso(late),
+                      label: 'Overdue',
+                    ),
+                  ],
             // With the bell, like Home. News about rent is read here as often
             // as anywhere.
-            trailing: Row(
+            trailing: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 RoleSwitcher(),

@@ -9,8 +9,13 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 /// renderings of one ledger is how the two sides start disagreeing about the
 /// same money.
 ///
-/// Newest first here, though the server sends oldest first: the month somebody
-/// opens this to check is almost always the current one.
+/// Overdue months on top, oldest first: they are what needs doing, in the
+/// order it should be done. Everything else newest first, though the server
+/// sends oldest first, because the month somebody opens this to check is
+/// almost always the current one.
+///
+/// It was newest first throughout, which held until a month went unpaid --
+/// then the one card that needed acting on sat below a month already paid.
 class RentScheduleList extends StatelessWidget {
   const RentScheduleList({
     super.key,
@@ -46,7 +51,13 @@ class RentScheduleList extends StatelessWidget {
       );
     }
 
-    final newestFirst = periods.reversed.toList();
+    bool late(BillingPeriodResponse period) =>
+        period.overdue == true &&
+        period.status != BillingPeriodResponseStatusEnum.PAID;
+    final newestFirst = [
+      ...periods.where(late),
+      ...periods.reversed.where((period) => !late(period)),
+    ];
 
     final top = header;
     final offset = top == null ? 0 : 1;

@@ -150,13 +150,22 @@ class _Tenancy extends StatelessWidget {
         // with no paperwork looks exactly as it did before.
         SharedLeaseDocuments(leaseId: lease.id!),
 
-        const SizedBox(height: 16),
-        // No longer mentions a contract: one can be shared now, and the card
-        // above is where it appears.
-        Text(
-          'A deposit or advance and house rules are not recorded yet.',
-          style: LizmoType.rowSub,
-        ),
+        // Only when it is true. It used to show on every tenancy, so a tenant
+        // with a deposit on record read "not recorded yet" directly under the
+        // card recording it. House rules are gone from it too: there is no
+        // such thing in the app, and "not recorded yet" promised there was.
+        //
+        // No "ask your landlord to add it": a deposit is set when the
+        // tenancy starts and cannot be added afterwards.
+        if (!_hasUpfrontMoney(lease)) ...[
+          const SizedBox(height: 16),
+          Text(
+            'No deposit or advance was recorded for this tenancy. If you paid '
+            'one, keep your receipt.',
+            key: const ValueKey('no-upfront-money'),
+            style: LizmoType.rowSub,
+          ),
+        ],
       ],
     );
   }
