@@ -114,10 +114,6 @@ class TenantMessagesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = switch (ref.watch(authControllerProvider)) {
-      AuthSignedIn(:final session) => session,
-      _ => null,
-    };
     final threads = ref.watch(myInquiriesProvider).valueOrNull;
     final waiting =
         threads?.where((thread) => thread.unread ?? false).length;
@@ -127,7 +123,10 @@ class TenantMessagesScreen extends ConsumerWidget {
       body: Column(
         children: [
           LatticeHeader(
-            eyebrow: session?.name ?? 'Lizmo',
+            // Lizmo, as on every other tab. It was the tenant's own name,
+            // which they know, and which made this one tab look like it
+            // belonged to somebody.
+            eyebrow: 'Lizmo',
             title: 'Messages',
             trailing: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -138,12 +137,17 @@ class TenantMessagesScreen extends ConsumerWidget {
                 AccountButton(),
               ],
             ),
-            stats: [
-              LatticeHeaderStat(
-                value: waiting?.toString() ?? '—',
-                label: 'New replies',
-              ),
-            ],
+            // Not over an empty inbox: a full-width "0 New replies" above
+            // "Nothing here yet" says nothing twice. Once there is a
+            // conversation, a zero is news -- nobody has written back.
+            stats: (threads?.isEmpty ?? true)
+                ? const []
+                : [
+                    LatticeHeaderStat(
+                      value: waiting.toString(),
+                      label: 'New replies',
+                    ),
+                  ],
           ),
           const Expanded(
             child: InquiriesList(

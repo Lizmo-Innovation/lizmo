@@ -3,6 +3,7 @@ import 'package:lizmo/billing/payment_channel_providers.dart';
 import 'package:lizmo/screens/payment_channels_screen.dart';
 import 'package:lizmo/widgets/payment_channel_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/auth/active_role.dart';
@@ -6371,6 +6372,8 @@ void _tenantLeaseTests() {
     Widget appWith(
       List<LeaseResponse> leases, {
       List<BillingPeriodResponse> months = const [],
+      List<MaintenanceReportResponse>? reports,
+      List<InquirySummary>? threads,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -6385,6 +6388,10 @@ void _tenantLeaseTests() {
         ),
         myLeasesProvider.overrideWith((ref) async => leases),
         myBillingProvider('l1').overrideWith((ref) async => months),
+        if (reports != null)
+          myMaintenanceProvider.overrideWith((ref) async => reports),
+        if (threads != null)
+          myInquiriesProvider.overrideWith((ref) async => threads),
       ],
       child: const LizmoApp(),
     );
@@ -6599,6 +6606,128 @@ void _tenantLeaseTests() {
 
       expect(find.text('Nothing due yet'), findsOneWidget);
       expect(find.textContaining('cannot record payments'), findsNothing);
+    });
+
+    /// It sat above the empty state, which read as a button and then an
+    /// explanation of the button.
+    testWidgets('with nothing reported, the button follows the explanation',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()], reports: const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text('Nothing reported')).dy,
+          lessThan(tester.getTopLeft(find.byKey(const ValueKey('report-problem'))).dy));
+    });
+
+    /// Once there is a list, the button goes back on top where it is not
+    /// scrolled past.
+    testWidgets('with reports, the button is above them', (tester) async {
+      await tester.pumpWidget(appWith([lease()], reports: [
+        MaintenanceReportResponse(
+          id: 'm1',
+          leaseId: 'l1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          description: 'The ceiling fan grinds and stops',
+          status: MaintenanceReportResponseStatusEnum.SUBMITTED,
+          submittedAt: DateTime.now().subtract(const Duration(hours: 2)),
+          updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-maintenance')));
+      await tester.pumpAndSettle();
+
+      expect(
+          tester.getTopLeft(find.byKey(const ValueKey('report-problem'))).dy,
+          lessThan(tester
+              .getTopLeft(find.textContaining('The ceiling fan grinds'))
+              .dy));
+    });
+
+    /// A full-width "0 New replies" above "Nothing here yet" says nothing
+    /// twice. And the eyebrow is the app's name, as on every other tab --
+    /// it was the tenant's own.
+    testWidgets('an empty inbox carries no count, and no name',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()], threads: const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New replies'), findsNothing);
+      expect(find.text('Ana Reyes'), findsNothing);
+    });
+
+    /// With a conversation, a zero is news: nobody has written back.
+    testWidgets('a conversation brings the count back', (tester) async {
+      await tester.pumpWidget(appWith([lease()], threads: [
+        InquirySummary(
+          id: 'i1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          withName: 'Maria Santos',
+          status: InquirySummaryStatusEnum.OPEN,
+          unread: true,
+          lastMessageAt: DateTime.now(),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New replies'), findsOneWidget);
+    });
+
+    /// Five tabs on a 360dp phone leave 72px each. "Maintenance" fits at the
+    /// default text size with 3px spare, and was cut to "Maintenanc…" as
+    /// soon as the phone's larger-text setting was on.
+    testWidgets('the Maintenance tab fits a 360dp phone with larger text',
+        (tester) async {
+      tester.view
+        ..physicalSize = const Size(360 * 3, 780 * 3)
+        ..devicePixelRatio = 3.0;
+      // Restored by hand, not with view.reset(): that reverts to 800x600 and
+      // undoes flutter_test_config's phone-shaped surface for every test
+      // after this one.
+      addTearDown(() {
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        tester.view.devicePixelRatio = 3.0;
+      });
+
+      // The bar on its own, with the larger text set on this tree only. Set
+      // on the platform instead, it outlived the test and made every later
+      // screen too tall for its own finders.
+      await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(360, 780),
+            textScaler: TextScaler.linear(1.15),
+          ),
+          child: Scaffold(
+            bottomNavigationBar: SectionTabBar(
+              tabs: const [
+                SectionTab(key: ValueKey('tab-home'), icon: Icons.home_outlined, label: 'Home'),
+                SectionTab(key: ValueKey('tab-rent'), icon: Icons.receipt_long_outlined, label: 'Rent'),
+                SectionTab(key: ValueKey('tab-place'), icon: Icons.bed_outlined, label: 'My place'),
+                SectionTab(key: ValueKey('tab-messages'), icon: Icons.forum_outlined, label: 'Messages'),
+                SectionTab(key: ValueKey('tab-maintenance'), icon: Icons.build_outlined, label: 'Maintenance'),
+              ],
+              index: 4,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      ));
+
+      final label = find.text('Maintenance');
+      // The whole word, not an ellipsis: narrow is easy if you cut it.
+      expect(tester.renderObject<RenderParagraph>(label).didExceedMaxLines,
+          isFalse);
+      expect(tester.getRect(label).width, lessThanOrEqualTo(360 / 5));
     });
 
     /// It said "Not built yet" and told tenants to tell their landlord the

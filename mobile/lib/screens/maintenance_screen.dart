@@ -82,6 +82,27 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
     final reports = ref.watch(myMaintenanceProvider);
     final rows = reports.valueOrNull ?? const <MaintenanceReportResponse>[];
 
+    // Under the empty state when nothing has been reported, so the one thing
+    // to do follows the sentence saying what it is for. It sat above it,
+    // which read as a button and then an explanation of the button. Once
+    // there are reports it goes back on top, where it is not scrolled past.
+    final nothingYet = switch (reports) {
+      AsyncData(:final value) => value.isEmpty,
+      _ => false,
+    };
+    final Widget report = _sending
+        ? const Center(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        : PrimaryActionButton(
+            key: const ValueKey('report-problem'),
+            label: 'Report a problem',
+            onPressed: _report,
+          );
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: Column(
@@ -114,20 +135,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                       children: [
-                        if (lease != null) ...[
-                          if (_sending)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(12),
-                                child: CircularProgressIndicator(),
-                              ),
-                            )
-                          else
-                            PrimaryActionButton(
-                              key: const ValueKey('report-problem'),
-                              label: 'Report a problem',
-                              onPressed: _report,
-                            ),
+                        if (lease != null && !nothingYet) ...[
+                          report,
                           const SizedBox(height: 16),
                         ],
                         ...switch (reports) {
@@ -148,6 +157,10 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                                     'Your landlord is told, and you can see '
                                     'what happens to it.',
                               ),
+                              if (lease != null) ...[
+                                const SizedBox(height: 8),
+                                report,
+                              ],
                             ],
                           AsyncData(:final value) => [
                               for (final report in value)

@@ -123,14 +123,23 @@ class _Tab extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: LizmoType.rowSub.copyWith(
-                color: colour,
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            // Shrinks rather than cutting. Five tabs on a 360dp phone leave
+            // 72px each and "Maintenance" at 11px takes 69 of them, so with
+            // the phone's larger-text setting on -- 115% is common -- it came
+            // out as "Maintenanc…", which is not a word anybody taps.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: LizmoType.rowSub.copyWith(
+                    color: colour,
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
               ),
             ),
           ],
