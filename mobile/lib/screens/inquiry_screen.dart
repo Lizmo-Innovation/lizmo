@@ -70,6 +70,16 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
           .sendInquiryMessage(widget.id, NewMessage(body: body));
       _composer.clear();
       ref.invalidate(inquiryThreadProvider(widget.id));
+      // Back to the newest, where what was just said is about to land. Only
+      // on success: a send that failed leaves somebody reading where they
+      // were, with the text still in the box.
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
+          0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
       // The list behind this one orders by who spoke last.
       ref.invalidate(myInquiriesProvider);
     } catch (error) {
@@ -271,11 +281,19 @@ class _Thread extends StatelessWidget {
                   detail: 'Whatever you write here goes straight to them.',
                 )
               : ListView.builder(
+                  key: const ValueKey('thread-messages'),
                   controller: scroll,
+                  // Anchored at the newest, as every chat is. Top-down, a
+                  // thread opened on its oldest message and nothing ever
+                  // scrolled it: what was just sent, or just received, landed
+                  // below the fold. Reversed, offset 0 is the bottom, so a
+                  // new message appears in view on its own, and sending only
+                  // has to return to 0 if somebody had scrolled up.
+                  reverse: true,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   itemCount: messages.length,
-                  itemBuilder: (context, index) =>
-                      _Message(message: messages[index]),
+                  itemBuilder: (context, index) => _Message(
+                      message: messages[messages.length - 1 - index]),
                 ),
         ),
         if (status == InquirySummaryStatusEnum.CLOSED)

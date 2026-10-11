@@ -5782,10 +5782,16 @@ class _FakeInquiriesApi extends AskingAboutAPlaceApi {
   _FakeInquiriesApi({
     this.thread,
     this.failWith,
+    this.echo = false,
   });
 
   InquiryThread? thread;
   final ApiFailure? failWith;
+
+  /// Whether a sent message appears in the thread on the next read, as it
+  /// does on the server. Off by default so the older tests read the thread
+  /// they were given.
+  final bool echo;
 
   final said = <String>[];
   String? closed;
@@ -5812,12 +5818,21 @@ class _FakeInquiriesApi extends AskingAboutAPlaceApi {
   }) async {
     if (failWith != null) throw failWith!;
     said.add(newMessage.body);
-    return InquiryMessageResponse(
-      id: 'm${said.length}',
+    final sent = InquiryMessageResponse(
+      id: 'sent${said.length}',
       body: newMessage.body,
       sentAt: DateTime.now(),
       mine: true,
     );
+    final current = thread;
+    if (echo && current != null) {
+      thread = InquiryThread(
+        inquiry: current.inquiry,
+        applicant: current.applicant,
+        messages: [...current.messages, sent],
+      );
+    }
+    return sent;
   }
 
   @override
@@ -6017,6 +6032,76 @@ void _landlordRequestTests() {
     });
 
     // ---- saying something -------------------------------------------------
+
+    /// Enough messages that the thread cannot fit on one screen.
+    List<InquiryMessageResponse> aLongConversation() => [
+          for (var i = 1; i <= 30; i++)
+            InquiryMessageResponse(
+              id: 'long$i',
+              body: 'Message number $i',
+              sentAt: DateTime.now().subtract(Duration(minutes: 60 - i)),
+              mine: i.isEven,
+            ),
+        ];
+
+    /// Whether a message is on screen, not merely built somewhere off it.
+    bool inView(WidgetTester tester, String text) =>
+        find.text(text).hitTestable().evaluate().isNotEmpty;
+
+    /// It opened on the oldest message, and the newest -- the one somebody
+    /// opened it to read -- was below the fold.
+    testWidgets('a long thread opens on its newest message', (tester) async {
+      final api = _FakeInquiriesApi(
+          thread: thread(who: applicant(), messages: aLongConversation()));
+      await open(tester, api);
+
+      expect(inView(tester, 'Message number 30'), isTrue);
+      expect(inView(tester, 'Message number 1'), isFalse);
+    });
+
+    /// Somebody reading back through the thread who then says something
+    /// should see what they said, not the place they were reading.
+    testWidgets('sending brings the thread down to what was just said',
+        (tester) async {
+      final api = _FakeInquiriesApi(
+        thread: thread(who: applicant(), messages: aLongConversation()),
+        echo: true,
+      );
+      await open(tester, api);
+
+      // Up to the start of the conversation.
+      await tester.fling(find.byKey(const ValueKey('thread-messages')), const Offset(0, 3000), 3000);
+      await tester.pumpAndSettle();
+      expect(inView(tester, 'Message number 30'), isFalse);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-field')), 'See you Saturday');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(inView(tester, 'See you Saturday'), isTrue);
+    });
+
+    /// A failed send leaves them where they were, with their words still in
+    /// the box to try again.
+    testWidgets('a failed send does not move the thread', (tester) async {
+      final api = _FakeInquiriesApi(
+        thread: thread(who: applicant(), messages: aLongConversation()),
+        failWith: const ApiFailure(code: 'NETWORK', message: 'No signal.'),
+      );
+      await open(tester, api);
+
+      await tester.fling(find.byKey(const ValueKey('thread-messages')), const Offset(0, 3000), 3000);
+      await tester.pumpAndSettle();
+      final before = tester.getTopLeft(find.text('Message number 1')).dy;
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-field')), 'See you Saturday');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text('Message number 1')).dy, before);
+    });
 
     testWidgets('a message is sent and the box emptied', (tester) async {
       final api = _FakeInquiriesApi(thread: thread(who: applicant()));
