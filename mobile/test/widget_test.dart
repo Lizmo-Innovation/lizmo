@@ -5341,8 +5341,11 @@ class _FakeInquiriesApi extends AskingAboutAPlaceApi {
   AcceptRequest? leasedOn;
   StartInquiry? started;
 
+  int reads = 0;
+
   @override
   Future<InquiryThread?> readInquiry(String id, {Future<void>? abortTrigger}) async {
+    reads++;
     if (thread == null) {
       throw const ApiFailure(code: 'NOT_FOUND', message: 'No such conversation.');
     }
@@ -5735,6 +5738,24 @@ void _landlordRequestTests() {
       await open(tester, api);
 
       expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// Lizmo has no live connection, so an open conversation reads itself
+    /// again while somebody is in it. Without this, two people typing at
+    /// each other saw nothing until one of them pulled down.
+    testWidgets('an open conversation keeps itself current', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api);
+
+      final onOpening = api.reads;
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(api.reads, onOpening + 1);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(api.reads, onOpening + 2);
     });
 
     // ---- the whole list ---------------------------------------------------

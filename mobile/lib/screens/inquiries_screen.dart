@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
+import '../widgets/poller.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
@@ -20,24 +21,40 @@ import '../widgets/role_switcher.dart';
 ///
 /// Used twice: as the tenant's Messages tab, and as the Inquiries half of
 /// landlord's Tenants tab, which is why the header is not in here.
-class InquiriesList extends ConsumerWidget {
+class InquiriesList extends ConsumerStatefulWidget {
   const InquiriesList({super.key, this.emptyDetail});
 
   /// What to say when there are none, which differs by who is reading.
   final String? emptyDetail;
 
+  /// How often the list re-reads itself while somebody is looking at it.
+  ///
+  /// Nobody stares at an inbox waiting for it to change, and half a minute
+  /// is below the point where anybody would notice it was stale. The open
+  /// conversation is the screen that polls quickly; this one only has to be
+  /// right by the time you look down the list.
+  static const every = Duration(seconds: 30);
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InquiriesList> createState() => _InquiriesListState();
+}
+
+class _InquiriesListState extends ConsumerState<InquiriesList> {
+  @override
+  Widget build(BuildContext context) {
     final threads = ref.watch(myInquiriesProvider);
 
-    return RefreshIndicator(
+    return Poller(
+      interval: InquiriesList.every,
+      onTick: () => ref.invalidate(myInquiriesProvider),
+      child: RefreshIndicator(
       onRefresh: () async => ref.invalidate(myInquiriesProvider),
       child: switch (threads) {
         AsyncData(:final value) when value.isEmpty => LizmoMessageState(
             tone: LizmoMessageTone.neutral,
             icon: Icons.chat_bubble_outline,
             title: 'Nothing here yet',
-            detail: emptyDetail ??
+            detail: widget.emptyDetail ??
                 'Conversations about a place appear here, from the first '
                     'message to the day somebody moves in.',
           ),
@@ -66,24 +83,25 @@ class InquiriesList extends ConsumerWidget {
             ),
           ),
       },
+      ),
     );
   }
+}
 
-  /// Waiting on you first, then the rest of the live ones, then tenancies,
-  /// then what is over. Within each, the server's order — most recently
-  /// spoken in.
-  static List<InquirySummary> ordered(List<InquirySummary> threads) {
-    int rank(InquirySummary thread) {
-      if (thread.status == InquirySummaryStatusEnum.OPEN) {
-        return (thread.unread ?? false) ? 0 : 1;
-      }
-      return thread.status == InquirySummaryStatusEnum.LEASED ? 2 : 3;
+/// Waiting on you first, then the rest of the live ones, then tenancies,
+/// then what is over. Within each, the server's order — most recently
+/// spoken in.
+List<InquirySummary> ordered(List<InquirySummary> threads) {
+  int rank(InquirySummary thread) {
+    if (thread.status == InquirySummaryStatusEnum.OPEN) {
+      return (thread.unread ?? false) ? 0 : 1;
     }
-
-    final sorted = [...threads];
-    sorted.sort((a, b) => rank(a).compareTo(rank(b)));
-    return sorted;
+    return thread.status == InquirySummaryStatusEnum.LEASED ? 2 : 3;
   }
+
+  final sorted = [...threads];
+  sorted.sort((a, b) => rank(a).compareTo(rank(b)));
+  return sorted;
 }
 
 /// The tenant's Messages tab.

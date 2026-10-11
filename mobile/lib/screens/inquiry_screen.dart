@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../widgets/accept_terms_sheet.dart';
+import '../widgets/poller.dart';
 
 /// One conversation about a place.
 ///
@@ -25,7 +26,22 @@ class InquiryScreen extends ConsumerStatefulWidget {
 class _InquiryScreenState extends ConsumerState<InquiryScreen> {
   final _composer = TextEditingController();
   final _scroll = ScrollController();
+  final _poller = GlobalKey<PollerState>();
   bool _sending = false;
+
+  /// How often an open conversation is re-read.
+  ///
+  /// A reply landing within five seconds reads as instant to somebody in the
+  /// middle of a conversation; three would cost half as much again in
+  /// requests for a difference nobody could name. After two quiet minutes it
+  /// drops to fifteen, because a thread left open on a desk should not keep
+  /// a server awake all afternoon.
+  static const _whileTalking = Duration(seconds: 5);
+  static const _quietFor = Duration(minutes: 2);
+  static const _whenQuiet = Duration(seconds: 15);
+
+  /// What was there at the last tick, so a new message can reset the pace.
+  int _messagesSeen = 0;
 
   @override
   void dispose() {
@@ -34,9 +50,17 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
     super.dispose();
   }
 
+  /// Reads the thread again. Quiet about it: a failed poll is not worth a
+  /// snackbar over a conversation somebody is reading.
+  void _reread() => ref.invalidate(inquiryThreadProvider(widget.id));
+
   Future<void> _send() async {
     final body = _composer.text.trim();
     if (body.isEmpty || _sending) return;
+
+    // Writing is activity, so the fast interval is worth paying for: a reply
+    // usually follows one.
+    _poller.currentState?.stirred();
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -142,7 +166,21 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
   Widget build(BuildContext context) {
     final thread = ref.watch(inquiryThreadProvider(widget.id));
 
-    return Scaffold(
+    // A message arriving is activity too, not just one being sent: both sides
+    // of a conversation keep it quick.
+    final count = thread.valueOrNull?.messages.length ?? _messagesSeen;
+    if (count != _messagesSeen) {
+      _messagesSeen = count;
+      _poller.currentState?.stirred();
+    }
+
+    return Poller(
+      key: _poller,
+      interval: _whileTalking,
+      slowAfter: _quietFor,
+      slowInterval: _whenQuiet,
+      onTick: _reread,
+      child: Scaffold(
       backgroundColor: LizmoColors.canvas,
       appBar: AppBar(
         backgroundColor: LizmoColors.teal900,
@@ -192,6 +230,7 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
               ),
             ),
         },
+        ),
       ),
     );
   }
