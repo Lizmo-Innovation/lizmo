@@ -1,8 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:lizmo_api/api.dart';
+import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
+
+import '../maintenance/maintenance_providers.dart';
 
 /// What the tenant described, and the photos they chose.
 class ReportedProblem {
@@ -238,4 +244,40 @@ InputDecoration _field(String hint) {
     focusedErrorBorder: border(LizmoColors.red),
     errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
   );
+}
+
+/// Sends a report, then its photos one at a time. Returns how many photos
+/// did not upload.
+///
+/// Shared by Maintenance and the shortcut in a conversation with the
+/// landlord, so a repair reported from either is the same tracked report --
+/// not a line in a chat that nobody marks as fixed.
+///
+/// Photos after the report exists: one that fails to upload must not lose
+/// the report it belongs to.
+Future<int> sendReportedProblem(WidgetRef ref, ReportedProblem problem) async {
+  final api = ref.read(maintenanceApiProvider);
+  try {
+    final report = await api.reportProblem(
+      ReportProblemRequest(description: problem.description),
+    );
+
+    var failed = 0;
+    for (final photo in problem.photos) {
+      try {
+        await api.addMaintenancePhoto(
+          report!.id!,
+          http.MultipartFile.fromBytes('photo', photo.bytes,
+              filename: photo.name),
+        );
+      } catch (_) {
+        failed++;
+      }
+    }
+    return failed;
+  } catch (error) {
+    throw ApiFailure.from(error);
+  } finally {
+    ref.invalidate(myMaintenanceProvider);
+  }
 }

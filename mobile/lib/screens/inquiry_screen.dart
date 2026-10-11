@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
+import '../router.dart';
 import '../widgets/accept_terms_sheet.dart';
+import '../widgets/declare_payment_sheet.dart';
 import '../widgets/poller.dart';
+import '../widgets/record_payment_sheet.dart';
+import '../widgets/report_problem_sheet.dart';
 
 /// One conversation about a place.
 ///
@@ -89,6 +94,151 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
       if (mounted) setState(() => _sending = false);
     }
   }
+
+  /// The month to settle first: the oldest one not yet paid, which is the one
+  /// a landlord would chase and the one a tenant would pay. The server sends
+  /// months oldest first.
+  static BillingPeriodResponse? _toSettle(List<BillingPeriodResponse> months) {
+    for (final month in months) {
+      if (month.status != BillingPeriodResponseStatusEnum.PAID &&
+          (month.outstanding ?? 0) > 0) {
+        return month;
+      }
+    }
+    return null;
+  }
+
+  /// The tenant saying they have paid, from the conversation.
+  ///
+  /// Otherwise "paid na po" goes into the chat, the landlord reads it and
+  /// never confirms it in the app, and the month stays unpaid on both sides.
+  /// This is the same claim the Rent tab makes, about the oldest month owed.
+  Future<void> _iHavePaid(String leaseId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final month = _toSettle(await ref.read(myBillingProvider(leaseId).future));
+      if (!mounted) return;
+      if (month == null) {
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Nothing is owed right now.')));
+        return;
+      }
+      PaymentDetails? howToPay;
+      try {
+        howToPay = await ref.read(leasePaymentDetailsProvider(leaseId).future);
+      } catch (_) {
+        // The sheet leaves the list of accounts out without them.
+      }
+      if (!mounted) return;
+
+      final said = await DeclarePaymentSheet.show(
+        context,
+        periodLabel: month.label ?? 'this month',
+        outstanding: month.outstanding ?? 0,
+        payment: howToPay,
+      );
+      if (said == null || !mounted) return;
+
+      await sendDeclaration(ref, leaseId: leaseId, period: month, said: said);
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Told your landlord. They will confirm it.'),
+      ));
+    } catch (error) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(ApiFailure.from(error).message)));
+    }
+  }
+
+  /// A repair, from the conversation: the same tracked report Maintenance
+  /// files, so it has a status both sides can follow rather than being a
+  /// line in a chat that nobody marks as fixed.
+  Future<void> _reportRepair() async {
+    final problem = await ReportProblemSheet.show(context);
+    if (problem == null || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final failed = await sendReportedProblem(ref, problem);
+      messenger.showSnackBar(SnackBar(
+        content: Text(failed == 0
+            ? 'Reported. You can follow it under Maintenance.'
+            : 'Reported, but $failed '
+                '${failed == 1 ? 'photo' : 'photos'} did not upload.'),
+      ));
+    } catch (error) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(ApiFailure.from(error).message)));
+    }
+  }
+
+  /// The landlord recording money they were handed, from the conversation
+  /// where the tenant said they had paid it.
+  Future<void> _recordPayment(String leaseId, String tenantName) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final month = _toSettle(await ref.read(leaseBillingProvider(leaseId).future));
+      if (!mounted) return;
+      if (month == null) {
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Nothing is owed on this tenancy.')));
+        return;
+      }
+
+      final request = await RecordPaymentSheet.show(
+        context,
+        billingPeriodId: month.id!,
+        tenantName: tenantName,
+        periodLabel: month.label ?? 'this month',
+        outstanding: month.outstanding ?? 0,
+      );
+      if (request == null || !mounted) return;
+
+      await ref.read(rentApiProvider).recordPayment(leaseId, request);
+      // The tenant's page and the dashboard read these same rows.
+      ref.invalidate(leaseBillingProvider(leaseId));
+      ref.invalidate(leasePaymentsProvider(leaseId));
+      ref.invalidate(collectionsProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Recorded.')));
+    } catch (error) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(ApiFailure.from(error).message)));
+    }
+  }
+
+  /// What can be done from here besides talking, during a tenancy.
+  ///
+  /// Only while it is current: before it there is nothing to pay, and after
+  /// it the deposit is talked about, not filed.
+  List<_Shortcut> _shortcutsFor(InquiryThread thread) {
+    final tenancy = thread.inquiry?.tenancy;
+    final leaseId = tenancy?.leaseId;
+    if (tenancy?.active != true || leaseId == null) return const [];
+
+    if (thread.applicant == null) {
+      return [
+        _Shortcut('I have paid', 'shortcut-paid', () => _iHavePaid(leaseId)),
+        _Shortcut('Report a repair', 'shortcut-repair', _reportRepair),
+      ];
+    }
+    return [
+      _Shortcut(
+        'Record a payment',
+        'shortcut-record',
+        () => _recordPayment(
+            leaseId, thread.inquiry?.withName ?? 'Your tenant'),
+      ),
+    ];
+  }
+
+  /// The tenant's page, in the Tenants tab, where their rent, papers and
+  /// details are.
+  ///
+  /// Gone to rather than pushed. A conversation sits above the tabs, and
+  /// pushing a tab's page from it builds the tabs a second time underneath
+  /// -- which the router refuses. The tenant's page has a way back into
+  /// this conversation.
+  void _openTenancy(String leaseId) =>
+      context.go('${Routes.tenants}/${Detail.tenancy(leaseId)}');
 
   /// The landlord writing the tenancy they have agreed on.
   ///
@@ -196,9 +346,19 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
         backgroundColor: LizmoColors.teal900,
         foregroundColor: LizmoColors.white,
         elevation: 0,
-        title: Text(
-          thread.valueOrNull?.inquiry?.propertyName ?? 'Conversation',
-          style: LizmoType.screenTitle.copyWith(fontSize: 18),
+        // Who you are talking to, and about where. It was the building's
+        // name alone, which on a landlord's phone is the same title over
+        // every tenant in the building.
+        title: _Who(
+          summary: thread.valueOrNull?.inquiry,
+          onTap: switch (thread.valueOrNull) {
+            InquiryThread(
+              applicant: _?,
+              inquiry: InquirySummary(tenancy: Tenancy(:final leaseId?))
+            ) =>
+              () => _openTenancy(leaseId),
+            _ => null,
+          },
         ),
         actions: [
           if (thread.valueOrNull?.inquiry?.status ==
@@ -220,6 +380,15 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
               sending: _sending,
               onSend: _send,
               onStartLease: () => _startLease(value),
+              shortcuts: _shortcutsFor(value),
+              onTenancy: switch (value) {
+                InquiryThread(
+                  applicant: _?,
+                  inquiry: InquirySummary(tenancy: Tenancy(:final leaseId?))
+                ) =>
+                  () => _openTenancy(leaseId),
+                _ => () => context.go(Routes.tenantPlace),
+              },
             ),
           AsyncError(:final error) => LizmoMessageState(
               icon: Icons.cloud_off_outlined,
@@ -254,6 +423,8 @@ class _Thread extends StatelessWidget {
     required this.sending,
     required this.onSend,
     required this.onStartLease,
+    required this.shortcuts,
+    required this.onTenancy,
   });
 
   final InquiryThread thread;
@@ -262,23 +433,41 @@ class _Thread extends StatelessWidget {
   final bool sending;
   final VoidCallback onSend;
   final VoidCallback onStartLease;
+  final List<_Shortcut> shortcuts;
+
+  /// Where the tenancy line leads: the tenant's page for a landlord, My
+  /// place for the tenant.
+  final VoidCallback onTenancy;
 
   @override
   Widget build(BuildContext context) {
     final applicant = thread.applicant;
     final status = thread.inquiry?.status;
+    final tenancy = thread.inquiry?.tenancy;
     final messages = thread.messages;
+    // A current tenancy replaces the panel that vets a stranger: who is
+    // asking and what they still need are answered questions by now.
+    final renting = tenancy?.active == true;
+    final entries = _timeline(messages, tenancy);
 
     return Column(
       children: [
-        if (applicant != null) _Applicant(applicant: applicant),
+        if (renting)
+          _TenancyLine(
+            tenancy: tenancy!,
+            asLandlord: applicant != null,
+            onTap: onTenancy,
+          )
+        else if (applicant != null)
+          _Applicant(applicant: applicant),
         Expanded(
           child: messages.isEmpty
-              ? const LizmoMessageState(
+              ? LizmoMessageState(
                   tone: LizmoMessageTone.neutral,
                   icon: Icons.chat_bubble_outline,
                   title: 'Nothing said yet',
-                  detail: 'Whatever you write here goes straight to them.',
+                  detail: 'Whatever you write here goes straight to '
+                      '${thread.inquiry?.withName ?? 'them'}.',
                 )
               : ListView.builder(
                   key: const ValueKey('thread-messages'),
@@ -291,20 +480,26 @@ class _Thread extends StatelessWidget {
                   // has to return to 0 if somebody had scrolled up.
                   reverse: true,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) => _Message(
-                      message: messages[messages.length - 1 - index]),
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) =>
+                      switch (entries[entries.length - 1 - index]) {
+                    _Said(:final message) => _Message(message: message),
+                    _Day(:final day) => _DayDivider(day: day),
+                    _Mark(:final text, :final keyName) =>
+                      _Marker(text: text, keyName: keyName),
+                  },
                 ),
         ),
         if (status == InquirySummaryStatusEnum.CLOSED)
           const _Ended()
         else ...[
-          if (applicant != null)
+          if (applicant != null && !renting)
             _StartLease(
               applicant: applicant,
               alreadyLeased: status == InquirySummaryStatusEnum.LEASED,
               onPressed: onStartLease,
             ),
+          if (shortcuts.isNotEmpty) _Shortcuts(shortcuts: shortcuts),
           _Composer(
             controller: composer,
             sending: sending,
@@ -312,6 +507,307 @@ class _Thread extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ---- the timeline ---------------------------------------------------------------
+
+/// One row of a thread: something said, the day it was said on, or a point
+/// where the tenancy began or ended.
+sealed class _Entry {
+  const _Entry();
+}
+
+final class _Said extends _Entry {
+  const _Said(this.message);
+  final InquiryMessageResponse message;
+}
+
+final class _Day extends _Entry {
+  const _Day(this.day);
+  final DateTime day;
+}
+
+final class _Mark extends _Entry {
+  const _Mark(this.text, this.keyName);
+  final String text;
+  final String keyName;
+}
+
+/// The thread oldest first, with a divider at each new day and the tenancy's
+/// start and end where they fall.
+///
+/// A conversation that runs the length of a tenancy is read months apart, so
+/// each message carrying its own date was a column of dates. And the tenancy
+/// is the most important thing that happened in it: from the first question
+/// to moving out, the thread reads as the history of the two of them.
+///
+/// The start is put at the beginning of its day and the end at the end of
+/// its, so the day's messages fall inside the tenancy they were about.
+List<_Entry> _timeline(List<InquiryMessageResponse> messages, Tenancy? tenancy) {
+  final events = <(DateTime, int, _Entry)>[];
+  for (final message in messages) {
+    events.add((message.sentAt?.toLocal() ?? DateTime.now(), 1, _Said(message)));
+  }
+
+  final start = tenancy?.startDate;
+  if (tenancy != null && start != null) {
+    final day = DateTime(start.year, start.month, start.day);
+    final begun = !day.isAfter(DateTime.now());
+    events.add((
+      day,
+      0,
+      _Mark(
+        '${begun ? 'Tenancy started' : 'Tenancy starts'} · ${tenancy.place ?? ''}',
+        'tenancy-started',
+      ),
+    ));
+  }
+  final end = tenancy?.endDate;
+  if (tenancy != null && tenancy.active != true && end != null) {
+    events.add((
+      DateTime(end.year, end.month, end.day, 23, 59, 59),
+      2,
+      const _Mark('Moved out', 'tenancy-ended'),
+    ));
+  }
+
+  events.sort((a, b) {
+    final when = a.$1.compareTo(b.$1);
+    return when != 0 ? when : a.$2.compareTo(b.$2);
+  });
+
+  final entries = <_Entry>[];
+  DateTime? shown;
+  for (final (at, _, entry) in events) {
+    final day = DateTime(at.year, at.month, at.day);
+    if (shown == null || day != shown) {
+      entries.add(_Day(day));
+      shown = day;
+    }
+    entries.add(entry);
+  }
+  return entries;
+}
+
+String _dayLabel(DateTime day) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final gap = today.difference(DateTime(day.year, day.month, day.day)).inDays;
+  if (gap == 0) return 'Today';
+  if (gap == 1) return 'Yesterday';
+  return _shortDate(day, withYearIfNot: now.year);
+}
+
+String _shortDate(DateTime day, {required int withYearIfNot}) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final base = '${day.day} ${months[day.month - 1]}';
+  return day.year == withYearIfNot ? base : '$base ${day.year}';
+}
+
+class _DayDivider extends StatelessWidget {
+  const _DayDivider({required this.day});
+
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Text(
+          _dayLabel(day),
+          style: LizmoType.rowSub.copyWith(fontSize: 11),
+        ),
+      ),
+    );
+  }
+}
+
+/// Where the tenancy began or ended, in the run of the conversation.
+class _Marker extends StatelessWidget {
+  const _Marker({required this.text, required this.keyName});
+
+  final String text;
+  final String keyName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: ValueKey(keyName),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: LizmoColors.tealBg,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            text,
+            style: LizmoType.rowSub
+                .copyWith(fontSize: 12, color: LizmoColors.teal900),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- around the thread ----------------------------------------------------------
+
+/// Who you are talking to, and about where.
+class _Who extends StatelessWidget {
+  const _Who({required this.summary, this.onTap});
+
+  final InquirySummary? summary;
+
+  /// Set for a landlord with a tenant: the header opens their page.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tenancy = summary?.tenancy;
+    final where = [
+      if (tenancy?.active == true && tenancy?.place != null) tenancy!.place!,
+      if (summary?.propertyName != null) summary!.propertyName!,
+    ].join(' · ');
+
+    final who = Column(
+      key: const ValueKey('thread-header'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          summary?.withName ?? summary?.propertyName ?? 'Conversation',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: LizmoType.screenTitle.copyWith(fontSize: 18),
+        ),
+        if (where.isNotEmpty && summary?.withName != null)
+          Text(
+            where,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: LizmoType.rowSub.copyWith(
+              fontSize: 12,
+              color: LizmoColors.white.withValues(alpha: 0.75),
+            ),
+          ),
+      ],
+    );
+
+    return onTap == null
+        ? who
+        : InkWell(onTap: onTap, child: who);
+  }
+}
+
+/// The tenancy, in one line, where a stranger's details used to be.
+class _TenancyLine extends StatelessWidget {
+  const _TenancyLine({
+    required this.tenancy,
+    required this.asLandlord,
+    required this.onTap,
+  });
+
+  final Tenancy tenancy;
+  final bool asLandlord;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = tenancy.startDate;
+    final since = start == null
+        ? ''
+        : ' since ${_shortDate(start, withYearIfNot: DateTime.now().year)}';
+    final text = asLandlord
+        ? 'Renting ${tenancy.place ?? 'a room'}$since'
+        : 'You rent ${tenancy.place ?? 'a room'}$since';
+
+    return Material(
+      color: LizmoColors.tealBg,
+      child: InkWell(
+        key: const ValueKey('tenancy-line'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+          child: Row(
+            children: [
+              const Icon(Icons.home_outlined,
+                  size: 18, color: LizmoColors.teal900),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  text,
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  size: 18, color: LizmoColors.teal900),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Something to do from the conversation that is not talking.
+class _Shortcut {
+  const _Shortcut(this.label, this.keyName, this.onTap);
+
+  final String label;
+  final String keyName;
+  final VoidCallback onTap;
+}
+
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts({required this.shortcuts});
+
+  final List<_Shortcut> shortcuts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final shortcut in shortcuts)
+              Material(
+                color: LizmoColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  side: const BorderSide(color: Color(0xFFE3E8E6)),
+                ),
+                child: InkWell(
+                  key: ValueKey(shortcut.keyName),
+                  customBorder: const StadiumBorder(),
+                  onTap: shortcut.onTap,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    child: Text(
+                      shortcut.label,
+                      style: LizmoType.rowSub.copyWith(
+                        color: LizmoColors.teal900,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -396,19 +892,12 @@ class _Message extends StatelessWidget {
     );
   }
 
-  /// The time, or the date once it is not today: a thread is read days apart,
-  /// and "14:05" on its own could be any of them.
+  /// The time alone: the divider above says which day.
   static String _when(DateTime? at) {
     if (at == null) return '';
     final local = at.toLocal();
-    final now = DateTime.now();
-    final sameDay = local.year == now.year &&
-        local.month == now.month &&
-        local.day == now.day;
-
-    final time = '${local.hour.toString().padLeft(2, '0')}:'
+    return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
-    return sameDay ? time : '${local.day}/${local.month} $time';
   }
 }
 

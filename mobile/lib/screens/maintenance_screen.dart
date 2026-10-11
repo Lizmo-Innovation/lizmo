@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -39,39 +38,18 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
-    final api = ref.read(maintenanceApiProvider);
 
     try {
-      final report = await api.reportProblem(
-        ReportProblemRequest(description: problem.description),
-      );
-
-      // One at a time, after the report exists. A photo that fails to upload
-      // must not lose the report it belongs to.
-      var failed = 0;
-      for (final photo in problem.photos) {
-        try {
-          await api.addMaintenancePhoto(
-            report!.id!,
-            http.MultipartFile.fromBytes('photo', photo.bytes,
-                filename: photo.name),
-          );
-        } catch (_) {
-          failed++;
-        }
-      }
-
+      final failed = await sendReportedProblem(ref, problem);
       messenger.showSnackBar(SnackBar(
         content: Text(failed == 0
             ? 'Sent to your landlord.'
             : 'Sent to your landlord, but $failed '
                 '${failed == 1 ? 'photo' : 'photos'} did not upload.'),
       ));
-    } catch (error) {
-      messenger.showSnackBar(
-          SnackBar(content: Text(ApiFailure.from(error).message)));
+    } on ApiFailure catch (failure) {
+      messenger.showSnackBar(SnackBar(content: Text(failure.message)));
     } finally {
-      ref.invalidate(myMaintenanceProvider);
       if (mounted) setState(() => _sending = false);
     }
   }

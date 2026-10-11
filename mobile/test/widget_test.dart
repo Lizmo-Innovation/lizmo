@@ -52,6 +52,8 @@ import 'package:lizmo/screens/lizmo_billing_screen.dart';
 import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
 import 'package:lizmo/widgets/rent_schedule_list.dart';
+import 'package:lizmo/widgets/record_payment_sheet.dart';
+import 'package:lizmo/widgets/report_problem_sheet.dart';
 import 'package:lizmo/screens/maintenance_inbox_screen.dart';
 import 'package:lizmo/screens/maintenance_report_screen.dart';
 import 'package:lizmo/screens/update_screen.dart';
@@ -5890,6 +5892,7 @@ void _landlordRequestTests() {
       InquirySummaryStatusEnum status = InquirySummaryStatusEnum.OPEN,
       String? lastMessage = 'Is there a bed free in November?',
       bool unread = true,
+      Tenancy? tenancy,
     }) =>
         InquirySummary(
           id: id,
@@ -5901,6 +5904,17 @@ void _landlordRequestTests() {
           lastMessageAt: DateTime.now().subtract(const Duration(hours: 2)),
           unread: unread,
           createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          tenancy: tenancy,
+        );
+
+    /// Bed 1 in 2B, from the 15th of January this year. A date in this year
+    /// so "since" reads without one.
+    Tenancy renting({bool active = true, DateTime? ended}) => Tenancy(
+          leaseId: 'l1',
+          place: 'Bed 1, 2B',
+          startDate: DateTime(DateTime.now().year, 1, 15),
+          endDate: ended,
+          active: active,
         );
 
     Applicant applicant({List<String> stillNeeds = const []}) => Applicant(
@@ -5918,9 +5932,10 @@ void _landlordRequestTests() {
       Applicant? who,
       InquirySummaryStatusEnum status = InquirySummaryStatusEnum.OPEN,
       List<InquiryMessageResponse>? messages,
+      Tenancy? tenancy,
     }) =>
         InquiryThread(
-          inquiry: summary(status: status),
+          inquiry: summary(status: status, tenancy: tenancy),
           applicant: who,
           messages: messages ??
               [
@@ -5944,6 +5959,7 @@ void _landlordRequestTests() {
       Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
       List<InquirySummary> inbox = const [],
       List<FreeRoom> free = const [],
+      List<BillingPeriodResponse> months = const [],
     }) =>
         ProviderScope(
           overrides: [
@@ -5965,6 +5981,11 @@ void _landlordRequestTests() {
             myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
             myInquiriesProvider.overrideWith((ref) async => inbox),
             inquiriesApiProvider.overrideWithValue(api),
+            // What the shortcuts read: the tenancy's months, from either end.
+            myBillingProvider('l1').overrideWith((ref) async => months),
+            leaseBillingProvider('l1').overrideWith((ref) async => months),
+            leasePaymentDetailsProvider('l1')
+                .overrideWith((ref) async => PaymentDetails()),
           ],
           child: const LizmoApp(),
         );
@@ -5985,9 +6006,14 @@ void _landlordRequestTests() {
     /// Opens the thread through the app, the way a tap on Today's card does.
     Future<void> open(WidgetTester tester, _FakeInquiriesApi api,
         {Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
-        List<FreeRoom> free = const []}) async {
+        List<FreeRoom> free = const [],
+        List<BillingPeriodResponse> months = const []}) async {
       await tester.pumpWidget(appWith(
-          api: api, profiles: profiles, free: free, inbox: [summary()]));
+          api: api,
+          profiles: profiles,
+          free: free,
+          inbox: [summary()],
+          months: months));
       await tester.pumpAndSettle();
 
       if (profiles.contains(LizmoProfile.landlord)) {
@@ -5999,6 +6025,274 @@ void _landlordRequestTests() {
     }
 
     // ---- reading one ------------------------------------------------------
+
+    BillingPeriodResponse unpaid() => BillingPeriodResponse(
+          id: 'b1',
+          label: 'October',
+          periodStart: DateTime(DateTime.now().year, 10, 1),
+          periodEnd: DateTime(DateTime.now().year, 10, 31),
+          dueDate: DateTime(DateTime.now().year, 10, 5),
+          amountDue: 2500,
+          amountPaid: 0,
+          outstanding: 2500,
+          status: BillingPeriodResponseStatusEnum.UNPAID,
+          overdue: false,
+        );
+
+    InquiryMessageResponse said(String body, Duration ago, {bool mine = false}) =>
+        InquiryMessageResponse(
+          id: body,
+          body: body,
+          sentAt: DateTime.now().subtract(ago),
+          mine: mine,
+        );
+
+    /// It was the building's name alone: on a landlord's phone, the same
+    /// title over every tenant in the building.
+    testWidgets('the header names who you are talking to, and where',
+        (tester) async {
+      await open(tester, _FakeInquiriesApi(thread: thread(who: applicant())));
+
+      final header = find.byKey(const ValueKey('thread-header'));
+      expect(find.descendant(of: header, matching: find.text('Ana Reyes')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: header, matching: find.text('Sunrise Apartments')),
+          findsOneWidget);
+    });
+
+    /// Who is asking and what they still need are answered questions once
+    /// somebody lives there.
+    testWidgets('a current tenant is a tenancy, not an applicant',
+        (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  who: applicant(),
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())));
+
+      expect(find.text('Renting Bed 1, 2B since 15 Jan'), findsOneWidget);
+      expect(find.byKey(const ValueKey('applicant')), findsNothing);
+      expect(find.byKey(const ValueKey('start-lease')), findsNothing);
+      expect(find.byKey(const ValueKey('already-leased')), findsNothing);
+    });
+
+    testWidgets("the tenancy line opens the tenant's page", (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  who: applicant(),
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())));
+
+      await tester.tap(find.byKey(const ValueKey('tenancy-line')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('the tenant is told what they rent, too', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          profiles: {LizmoProfile.tenant});
+
+      expect(find.text('You rent Bed 1, 2B since 15 Jan'), findsOneWidget);
+    });
+
+    /// After moving out it is an ordinary conversation again, and the
+    /// landlord can let them a room again from it.
+    testWidgets('a tenancy that ended is marked where it ended',
+        (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+            who: applicant(),
+            tenancy: renting(
+                active: false,
+                ended: DateTime.now().subtract(const Duration(days: 2))),
+            messages: [
+              said('Thank you for everything', const Duration(days: 3)),
+              said('When will the deposit come back?', const Duration(hours: 1)),
+            ],
+          )));
+
+      expect(find.byKey(const ValueKey('tenancy-ended')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tenancy-line')), findsNothing);
+      expect(find.byKey(const ValueKey('start-lease')), findsOneWidget);
+
+      double top(Finder f) => tester.getTopLeft(f).dy;
+      expect(top(find.text('Thank you for everything')),
+          lessThan(top(find.byKey(const ValueKey('tenancy-ended')))));
+      expect(top(find.byKey(const ValueKey('tenancy-ended'))),
+          lessThan(top(find.text('When will the deposit come back?'))));
+    });
+
+    /// From the first question to moving out, the thread reads as the
+    /// history of the two of them.
+    testWidgets('the tenancy begins in the thread where it began',
+        (tester) async {
+      final start = DateTime.now().subtract(const Duration(days: 2));
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+            who: applicant(),
+            status: InquirySummaryStatusEnum.LEASED,
+            tenancy: Tenancy(
+              leaseId: 'l1',
+              place: 'Bed 1, 2B',
+              startDate: DateTime(start.year, start.month, start.day),
+              active: true,
+            ),
+            messages: [
+              said('Is there a bed free?', const Duration(days: 5)),
+              said('The water is off', const Duration(hours: 1)),
+            ],
+          )));
+
+      final marker = find.byKey(const ValueKey('tenancy-started'));
+      expect(find.text('Tenancy started · Bed 1, 2B'), findsOneWidget);
+      double top(Finder f) => tester.getTopLeft(f).dy;
+      expect(top(find.text('Is there a bed free?')), lessThan(top(marker)));
+      expect(top(marker), lessThan(top(find.text('The water is off'))));
+    });
+
+    /// A thread read months apart was a column of dates on every message.
+    testWidgets('days are divided, and the latest says Today', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(who: applicant(), messages: [
+            said('A week back', const Duration(days: 8)),
+            said('Just now', const Duration(minutes: 5)),
+          ])));
+
+      expect(find.text('Today'), findsOneWidget);
+      final then = DateTime.now().subtract(const Duration(days: 8));
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final label = '${then.day} ${months[then.month - 1]}'
+          '${then.year == DateTime.now().year ? '' : ' ${then.year}'}';
+      expect(find.text(label), findsOneWidget);
+    });
+
+    // ---- doing things from it -----------------------------------------------
+
+    testWidgets('a tenant can say they paid, or report a repair, from here',
+        (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          profiles: {LizmoProfile.tenant},
+          months: [unpaid()]);
+
+      expect(find.byKey(const ValueKey('shortcut-paid')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shortcut-repair')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shortcut-record')), findsNothing);
+    });
+
+    /// Otherwise "paid na po" goes into the chat and the month stays unpaid
+    /// in the app on both sides.
+    testWidgets('I have paid opens the same sheet as the Rent tab',
+        (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          profiles: {LizmoProfile.tenant},
+          months: [unpaid()]);
+
+      await tester.tap(find.byKey(const ValueKey('shortcut-paid')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DeclarePaymentSheet), findsOneWidget);
+    });
+
+    testWidgets('with nothing owed, it says so', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          profiles: {LizmoProfile.tenant});
+
+      await tester.tap(find.byKey(const ValueKey('shortcut-paid')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DeclarePaymentSheet), findsNothing);
+      expect(find.text('Nothing is owed right now.'), findsOneWidget);
+    });
+
+    /// The same tracked report Maintenance files, not a line in a chat.
+    testWidgets('Report a repair opens the repair form', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          profiles: {LizmoProfile.tenant});
+
+      await tester.tap(find.byKey(const ValueKey('shortcut-repair')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReportProblemSheet), findsOneWidget);
+    });
+
+    testWidgets('a landlord can record a payment from here', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  who: applicant(),
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting())),
+          months: [unpaid()]);
+
+      expect(find.byKey(const ValueKey('shortcut-paid')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('shortcut-record')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecordPaymentSheet), findsOneWidget);
+    });
+
+    /// Before a tenancy there is nothing to pay; after it the deposit is
+    /// talked about, not filed.
+    testWidgets('no shortcuts before a tenancy', (tester) async {
+      await open(tester, _FakeInquiriesApi(thread: thread(who: applicant())));
+      expect(find.byKey(const ValueKey('shortcut-record')), findsNothing);
+    });
+
+    testWidgets('no shortcuts after one', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  tenancy: renting(
+                      active: false,
+                      ended: DateTime.now().subtract(const Duration(days: 1))))),
+          profiles: {LizmoProfile.tenant});
+      expect(find.byKey(const ValueKey('shortcut-paid')), findsNothing);
+      expect(find.byKey(const ValueKey('shortcut-repair')), findsNothing);
+    });
+
 
     testWidgets('both sides of the conversation are there, in order',
         (tester) async {
