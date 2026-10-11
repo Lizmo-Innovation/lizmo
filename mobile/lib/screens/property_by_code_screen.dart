@@ -54,19 +54,7 @@ class PropertyByCodeScreen extends ConsumerWidget {
             padding: EdgeInsets.only(top: under),
             child: _NotFound(failure: ApiFailure.from(error)),
           ),
-        _ => Padding(
-            padding: EdgeInsets.only(top: under),
-            child: const Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(LizmoColors.teal900),
-                ),
-              ),
-            ),
-          ),
+        _ => _Arriving(under: under),
       },
     );
   }
@@ -150,7 +138,7 @@ class _Place extends StatelessWidget {
         _Kind(label: _kind(place)),
         if ((place.description ?? '').isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text(place.description!, style: LizmoType.rowSub),
+          _Description(text: place.description!),
         ],
 
         const SizedBox(height: 20),
@@ -196,6 +184,127 @@ class _Place extends StatelessWidget {
             ? 'Commercial'
             : 'Residential';
     return type.isEmpty ? usage : '$usage · $type';
+  }
+}
+
+/// What the landlord wrote about the place, three lines at a time.
+///
+/// Uncapped, a landlord who writes a page pushes the vacancies -- the thing
+/// somebody scanned the code to find -- off the bottom of the screen. "More"
+/// appears only when there is more; a short description has no button
+/// promising text that is not there.
+class _Description extends StatefulWidget {
+  const _Description({required this.text});
+
+  final String text;
+
+  @override
+  State<_Description> createState() => _DescriptionState();
+}
+
+class _DescriptionState extends State<_Description> {
+  static const _lines = 3;
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = LizmoType.rowSub;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: _lines,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final long = painter.didExceedMaxLines;
+        painter.dispose();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              key: const ValueKey('property-description'),
+              style: style,
+              maxLines: _open ? null : _lines,
+              overflow: _open ? TextOverflow.visible : TextOverflow.ellipsis,
+            ),
+            if (long)
+              TextButton(
+                key: const ValueKey('description-more'),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  alignment: Alignment.centerLeft,
+                ),
+                onPressed: () => setState(() => _open = !_open),
+                child: Text(
+                  _open ? 'Less' : 'More',
+                  style: style.copyWith(
+                    color: LizmoColors.teal900,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The page's shape while it loads.
+///
+/// It used to be a 24px spinner alone on an empty canvas, which on a slow
+/// signal at somebody's gate reads as the app having frozen. Laid out as a
+/// place with no photograph -- which is most places -- so nothing jumps when
+/// the real page arrives. Still rather than shimmering: it is on screen for
+/// a second, and a shimmer is one more thing moving.
+class _Arriving extends StatelessWidget {
+  const _Arriving({required this.under});
+
+  final double under;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(double width, double height) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3E8E6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+        );
+
+    return ListView(
+      key: const ValueKey('property-loading'),
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(16, under + 8, 16, 28),
+      children: [
+        Align(alignment: Alignment.centerLeft, child: bar(220, 24)),
+        const SizedBox(height: 10),
+        Align(alignment: Alignment.centerLeft, child: bar(160, 14)),
+        const SizedBox(height: 14),
+        Align(alignment: Alignment.centerLeft, child: bar(150, 24)),
+        const SizedBox(height: 28),
+        Align(alignment: Alignment.centerLeft, child: bar(130, 18)),
+        const SizedBox(height: 14),
+        for (var i = 0; i < 2; i++) ...[
+          Container(
+            height: 62,
+            decoration: BoxDecoration(
+              color: LizmoColors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE3E8E6)),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
   }
 }
 
@@ -426,7 +535,9 @@ class _Floor extends StatelessWidget {
   String _price() {
     final cheapest = floor.cheapestRent;
     final dearest = floor.dearestRent;
-    if (cheapest == null) return 'Price not set';
+    // "Price not set" was the landlord's unfinished paperwork, shown to a
+    // stranger. This says the same thing as something they can do.
+    if (cheapest == null) return 'Ask the landlord';
 
     final money = cheapest == dearest
         ? LizmoMoney.peso(cheapest)

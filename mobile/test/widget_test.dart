@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:lizmo/billing/payment_channel_providers.dart';
 import 'package:lizmo/screens/payment_channels_screen.dart';
 import 'package:lizmo/widgets/payment_channel_sheet.dart';
@@ -5122,6 +5123,8 @@ void _findingAPlaceTests() {
       PropertyByCodeResponse? found,
       ApiFailure? lookupFails,
       _FakeAskingApi? asking,
+      Completer<PropertyByCodeResponse>? lookupWaits,
+      String? description,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -5136,7 +5139,8 @@ void _findingAPlaceTests() {
         ),
         propertyByCodeProvider('PHK7M4Q2').overrideWith((ref) async {
           if (lookupFails != null) throw lookupFails;
-          return found ?? place();
+          if (lookupWaits != null) return lookupWaits.future;
+          return (found ?? place())..description = description;
         }),
         if (asking != null) inquiriesApiProvider.overrideWithValue(asking),
       ],
@@ -5454,7 +5458,62 @@ void _findingAPlaceTests() {
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.text('Price not set'), findsOneWidget);
+      // What to do about it, rather than the landlord's unfinished paperwork.
+      expect(find.text('Ask the landlord'), findsOneWidget);
+      expect(find.text('Price not set'), findsNothing);
+      // And no "from" price on the bar, since there is none to quote.
+      expect(find.byKey(const ValueKey('from-price')), findsNothing);
+    });
+
+    /// A landlord who writes a page would push the vacancies off the screen.
+    testWidgets('a long description is cut to three lines, with More',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        found: place(beds: 2),
+        description: List.filled(40, 'Quiet street, near the market.').join(' '),
+      ));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      Text shown() => tester.widget<Text>(
+          find.byKey(const ValueKey('property-description')));
+      expect(shown().maxLines, 3);
+
+      await tester.tap(find.byKey(const ValueKey('description-more')));
+      await tester.pumpAndSettle();
+      expect(shown().maxLines, isNull);
+      expect(find.text('Less'), findsOneWidget);
+    });
+
+    /// A button promising more text that is not there.
+    testWidgets('a short description has no More', (tester) async {
+      await tester.pumpWidget(appWith(
+        found: place(beds: 2),
+        description: 'Near the market.',
+      ));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.text('Near the market.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('description-more')), findsNothing);
+    });
+
+    /// A spinner alone on an empty canvas reads as frozen on a slow signal.
+    testWidgets('while the place loads, its shape is shown', (tester) async {
+      final waiting = Completer<PropertyByCodeResponse>();
+      await tester.pumpWidget(appWith(lookupWaits: waiting));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('property-loading')), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      // Back works before anything has arrived.
+      expect(find.byTooltip('Back'), findsOneWidget);
+
+      waiting.complete(place(beds: 2));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('property-loading')), findsNothing);
+      expect(find.text('2 spaces vacant'), findsOneWidget);
     });
 
     /// The button starts the conversation and drops the tenant into it: the
