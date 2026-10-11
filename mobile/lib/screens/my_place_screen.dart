@@ -10,6 +10,7 @@ import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 import '../widgets/shared_lease_documents.dart';
+import '../widgets/your_landlord_card.dart';
 
 /// Where the tenant lives, or how to find somewhere.
 ///
@@ -139,6 +140,14 @@ class _Tenancy extends StatelessWidget {
             ],
           ),
         ),
+
+        // Second, after what was agreed: anything to do with somebody's home
+        // is looked for here first, and most of it is a word with the person
+        // they rent from.
+        if (lease.status == LeaseResponseStatusEnum.ACTIVE) ...[
+          const SizedBox(height: 16),
+          YourLandlordCard(lease: lease),
+        ],
 
         if (_hasUpfrontMoney(lease)) ...[
           const SizedBox(height: 16),

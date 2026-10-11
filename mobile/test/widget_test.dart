@@ -51,6 +51,7 @@ import 'package:lizmo/platform/lizmo_billing_providers.dart';
 import 'package:lizmo/screens/lizmo_billing_screen.dart';
 import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
+import 'package:lizmo/screens/inquiries_screen.dart';
 import 'package:lizmo/widgets/rent_schedule_list.dart';
 import 'package:lizmo/widgets/record_payment_sheet.dart';
 import 'package:lizmo/widgets/report_problem_sheet.dart';
@@ -5803,6 +5804,19 @@ class _FakeInquiriesApi extends AskingAboutAPlaceApi {
 
   int reads = 0;
 
+  /// The tenancy whose conversation was asked for, if one was.
+  String? openedFor;
+
+  @override
+  Future<InquirySummary?> openLeaseConversation(
+    String leaseId, {
+    Future<void>? abortTrigger,
+  }) async {
+    if (failWith != null) throw failWith!;
+    openedFor = leaseId;
+    return thread?.inquiry;
+  }
+
   @override
   Future<InquiryThread?> readInquiry(String id, {Future<void>? abortTrigger}) async {
     reads++;
@@ -6753,6 +6767,7 @@ void _tenantLeaseTests() {
       List<BillingPeriodResponse> months = const [],
       List<MaintenanceReportResponse>? reports,
       List<InquirySummary>? threads,
+      _FakeInquiriesApi? api,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -6771,6 +6786,7 @@ void _tenantLeaseTests() {
           myMaintenanceProvider.overrideWith((ref) async => reports),
         if (threads != null)
           myInquiriesProvider.overrideWith((ref) async => threads),
+        if (api != null) inquiriesApiProvider.overrideWithValue(api),
       ],
       child: const LizmoApp(),
     );
@@ -6783,6 +6799,7 @@ void _tenantLeaseTests() {
     }) =>
         LeaseResponse(
           id: 'l1',
+          propertyId: 'p1',
           propertyName: 'Sunrise Apartments',
           unitNumber: '2B',
           bedId: bedLabel == null ? null : 'b1',
@@ -6985,6 +7002,175 @@ void _tenantLeaseTests() {
 
       expect(find.text('Nothing due yet'), findsOneWidget);
       expect(find.textContaining('cannot record payments'), findsNothing);
+    });
+
+    /// The conversation with the person they rent from.
+    InquirySummary withLandlord({bool unread = false}) => InquirySummary(
+          id: 'i1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          withName: 'Maria Santos',
+          status: InquirySummaryStatusEnum.LEASED,
+          lastMessage: 'The plumber comes at three',
+          lastMessageAt: DateTime.now().subtract(const Duration(hours: 1)),
+          unread: unread,
+          createdAt: DateTime.now().subtract(const Duration(days: 90)),
+          tenancy: Tenancy(
+            leaseId: 'l1',
+            place: 'Bed 1, 2B',
+            startDate: DateTime(DateTime.now().year, 1, 15),
+            active: true,
+          ),
+        );
+
+    /// A place they asked about and do not live in.
+    InquirySummary askedElsewhere() => InquirySummary(
+          id: 'i2',
+          propertyId: 'p2',
+          propertyName: 'Mabuhay Lodge',
+          withName: 'Rodel Cruz',
+          status: InquirySummaryStatusEnum.OPEN,
+          lastMessage: 'Nothing free until December',
+          lastMessageAt: DateTime.now().subtract(const Duration(days: 2)),
+          unread: false,
+          createdAt: DateTime.now().subtract(const Duration(days: 3)),
+        );
+
+    _FakeInquiriesApi landlordApi() => _FakeInquiriesApi(
+          thread: InquiryThread(
+            inquiry: withLandlord(),
+            messages: const [],
+          ),
+        );
+
+    /// A tenant's landlord is not one more place they asked about.
+    testWidgets('Messages pins your landlord above the places you asked about',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()],
+          threads: [askedElsewhere(), withLandlord()], api: landlordApi()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const ValueKey('your-landlord'));
+      expect(find.descendant(of: card, matching: find.text('Maria Santos')),
+          findsOneWidget);
+      expect(find.text('Places you asked about'), findsOneWidget);
+      // Pinned, so not listed twice.
+      expect(find.byKey(const ValueKey('thread-i1')), findsNothing);
+      expect(find.byKey(const ValueKey('thread-i2')), findsOneWidget);
+      expect(tester.getTopLeft(card).dy,
+          lessThan(tester.getTopLeft(find.byKey(const ValueKey('thread-i2'))).dy));
+    });
+
+    testWidgets('the card opens the conversation', (tester) async {
+      await tester.pumpWidget(
+          appWith([lease()], threads: [withLandlord()], api: landlordApi()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('your-landlord')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// A tenancy from before conversations has no thread. The card is there
+    /// all the same, and the thread is made on the tap.
+    testWidgets('with no conversation yet, the card starts one', (tester) async {
+      final api = landlordApi();
+      await tester.pumpWidget(appWith([lease()], threads: const [], api: api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('your-landlord')),
+              matching: find.text('Your landlord')),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('your-landlord')));
+      await tester.pumpAndSettle();
+
+      expect(api.openedFor, 'l1');
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// Where somebody looks first for anything to do with their home.
+    testWidgets('My place has your landlord on it', (tester) async {
+      await tester.pumpWidget(
+          appWith([lease()], threads: [withLandlord()], api: landlordApi()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('your-landlord')),
+              matching: find.text('Maria Santos')),
+          findsOneWidget);
+    });
+
+    /// Home is for what needs you; a read conversation does not.
+    testWidgets('Home shows your landlord when they have written',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()],
+          threads: [withLandlord(unread: true)], api: landlordApi()));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('your-landlord')), findsOneWidget);
+      expect(find.byKey(const ValueKey('your-landlord-unread')), findsOneWidget);
+      expect(find.text('Reply'), findsOneWidget);
+    });
+
+    testWidgets('and not when there is nothing new', (tester) async {
+      await tester.pumpWidget(
+          appWith([lease()], threads: [withLandlord()], api: landlordApi()));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('your-landlord')), findsNothing);
+    });
+
+    /// After moving out it is still open, for the deposit, but it is not
+    /// somebody asking about a room.
+    testWidgets('a conversation after moving out says so', (tester) async {
+      final movedOut = InquirySummary(
+        id: 'i3',
+        propertyId: 'p3',
+        propertyName: 'Casa Verde',
+        withName: 'Lito Ramos',
+        status: InquirySummaryStatusEnum.OPEN,
+        lastMessageAt: DateTime.now().subtract(const Duration(days: 1)),
+        unread: false,
+        createdAt: DateTime.now().subtract(const Duration(days: 400)),
+        tenancy: Tenancy(
+          leaseId: 'old',
+          place: 'Unit 3',
+          startDate: DateTime(DateTime.now().year - 1, 1, 1),
+          endDate: DateTime.now().subtract(const Duration(days: 5)),
+          active: false,
+        ),
+      );
+      await tester.pumpWidget(appWith(const [], threads: [movedOut]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-messages')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('thread-i3')),
+              matching: find.text('Moved out')),
+          findsOneWidget);
+    });
+
+    /// A message from your own landlord sat below conversations already read.
+    test('unread comes first, whatever it is about', () {
+      final readAsking = askedElsewhere();
+      final unreadLandlord = withLandlord(unread: true);
+
+      expect(ordered([readAsking, unreadLandlord]).first.id, 'i1');
     });
 
     /// It sat above the empty state, which read as a button and then an

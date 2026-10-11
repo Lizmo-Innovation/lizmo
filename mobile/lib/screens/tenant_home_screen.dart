@@ -11,6 +11,7 @@ import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/rent_status_card.dart';
+import '../widgets/your_landlord_card.dart';
 import '../widgets/role_switcher.dart';
 
 /// What is waiting on the tenant.
@@ -56,6 +57,15 @@ class TenantHomeScreen extends ConsumerWidget {
     final holdingUpALandlord = details?.readyForALease == false &&
         waiting.isNotEmpty;
     final unfinished = noNumber || holdingUpALandlord;
+
+    // Something from the person they rent from, not yet read. First on
+    // Home: a landlord writing is rarer than rent falling due, and usually
+    // about something happening today.
+    final fromLandlord = lease == null ||
+            lease.status != LeaseResponseStatusEnum.ACTIVE
+        ? null
+        : threadForTenancy(threads.valueOrNull ?? const [], lease);
+    final landlordWrote = fromLandlord?.unread ?? false;
 
     final nothingToSay = !unfinished && waiting.isEmpty && lease == null;
 
@@ -106,6 +116,11 @@ class TenantHomeScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
                 children: [
+                  if (landlordWrote) ...[
+                    YourLandlordCard(lease: lease!),
+                    const SizedBox(height: 12),
+                  ],
+
                   if (unfinished) ...[
                     _FinishYourProfile(noNumber: noNumber),
                     const SizedBox(height: 12),

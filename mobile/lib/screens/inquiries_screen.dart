@@ -7,7 +7,9 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
+import '../tenant/tenant_providers.dart';
 import '../widgets/poller.dart';
+import '../widgets/your_landlord_card.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
@@ -22,10 +24,28 @@ import '../widgets/role_switcher.dart';
 /// Used twice: as the tenant's Messages tab, and as the Inquiries half of
 /// landlord's Tenants tab, which is why the header is not in here.
 class InquiriesList extends ConsumerStatefulWidget {
-  const InquiriesList({super.key, this.emptyDetail});
+  const InquiriesList({
+    super.key,
+    this.emptyDetail,
+    this.leading,
+    this.restLabel,
+    this.leaveOutTenancies = false,
+  });
 
   /// What to say when there are none, which differs by who is reading.
   final String? emptyDetail;
+
+  /// Pinned above the rest: the tenant's own landlord. Shown even when there
+  /// is nothing else, because a renting tenant's inbox is not empty.
+  final Widget? leading;
+
+  /// Over the rest, when something is pinned above them.
+  final String? restLabel;
+
+  /// Leaves out conversations with a current tenancy, which are shown
+  /// somewhere better -- pinned for the tenant, and on the Renting half of
+  /// Tenants for the landlord.
+  final bool leaveOutTenancies;
 
   /// How often the list re-reads itself while somebody is looking at it.
   ///
@@ -50,7 +70,9 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
       child: RefreshIndicator(
       onRefresh: () async => ref.invalidate(myInquiriesProvider),
       child: switch (threads) {
-        AsyncData(:final value) when value.isEmpty => LizmoMessageState(
+        AsyncData(:final value)
+            when _shown(value).isEmpty && widget.leading == null =>
+          LizmoMessageState(
             tone: LizmoMessageTone.neutral,
             icon: Icons.chat_bubble_outline,
             title: 'Nothing here yet',
@@ -61,7 +83,16 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
         AsyncData(:final value) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              for (final thread in ordered(value)) _ThreadRow(thread: thread),
+              if (widget.leading case final leading?) ...[
+                leading,
+                const SizedBox(height: 18),
+                if (_shown(value).isNotEmpty && widget.restLabel != null) ...[
+                  Text(widget.restLabel!, style: LizmoType.sectionHeading),
+                  const SizedBox(height: 10),
+                ],
+              ],
+              for (final thread in ordered(_shown(value)))
+                _ThreadRow(thread: thread),
             ],
           ),
         AsyncError(:final error) => LizmoMessageState(
@@ -86,16 +117,34 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
       ),
     );
   }
+
+  List<InquirySummary> _shown(List<InquirySummary> threads) =>
+      widget.leaveOutTenancies
+          ? threads.where((thread) => !isCurrentTenancy(thread)).toList()
+          : threads;
 }
 
-/// Waiting on you first, then the rest of the live ones, then tenancies,
-/// then what is over. Within each, the server's order — most recently
-/// spoken in.
+/// Whether a conversation belongs to somebody living there now.
+///
+/// By the tenancy it carries, or -- from an API that does not say -- by
+/// being marked as one.
+bool isCurrentTenancy(InquirySummary thread) =>
+    thread.tenancy?.active == true ||
+    (thread.tenancy == null &&
+        thread.status == InquirySummaryStatusEnum.LEASED);
+
+/// Waiting on you first, whatever it is about, then the rest of the live
+/// ones, then tenancies, then what is over. Within each, the server's order
+/// -- most recently spoken in.
+///
+/// Unread used to count only for conversations still asking about a room,
+/// so a message from your own tenant or landlord sat below ones you had
+/// already read.
 List<InquirySummary> ordered(List<InquirySummary> threads) {
   int rank(InquirySummary thread) {
-    if (thread.status == InquirySummaryStatusEnum.OPEN) {
-      return (thread.unread ?? false) ? 0 : 1;
-    }
+    final over = thread.status == InquirySummaryStatusEnum.CLOSED;
+    if ((thread.unread ?? false) && !over) return 0;
+    if (thread.status == InquirySummaryStatusEnum.OPEN) return 1;
     return thread.status == InquirySummaryStatusEnum.LEASED ? 2 : 3;
   }
 
@@ -117,6 +166,8 @@ class TenantMessagesScreen extends ConsumerWidget {
     final threads = ref.watch(myInquiriesProvider).valueOrNull;
     final waiting =
         threads?.where((thread) => thread.unread ?? false).length;
+    final lease = ref.watch(myLeasesProvider).valueOrNull?.firstOrNull;
+    final renting = lease?.status == LeaseResponseStatusEnum.ACTIVE;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -144,13 +195,18 @@ class TenantMessagesScreen extends ConsumerWidget {
                 ? const []
                 : [
                     LatticeHeaderStat(
-                      value: waiting.toString(),
+                      value: (waiting ?? 0).toString(),
                       label: 'New replies',
                     ),
                   ],
           ),
-          const Expanded(
+          Expanded(
+            // The landlord pinned on top, and kept out of the list below it:
+            // a tenant's landlord is not one more place they asked about.
             child: InquiriesList(
+              leading: renting ? YourLandlordCard(lease: lease!) : null,
+              restLabel: 'Places you asked about',
+              leaveOutTenancies: true,
               emptyDetail: 'Scan a place you like and ask about it. Whatever '
                   'the landlord says back lands here.',
             ),
@@ -218,12 +274,18 @@ class _ThreadRow extends StatelessWidget {
                           ),
                           if (thread.status == InquirySummaryStatusEnum.LEASED)
                             const StatusChip(
-                                status: LizmoStatus.paid, label: 'Renting'),
-                          if (over)
+                                status: LizmoStatus.paid, label: 'Renting')
+                          else if (over)
                             const StatusChip(
-                                status: LizmoStatus.vacant, label: 'Ended'),
+                                status: LizmoStatus.vacant, label: 'Ended')
+                          // Still open -- the deposit is being talked about --
+                          // but not somebody asking about a room.
+                          else if (thread.tenancy?.active == false)
+                            const StatusChip(
+                                status: LizmoStatus.vacant, label: 'Moved out'),
                           if (!over &&
-                              thread.status != InquirySummaryStatusEnum.LEASED)
+                              thread.status != InquirySummaryStatusEnum.LEASED &&
+                              thread.tenancy?.active != false)
                             Text(
                               _when(thread.lastMessageAt ?? thread.createdAt),
                               style: LizmoType.rowSub.copyWith(
