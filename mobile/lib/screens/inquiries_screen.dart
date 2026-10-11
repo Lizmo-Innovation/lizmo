@@ -204,6 +204,11 @@ class _ThreadRow extends StatelessWidget {
                               thread.withName ?? 'Somebody',
                               style: LizmoType.rowName.copyWith(
                                 color: over ? LizmoColors.slate : LizmoColors.ink,
+                                // Weight as well as the dot. A dot and a
+                                // shade of grey is thin for the one thing
+                                // this list is read to find.
+                                fontWeight:
+                                    unread ? FontWeight.w700 : FontWeight.w500,
                               ),
                             ),
                           ),
@@ -213,6 +218,17 @@ class _ThreadRow extends StatelessWidget {
                           if (over)
                             const StatusChip(
                                 status: LizmoStatus.vacant, label: 'Ended'),
+                          if (!over &&
+                              thread.status != InquirySummaryStatusEnum.LEASED)
+                            Text(
+                              _when(thread.lastMessageAt ?? thread.createdAt),
+                              style: LizmoType.rowSub.copyWith(
+                                color: unread
+                                    ? LizmoColors.coral
+                                    : LizmoColors.slate,
+                                fontSize: 12,
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -241,4 +257,28 @@ class _ThreadRow extends StatelessWidget {
       ),
     );
   }
+
+  /// How long ago, in the shape a messaging list uses: minutes within the
+  /// hour, hours within the day, the weekday within the week, then the date.
+  ///
+  /// Without it you cannot tell this morning's unanswered message from one
+  /// three weeks old, which is exactly what decides who gets answered first.
+  static String _when(DateTime? at) {
+    if (at == null) return '';
+
+    final local = at.toLocal();
+    final ago = DateTime.now().difference(local);
+
+    if (ago.inMinutes < 1) return 'now';
+    if (ago.inMinutes < 60) return '${ago.inMinutes}m';
+    if (ago.inHours < 24) return '${ago.inHours}h';
+    if (ago.inDays < 7) return _days[local.weekday - 1];
+    return '${local.day} ${_months[local.month - 1]}';
+  }
+
+  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
 }

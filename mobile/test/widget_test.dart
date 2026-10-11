@@ -5758,6 +5758,65 @@ void _landlordRequestTests() {
       expect(api.reads, onOpening + 2);
     });
 
+    /// A dot and a shade of grey was thin for the one thing this list is
+    /// read to find.
+    testWidgets('an unread conversation is named in bold', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        summary(),
+        summary(id: 'i2', withName: 'Bea Santos', unread: false),
+      ]));
+      await tester.pumpAndSettle();
+      await openAsking(tester);
+
+      TextStyle nameIn(String id, String who) => tester
+          .widget<Text>(find.descendant(
+            of: find.byKey(ValueKey('thread-$id')),
+            matching: find.text(who),
+          ))
+          .style!;
+
+      expect(nameIn('i1', 'Ana Reyes').fontWeight, FontWeight.w700);
+      expect(nameIn('i2', 'Bea Santos').fontWeight, FontWeight.w500);
+    });
+
+    /// Without it you cannot tell this morning's unanswered message from one
+    /// three weeks old, which is what decides who gets answered first.
+    testWidgets('each row says how long ago', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      final now = DateTime.now();
+
+      InquirySummary at(String id, DateTime when) => InquirySummary(
+            id: id,
+            propertyId: 'p1',
+            propertyName: 'Sunrise Apartments',
+            withName: 'Asker $id',
+            status: InquirySummaryStatusEnum.OPEN,
+            lastMessage: 'Hello',
+            lastMessageAt: when,
+            unread: false,
+            createdAt: when,
+          );
+
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        at('i1', now.subtract(const Duration(minutes: 20))),
+        at('i2', now.subtract(const Duration(hours: 5))),
+        at('i3', now.subtract(const Duration(days: 30))),
+      ]));
+      await tester.pumpAndSettle();
+      await openAsking(tester);
+
+      expect(find.text('20m'), findsOneWidget);
+      expect(find.text('5h'), findsOneWidget);
+      // A month back is a date, not "720h".
+      final old = now.subtract(const Duration(days: 30));
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      expect(find.text('${old.day} ${months[old.month - 1]}'), findsOneWidget);
+    });
+
     // ---- the whole list ---------------------------------------------------
 
     /// Today shows what is still going. This is everything, including what is
