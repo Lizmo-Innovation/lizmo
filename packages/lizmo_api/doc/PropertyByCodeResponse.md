@@ -18,6 +18,7 @@ Name | Type | Description | Notes
 **vacantWholeUnits** | **int** |  | [optional] 
 **vacantBeds** | **int** |  | [optional] 
 **floors** | [**List<VacancyFloor>**](VacancyFloor.md) |  | [optional] [default to const []]
+**photos** | **List<String>** |  | [optional] [default to const []]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

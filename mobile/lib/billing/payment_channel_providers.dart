@@ -39,14 +39,26 @@ typedef PickedImage = ({String name, Uint8List bytes});
 ///
 /// A provider so tests can hand back bytes without a plugin or a phone.
 final pickGalleryImageProvider = Provider<Future<PickedImage?> Function()>((ref) {
-  return () async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 2000,
-      maxHeight: 2000,
-      imageQuality: 90,
-    );
-    if (picked == null) return null;
-    return (name: picked.name, bytes: await picked.readAsBytes());
-  };
+  return () => _pick(ImageSource.gallery);
 });
+
+/// The camera, for a landlord standing in front of their own building.
+///
+/// Separate from the gallery rather than a parameter, so a test can hand back
+/// bytes for one without stubbing the other.
+final takePhotoProvider = Provider<Future<PickedImage?> Function()>((ref) {
+  return () => _pick(ImageSource.camera);
+});
+
+/// Shrunk on the phone before it is sent: the server re-encodes anyway, and
+/// a 12-megapixel original is a slow upload on a jeepney's worth of signal.
+Future<PickedImage?> _pick(ImageSource source) async {
+  final picked = await ImagePicker().pickImage(
+    source: source,
+    maxWidth: 2000,
+    maxHeight: 2000,
+    imageQuality: 90,
+  );
+  if (picked == null) return null;
+  return (name: picked.name, bytes: await picked.readAsBytes());
+}

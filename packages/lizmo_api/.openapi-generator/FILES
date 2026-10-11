@@ -58,6 +58,7 @@ doc/PaymentDetails.md
 doc/PaymentNote.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
+doc/PhotoOrder.md
 doc/PlatformInvoiceLine.md
 doc/PlatformPaymentForAdmin.md
 doc/PlatformPaymentRejection.md
@@ -66,6 +67,7 @@ doc/PlatformSettings.md
 doc/PlatformStatementResponse.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
+doc/PropertyPhoto.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
 doc/RecordPaymentRequest.md
@@ -171,6 +173,7 @@ lib/model/payment_details.dart
 lib/model/payment_note.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
+lib/model/photo_order.dart
 lib/model/platform_invoice_line.dart
 lib/model/platform_payment_for_admin.dart
 lib/model/platform_payment_rejection.dart
@@ -178,6 +181,7 @@ lib/model/platform_payment_response.dart
 lib/model/platform_settings.dart
 lib/model/platform_statement_response.dart
 lib/model/property_by_code_response.dart
+lib/model/property_photo.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/record_payment_request.dart
@@ -206,10 +210,5 @@ lib/model/vacancy_floor.dart
 lib/model/vacancy_row.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
-test/applicant_test.dart
-test/asking_about_a_place_api_test.dart
-test/inquiry_message_response_test.dart
-test/inquiry_summary_test.dart
-test/inquiry_thread_test.dart
-test/new_message_test.dart
-test/start_inquiry_test.dart
+test/photo_order_test.dart
+test/property_photo_test.dart

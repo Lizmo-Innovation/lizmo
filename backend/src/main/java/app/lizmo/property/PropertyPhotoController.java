@@ -36,7 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/v1/properties/{propertyId}/photos")
-@Tag(name = "Properties", description = "Photographs of a place")
+@Tag(name = "Properties", description = "A landlord's properties and their units")
 public class PropertyPhotoController {
 
     private final PropertyPhotoService service;

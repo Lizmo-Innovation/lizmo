@@ -135,13 +135,17 @@ Class | Method | HTTP request | Description
 *PaymentChannelsApi* | [**updateMyPaymentChannel**](doc//PaymentChannelsApi.md#updatemypaymentchannel) | **PUT** /api/v1/me/payment-channels/{id} | Change a way to pay me
 *PaymentChannelsApi* | [**updateMyPaymentNote**](doc//PaymentChannelsApi.md#updatemypaymentnote) | **PUT** /api/v1/me/payment-note | Change the note under my channels
 *PaymentChannelsApi* | [**uploadMyPaymentChannelQr**](doc//PaymentChannelsApi.md#uploadmypaymentchannelqr) | **POST** /api/v1/me/payment-channels/{id}/qr | Set a channel's QR
+*PropertiesApi* | [**addPropertyPhoto**](doc//PropertiesApi.md#addpropertyphoto) | **POST** /api/v1/properties/{propertyId}/photos | Add a photo
 *PropertiesApi* | [**createProperty**](doc//PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 *PropertiesApi* | [**createUnit**](doc//PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 *PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
+*PropertiesApi* | [**deletePropertyPhoto**](doc//PropertiesApi.md#deletepropertyphoto) | **DELETE** /api/v1/properties/{propertyId}/photos/{photoId} | Remove a photo
 *PropertiesApi* | [**getOccupancy**](doc//PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 *PropertiesApi* | [**getProperty**](doc//PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
+*PropertiesApi* | [**listPropertyPhotos**](doc//PropertiesApi.md#listpropertyphotos) | **GET** /api/v1/properties/{propertyId}/photos | This property's photos
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
+*PropertiesApi* | [**reorderPropertyPhotos**](doc//PropertiesApi.md#reorderpropertyphotos) | **PUT** /api/v1/properties/{propertyId}/photos/order | Put them in order
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
 *RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 *RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
@@ -223,6 +227,7 @@ Class | Method | HTTP request | Description
  - [PaymentNote](doc//PaymentNote.md)
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
+ - [PhotoOrder](doc//PhotoOrder.md)
  - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)
  - [PlatformPaymentForAdmin](doc//PlatformPaymentForAdmin.md)
  - [PlatformPaymentRejection](doc//PlatformPaymentRejection.md)
@@ -230,6 +235,7 @@ Class | Method | HTTP request | Description
  - [PlatformSettings](doc//PlatformSettings.md)
  - [PlatformStatementResponse](doc//PlatformStatementResponse.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
+ - [PropertyPhoto](doc//PropertyPhoto.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)

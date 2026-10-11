@@ -23,6 +23,7 @@ class PropertyByCodeResponse {
     this.vacantWholeUnits,
     this.vacantBeds,
     this.floors = const [],
+    this.photos = const [],
   });
 
   ///
@@ -87,6 +88,8 @@ class PropertyByCodeResponse {
 
   List<VacancyFloor> floors;
 
+  List<String> photos;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PropertyByCodeResponse &&
     other.id == id &&
@@ -98,7 +101,8 @@ class PropertyByCodeResponse {
     other.usage == usage &&
     other.vacantWholeUnits == vacantWholeUnits &&
     other.vacantBeds == vacantBeds &&
-    _deepEquality.equals(other.floors, floors);
+    _deepEquality.equals(other.floors, floors) &&
+    _deepEquality.equals(other.photos, photos);
 
   @override
   int get hashCode =>
@@ -112,10 +116,11 @@ class PropertyByCodeResponse {
     (usage == null ? 0 : usage!.hashCode) +
     (vacantWholeUnits == null ? 0 : vacantWholeUnits!.hashCode) +
     (vacantBeds == null ? 0 : vacantBeds!.hashCode) +
-    (floors.hashCode);
+    (floors.hashCode) +
+    (photos.hashCode);
 
   @override
-  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage, vacantWholeUnits=$vacantWholeUnits, vacantBeds=$vacantBeds, floors=$floors]';
+  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage, vacantWholeUnits=$vacantWholeUnits, vacantBeds=$vacantBeds, floors=$floors, photos=$photos]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -165,6 +170,7 @@ class PropertyByCodeResponse {
       json[r'vacantBeds'] = null;
     }
       json[r'floors'] = this.floors;
+      json[r'photos'] = this.photos;
     return json;
   }
 
@@ -193,6 +199,9 @@ class PropertyByCodeResponse {
         vacantWholeUnits: mapValueOfType<int>(json, r'vacantWholeUnits'),
         vacantBeds: mapValueOfType<int>(json, r'vacantBeds'),
         floors: VacancyFloor.listFromJson(json[r'floors']),
+        photos: json[r'photos'] is Iterable
+            ? (json[r'photos'] as Iterable).cast<String>().toList(growable: false)
+            : const [],
       );
     }
     return null;

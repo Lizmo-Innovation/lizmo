@@ -180,6 +180,7 @@ enum TenantDocumentResponseDocTypeEnum {
   VALID_ID._(r'VALID_ID'),
   RECEIPT._(r'RECEIPT'),
   TENANT_PHOTO._(r'TENANT_PHOTO'),
+  PROPERTY_PHOTO._(r'PROPERTY_PHOTO'),
   OTHER._(r'OTHER'),
   ;
 
@@ -243,6 +244,7 @@ class TenantDocumentResponseDocTypeEnumTypeTransformer {
         case r'VALID_ID': return TenantDocumentResponseDocTypeEnum.VALID_ID;
         case r'RECEIPT': return TenantDocumentResponseDocTypeEnum.RECEIPT;
         case r'TENANT_PHOTO': return TenantDocumentResponseDocTypeEnum.TENANT_PHOTO;
+        case r'PROPERTY_PHOTO': return TenantDocumentResponseDocTypeEnum.PROPERTY_PHOTO;
         case r'OTHER': return TenantDocumentResponseDocTypeEnum.OTHER;
         default:
           if (!allowNull) {

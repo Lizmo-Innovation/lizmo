@@ -2147,6 +2147,166 @@ void main() {
     });
   });
 
+  group('photographs of a place', () {
+    PropertyResponse property() => PropertyResponse(
+          id: 'p1',
+          name: 'Sunrise Apartments',
+          address: '12 Mabini St',
+          type: PropertyResponseTypeEnum.BOARDING_HOUSE,
+          usage: PropertyResponseUsageEnum.RESIDENTIAL,
+          unitCount: 0,
+        );
+
+    PropertyPhoto photo(String id, int position) => PropertyPhoto(
+          id: id,
+          url: 'https://example.invalid/$id.jpg',
+          position: position,
+          uploadedAt: DateTime.now(),
+        );
+
+    Future<void> openProperty(
+      WidgetTester tester, {
+      required _FakePhotosApi api,
+      PickedImage? picked,
+    }) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          authControllerProvider
+              .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
+          tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
+          propertiesProvider.overrideWith((ref) async => [property()]),
+          propertyProvider('p1').overrideWith((ref) async => property()),
+          unitsProvider('p1').overrideWith((ref) async => const <UnitResponse>[]),
+          myInquiriesProvider
+              .overrideWith((ref) async => const <InquirySummary>[]),
+          propertiesApiProvider.overrideWithValue(api),
+          if (picked != null) ...[
+            pickGalleryImageProvider.overrideWithValue(() async => picked),
+            takePhotoProvider.overrideWithValue(() async => picked),
+          ],
+        ],
+        child: const LizmoApp(),
+      ));
+      await tester.pumpAndSettle();
+      await _openProperties(tester);
+      await tester.tap(find.text('Sunrise Apartments'));
+      await tester.pumpAndSettle();
+    }
+
+    /// The reason the feature exists, said on the screen where somebody can
+    /// do something about it.
+    testWidgets('a place with no photos says what that costs them',
+        (tester) async {
+      await openProperty(tester, api: _FakePhotosApi([]));
+
+      expect(find.byKey(const ValueKey('property-photos')), findsOneWidget);
+      expect(find.textContaining('A photo is what makes them ask'),
+          findsOneWidget);
+    });
+
+    testWidgets('the photos are shown, and the first is the cover',
+        (tester) async {
+      await openProperty(
+          tester, api: _FakePhotosApi([photo('a', 0), photo('b', 1)]));
+
+      expect(find.text('Cover'), findsOneWidget);
+      expect(find.textContaining('2 of 8'), findsOneWidget);
+    });
+
+    testWidgets('a photo from the gallery is uploaded', (tester) async {
+      final api = _FakePhotosApi([]);
+      await openProperty(
+        tester,
+        api: api,
+        picked: (name: 'house.jpg', bytes: Uint8List.fromList([1, 2, 3])),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('add-photo')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('photo-from-gallery')));
+      await tester.pumpAndSettle();
+
+      expect(api.uploads, 1);
+    });
+
+    /// A landlord standing in front of their own building should not have to
+    /// photograph it, leave the app, and come back.
+    testWidgets('the camera is offered as well as the gallery', (tester) async {
+      final api = _FakePhotosApi([]);
+      await openProperty(
+        tester,
+        api: api,
+        picked: (name: 'house.jpg', bytes: Uint8List.fromList([1, 2, 3])),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('add-photo')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('photo-from-camera')));
+      await tester.pumpAndSettle();
+
+      expect(api.uploads, 1);
+    });
+
+    /// The only ordering question anybody has: which one represents the
+    /// place. Nobody cares whether the fifth comes before the sixth.
+    testWidgets('any photo can be made the cover', (tester) async {
+      final api = _FakePhotosApi([photo('a', 0), photo('b', 1)]);
+      await openProperty(tester, api: api);
+
+      await tester.tap(find.byKey(const ValueKey('photo-menu-b')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Make this the cover'));
+      await tester.pumpAndSettle();
+
+      expect(api.ordered, ['b', 'a']);
+    });
+
+    testWidgets('the cover is not offered as its own cover', (tester) async {
+      await openProperty(
+          tester, api: _FakePhotosApi([photo('a', 0), photo('b', 1)]));
+
+      await tester.tap(find.byKey(const ValueKey('photo-menu-a')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Make this the cover'), findsNothing);
+      expect(find.text('Remove'), findsOneWidget);
+    });
+
+    testWidgets('removing one asks first', (tester) async {
+      final api = _FakePhotosApi([photo('a', 0)]);
+      await openProperty(tester, api: api);
+
+      await tester.tap(find.byKey(const ValueKey('photo-menu-a')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep it'));
+      await tester.pumpAndSettle();
+      expect(api.removed, isNull);
+
+      await tester.tap(find.byKey(const ValueKey('photo-menu-a')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('confirm-remove-photo')));
+      await tester.pumpAndSettle();
+
+      expect(api.removed, 'a');
+    });
+
+    /// Eight is the server's limit, and a button that only fails is worse
+    /// than no button.
+    testWidgets('a full set stops offering Add', (tester) async {
+      await openProperty(
+        tester,
+        api: _FakePhotosApi([for (var i = 0; i < 8; i++) photo('p$i', i)]),
+      );
+
+      expect(find.byKey(const ValueKey('add-photo')), findsNothing);
+      expect(find.textContaining('8 of 8'), findsOneWidget);
+    });
+  });
+
   group('units in a commercial property', () {
     PropertyResponse commercial() => PropertyResponse(
           id: 'p1',
@@ -10632,5 +10792,61 @@ class _FakePaymentChannelsApi extends PaymentChannelsApi {
   }) async {
     order = [...paymentChannelOrder.ids];
     return channels;
+  }
+}
+
+/// Records what was uploaded, reordered and removed.
+class _FakePhotosApi extends PropertiesApi {
+  _FakePhotosApi(this.photos);
+
+  final List<PropertyPhoto> photos;
+  int uploads = 0;
+  List<String>? ordered;
+  String? removed;
+
+  @override
+  Future<List<PropertyPhoto>?> listPropertyPhotos(
+    String propertyId, {
+    Future<void>? abortTrigger,
+  }) async =>
+      [...photos];
+
+  @override
+  Future<PropertyPhoto?> addPropertyPhoto(
+    String propertyId,
+    MultipartFile file, {
+    Future<void>? abortTrigger,
+  }) async {
+    uploads++;
+    final added = PropertyPhoto(
+      id: 'new',
+      url: 'https://example.invalid/new.jpg',
+      position: photos.length,
+      uploadedAt: DateTime.now(),
+    );
+    photos.add(added);
+    return added;
+  }
+
+  @override
+  Future<List<PropertyPhoto>?> reorderPropertyPhotos(
+    String propertyId,
+    PhotoOrder photoOrder, {
+    Future<void>? abortTrigger,
+  }) async {
+    ordered = [...photoOrder.ids];
+    photos.sort((a, b) =>
+        photoOrder.ids.indexOf(a.id!).compareTo(photoOrder.ids.indexOf(b.id!)));
+    return [...photos];
+  }
+
+  @override
+  Future<void> deletePropertyPhoto(
+    String propertyId,
+    String photoId, {
+    Future<void>? abortTrigger,
+  }) async {
+    removed = photoId;
+    photos.removeWhere((photo) => photo.id == photoId);
   }
 }

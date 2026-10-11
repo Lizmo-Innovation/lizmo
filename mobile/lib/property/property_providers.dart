@@ -98,6 +98,20 @@ final utilitiesProvider =
   }
 });
 
+/// What one property looks like, in the landlord's order.
+///
+/// autoDispose: the URLs are presigned and expire, so a screen reopened
+/// tomorrow should ask again rather than show six broken images.
+final propertyPhotosProvider = FutureProvider.autoDispose
+    .family<List<PropertyPhoto>, String>((ref, propertyId) async {
+  try {
+    return await ref.watch(propertiesApiProvider).listPropertyPhotos(propertyId) ??
+        const [];
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 final leasesApiProvider = Provider<LeasesApi>((ref) {
   return LeasesApi(ref.watch(apiClientProvider));
 });

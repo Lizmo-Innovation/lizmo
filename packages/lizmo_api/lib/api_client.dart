@@ -275,6 +275,8 @@ class ApiClient {
           return PaymentResponse.fromJson(value);
         case 'PendingInvitation':
           return PendingInvitation.fromJson(value);
+        case 'PhotoOrder':
+          return PhotoOrder.fromJson(value);
         case 'PlatformInvoiceLine':
           return PlatformInvoiceLine.fromJson(value);
         case 'PlatformPaymentForAdmin':
@@ -289,6 +291,8 @@ class ApiClient {
           return PlatformStatementResponse.fromJson(value);
         case 'PropertyByCodeResponse':
           return PropertyByCodeResponse.fromJson(value);
+        case 'PropertyPhoto':
+          return PropertyPhoto.fromJson(value);
         case 'PropertyRequest':
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':

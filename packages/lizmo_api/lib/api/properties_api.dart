@@ -16,6 +16,78 @@ class PropertiesApi {
 
   final ApiClient apiClient;
 
+  /// Add a photo
+  ///
+  /// Up to 8 per property. Re-encoded on the way in, so what is stored carries no EXIF and no GPS.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [MultipartFile] file (required):
+  Future<Response> addPropertyPhotoWithHttpInfo(String propertyId, MultipartFile file, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{propertyId}/photos'
+      .replaceAll('{propertyId}', propertyId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['multipart/form-data'];
+
+    bool hasFields = false;
+    final mp = MultipartRequest('POST', Uri.parse(path));
+    if (file != null) {
+      hasFields = true;
+      mp.fields[r'file'] = file.field;
+      mp.files.add(file);
+    }
+    if (hasFields) {
+      postBody = mp;
+    }
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Add a photo
+  ///
+  /// Up to 8 per property. Re-encoded on the way in, so what is stored carries no EXIF and no GPS.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [MultipartFile] file (required):
+  Future<PropertyPhoto?> addPropertyPhoto(String propertyId, MultipartFile file, { Future<void>? abortTrigger, }) async {
+    final response = await addPropertyPhotoWithHttpInfo(propertyId, file, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PropertyPhoto',) as PropertyPhoto;
+    
+    }
+    return null;
+  }
+
   /// Create a property
   ///
   /// Note: This method returns the HTTP [Response].
@@ -181,6 +253,57 @@ class PropertiesApi {
     }
   }
 
+  /// Remove a photo
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [String] photoId (required):
+  Future<Response> deletePropertyPhotoWithHttpInfo(String propertyId, String photoId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{propertyId}/photos/{photoId}'
+      .replaceAll('{propertyId}', propertyId)
+      .replaceAll('{photoId}', photoId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'DELETE',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Remove a photo
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [String] photoId (required):
+  Future<void> deletePropertyPhoto(String propertyId, String photoId, { Future<void>? abortTrigger, }) async {
+    final response = await deletePropertyPhotoWithHttpInfo(propertyId, photoId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
   /// What is let and what is empty
   ///
   /// Counted in lettable slots rather than units: a four-bed room with one tenant is one let and three empty. Beds taken off the market are counted apart from vacancies, because a refurbishment is not a failure to let.
@@ -336,6 +459,67 @@ class PropertiesApi {
     return null;
   }
 
+  /// This property's photos
+  ///
+  /// In order. The first is the one that represents the place.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  Future<Response> listPropertyPhotosWithHttpInfo(String propertyId, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{propertyId}/photos'
+      .replaceAll('{propertyId}', propertyId);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// This property's photos
+  ///
+  /// In order. The first is the one that represents the place.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  Future<List<PropertyPhoto>?> listPropertyPhotos(String propertyId, { Future<void>? abortTrigger, }) async {
+    final response = await listPropertyPhotosWithHttpInfo(propertyId, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<PropertyPhoto>') as List)
+        .cast<PropertyPhoto>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
   /// List a property's units
   ///
   /// Note: This method returns the HTTP [Response].
@@ -387,6 +571,71 @@ class PropertiesApi {
       final responseBody = await _decodeBodyBytes(response);
       return (await apiClient.deserializeAsync(responseBody, 'List<UnitResponse>') as List)
         .cast<UnitResponse>()
+        .toList(growable: false);
+
+    }
+    return null;
+  }
+
+  /// Put them in order
+  ///
+  /// Every id once. Whichever is first is the one a tenant sees against the place.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [PhotoOrder] photoOrder (required):
+  Future<Response> reorderPropertyPhotosWithHttpInfo(String propertyId, PhotoOrder photoOrder, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{propertyId}/photos/order'
+      .replaceAll('{propertyId}', propertyId);
+
+    // ignore: prefer_final_locals
+    Object? postBody = photoOrder;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Put them in order
+  ///
+  /// Every id once. Whichever is first is the one a tenant sees against the place.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] propertyId (required):
+  ///
+  /// * [PhotoOrder] photoOrder (required):
+  Future<List<PropertyPhoto>?> reorderPropertyPhotos(String propertyId, PhotoOrder photoOrder, { Future<void>? abortTrigger, }) async {
+    final response = await reorderPropertyPhotosWithHttpInfo(propertyId, photoOrder, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<PropertyPhoto>') as List)
+        .cast<PropertyPhoto>()
         .toList(growable: false);
 
     }

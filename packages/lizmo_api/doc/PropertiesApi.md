@@ -9,15 +9,64 @@ All URIs are relative to *http://localhost:8082*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**addPropertyPhoto**](PropertiesApi.md#addpropertyphoto) | **POST** /api/v1/properties/{propertyId}/photos | Add a photo
 [**createProperty**](PropertiesApi.md#createproperty) | **POST** /api/v1/properties | Create a property
 [**createUnit**](PropertiesApi.md#createunit) | **POST** /api/v1/properties/{id}/units | Add a unit to a property
 [**deleteProperty**](PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
+[**deletePropertyPhoto**](PropertiesApi.md#deletepropertyphoto) | **DELETE** /api/v1/properties/{propertyId}/photos/{photoId} | Remove a photo
 [**getOccupancy**](PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 [**getProperty**](PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
 [**listProperties**](PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
+[**listPropertyPhotos**](PropertiesApi.md#listpropertyphotos) | **GET** /api/v1/properties/{propertyId}/photos | This property's photos
 [**listUnits**](PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
+[**reorderPropertyPhotos**](PropertiesApi.md#reorderpropertyphotos) | **PUT** /api/v1/properties/{propertyId}/photos/order | Put them in order
 [**updateProperty**](PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
 
+
+# **addPropertyPhoto**
+> PropertyPhoto addPropertyPhoto(propertyId, file)
+
+Add a photo
+
+Up to 8 per property. Re-encoded on the way in, so what is stored carries no EXIF and no GPS.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+final propertyId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final file = BINARY_DATA_HERE; // MultipartFile | 
+
+try {
+    final result = api_instance.addPropertyPhoto(propertyId, file);
+    print(result);
+} catch (e) {
+    print('Exception when calling PropertiesApi->addPropertyPhoto: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **propertyId** | **String**|  | 
+ **file** | **MultipartFile**|  | 
+
+### Return type
+
+[**PropertyPhoto**](PropertyPhoto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **createProperty**
 > PropertyResponse createProperty(propertyRequest)
@@ -131,6 +180,48 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **deletePropertyPhoto**
+> deletePropertyPhoto(propertyId, photoId)
+
+Remove a photo
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+final propertyId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final photoId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    api_instance.deletePropertyPhoto(propertyId, photoId);
+} catch (e) {
+    print('Exception when calling PropertiesApi->deletePropertyPhoto: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **propertyId** | **String**|  | 
+ **photoId** | **String**|  | 
 
 ### Return type
 
@@ -266,6 +357,49 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listPropertyPhotos**
+> List<PropertyPhoto> listPropertyPhotos(propertyId)
+
+This property's photos
+
+In order. The first is the one that represents the place.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+final propertyId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.listPropertyPhotos(propertyId);
+    print(result);
+} catch (e) {
+    print('Exception when calling PropertiesApi->listPropertyPhotos: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **propertyId** | **String**|  | 
+
+### Return type
+
+[**List<PropertyPhoto>**](PropertyPhoto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listUnits**
 > List<UnitResponse> listUnits(id)
 
@@ -303,6 +437,51 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **reorderPropertyPhotos**
+> List<PropertyPhoto> reorderPropertyPhotos(propertyId, photoOrder)
+
+Put them in order
+
+Every id once. Whichever is first is the one a tenant sees against the place.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+final propertyId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final photoOrder = PhotoOrder(); // PhotoOrder | 
+
+try {
+    final result = api_instance.reorderPropertyPhotos(propertyId, photoOrder);
+    print(result);
+} catch (e) {
+    print('Exception when calling PropertiesApi->reorderPropertyPhotos: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **propertyId** | **String**|  | 
+ **photoOrder** | [**PhotoOrder**](PhotoOrder.md)|  | 
+
+### Return type
+
+[**List<PropertyPhoto>**](PropertyPhoto.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

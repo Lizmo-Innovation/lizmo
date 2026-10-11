@@ -8,6 +8,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
+import '../widgets/property_photos_card.dart';
 
 /// One property and the units inside it.
 ///
@@ -121,6 +122,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             ],
           ),
           _WaitingRequests(propertyId: propertyId),
+          // Above the rooms: what the place looks like is what a stranger
+          // decides on, and the unit list is for the landlord's own work.
+          PropertyPhotosCard(propertyId: propertyId),
           if ((property?.description ?? '').isNotEmpty)
             _Description(text: property!.description!),
           if (showFilter)

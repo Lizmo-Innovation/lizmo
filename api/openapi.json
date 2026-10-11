@@ -315,6 +315,52 @@
                 }
             }
         },
+        "/api/v1/properties/{propertyId}/photos/order": {
+            "put": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Put them in order",
+                "description": "Every id once. Whichever is first is the one a tenant sees against the place.",
+                "operationId": "reorderPropertyPhotos",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PhotoOrder"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The photos, reordered",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PropertyPhoto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/{id}": {
             "get": {
                 "tags": [
@@ -1181,6 +1227,101 @@
                 }
             }
         },
+        "/api/v1/properties/{propertyId}/photos": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "This property's photos",
+                "description": "In order. The first is the one that represents the place.",
+                "operationId": "listPropertyPhotos",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The photos",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PropertyPhoto"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Add a photo",
+                "description": "Up to 8 per property. Re-encoded on the way in, so what is stored carries no EXIF and no GPS.",
+                "operationId": "addPropertyPhoto",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "file"
+                                ],
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The photo",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyPhoto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Not an image, too large, or already 8",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/{id}/units": {
             "get": {
                 "tags": [
@@ -1300,6 +1441,7 @@
                                 "VALID_ID",
                                 "RECEIPT",
                                 "TENANT_PHOTO",
+                                "PROPERTY_PHOTO",
                                 "OTHER"
                             ]
                         }
@@ -2361,6 +2503,7 @@
                                 "VALID_ID",
                                 "RECEIPT",
                                 "TENANT_PHOTO",
+                                "PROPERTY_PHOTO",
                                 "OTHER"
                             ],
                             "default": "LEASE_CONTRACT"
@@ -4537,6 +4680,40 @@
                 }
             }
         },
+        "/api/v1/properties/{propertyId}/photos/{photoId}": {
+            "delete": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "Remove a photo",
+                "operationId": "deletePropertyPhoto",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "photoId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Gone, and the rest close up"
+                    }
+                }
+            }
+        },
         "/api/v1/me": {
             "delete": {
                 "tags": [
@@ -5408,6 +5585,7 @@
                             "VALID_ID",
                             "RECEIPT",
                             "TENANT_PHOTO",
+                            "PROPERTY_PHOTO",
                             "OTHER"
                         ]
                     },
@@ -5807,6 +5985,7 @@
                             "VALID_ID",
                             "RECEIPT",
                             "TENANT_PHOTO",
+                            "PROPERTY_PHOTO",
                             "OTHER"
                         ]
                     },
@@ -6293,6 +6472,12 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/VacancyFloor"
+                        }
+                    },
+                    "photos": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
                         }
                     }
                 },
@@ -7301,6 +7486,47 @@
                     }
                 },
                 "description": "Something to say"
+            },
+            "PhotoOrder": {
+                "required": [
+                    "ids"
+                ],
+                "type": "object",
+                "properties": {
+                    "ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "description": "The order a property's photos appear in"
+            },
+            "PropertyPhoto": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "urlExpiresInSeconds": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "position": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uploadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A photograph of a property"
             }
         }
     }
