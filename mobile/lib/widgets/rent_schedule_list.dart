@@ -97,9 +97,39 @@ class _MonthRow extends StatelessWidget {
             : (LizmoColors.white, LizmoColors.ink, 'Due');
 
     // A settled month has nothing to declare against it.
-    final tappable = onTap != null && !paid;
+    final declarable = onTap != null && !paid;
 
-    final card = Container(
+    // Paid is one line. The three figures were the same 2,500 three ways
+    // plus "Settled" underneath, which made a month with nothing left to do
+    // the tallest thing on the screen.
+    if (paid) {
+      return Container(
+        key: ValueKey('paid-${period.id}'),
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                period.label ?? '',
+                style: LizmoType.rowName.copyWith(color: ink),
+              ),
+            ),
+            Text(
+              LizmoMoney.peso(period.amountPaid),
+              style: LizmoType.dataMedium.copyWith(color: ink),
+            ),
+            const SizedBox(width: 10),
+            StatusChip(label: label, status: _status(paid, overdue)),
+          ],
+        ),
+      );
+    }
+
+    return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: background,
@@ -150,26 +180,38 @@ class _MonthRow extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            paid
-                ? 'Settled'
-                : tappable
-                    ? 'Due ${_readable(period.dueDate)} · Tap if you have paid'
-                    : 'Due ${_readable(period.dueDate)}',
-            style: LizmoType.rowSub.copyWith(fontSize: 11, color: ink),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Due ${_readable(period.dueDate)}',
+                  style: LizmoType.rowSub.copyWith(fontSize: 11, color: ink),
+                ),
+              ),
+              // A button, as on Home. It was "Tap if you have paid" in 11px
+              // under the figures, on the screen that exists for rent, while
+              // Home gave the same action a coral button.
+              if (declarable)
+                Material(
+                  color: LizmoColors.coral,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    key: ValueKey('i-paid-${period.id}'),
+                    onTap: () => onTap!(period),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      child: Text('I have paid',
+                          style: LizmoType.buttonLabel.copyWith(fontSize: 13)),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
-    );
-
-    if (!tappable) return card;
-
-    return InkWell(
-      key: ValueKey('month-${period.id}'),
-      onTap: () => onTap!(period),
-      borderRadius: BorderRadius.circular(14),
-      child: card,
     );
   }
 

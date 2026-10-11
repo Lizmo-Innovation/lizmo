@@ -328,7 +328,13 @@ class _DeclarePaymentSheetState extends State<DeclarePaymentSheet> {
               ),
 
               const SizedBox(height: 22),
-              PrimaryActionButton(label: 'I have paid', onPressed: _submit),
+              PrimaryActionButton(
+                // Keyed: the month card behind the sheet now says
+                // "I have paid" too, so the label alone names two buttons.
+                key: const ValueKey('declare-submit'),
+                label: 'I have paid',
+                onPressed: _submit,
+              ),
               const SizedBox(height: 8),
               Center(
                 child: TextButton(

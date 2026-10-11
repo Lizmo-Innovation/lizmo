@@ -8328,7 +8328,8 @@ void _tenantLeaseTests() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Settled'), findsOneWidget);
+      // The chip says it; "Settled" underneath said it twice.
+      expect(find.text('Settled'), findsNothing);
     });
 
     /// Late is louder than unpaid. Rent merely not yet due is the ordinary
@@ -8467,13 +8468,17 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
     }
 
+    /// A button, as on Home. It was 11px text under the figures, on the
+    /// screen that exists for rent.
     testWidgets('an unpaid month invites the tenant to say they paid',
         (tester) async {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      expect(find.textContaining('Tap if you have paid'), findsOneWidget);
+      expect(find.byKey(const ValueKey('i-paid-b1')), findsOneWidget);
+      expect(find.text('I have paid'), findsOneWidget);
+      expect(find.textContaining('Tap if you have paid'), findsNothing);
     });
 
     /// A settled month has nothing to declare against it, and a row that looks
@@ -8485,8 +8490,24 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      expect(find.textContaining('Tap if you have paid'), findsNothing);
-      expect(find.byKey(const ValueKey('month-b1')), findsNothing);
+      expect(find.text('I have paid'), findsNothing);
+      expect(find.byKey(const ValueKey('i-paid-b1')), findsNothing);
+    });
+
+    /// Due, Paid and Outstanding were the same 2,500 three ways, plus
+    /// "Settled", on a month with nothing left to do.
+    testWidgets('a paid month is one line', (tester) async {
+      await tester.pumpWidget(tenantApp([
+        month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID),
+      ]));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.byKey(const ValueKey('paid-b1')), findsOneWidget);
+      expect(find.text('Outstanding'), findsNothing);
+      expect(find.text('Settled'), findsNothing);
+      expect(tester.getSize(find.byKey(const ValueKey('paid-b1'))).height,
+          lessThan(60));
     });
 
     /// Said before anything is typed. A tenant who taps this and watches the
@@ -8497,7 +8518,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       expect(find.byType(DeclarePaymentSheet), findsOneWidget);
@@ -8512,7 +8533,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
       await openPayments(tester);
 
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       final field = tester.widget<TextFormField>(
@@ -8526,7 +8547,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('payment-note')), findsOneWidget);
@@ -8537,13 +8558,13 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const ValueKey('payment-amount')), '');
-      await tester.ensureVisible(find.text('I have paid'));
+      await tester.ensureVisible(find.byKey(const ValueKey('declare-submit')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('I have paid'));
+      await tester.tap(find.byKey(const ValueKey('declare-submit')));
       await tester.pumpAndSettle();
 
       expect(find.text('How much did you pay?'), findsOneWidget);
@@ -8604,13 +8625,13 @@ void _tenantLeaseTests() {
           payment: PaymentDetails(channels: [gcash()]), api: api));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       expect(find.text('Send it to'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('method-MAYA')));
       await tapShown(tester, find.byKey(const ValueKey('sent-to-c1')));
-      await tapShown(tester, find.text('I have paid'));
+      await tapShown(tester, find.byKey(const ValueKey('declare-submit')));
 
       expect(api.declared.single.channelId, 'c1');
       // Picking the GCash account picked GCash, over the Maya tapped before.
@@ -8625,12 +8646,12 @@ void _tenantLeaseTests() {
           payment: PaymentDetails(channels: [gcash()]), api: api));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       await tapShown(tester, find.byKey(const ValueKey('sent-to-c1')));
       await tapShown(tester, find.byKey(const ValueKey('method-CASH')));
-      await tapShown(tester, find.text('I have paid'));
+      await tapShown(tester, find.byKey(const ValueKey('declare-submit')));
 
       expect(api.declared.single.channelId, isNull);
       expect(api.declared.single.paymentMethod, 'CASH');
@@ -8641,7 +8662,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('sent-to-none')), findsNothing);
@@ -8651,7 +8672,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(tenantApp([month()]));
       await tester.pumpAndSettle();
       await openPayments(tester);
-      await tester.tap(find.byKey(const ValueKey('month-b1')));
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('attach-proof')), findsOneWidget);
