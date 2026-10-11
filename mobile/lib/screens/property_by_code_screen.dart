@@ -66,7 +66,9 @@ class _Place extends StatelessWidget {
     final free = (place.vacantWholeUnits ?? 0) + (place.vacantBeds ?? 0);
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, place.photos.isEmpty ? 16 : 0, 16, 28),
+      // No side padding on the list itself: the photographs run edge to edge,
+      // and everything under them is inset on its own.
+      padding: EdgeInsets.only(top: place.photos.isEmpty ? 16 : 0, bottom: 28),
       children: [
         // First, before the address: this is the thing somebody decides on,
         // and until now the answer to "what does it look like" was a trip
@@ -75,6 +77,11 @@ class _Place extends StatelessWidget {
           _Photos(urls: place.photos),
           const SizedBox(height: 16),
         ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         Text(place.address ?? '', style: LizmoType.rowSub),
         const SizedBox(height: 4),
         Text(
@@ -106,6 +113,9 @@ class _Place extends StatelessWidget {
           const SizedBox(height: 10),
           _AskAboutThePlace(propertyId: place.id!),
         ],
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -159,11 +169,9 @@ class _PhotosState extends State<_Photos> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
+        SizedBox(
             key: const ValueKey('property-photos'),
-            height: 220,
+            height: 260,
             child: PageView.builder(
               controller: _pages,
               itemCount: widget.urls.length,
@@ -198,7 +206,6 @@ class _PhotosState extends State<_Photos> {
                 ),
               ),
             ),
-          ),
         ),
         if (widget.urls.length > 1) ...[
           const SizedBox(height: 10),
