@@ -5089,7 +5089,9 @@ void _findingAPlaceTests() {
       num? dearest,
       bool utilitiesOnTop = false,
       String? floor = '2',
+      List<String> photos = const [],
     }) => PropertyByCodeResponse(
+      photos: photos,
       id: 'p1',
       code: 'PHK7M4Q2',
       name: 'Sunrise Apartments',
@@ -5279,6 +5281,35 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('\u20b112,500'), findsOneWidget);
+    });
+
+    /// The reason photographs exist: somebody deciding whether to spend an
+    /// afternoon travelling across town to look at a place.
+    testWidgets('the place is shown before it is described', (tester) async {
+      await tester.pumpWidget(appWith(
+          found: place(beds: 2, photos: const [
+        'https://example.invalid/front.jpg',
+        'https://example.invalid/kitchen.jpg',
+      ])));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      final photos = find.byKey(const ValueKey('property-photos'));
+      expect(photos, findsOneWidget);
+      // Above the address, which is the order somebody reads them in.
+      expect(tester.getTopLeft(photos).dy,
+          lessThan(tester.getTopLeft(find.text('12 Mabini St')).dy));
+    });
+
+    /// Most places have none, and an empty strip would be a grey box where
+    /// the building should be.
+    testWidgets('a place with no photos shows no strip', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('property-photos')), findsNothing);
+      expect(find.text('12 Mabini St'), findsOneWidget);
     });
 
     testWidgets('a full house says so rather than showing nothing', (

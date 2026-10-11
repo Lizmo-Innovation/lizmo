@@ -66,8 +66,15 @@ class _Place extends StatelessWidget {
     final free = (place.vacantWholeUnits ?? 0) + (place.vacantBeds ?? 0);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      padding: EdgeInsets.fromLTRB(16, place.photos.isEmpty ? 16 : 0, 16, 28),
       children: [
+        // First, before the address: this is the thing somebody decides on,
+        // and until now the answer to "what does it look like" was a trip
+        // across town to stand outside it.
+        if (place.photos.isNotEmpty) ...[
+          _Photos(urls: place.photos),
+          const SizedBox(height: 16),
+        ],
         Text(place.address ?? '', style: LizmoType.rowSub),
         const SizedBox(height: 4),
         Text(
@@ -124,6 +131,100 @@ class _Place extends StatelessWidget {
 /// unit number, every bed label and each one's price, which is more than
 /// anybody needs to decide whether to ask. Which room they get is settled with
 /// the landlord.
+/// What the place looks like, swipeable.
+///
+/// All of them rather than a cover: somebody deciding whether to spend an
+/// afternoon travelling to a place wants the kitchen and the stairs as well
+/// as the front of the building.
+class _Photos extends StatefulWidget {
+  const _Photos({required this.urls});
+
+  final List<String> urls;
+
+  @override
+  State<_Photos> createState() => _PhotosState();
+}
+
+class _PhotosState extends State<_Photos> {
+  final _pages = PageController();
+  int _showing = 0;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            key: const ValueKey('property-photos'),
+            height: 220,
+            child: PageView.builder(
+              controller: _pages,
+              itemCount: widget.urls.length,
+              onPageChanged: (page) => setState(() => _showing = page),
+              itemBuilder: (context, index) => Container(
+                color: LizmoColors.tealTint,
+                child: Image.network(
+                  widget.urls[index],
+                  fit: BoxFit.cover,
+                  // A URL that has expired, or a phone on a bad signal. The
+                  // screen carries on: the counts and the price are what the
+                  // tenant came for, and a broken image icon over half the
+                  // screen reads as a broken app.
+                  errorBuilder: (_, _, _) => const Center(
+                    child: Icon(Icons.image_not_supported_outlined,
+                        color: LizmoColors.slate),
+                  ),
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null
+                          ? child
+                          : const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                      LizmoColors.teal900),
+                                ),
+                              ),
+                            ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (widget.urls.length > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < widget.urls.length; i++)
+                Container(
+                  width: 7,
+                  height: 7,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i == _showing
+                        ? LizmoColors.teal900
+                        : LizmoColors.teal900.withValues(alpha: 0.22),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _Floor extends StatelessWidget {
   const _Floor({required this.floor});
 
