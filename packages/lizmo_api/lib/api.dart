@@ -114,6 +114,7 @@ part 'model/start_password_reset_response.dart';
 part 'model/start_registration_request.dart';
 part 'model/start_registration_response.dart';
 part 'model/support_contact.dart';
+part 'model/tenancy.dart';
 part 'model/tenant_document_response.dart';
 part 'model/tenant_for_landlord.dart';
 part 'model/tenant_profile_request.dart';

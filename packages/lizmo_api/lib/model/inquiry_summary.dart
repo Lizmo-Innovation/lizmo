@@ -22,6 +22,7 @@ class InquirySummary {
     this.lastMessageAt,
     this.unread,
     this.createdAt,
+    this.tenancy,
   });
 
   ///
@@ -90,6 +91,14 @@ class InquirySummary {
   ///
   DateTime? createdAt;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  Tenancy? tenancy;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is InquirySummary &&
     other.id == id &&
@@ -100,7 +109,8 @@ class InquirySummary {
     other.lastMessage == lastMessage &&
     other.lastMessageAt == lastMessageAt &&
     other.unread == unread &&
-    other.createdAt == createdAt;
+    other.createdAt == createdAt &&
+    other.tenancy == tenancy;
 
   @override
   int get hashCode =>
@@ -113,10 +123,11 @@ class InquirySummary {
     (lastMessage == null ? 0 : lastMessage!.hashCode) +
     (lastMessageAt == null ? 0 : lastMessageAt!.hashCode) +
     (unread == null ? 0 : unread!.hashCode) +
-    (createdAt == null ? 0 : createdAt!.hashCode);
+    (createdAt == null ? 0 : createdAt!.hashCode) +
+    (tenancy == null ? 0 : tenancy!.hashCode);
 
   @override
-  String toString() => 'InquirySummary[id=$id, propertyId=$propertyId, propertyName=$propertyName, withName=$withName, status=$status, lastMessage=$lastMessage, lastMessageAt=$lastMessageAt, unread=$unread, createdAt=$createdAt]';
+  String toString() => 'InquirySummary[id=$id, propertyId=$propertyId, propertyName=$propertyName, withName=$withName, status=$status, lastMessage=$lastMessage, lastMessageAt=$lastMessageAt, unread=$unread, createdAt=$createdAt, tenancy=$tenancy]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -165,6 +176,11 @@ class InquirySummary {
     } else {
       json[r'createdAt'] = null;
     }
+    if (this.tenancy != null) {
+      json[r'tenancy'] = this.tenancy;
+    } else {
+      json[r'tenancy'] = null;
+    }
     return json;
   }
 
@@ -192,6 +208,7 @@ class InquirySummary {
         lastMessageAt: mapDateTime(json, r'lastMessageAt', r''),
         unread: mapValueOfType<bool>(json, r'unread'),
         createdAt: mapDateTime(json, r'createdAt', r''),
+        tenancy: Tenancy.fromJson(json[r'tenancy']),
       );
     }
     return null;

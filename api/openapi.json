@@ -2569,6 +2569,39 @@
                 }
             }
         },
+        "/api/v1/leases/{leaseId}/conversation": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "The conversation for a tenancy",
+                "description": "For the tenant or the landlord. Returns the conversation these two already have about the property, starting one if a tenancy from before conversations has none. Works after the tenancy has ended.",
+                "operationId": "openLeaseConversation",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The conversation",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquirySummary"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{id}/end": {
             "post": {
                 "tags": [
@@ -7450,6 +7483,9 @@
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "tenancy": {
+                        "$ref": "#/components/schemas/Tenancy"
                     }
                 },
                 "description": "A conversation, as it appears in a list"
@@ -7527,6 +7563,30 @@
                     }
                 },
                 "description": "A photograph of a property"
+            },
+            "Tenancy": {
+                "type": "object",
+                "properties": {
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "place": {
+                        "type": "string"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "endDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "The tenancy a conversation belongs to"
             }
         }
     }

@@ -5,6 +5,7 @@ import app.lizmo.notification.NotificationEntityType;
 import app.lizmo.notification.NotificationService;
 import app.lizmo.notification.NotificationType;
 import app.lizmo.common.ErrorCode;
+import app.lizmo.inquiry.InquiryService;
 import app.lizmo.lease.dto.EndLeaseRequest;
 import app.lizmo.lease.dto.LeaseResponse;
 import app.lizmo.property.Bed;
@@ -42,6 +43,9 @@ public class LeaseService {
     /** So a tenant is told their tenancy ended rather than discovering it. */
     private final NotificationService notifications;
 
+    /** So the conversation stops calling them a tenant once they are not. */
+    private final InquiryService conversations;
+
     public LeaseService(
             LeaseRepository leases,
             PropertyAccess access,
@@ -49,7 +53,8 @@ public class LeaseService {
             UnitRepository units,
             BedRepository beds,
             UserRepository users,
-            NotificationService notifications) {
+            NotificationService notifications,
+            InquiryService conversations) {
         this.leases = leases;
         this.access = access;
         this.properties = properties;
@@ -57,6 +62,7 @@ public class LeaseService {
         this.beds = beds;
         this.users = users;
         this.notifications = notifications;
+        this.conversations = conversations;
     }
 
     /** The tenant's own leases, newest first. */
@@ -168,6 +174,10 @@ public class LeaseService {
         leases.save(lease);
 
         freeTheSlot(unit, lease.getBedId());
+
+        // After the save, so the lease just ended no longer counts as one the
+        // tenant still holds in this building.
+        conversations.tenancyEnded(lease.getTenantId(), unit.getPropertyId());
 
         // Carrying the settlement, because "you got P4,500 of your P5,000
         // back, and here is why" is the whole of what a tenant wants to know

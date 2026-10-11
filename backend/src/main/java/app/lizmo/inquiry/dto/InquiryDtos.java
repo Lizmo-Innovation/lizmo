@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +33,9 @@ public final class InquiryDtos {
      * @param lastMessage the opening of the latest message, or null when
      *                    nobody has said anything yet.
      * @param unread whether this side has something they have not seen.
+     * @param tenancy the tenancy these two have, or had, at this property:
+     *                the current one if there is one, otherwise the latest.
+     *                Null for somebody who only ever asked.
      */
     @Schema(description = "A conversation, as it appears in a list")
     public record InquirySummary(
@@ -43,7 +47,29 @@ public final class InquiryDtos {
             String lastMessage,
             Instant lastMessageAt,
             boolean unread,
-            Instant createdAt) {
+            Instant createdAt,
+            Tenancy tenancy) {
+    }
+
+    /**
+     * The tenancy a conversation belongs to.
+     *
+     * <p>Carried on the conversation so a screen can say "Renting Bed 1, 2B
+     * since 1 Aug", or mark where in the thread the tenancy began and ended,
+     * without a second request per row.
+     *
+     * @param place  how both sides name the room: "Bed 1, 2B" for a bedspace,
+     *               "Unit 101" for a whole unit.
+     * @param active false once it has ended. The conversation outlives it:
+     *               the deposit is usually still being talked about.
+     */
+    @Schema(description = "The tenancy a conversation belongs to")
+    public record Tenancy(
+            UUID leaseId,
+            String place,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean active) {
     }
 
     /**

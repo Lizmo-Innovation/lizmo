@@ -12,6 +12,7 @@ Method | HTTP request | Description
 [**closeInquiry**](AskingAboutAPlaceApi.md#closeinquiry) | **POST** /api/v1/inquiries/{id}/close | End it
 [**listMyInquiries**](AskingAboutAPlaceApi.md#listmyinquiries) | **GET** /api/v1/inquiries | My conversations
 [**markInquiryRead**](AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
+[**openLeaseConversation**](AskingAboutAPlaceApi.md#openleaseconversation) | **POST** /api/v1/leases/{leaseId}/conversation | The conversation for a tenancy
 [**readInquiry**](AskingAboutAPlaceApi.md#readinquiry) | **GET** /api/v1/inquiries/{id} | One conversation
 [**sendInquiryMessage**](AskingAboutAPlaceApi.md#sendinquirymessage) | **POST** /api/v1/inquiries/{id}/messages | Say something
 [**startInquiry**](AskingAboutAPlaceApi.md#startinquiry) | **POST** /api/v1/inquiries | Ask about a place
@@ -139,6 +140,49 @@ No authorization required
 
  - **Content-Type**: Not defined
  - **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **openLeaseConversation**
+> InquirySummary openLeaseConversation(leaseId)
+
+The conversation for a tenancy
+
+For the tenant or the landlord. Returns the conversation these two already have about the property, starting one if a tenancy from before conversations has none. Works after the tenancy has ended.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AskingAboutAPlaceApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.openLeaseConversation(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling AskingAboutAPlaceApi->openLeaseConversation: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**InquirySummary**](InquirySummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

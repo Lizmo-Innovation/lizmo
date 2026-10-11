@@ -7,12 +7,19 @@ import app.lizmo.inquiry.dto.InquiryDtos.InquiryMessageResponse;
 import app.lizmo.inquiry.dto.InquiryDtos.InquirySummary;
 import app.lizmo.inquiry.dto.InquiryDtos.InquiryThread;
 import app.lizmo.inquiry.dto.InquiryDtos.NewMessage;
+import app.lizmo.inquiry.dto.InquiryDtos.Tenancy;
+import app.lizmo.lease.Lease;
+import app.lizmo.lease.LeaseRepository;
 import app.lizmo.inquiry.dto.InquiryDtos.StartInquiry;
 import app.lizmo.notification.NotificationEntityType;
 import app.lizmo.notification.NotificationService;
 import app.lizmo.notification.NotificationType;
+import app.lizmo.property.Bed;
+import app.lizmo.property.BedRepository;
 import app.lizmo.property.Property;
 import app.lizmo.property.PropertyRepository;
+import app.lizmo.property.Unit;
+import app.lizmo.property.UnitRepository;
 import app.lizmo.user.Age;
 import app.lizmo.user.LeaseReadiness;
 import app.lizmo.user.TenantProfile;
@@ -56,6 +63,9 @@ public class InquiryService {
     private final TenantProfileRepository profiles;
     private final LeaseReadiness readiness;
     private final NotificationService notifications;
+    private final LeaseRepository leases;
+    private final UnitRepository units;
+    private final BedRepository beds;
     private final Clock clock;
 
     public InquiryService(
@@ -66,6 +76,9 @@ public class InquiryService {
             TenantProfileRepository profiles,
             LeaseReadiness readiness,
             NotificationService notifications,
+            LeaseRepository leases,
+            UnitRepository units,
+            BedRepository beds,
             Clock clock) {
         this.inquiries = inquiries;
         this.messages = messages;
@@ -74,6 +87,9 @@ public class InquiryService {
         this.profiles = profiles;
         this.readiness = readiness;
         this.notifications = notifications;
+        this.leases = leases;
+        this.units = units;
+        this.beds = beds;
         this.clock = clock;
     }
 
@@ -229,7 +245,140 @@ public class InquiryService {
         markRead(inquiry, inquiry.getTenantId().equals(userId));
     }
 
+    /**
+     * The conversation that goes with a tenancy, made if there is none.
+     *
+     * <p>How either side gets from a tenancy to talking about it -- the
+     * tenant from where they live, the landlord from the tenant's page --
+     * without hunting through an inbox for the thread it started in.
+     *
+     * <p>It is the thread these two already have about this property, there
+     * being one per tenant and property. A tenancy from before conversations
+     * existed has none, so one is started, already marked as a tenancy: there
+     * is nothing to ask about a room somebody already lives in.
+     *
+     * <p>An ended tenancy is allowed. The weeks after moving out are when the
+     * deposit gets talked about.
+     */
+    @Transactional
+    public InquirySummary conversationFor(UUID leaseId, UUID userId) {
+        Lease lease = leases.findById(leaseId).orElseThrow(InquiryService::noSuchLease);
+        Unit unit = units.findById(lease.getUnitId()).orElseThrow(InquiryService::noSuchLease);
+        Property property = properties.findById(unit.getPropertyId())
+                .orElseThrow(InquiryService::noSuchLease);
+
+        // Not found rather than forbidden, as for a conversation: whether a
+        // lease exists between two other people is not the asker's business.
+        if (!lease.getTenantId().equals(userId) && !property.isOwnedBy(userId)) {
+            throw noSuchLease();
+        }
+
+        Inquiry inquiry = inquiries
+                .findByTenantIdAndPropertyId(lease.getTenantId(), property.getId())
+                .orElseGet(() -> inquiries.save(
+                        new Inquiry(property.getId(), lease.getTenantId())));
+
+        if (lease.isActive() && inquiry.getStatus() != InquiryStatus.LEASED) {
+            inquiry.leased(clock.instant());
+            inquiries.save(inquiry);
+        } else if (!lease.isActive()) {
+            // Mends a thread left marked as a tenancy that has since ended,
+            // from before ending one reopened it.
+            settleAfterTenancy(inquiry);
+        }
+
+        return summarise(inquiry, userId, latestMessage(inquiry.getId()));
+    }
+
+    /**
+     * A tenancy has ended: its conversation goes back to being an ordinary
+     * one, unless the tenant still rents somewhere else in the building.
+     *
+     * <p>Open rather than closed. Moving out is when the deposit is settled,
+     * and that is a conversation. Either side can close it afterwards, which
+     * a thread marked as a tenancy refuses -- and which used to leave one
+     * stuck reading "Renting" in both inboxes long after anybody was.
+     */
+    @Transactional
+    public void tenancyEnded(UUID tenantId, UUID propertyId) {
+        inquiries.findByTenantIdAndPropertyId(tenantId, propertyId)
+                .ifPresent(this::settleAfterTenancy);
+    }
+
     // ---- the parts -----------------------------------------------------------------
+
+    private void settleAfterTenancy(Inquiry inquiry) {
+        if (inquiry.getStatus() != InquiryStatus.LEASED) {
+            return;
+        }
+        if (activeLeaseAt(inquiry.getTenantId(), inquiry.getPropertyId()) != null) {
+            return;
+        }
+        inquiry.reopen();
+        inquiries.save(inquiry);
+    }
+
+    private Lease activeLeaseAt(UUID tenantId, UUID propertyId) {
+        for (Lease lease : leases.findByTenantIdOrderByStartDateDesc(tenantId)) {
+            if (lease.isActive() && isAt(lease, propertyId)) {
+                return lease;
+            }
+        }
+        return null;
+    }
+
+    private boolean isAt(Lease lease, UUID propertyId) {
+        return units.findById(lease.getUnitId())
+                .map(unit -> unit.getPropertyId().equals(propertyId))
+                .orElse(false);
+    }
+
+    /**
+     * The tenancy these two have at this property: the current one, or else
+     * the most recent. Read from the leases each time rather than stored on
+     * the thread, so there is nothing to keep in step.
+     */
+    private Tenancy tenancyOf(Inquiry inquiry) {
+        Lease chosen = null;
+        Unit chosenUnit = null;
+        // Newest start first, so the first ended one met is the latest.
+        for (Lease lease : leases.findByTenantIdOrderByStartDateDesc(inquiry.getTenantId())) {
+            Unit unit = units.findById(lease.getUnitId()).orElse(null);
+            if (unit == null || !unit.getPropertyId().equals(inquiry.getPropertyId())) {
+                continue;
+            }
+            if (lease.isActive()) {
+                chosen = lease;
+                chosenUnit = unit;
+                break;
+            }
+            if (chosen == null) {
+                chosen = lease;
+                chosenUnit = unit;
+            }
+        }
+        if (chosen == null) {
+            return null;
+        }
+
+        Bed bed = chosen.getBedId() == null
+                ? null
+                : beds.findById(chosen.getBedId()).orElse(null);
+        String place = bed == null
+                ? "Unit " + chosenUnit.getUnitNumber()
+                : bed.getBedLabel() + ", " + chosenUnit.getUnitNumber();
+
+        return new Tenancy(
+                chosen.getId(),
+                place,
+                chosen.getStartDate(),
+                chosen.getEndDate(),
+                chosen.isActive());
+    }
+
+    private static ApiException noSuchLease() {
+        return new ApiException(ErrorCode.NOT_FOUND, "No such lease.");
+    }
 
     /**
      * The thread, if this person is in it.
@@ -282,14 +431,22 @@ public class InquiryService {
     private void tell(Inquiry inquiry, UUID senderId, Property property) {
         boolean fromTenant = inquiry.getTenantId().equals(senderId);
         UUID recipient = fromTenant ? property.getLandlordId() : inquiry.getTenantId();
+        // "Somebody is asking about your place" is wrong about a person who
+        // has lived there for a year, and reads as a stranger.
+        boolean tenancy = inquiry.getStatus() == InquiryStatus.LEASED;
+
+        String title;
+        if (tenancy) {
+            title = fromTenant ? "Your tenant sent a message" : "Your landlord sent a message";
+        } else {
+            title = fromTenant ? "Somebody is asking about your place" : "A landlord replied";
+        }
 
         notifications.raise(
                 recipient,
                 NotificationType.INQUIRY_MESSAGE,
-                fromTenant ? "Somebody is asking about your place" : "A landlord replied",
-                fromTenant
-                        ? "There is a new message about %s.".formatted(property.getName())
-                        : "There is a new message about %s.".formatted(property.getName()),
+                title,
+                "There is a new message about %s.".formatted(property.getName()),
                 NotificationEntityType.INQUIRY,
                 inquiry.getId());
     }
@@ -345,7 +502,8 @@ public class InquiryService {
                 last == null ? null : preview(last.getBody()),
                 inquiry.getLastMessageAt(),
                 inquiry.unreadFor(asTenant),
-                inquiry.getCreatedAt());
+                inquiry.getCreatedAt(),
+                tenancyOf(inquiry));
     }
 
     private static String preview(String body) {

@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **lastMessageAt** | [**DateTime**](DateTime.md) |  | [optional] 
 **unread** | **bool** |  | [optional] 
 **createdAt** | [**DateTime**](DateTime.md) |  | [optional] 
+**tenancy** | [**Tenancy**](Tenancy.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

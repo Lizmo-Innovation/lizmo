@@ -85,6 +85,7 @@ Class | Method | HTTP request | Description
 *AskingAboutAPlaceApi* | [**closeInquiry**](doc//AskingAboutAPlaceApi.md#closeinquiry) | **POST** /api/v1/inquiries/{id}/close | End it
 *AskingAboutAPlaceApi* | [**listMyInquiries**](doc//AskingAboutAPlaceApi.md#listmyinquiries) | **GET** /api/v1/inquiries | My conversations
 *AskingAboutAPlaceApi* | [**markInquiryRead**](doc//AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
+*AskingAboutAPlaceApi* | [**openLeaseConversation**](doc//AskingAboutAPlaceApi.md#openleaseconversation) | **POST** /api/v1/leases/{leaseId}/conversation | The conversation for a tenancy
 *AskingAboutAPlaceApi* | [**readInquiry**](doc//AskingAboutAPlaceApi.md#readinquiry) | **GET** /api/v1/inquiries/{id} | One conversation
 *AskingAboutAPlaceApi* | [**sendInquiryMessage**](doc//AskingAboutAPlaceApi.md#sendinquirymessage) | **POST** /api/v1/inquiries/{id}/messages | Say something
 *AskingAboutAPlaceApi* | [**startInquiry**](doc//AskingAboutAPlaceApi.md#startinquiry) | **POST** /api/v1/inquiries | Ask about a place
@@ -249,6 +250,7 @@ Class | Method | HTTP request | Description
  - [StartRegistrationRequest](doc//StartRegistrationRequest.md)
  - [StartRegistrationResponse](doc//StartRegistrationResponse.md)
  - [SupportContact](doc//SupportContact.md)
+ - [Tenancy](doc//Tenancy.md)
  - [TenantDocumentResponse](doc//TenantDocumentResponse.md)
  - [TenantForLandlord](doc//TenantForLandlord.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)

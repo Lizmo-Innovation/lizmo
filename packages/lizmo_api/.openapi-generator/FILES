@@ -83,6 +83,7 @@ doc/StartPasswordResetResponse.md
 doc/StartRegistrationRequest.md
 doc/StartRegistrationResponse.md
 doc/SupportContact.md
+doc/Tenancy.md
 doc/TenantDocumentResponse.md
 doc/TenantDocumentsApi.md
 doc/TenantForLandlord.md
@@ -195,6 +196,7 @@ lib/model/start_password_reset_response.dart
 lib/model/start_registration_request.dart
 lib/model/start_registration_response.dart
 lib/model/support_contact.dart
+lib/model/tenancy.dart
 lib/model/tenant_document_response.dart
 lib/model/tenant_for_landlord.dart
 lib/model/tenant_profile_request.dart
@@ -212,3 +214,4 @@ lib/model/waiting_payment.dart
 pubspec.yaml
 test/photo_order_test.dart
 test/property_photo_test.dart
+test/tenancy_test.dart
