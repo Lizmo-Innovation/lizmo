@@ -42,6 +42,12 @@ class PropertyByCodeScreen extends ConsumerWidget {
         // and is not cut to eighteen pixels of ellipsis.
         leading: const _BackOverPhoto(),
       ),
+      // Pinned rather than the last item in the list. On a house with six
+      // floors the one thing a tenant came here to do was below the fold.
+      bottomNavigationBar: switch (property) {
+        AsyncData(:final value) => _AskBar(place: value),
+        _ => null,
+      },
       body: switch (property) {
         AsyncData(:final value) => _Place(place: value, under: under),
         AsyncError(:final error) => Padding(
@@ -160,10 +166,17 @@ class _Place extends StatelessWidget {
 
         for (final floor in floors) _Floor(floor: floor),
 
-        if (free > 0) ...[
-          const SizedBox(height: 10),
-          _AskAboutThePlace(propertyId: place.id!),
-        ],
+        const SizedBox(height: 6),
+        // The explanation stays with the content; the bar below holds the
+        // price and the button and nothing else.
+        Text(
+          free == 0
+              ? 'Nothing is vacant now. You can still ask — a landlord '
+                  'usually knows what is coming free.'
+              : 'The landlord picks which room, and you settle the rest '
+                  'between you.',
+          style: LizmoType.rowSub,
+        ),
             ],
           ),
         ),
@@ -424,22 +437,28 @@ class _Floor extends StatelessWidget {
   }
 }
 
-/// Asking about the place, with no room named.
+/// The price, and the one thing to do on this screen.
 ///
-/// The landlord chooses the room when they accept, which is how it gets
-/// settled on the phone anyway — and it is why nothing here names one.
-class _AskAboutThePlace extends ConsumerStatefulWidget {
-  const _AskAboutThePlace({required this.propertyId});
+/// Pinned to the bottom. It used to be the last item in a scrolling list,
+/// which on a house with six floors put the only action below the fold — and
+/// the price, the second thing anybody wants, was 13px at the right-hand edge
+/// of a card.
+///
+/// No room is named. The landlord chooses when they accept, which is how it
+/// gets settled on the phone anyway.
+class _AskBar extends ConsumerStatefulWidget {
+  const _AskBar({required this.place});
 
-  final String propertyId;
+  final PropertyByCodeResponse place;
 
   @override
-  ConsumerState<_AskAboutThePlace> createState() => _AskAboutThePlaceState();
+  ConsumerState<_AskBar> createState() => _AskBarState();
 }
 
-class _AskAboutThePlaceState extends ConsumerState<_AskAboutThePlace> {
+class _AskBarState extends ConsumerState<_AskBar> {
   bool _asking = false;
-  bool _asked = false;
+
+  String get _propertyId => widget.place.id!;
 
   Future<void> _ask({bool retrying = false}) async {
     setState(() => _asking = true);
@@ -447,11 +466,10 @@ class _AskAboutThePlaceState extends ConsumerState<_AskAboutThePlace> {
 
     try {
       final thread = await ref.read(inquiriesApiProvider).startInquiry(
-            StartInquiry(propertyId: widget.propertyId),
+            StartInquiry(propertyId: _propertyId),
           );
       ref.invalidate(myInquiriesProvider);
       if (!mounted) return;
-      setState(() => _asked = true);
 
       // Straight into the conversation rather than a message saying one has
       // started: the next thing to do is say what they want, and a tenant
@@ -487,48 +505,98 @@ class _AskAboutThePlaceState extends ConsumerState<_AskAboutThePlace> {
     if (saved && mounted) await _ask(retrying: true);
   }
 
+  /// The thread this tenant already has about this place, if there is one.
+  ///
+  /// Read from the server rather than remembered in this widget. It used to
+  /// be local state, so somebody who asked, left and scanned the gate again
+  /// was offered "Ask about this place" as though they never had.
+  ///
+  /// A closed one is left out on purpose: asking again is what reopens it,
+  /// and that is the button they want.
+  InquirySummary? get _existing {
+    final threads = ref.watch(myInquiriesProvider).valueOrNull ?? const [];
+    for (final thread in threads) {
+      if (thread.propertyId == _propertyId &&
+          thread.status != InquirySummaryStatusEnum.CLOSED) {
+        return thread;
+      }
+    }
+    return null;
+  }
+
+  /// The cheapest thing actually going, which is what "from" means.
+  ///
+  /// Floors with nothing vacant are left out: quoting a price for a room
+  /// nobody can have is the kind of number people travel across town for.
+  static num? _from(PropertyByCodeResponse place) {
+    final asking = place.floors
+        .where((floor) => (floor.wholeUnits ?? 0) + (floor.beds ?? 0) > 0)
+        .map((floor) => floor.cheapestRent)
+        .whereType<num>();
+    return asking.isEmpty ? null : asking.reduce((a, b) => a < b ? a : b);
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_asked) {
-      return Container(
-        key: const ValueKey('asked-about-place'),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: LizmoColors.tealBg,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.check_circle_outline,
-                size: 18, color: LizmoColors.teal900),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Asked. The landlord will reply, and says which room you can '
-                'have.',
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final free = (widget.place.vacantWholeUnits ?? 0) +
+        (widget.place.vacantBeds ?? 0);
+    final from = _from(widget.place);
+    final existing = _existing;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PrimaryActionButton(
-          key: const ValueKey('ask-about-place'),
-          label: _asking ? 'Asking…' : 'Ask about this place',
-          onPressed: _asking ? null : _ask,
+    return Container(
+      decoration: const BoxDecoration(
+        color: LizmoColors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE3E8E6))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              if (from != null) ...[
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('From',
+                        style: LizmoType.rowSub.copyWith(fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text(
+                      LizmoMoney.peso(from),
+                      key: const ValueKey('from-price'),
+                      style: LizmoType.dataMedium
+                          .copyWith(color: LizmoColors.ink),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+              ],
+              Expanded(
+                child: existing != null
+                    ? PrimaryActionButton(
+                        key: const ValueKey('open-conversation'),
+                        label: 'Open your conversation',
+                        onPressed: () =>
+                            context.push(Routes.inquiry(existing.id!)),
+                      )
+                    : PrimaryActionButton(
+                        key: const ValueKey('ask-about-place'),
+                        // Full is not a dead end. A landlord usually knows
+                        // what is coming free, and being asked is how they
+                        // find out somebody wants it.
+                        label: _asking
+                            ? 'Asking…'
+                            : free == 0
+                                ? 'Ask anyway'
+                                : 'Ask about this place',
+                        onPressed: _asking ? null : _ask,
+                      ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'The landlord picks which room, and you settle the rest between you.',
-          textAlign: TextAlign.center,
-          style: LizmoType.rowSub,
-        ),
-      ],
+      ),
     );
   }
 }

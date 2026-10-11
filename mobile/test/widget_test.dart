@@ -5039,9 +5039,14 @@ void _propertyShareTests() {
 
 /// Records what a tenant asked about, and can refuse the way the API does.
 class _FakeAskingApi extends AskingAboutAPlaceApi {
-  _FakeAskingApi({this.failWith});
+  _FakeAskingApi({this.failWith, this.threads = const []});
 
   final ApiFailure? failWith;
+
+  /// Conversations this tenant is already in, as the server would report
+  /// them on a second visit to the same gate.
+  final List<InquirySummary> threads;
+
   StartInquiry? sent;
 
   @override
@@ -5077,7 +5082,7 @@ class _FakeAskingApi extends AskingAboutAPlaceApi {
   @override
   Future<List<InquirySummary>?> listMyInquiries({
     Future<void>? abortTrigger,
-  }) async => const [];
+  }) async => threads;
 }
 
 void _findingAPlaceTests() {
@@ -5259,17 +5264,25 @@ void _findingAPlaceTests() {
       expect(find.text('1 unit and 3 bedspaces vacant'), findsOneWidget);
     });
 
+    /// On the floor card specifically: the bar below quotes the cheapest
+    /// thing going as well, and that is a different number saying a
+    /// different thing.
+    Finder onTheFloor(String money) => find.descendant(
+          of: find.byKey(const ValueKey('floor-2')),
+          matching: find.text(money),
+        );
+
     testWidgets('one price reads as one price, two as a range', (tester) async {
       await tester.pumpWidget(appWith(found: place(beds: 2)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
-      expect(find.text('\u20b12,500'), findsOneWidget);
+      expect(onTheFloor('\u20b12,500'), findsOneWidget);
 
       await tester.pumpWidget(
           appWith(found: place(beds: 2, cheapest: 2500, dearest: 3200)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
-      expect(find.text('\u20b12,500\u2013\u20b13,200'), findsOneWidget);
+      expect(onTheFloor('\u20b12,500\u2013\u20b13,200'), findsOneWidget);
     });
 
     /// A rent runs to five figures, and 7500 against 75000 is a difference
@@ -5280,7 +5293,7 @@ void _findingAPlaceTests() {
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.text('\u20b112,500'), findsOneWidget);
+      expect(onTheFloor('\u20b112,500'), findsOneWidget);
     });
 
     /// The reason photographs exist: somebody deciding whether to spend an
@@ -5463,12 +5476,17 @@ void _findingAPlaceTests() {
       expect(find.byType(InquiryScreen), findsOneWidget);
     });
 
-    testWidgets('a full house offers nothing to ask for', (tester) async {
+    /// Being told "no" and given nothing to do is how somebody decides the
+    /// app is not worth keeping. A landlord usually knows what is coming
+    /// free, and being asked is how they learn somebody wants it.
+    testWidgets('a full house can still be asked about', (tester) async {
       await tester.pumpWidget(appWith(found: place(beds: 0)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.byKey(const ValueKey('ask-about-place')), findsNothing);
+      expect(find.text('Ask anyway'), findsOneWidget);
+      // And no price, because there is nothing going at any price.
+      expect(find.byKey(const ValueKey('from-price')), findsNothing);
     });
 
     /// It used to send them to a profile form and leave them to find their
@@ -5521,6 +5539,96 @@ void _findingAPlaceTests() {
       expect(find.text('Nothing is free here at the moment.'), findsOneWidget);
       // And no conversation was opened, because none was started.
       expect(find.byType(InquiryScreen), findsNothing);
+    });
+
+    /// The second thing anybody wants to know, and it used to be 13px at the
+    /// right-hand edge of a floor card.
+    testWidgets('the cheapest rent going is named on the bar', (tester) async {
+      await tester.pumpWidget(
+          appWith(found: place(beds: 2, cheapest: 2500, dearest: 3200)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('from-price')), findsOneWidget);
+      expect(find.text('From'), findsOneWidget);
+      expect(
+          tester.widget<Text>(find.byKey(const ValueKey('from-price'))).data,
+          '₱2,500');
+    });
+
+    /// Below the fold is the same as absent on a house with six floors.
+    testWidgets('the ask is reachable without scrolling', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      final button = tester.getRect(find.byKey(const ValueKey('ask-about-place')));
+      expect(button.bottom,
+          lessThanOrEqualTo(tester.view.physicalSize.height /
+              tester.view.devicePixelRatio));
+    });
+
+    /// It was local state, so somebody who asked, left, and scanned the gate
+    /// again was offered "Ask about this place" as though they never had.
+    testWidgets('somebody who already asked is sent back to the thread',
+        (tester) async {
+      final asking = _FakeAskingApi(threads: [
+        InquirySummary(
+          id: 'i1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          status: InquirySummaryStatusEnum.OPEN,
+        ),
+      ]);
+      await tester.pumpWidget(appWith(found: place(beds: 2), asking: asking));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('ask-about-place')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('open-conversation')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiryScreen), findsOneWidget);
+      // Nothing was started: they were already in it.
+      expect(asking.sent, isNull);
+    });
+
+    /// Asking again is what reopens a closed thread, so that is the button
+    /// they are given.
+    testWidgets('a closed thread is asked about again, not reopened by hand',
+        (tester) async {
+      final asking = _FakeAskingApi(threads: [
+        InquirySummary(
+          id: 'i1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          status: InquirySummaryStatusEnum.CLOSED,
+        ),
+      ]);
+      await tester.pumpWidget(appWith(found: place(beds: 2), asking: asking));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('open-conversation')), findsNothing);
+      expect(find.byKey(const ValueKey('ask-about-place')), findsOneWidget);
+    });
+
+    /// A thread about somewhere else is not this place's thread.
+    testWidgets('a thread about another place is not mistaken for this one',
+        (tester) async {
+      final asking = _FakeAskingApi(threads: [
+        InquirySummary(
+          id: 'i9',
+          propertyId: 'somewhere-else',
+          propertyName: 'Mabuhay Lodge',
+          status: InquirySummaryStatusEnum.OPEN,
+        ),
+      ]);
+      await tester.pumpWidget(appWith(found: place(beds: 2), asking: asking));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('ask-about-place')), findsOneWidget);
     });
 
     testWidgets('a wrong code explains the alphabet', (tester) async {
