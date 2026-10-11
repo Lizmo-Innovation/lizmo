@@ -70,6 +70,16 @@ public class StoredDocument {
     @Column(name = "shared_with_tenant", nullable = false)
     private boolean sharedWithTenant;
 
+    /**
+     * Where this sits among the others, for the kinds of attachment that have
+     * an order. Null for paperwork, which has none.
+     *
+     * <p>Photographs have one because the first is the one that represents the
+     * place, and a landlord should be able to choose it.
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     protected StoredDocument() {
     }
 
@@ -104,6 +114,10 @@ public class StoredDocument {
         this.byteSize = byteSize;
     }
 
+    public void movedTo(int position) {
+        this.sortOrder = position;
+    }
+
     /**
      * Points this row at a new object.
      *
@@ -136,6 +150,10 @@ public class StoredDocument {
 
     public UUID getOwnerId() {
         return ownerId;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
     }
 
     public UUID getUploadedBy() {

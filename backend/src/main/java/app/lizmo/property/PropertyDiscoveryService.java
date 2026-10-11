@@ -29,11 +29,16 @@ public class PropertyDiscoveryService {
     private final BedRepository beds;
     private final UnitUtilityRepository utilities;
 
+    /** What the place looks like, which is half of why anybody scans a code. */
+    private final PropertyPhotoService photos;
+
     public PropertyDiscoveryService(
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
-            UnitUtilityRepository utilities) {
+            UnitUtilityRepository utilities,
+            PropertyPhotoService photos) {
+        this.photos = photos;
         this.properties = properties;
         this.units = units;
         this.beds = beds;
@@ -49,7 +54,10 @@ public class PropertyDiscoveryService {
         Property property = properties.findByCode(code).orElseThrow(
                 PropertyDiscoveryService::notFound);
 
-        return PropertyByCodeResponse.of(property, vacanciesIn(property.getId()));
+        return PropertyByCodeResponse.of(
+                property,
+                vacanciesIn(property.getId()),
+                photos.urlsFor(property.getId()));
     }
 
     /**

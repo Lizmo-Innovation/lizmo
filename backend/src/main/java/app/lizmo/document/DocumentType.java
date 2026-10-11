@@ -19,5 +19,15 @@ public enum DocumentType {
      */
     TENANT_PHOTO,
 
+    /**
+      * A photograph of a place, shown to anybody holding its code.
+      *
+      * <p>The only document type that is deliberately public. The landlord
+      * chooses what to put here, which is what makes that safe -- and it is
+      * why the EXIF is stripped on the way in, since a phone photograph of a
+      * boarding house carries the coordinates of somebody's home.
+      */
+    PROPERTY_PHOTO,
+
     OTHER
 }
