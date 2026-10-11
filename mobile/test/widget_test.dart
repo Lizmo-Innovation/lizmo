@@ -5159,7 +5159,7 @@ void _findingAPlaceTests() {
     Future<void> enterCode(WidgetTester tester, String code) async {
       await tester.enterText(find.byType(TextField), code);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('See what is free'));
+      await tester.tap(find.text('See what is vacant'));
       await tester.pumpAndSettle();
     }
 
@@ -5202,16 +5202,16 @@ void _findingAPlaceTests() {
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('a code finds the place and how much is free', (tester) async {
+    testWidgets('a code finds the place and how much is vacant', (tester) async {
       await tester.pumpWidget(appWith(found: place(beds: 3)));
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Sunrise Apartments'), findsWidgets);
       expect(find.text('12 Mabini St'), findsOneWidget);
-      expect(find.text('3 spaces free'), findsOneWidget);
+      expect(find.text('3 spaces vacant'), findsOneWidget);
       expect(find.text('2nd floor'), findsOneWidget);
-      expect(find.text('3 bedspaces free'), findsOneWidget);
+      expect(find.text('3 bedspaces vacant'), findsOneWidget);
     });
 
     /// The landlord types this field themselves. A number becomes an ordinary
@@ -5247,7 +5247,7 @@ void _findingAPlaceTests() {
       expect(find.text('Ground level'), findsOneWidget);
     });
 
-    /// The whole point: somebody with the code learns how much is free and
+    /// The whole point: somebody with the code learns how much is vacant and
     /// what it costs, not which rooms exist or which one is empty.
     testWidgets('no room is named to somebody with the code', (tester) async {
       await tester.pumpWidget(appWith(found: place(beds: 3, units: 1)));
@@ -5256,7 +5256,7 @@ void _findingAPlaceTests() {
 
       expect(find.textContaining('Bed '), findsNothing);
       expect(find.textContaining('Unit '), findsNothing);
-      expect(find.text('1 unit and 3 bedspaces free'), findsOneWidget);
+      expect(find.text('1 unit and 3 bedspaces vacant'), findsOneWidget);
     });
 
     testWidgets('one price reads as one price, two as a range', (tester) async {
@@ -5319,8 +5319,8 @@ void _findingAPlaceTests() {
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      // Nothing free is a real answer, not an empty screen.
-      expect(find.text('Nothing free here at the moment'), findsOneWidget);
+      // No vacancy is a real answer, not an empty screen.
+      expect(find.text('No vacant at the moment'), findsOneWidget);
     });
 
     /// Rent alone is not what a tenant hands over, and utilities are charged
@@ -5342,7 +5342,7 @@ void _findingAPlaceTests() {
       expect(find.textContaining('+ utilities'), findsNothing);
     });
 
-    testWidgets('an unpriced floor says so rather than reading as free', (
+    testWidgets('an unpriced floor says so rather than reading as vacant', (
       tester,
     ) async {
       await tester.pumpWidget(appWith(found: place(beds: 1, cheapest: null)));
@@ -9255,7 +9255,7 @@ void _tenantLeaseTests() {
 
       expect(find.text('Where the space is'), findsOneWidget);
       expect(find.text('Sunrise Apartments'), findsOneWidget);
-      expect(find.text('3 free'), findsOneWidget);
+      expect(find.text('3 vacant'), findsOneWidget);
     });
 
     testWidgets('a full portfolio lists no vacancies', (tester) async {

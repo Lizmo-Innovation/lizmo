@@ -247,7 +247,7 @@ class _ShareState extends State<_Share> {
           // the phone, and would be nonsense to whoever receives the image.
           Text(
             'Show this to anyone looking for a room. They scan it, or type the '
-            'code, and see what is free.',
+            'code, and see what is vacant.',
             style: LizmoType.rowSub.copyWith(fontSize: 15 * scale),
             textAlign: TextAlign.center,
           ),

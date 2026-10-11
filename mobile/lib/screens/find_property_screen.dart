@@ -133,7 +133,7 @@ class _FindPropertyScreenState extends ConsumerState<FindPropertyScreen> {
 
               const SizedBox(height: 8),
               PrimaryActionButton(
-                label: 'See what is free',
+                label: 'See what is vacant',
                 // Disabled rather than hidden: the button is where the eye
                 // goes, and a tenant should see what finishing the code gets
                 // them.

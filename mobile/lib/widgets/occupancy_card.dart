@@ -213,7 +213,7 @@ class _VacancyRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      empty == 1 ? '1 free' : '$empty free',
+                      empty == 1 ? '1 vacant' : '$empty vacant',
                       style: LizmoType.rowSub.copyWith(fontSize: 11),
                     ),
                   ],

@@ -82,7 +82,7 @@ class GettingStartedSection extends ConsumerWidget {
         ),
         _Step(
           label: 'Share your property code',
-          detail: 'Tenants scan it to see what is free and ask to rent.',
+          detail: 'Tenants scan it to see what is vacant and ask to rent.',
           // Somebody asking, or already living there, is the only sign the app
           // has that the code reached anybody.
           done: lived.contains(id),

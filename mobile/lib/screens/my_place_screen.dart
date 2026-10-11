@@ -76,7 +76,7 @@ class _Looking extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Every Lizmo property has a code on its gate. Scan it or type it in '
-          'to see which beds and units are free, and what they cost.',
+          'to see which beds and units are vacant, and what they cost.',
           textAlign: TextAlign.center,
           style: LizmoType.rowSub,
         ),

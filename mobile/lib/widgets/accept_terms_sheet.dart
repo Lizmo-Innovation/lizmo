@@ -203,7 +203,7 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      'Nothing is free here now. Decline, or free a room first.',
+                      'Nothing is vacant here now. Decline, or free a room first.',
                       style:
                           LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
                     ),

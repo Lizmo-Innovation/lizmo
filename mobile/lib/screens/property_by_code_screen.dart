@@ -98,11 +98,11 @@ class _Place extends StatelessWidget {
 
         const SizedBox(height: 20),
         Text(
-          // The headline a tenant came for. Nothing free is a real answer and
+          // The headline a tenant came for. No vacancy is a real answer and
           // says so plainly rather than showing an empty list.
           free == 0
-              ? 'Nothing free here at the moment'
-              : '$free ${free == 1 ? 'space' : 'spaces'} free',
+              ? 'No vacant at the moment'
+              : '$free ${free == 1 ? 'space' : 'spaces'} vacant',
           style: LizmoType.sectionHeading,
         ),
         const SizedBox(height: 12),
@@ -304,7 +304,7 @@ class _Floor extends StatelessWidget {
       if (units > 0) '$units ${units == 1 ? 'unit' : 'units'}',
       if (beds > 0) '$beds ${beds == 1 ? 'bedspace' : 'bedspaces'}',
     ];
-    return parts.isEmpty ? 'Nothing free' : '${parts.join(' and ')} free';
+    return parts.isEmpty ? 'No vacant' : '${parts.join(' and ')} vacant';
   }
 
   /// One price when every free room here asks the same, a range when they do
