@@ -13,6 +13,13 @@ import java.time.ZoneId;
  *
  * <p>Starts at the real time so that anything not deliberately moved behaves
  * normally, and resets between tests.
+ *
+ * <p>Reads in UTC, like the clock the application runs on. Asked for another
+ * zone it gives one -- the same instant, moving when this one moves. It used
+ * to hand back itself, still in UTC, so code asking for the server's local
+ * date got the UTC one under test: between midnight and eight in Manila the
+ * two are different days, and a test comparing against the local date failed
+ * every night.
  */
 public class MutableClock extends Clock {
 
@@ -25,7 +32,7 @@ public class MutableClock extends Clock {
 
     @Override
     public Clock withZone(ZoneId zone) {
-        return this;
+        return new Zoned(this, zone);
     }
 
     @Override
@@ -46,8 +53,40 @@ public class MutableClock extends Clock {
         advanceSeconds(days * 24 * 60 * 60);
     }
 
+    /** A particular moment, for a test about one. */
+    public void setTo(Instant instant) {
+        now = instant;
+    }
+
     /** Back to real time, so one test never inherits another's future. */
     public void reset() {
         now = Instant.now();
+    }
+
+    /** This clock read in another zone. Holds no time of its own. */
+    private static final class Zoned extends Clock {
+
+        private final MutableClock source;
+        private final ZoneId zone;
+
+        private Zoned(MutableClock source, ZoneId zone) {
+            this.source = source;
+            this.zone = zone;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId other) {
+            return source.withZone(other);
+        }
+
+        @Override
+        public Instant instant() {
+            return source.instant();
+        }
     }
 }
