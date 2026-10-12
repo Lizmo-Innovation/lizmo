@@ -72,6 +72,10 @@
             "description": "Lizmo's own staff"
         },
         {
+            "name": "Announcements",
+            "description": "A landlord telling everybody at once"
+        },
+        {
             "name": "Receipts",
             "description": "Acknowledgement receipts for confirmed payments"
         },
@@ -1441,6 +1445,93 @@
                 }
             }
         },
+        "/api/v1/properties/{propertyId}/notices": {
+            "get": {
+                "tags": [
+                    "Announcements"
+                ],
+                "summary": "Announcements up on a building",
+                "description": "Newest first, with how many of the people each is for have opened it. Taken-down ones are not listed.",
+                "operationId": "listPropertyNotices",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The announcements",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/NoticeResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Announcements"
+                ],
+                "summary": "Post an announcement",
+                "description": "To everybody renting in the building, or in one unit. Those living there now are notified; anybody who moves in while it is up sees it too. Cannot be edited: take it down and post again.",
+                "operationId": "postNotice",
+                "parameters": [
+                    {
+                        "name": "propertyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PostNotice"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Posted",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NoticeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not your property, or not its unit",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/{id}/units": {
             "get": {
                 "tags": [
@@ -1513,6 +1604,32 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/api/v1/notices/{id}/take-down": {
+            "post": {
+                "tags": [
+                    "Announcements"
+                ],
+                "summary": "Take an announcement down",
+                "description": "Gone from every tenant's screen. Nobody is told.",
+                "operationId": "takeDownNotice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Taken down"
                     }
                 }
             }
@@ -1907,6 +2024,31 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/me/notices/{id}/read": {
+            "post": {
+                "tags": [
+                    "Announcements"
+                ],
+                "summary": "I have read this announcement",
+                "operationId": "markNoticeRead",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Marked"
                     }
                 }
             }
@@ -4151,6 +4293,31 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/UnreadCount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/notices": {
+            "get": {
+                "tags": [
+                    "Announcements"
+                ],
+                "summary": "Announcements where I live",
+                "description": "Everything up in the buildings, and units, I rent in now, newest first.",
+                "operationId": "listMyNotices",
+                "responses": {
+                    "200": {
+                        "description": "The announcements",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MyNoticeResponse"
+                                    }
                                 }
                             }
                         }
@@ -7928,6 +8095,130 @@
                     }
                 },
                 "description": "An acknowledgement receipt for a confirmed payment. Not a BIR official receipt."
+            },
+            "PostNotice": {
+                "required": [
+                    "message",
+                    "title"
+                ],
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "maxLength": 80,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Water off on Saturday"
+                    },
+                    "message": {
+                        "maxLength": 2000,
+                        "minLength": 0,
+                        "type": "string",
+                        "example": "Maynilad is working on the main line, 9am to noon. Fill a bucket the night before."
+                    },
+                    "unitId": {
+                        "type": "string",
+                        "description": "One unit only. Null for everybody in the building.",
+                        "format": "uuid"
+                    },
+                    "until": {
+                        "type": "string",
+                        "description": "The last day it is shown. Null for until taken down.",
+                        "format": "date",
+                        "example": "2026-10-17"
+                    }
+                },
+                "description": "An announcement to post"
+            },
+            "NoticeResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitId": {
+                        "type": "string",
+                        "description": "Set when it went to one unit only",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "postedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "until": {
+                        "type": "string",
+                        "description": "The last day it is shown, if it has one",
+                        "format": "date"
+                    },
+                    "live": {
+                        "type": "boolean",
+                        "description": "False once past its last day"
+                    },
+                    "seenBy": {
+                        "type": "integer",
+                        "description": "How many of the people it is for have opened it",
+                        "format": "int32"
+                    },
+                    "audience": {
+                        "type": "integer",
+                        "description": "How many people it is for: everybody renting there now",
+                        "format": "int32"
+                    }
+                },
+                "description": "An announcement, as the landlord who posted it sees it"
+            },
+            "MyNoticeResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "unitNumber": {
+                        "type": "string",
+                        "description": "Set when it went to their unit only"
+                    },
+                    "fromName": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "postedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "until": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "read": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "An announcement, as a tenant sees it"
             }
         }
     }

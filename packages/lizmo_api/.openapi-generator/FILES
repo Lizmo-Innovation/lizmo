@@ -9,6 +9,7 @@ doc/AdminPropertyDetail.md
 doc/AdminPropertySummary.md
 doc/AdminPropertyTenancy.md
 doc/AdminPropertyUnit.md
+doc/AnnouncementsApi.md
 doc/ApiError.md
 doc/AppVersion.md
 doc/Applicant.md
@@ -47,7 +48,9 @@ doc/MaintenanceReportResponse.md
 doc/MaintenanceRequest.md
 doc/MaintenanceToHandleApi.md
 doc/MyAccountApi.md
+doc/MyNoticeResponse.md
 doc/NewMessage.md
+doc/NoticeResponse.md
 doc/NotificationResponse.md
 doc/NotificationsApi.md
 doc/OccupancySummary.md
@@ -67,6 +70,7 @@ doc/PlatformPaymentRejection.md
 doc/PlatformPaymentResponse.md
 doc/PlatformSettings.md
 doc/PlatformStatementResponse.md
+doc/PostNotice.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
 doc/PropertyPhoto.md
@@ -109,6 +113,7 @@ doc/WaitingPayment.md
 git_push.sh
 lib/api.dart
 lib/api/admin_api.dart
+lib/api/announcements_api.dart
 lib/api/asking_about_a_place_api.dart
 lib/api/auth_api.dart
 lib/api/devices_api.dart
@@ -171,7 +176,9 @@ lib/model/login_request.dart
 lib/model/maintenance_note.dart
 lib/model/maintenance_report_response.dart
 lib/model/maintenance_request.dart
+lib/model/my_notice_response.dart
 lib/model/new_message.dart
+lib/model/notice_response.dart
 lib/model/notification_response.dart
 lib/model/occupancy_summary.dart
 lib/model/payment_channel_order.dart
@@ -189,6 +196,7 @@ lib/model/platform_payment_rejection.dart
 lib/model/platform_payment_response.dart
 lib/model/platform_settings.dart
 lib/model/platform_statement_response.dart
+lib/model/post_notice.dart
 lib/model/property_by_code_response.dart
 lib/model/property_photo.dart
 lib/model/property_request.dart
@@ -222,9 +230,13 @@ lib/model/vacancy_floor.dart
 lib/model/vacancy_row.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
+test/announcements_api_test.dart
 test/devices_api_test.dart
 test/lease_term_request_test.dart
+test/my_notice_response_test.dart
+test/notice_response_test.dart
 test/photo_order_test.dart
+test/post_notice_test.dart
 test/property_photo_test.dart
 test/receipt_response_test.dart
 test/receipts_api_test.dart

@@ -82,6 +82,11 @@ Class | Method | HTTP request | Description
 *AdminApi* | [**updatePaymentChannel**](doc//AdminApi.md#updatepaymentchannel) | **PUT** /api/v1/admin/platform-payment-channels/{id} | Change a payment channel
 *AdminApi* | [**updatePlatformSettings**](doc//AdminApi.md#updateplatformsettings) | **PUT** /api/v1/admin/settings | Change them
 *AdminApi* | [**uploadPaymentChannelQr**](doc//AdminApi.md#uploadpaymentchannelqr) | **POST** /api/v1/admin/platform-payment-channels/{id}/qr | Set a channel's QR
+*AnnouncementsApi* | [**listMyNotices**](doc//AnnouncementsApi.md#listmynotices) | **GET** /api/v1/me/notices | Announcements where I live
+*AnnouncementsApi* | [**listPropertyNotices**](doc//AnnouncementsApi.md#listpropertynotices) | **GET** /api/v1/properties/{propertyId}/notices | Announcements up on a building
+*AnnouncementsApi* | [**markNoticeRead**](doc//AnnouncementsApi.md#marknoticeread) | **POST** /api/v1/me/notices/{id}/read | I have read this announcement
+*AnnouncementsApi* | [**postNotice**](doc//AnnouncementsApi.md#postnotice) | **POST** /api/v1/properties/{propertyId}/notices | Post an announcement
+*AnnouncementsApi* | [**takeDownNotice**](doc//AnnouncementsApi.md#takedownnotice) | **POST** /api/v1/notices/{id}/take-down | Take an announcement down
 *AskingAboutAPlaceApi* | [**closeInquiry**](doc//AskingAboutAPlaceApi.md#closeinquiry) | **POST** /api/v1/inquiries/{id}/close | End it
 *AskingAboutAPlaceApi* | [**listMyInquiries**](doc//AskingAboutAPlaceApi.md#listmyinquiries) | **GET** /api/v1/inquiries | My conversations
 *AskingAboutAPlaceApi* | [**markInquiryRead**](doc//AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
@@ -223,7 +228,9 @@ Class | Method | HTTP request | Description
  - [MaintenanceNote](doc//MaintenanceNote.md)
  - [MaintenanceReportResponse](doc//MaintenanceReportResponse.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
+ - [MyNoticeResponse](doc//MyNoticeResponse.md)
  - [NewMessage](doc//NewMessage.md)
+ - [NoticeResponse](doc//NoticeResponse.md)
  - [NotificationResponse](doc//NotificationResponse.md)
  - [OccupancySummary](doc//OccupancySummary.md)
  - [PaymentChannelOrder](doc//PaymentChannelOrder.md)
@@ -241,6 +248,7 @@ Class | Method | HTTP request | Description
  - [PlatformPaymentResponse](doc//PlatformPaymentResponse.md)
  - [PlatformSettings](doc//PlatformSettings.md)
  - [PlatformStatementResponse](doc//PlatformStatementResponse.md)
+ - [PostNotice](doc//PostNotice.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
  - [PropertyPhoto](doc//PropertyPhoto.md)
  - [PropertyRequest](doc//PropertyRequest.md)

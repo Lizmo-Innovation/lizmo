@@ -255,8 +255,12 @@ class ApiClient {
           return MaintenanceReportResponse.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'MyNoticeResponse':
+          return MyNoticeResponse.fromJson(value);
         case 'NewMessage':
           return NewMessage.fromJson(value);
+        case 'NoticeResponse':
+          return NoticeResponse.fromJson(value);
         case 'NotificationResponse':
           return NotificationResponse.fromJson(value);
         case 'OccupancySummary':
@@ -291,6 +295,8 @@ class ApiClient {
           return PlatformSettings.fromJson(value);
         case 'PlatformStatementResponse':
           return PlatformStatementResponse.fromJson(value);
+        case 'PostNotice':
+          return PostNotice.fromJson(value);
         case 'PropertyByCodeResponse':
           return PropertyByCodeResponse.fromJson(value);
         case 'PropertyPhoto':
