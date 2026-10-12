@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/period_kind.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../inquiry/tenancy_conversation.dart';
 import '../property/property_providers.dart';
@@ -12,6 +13,7 @@ import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
 import '../widgets/end_tenancy_sheet.dart';
 import '../widgets/lease_attachments.dart';
+import '../widgets/record_payment_sheet.dart';
 import '../widgets/tenant_rent_card.dart';
 
 /// The person living in the room, as their landlord sees them.
@@ -262,15 +264,59 @@ bool _hasUpfrontMoney(WidgetRef ref, String leaseId) {
 /// Two figures, not one. A deposit is money the landlord is holding and a
 /// advance is money they have earned, and the difference only matters at the
 /// end of the tenancy -- when it matters a great deal.
-class _UpfrontMoney extends ConsumerWidget {
+class _UpfrontMoney extends ConsumerStatefulWidget {
   const _UpfrontMoney({required this.leaseId});
 
   final String leaseId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lease = ref.watch(landlordLeaseProvider(leaseId));
+  ConsumerState<_UpfrontMoney> createState() => _UpfrontMoneyState();
+}
+
+/// The deposit and advance: what was agreed, and whether it came in.
+///
+/// They used to be the agreed figures alone, assumed taken. Now each is owed
+/// at move-in and counts once confirmed -- so this says which, and a deposit
+/// handed over in cash can be recorded here: the rent roll is rent, and this
+/// is where a landlord looks at what a tenant handed over.
+class _UpfrontMoneyState extends ConsumerState<_UpfrontMoney> {
+  bool _working = false;
+
+  Future<void> _record(BillingPeriodResponse deposit, String? tenantName) async {
+    final request = await RecordPaymentSheet.show(
+      context,
+      billingPeriodId: deposit.id!,
+      tenantName: tenantName ?? 'Your tenant',
+      periodLabel: 'the security deposit',
+      outstanding: deposit.outstanding ?? 0,
+    );
+    if (request == null || !mounted) return;
+
+    setState(() => _working = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(rentApiProvider).recordPayment(widget.leaseId, request);
+      ref.invalidate(leaseBillingProvider(widget.leaseId));
+      ref.invalidate(leasePaymentsProvider(widget.leaseId));
+      ref.invalidate(collectionsProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Recorded.')));
+    } catch (error) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(ApiFailure.from(error).message)));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lease = ref.watch(landlordLeaseProvider(widget.leaseId));
     if (lease == null) return const SizedBox.shrink();
+
+    final months =
+        ref.watch(leaseBillingProvider(widget.leaseId)).valueOrNull ?? const [];
+    final deposit = months.where((month) => month.isDeposit).firstOrNull;
+    final advance = months.where((month) => month.isAdvance).toList();
 
     return _Section(
       title: 'Before they moved in',
@@ -281,16 +327,49 @@ class _UpfrontMoney extends ConsumerWidget {
               ? null
               : LizmoMoney.peso(lease.depositAmount!),
         ),
+        if (deposit != null)
+          _Fact('Deposit received', _state([deposit])),
         _Fact(
           'Advance rent',
           lease.advanceAmount == null
               ? null
               : LizmoMoney.peso(lease.advanceAmount!),
         ),
+        if (advance.isNotEmpty)
+          _Fact('Advance received', _state(advance)),
       ],
-      subtitle: 'The deposit goes back when they move out. The advance pays '
-          'for their first month.',
+      subtitle: advance.length > 1
+          ? 'The deposit goes back when they move out. The advance pays for '
+              'their first ${advance.length} months.'
+          : 'The deposit goes back when they move out. The advance pays for '
+              'their first month.',
+      footer: deposit != null && (deposit.outstanding ?? 0) > 0
+          ? Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('record-deposit'),
+                onPressed:
+                    _working ? null : () => _record(deposit, lease.tenantName),
+                child: Text(
+                  'Record the deposit as received',
+                  style: LizmoType.rowSub.copyWith(
+                    color: LizmoColors.teal900,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
+  }
+
+  /// "Yes", "P2,000 of P5,000", or "Not yet".
+  static String _state(List<BillingPeriodResponse> charges) {
+    final due = charges.fold<num>(0, (sum, c) => sum + (c.amountDue ?? 0));
+    final paid = charges.fold<num>(0, (sum, c) => sum + (c.amountPaid ?? 0));
+    if (due > 0 && paid >= due) return 'Yes';
+    if (paid > 0) return '${LizmoMoney.peso(paid)} of ${LizmoMoney.peso(due)}';
+    return 'Not yet';
   }
 }
 
@@ -307,11 +386,19 @@ class _Fact {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.rows, this.subtitle});
+  const _Section({
+    required this.title,
+    required this.rows,
+    this.subtitle,
+    this.footer,
+  });
 
   final String title;
   final String? subtitle;
   final List<_Fact> rows;
+
+  /// Something to do about what the section shows, under its rows.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +444,7 @@ class _Section extends StatelessWidget {
               ),
             ),
           ],
+          ?footer,
         ],
       ),
     );

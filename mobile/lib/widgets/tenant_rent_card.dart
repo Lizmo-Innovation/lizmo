@@ -4,6 +4,8 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/period_kind.dart';
+
 import '../property/property_providers.dart';
 import 'not_received_dialog.dart';
 
@@ -72,8 +74,11 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
             payment.status == PaymentResponseStatusEnum.PENDING_VERIFICATION)
         .toList();
 
-    final owed = months.fold<num>(0, (sum, month) => sum + (month.outstanding ?? 0));
-    final late = months.where((month) => month.overdue == true).length;
+    // Rent: the deposit is owed too, but it is held rather than earned, and
+    // it is under "Before they moved in" with its own state.
+    final rent = months.where((month) => !month.isDeposit);
+    final owed = rent.fold<num>(0, (sum, month) => sum + (month.outstanding ?? 0));
+    final late = rent.where((month) => month.overdue == true).length;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -165,7 +170,7 @@ class _Waiting extends StatelessWidget {
           children: [
             Text(
               '${LizmoMoney.peso((payment.amountPaid ?? 0))} for '
-              '${payment.periodLabel ?? 'rent'}',
+              '${payment.periodLabel == 'Security deposit' ? 'the security deposit' : payment.periodLabel ?? 'rent'}',
               style: LizmoType.rowName.copyWith(color: LizmoColors.amberText),
             ),
             const SizedBox(height: 2),

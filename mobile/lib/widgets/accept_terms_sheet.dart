@@ -139,6 +139,45 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     ));
   }
 
+  /// Why an advance cannot be taken as it stands, or null when it can.
+  ///
+  /// Whole months only: P3000 on P2500 rent would pay one month and leave
+  /// P500 recorded nowhere. Said here, before saving, in the server's words.
+  String? _wholeMonths(num advance) {
+    final rent = _rentNow;
+    if (rent == null || rent <= 0 || advance <= 0) return null;
+    if (advance % rent == 0) return null;
+    return 'An advance pays for whole months: '
+        '${LizmoMoney.peso(rent)} or ${LizmoMoney.peso(rent * 2)}';
+  }
+
+  /// "P5,000 covers October and November": which months, from the start
+  /// date, so a landlord typing an amount sees what it buys.
+  String _advanceSays() {
+    final advance = num.tryParse(_advance.text.trim());
+    final rent = _rentNow;
+    if (advance == null || advance <= 0 || rent == null || rent <= 0) {
+      return 'Rent paid up front, due when they move in, like the months it '
+          'pays for.';
+    }
+    final problem = _wholeMonths(advance);
+    if (problem != null) return '$problem.';
+
+    const names = [
+      'January', 'February', 'March', 'April', 'May', 'June', 'July',
+      'August', 'September', 'October', 'November', 'December',
+    ];
+    final count = (advance ~/ rent).clamp(1, 24);
+    final months = [
+      for (var i = 0; i < count; i++)
+        names[(_start.month - 1 + i) % 12],
+    ];
+    final listed = months.length == 1
+        ? months.first
+        : '${months.sublist(0, months.length - 1).join(', ')} and ${months.last}';
+    return '${LizmoMoney.peso(advance)} covers $listed.';
+  }
+
   static num? _amountOrNull(TextEditingController field) {
     final text = field.text.trim();
     if (text.isEmpty) return null;
@@ -273,8 +312,11 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               Text('Before they move in', style: LizmoType.sectionHeading),
               const SizedBox(height: 4),
               Text(
-                'Optional, and you can leave either blank if you have not '
-                'agreed it yet.',
+                // What changed: these used to be noted as already taken.
+                // They are owed now, and only count once confirmed.
+                'Both are due on move-in day. They mark them paid in the app, '
+                'and you confirm them, the same as rent. Leave either blank '
+                'if you have not agreed it.',
                 style: LizmoType.rowSub,
               ),
 
@@ -292,7 +334,8 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               Text(
                 // Said plainly, because the two are constantly muddled and the
                 // difference only matters at the end, when it matters a lot.
-                'Held against damage, and given back when they move out.',
+                'Held against damage, and given back when they move out. '
+                'Kept apart from rent in your figures.',
                 style: LizmoType.rowSub,
               ),
 
@@ -305,11 +348,18 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 hint: '2500',
                 rent: _rentNow,
                 onMonths: (value) => setState(() => _advance.text = value),
+                onChanged: (_) => setState(() {}),
+                check: _wholeMonths,
               ),
               const SizedBox(height: 6),
               Text(
-                'Rent paid up front. It pays for the first month.',
-                style: LizmoType.rowSub,
+                _advanceSays(),
+                key: const ValueKey('advance-says'),
+                style: LizmoType.rowSub.copyWith(
+                  color: _wholeMonths(num.tryParse(_advance.text.trim()) ?? 0) == null
+                      ? null
+                      : LizmoColors.amberText,
+                ),
               ),
 
               const SizedBox(height: 22),
@@ -390,12 +440,18 @@ class _MoneyField extends StatelessWidget {
     required this.hint,
     required this.rent,
     required this.onMonths,
+    this.onChanged,
+    this.check,
   });
 
   final TextEditingController controller;
   final String hint;
   final num? rent;
   final ValueChanged<String> onMonths;
+  final ValueChanged<String>? onChanged;
+
+  /// A further reason the amount cannot be taken, or null.
+  final String? Function(num amount)? check;
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +465,7 @@ class _MoneyField extends StatelessWidget {
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
           decoration: _decoration(hint).copyWith(prefixText: '₱ '),
+          onChanged: onChanged,
           validator: (value) {
             final text = (value ?? '').trim();
             // Blank is a real answer: not agreed, or not yet recorded.
@@ -416,7 +473,7 @@ class _MoneyField extends StatelessWidget {
             final amount = num.tryParse(text);
             if (amount == null) return 'Enter an amount';
             if (amount < 0) return 'That cannot be less than nothing';
-            return null;
+            return check?.call(amount);
           },
         ),
         if (rent != null) ...[

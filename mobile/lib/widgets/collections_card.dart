@@ -117,6 +117,16 @@ class _Figures extends StatelessWidget {
             ),
           ],
         ),
+        // Apart from the rent figures, because it is not rent: money held
+        // for tenants and owed back to them when they move out.
+        if ((rent.depositsHeld ?? 0) > 0) ...[
+          const SizedBox(height: 10),
+          Text(
+            '${LizmoMoney.peso(rent.depositsHeld!)} in deposits held',
+            key: const ValueKey('deposits-held'),
+            style: LizmoType.rowSub,
+          ),
+        ],
       ],
     );
   }
@@ -161,9 +171,10 @@ class ArrearsCard extends ConsumerWidget {
     final arrears = rent?.inArrears ?? const <ArrearsRow>[];
     if (arrears.isEmpty) return const SizedBox.shrink();
 
+    final onlyRent = arrears.every((row) => (row.depositOwed ?? 0) <= 0);
     return _TodoCard(
       key: const ValueKey('arrears-card'),
-      title: 'Behind on rent',
+      title: onlyRent ? 'Behind on rent' : 'Behind on rent or deposit',
       count: arrears.length == 1 ? 'One tenant' : '${arrears.length} tenants',
       countInk: LizmoColors.red,
       rows: [for (final row in arrears) _ArrearsRow(row: row)],
@@ -322,9 +333,16 @@ class _ArrearsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final months = row.monthsLate ?? 0;
+    final deposit = row.depositOwed ?? 0;
     final where = row.bedLabel == null
         ? 'Unit ${row.unitNumber}'
         : '${row.bedLabel}, ${row.unitNumber}';
+    // Rent and deposit said apart: a deposit is owed, but it is not income,
+    // and "2 months late" would be wrong of somebody who only owes that.
+    final behind = [
+      if (months > 0) '${months == 1 ? '1 month' : '$months months'} late',
+      if (deposit > 0) 'deposit ${LizmoMoney.peso(deposit)} not received',
+    ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -352,7 +370,7 @@ class _ArrearsRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$where · ${months == 1 ? '1 month' : '$months months'} late',
+                      '$where · $behind',
                       style: LizmoType.rowSub
                           .copyWith(fontSize: 11, color: LizmoColors.red),
                     ),
@@ -360,7 +378,7 @@ class _ArrearsRow extends StatelessWidget {
                 ),
               ),
               Text(
-                LizmoMoney.peso((row.outstanding ?? 0)),
+                LizmoMoney.peso((row.outstanding ?? 0) + deposit),
                 style: LizmoType.dataMedium.copyWith(color: LizmoColors.red),
               ),
               const SizedBox(width: 4),

@@ -53,6 +53,7 @@ import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
 import 'package:lizmo/screens/inquiries_screen.dart';
 import 'package:lizmo/tenant/rent_status.dart';
+import 'package:lizmo/widgets/accept_terms_sheet.dart';
 import 'package:lizmo/widgets/rent_schedule_list.dart';
 import 'package:lizmo/widgets/record_payment_sheet.dart';
 import 'package:lizmo/widgets/report_problem_sheet.dart';
@@ -8819,6 +8820,78 @@ void _tenantLeaseTests() {
     });
   });
 
+  group('writing a lease', () {
+    Widget sheet() => const MaterialApp(
+          home: Scaffold(
+            body: AcceptTermsSheet(
+              tenantName: 'Ana Reyes',
+              slot: 'Bed 1, 2B',
+              askingRent: 2500,
+            ),
+          ),
+        );
+
+    Future<void> typeAdvance(WidgetTester tester, String amount) async {
+      final field = find.descendant(
+        of: find.byKey(const ValueKey('advance-amount')),
+        matching: find.byType(TextFormField),
+      );
+      await tester.ensureVisible(field);
+      await tester.enterText(field, amount);
+      await tester.pumpAndSettle();
+    }
+
+    /// Which months it buys, from the start date, while it is typed.
+    testWidgets('an advance says which months it covers', (tester) async {
+      await tester.pumpWidget(sheet());
+      await tester.pumpAndSettle();
+
+      await typeAdvance(tester, '5000');
+
+      const names = [
+        'January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December',
+      ];
+      final now = DateTime.now();
+      final covered = '${names[now.month - 1]} and ${names[now.month % 12]}';
+      expect(find.text('\u20b15,000 covers $covered.'), findsOneWidget);
+    });
+
+    /// P3000 on P2500 would pay one month and leave P500 recorded nowhere.
+    testWidgets('an advance that is not whole months is refused',
+        (tester) async {
+      await tester.pumpWidget(sheet());
+      await tester.pumpAndSettle();
+
+      await typeAdvance(tester, '3000');
+
+      expect(
+          find.text(
+              'An advance pays for whole months: \u20b12,500 or \u20b15,000.'),
+          findsOneWidget);
+
+      final accept = find.byKey(const ValueKey('accept-and-create'));
+      await tester.ensureVisible(accept);
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+
+      // Still open, with the reason under the field.
+      expect(find.byType(AcceptTermsSheet), findsOneWidget);
+      expect(
+          find.text(
+              'An advance pays for whole months: \u20b12,500 or \u20b15,000'),
+          findsOneWidget);
+    });
+
+    /// No longer noted as already taken.
+    testWidgets('the sheet says both are due at move-in', (tester) async {
+      await tester.pumpWidget(sheet());
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Both are due on move-in day.'), findsOneWidget);
+    });
+  });
+
   group('ending a tenancy', () {
     LeaseResponse tenancy({num? deposit}) => LeaseResponse(
           id: 'l1',
@@ -8837,7 +8910,8 @@ void _tenantLeaseTests() {
           status: LeaseResponseStatusEnum.ACTIVE,
         );
 
-    Widget appWith({num? deposit}) => ProviderScope(
+    Widget appWith({num? deposit, List<BillingPeriodResponse>? months}) =>
+        ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
@@ -8845,6 +8919,11 @@ void _tenantLeaseTests() {
         tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
         propertiesProvider.overrideWith((ref) async => const <PropertyResponse>[]),
         myTenantsProvider.overrideWith((ref) async => [tenancy(deposit: deposit)]),
+        if (months != null) ...[
+          leaseBillingProvider('l1').overrideWith((ref) async => months),
+          leasePaymentsProvider('l1')
+              .overrideWith((ref) async => const <PaymentResponse>[]),
+        ],
         leaseTenantProvider('l1').overrideWith(
           (ref) async => TenantForLandlord(
             leaseId: 'l1',
@@ -8861,6 +8940,87 @@ void _tenantLeaseTests() {
       ],
       child: const MaterialApp(home: TenantDetailScreen(leaseId: 'l1')),
     );
+
+    BillingPeriodResponse owedDeposit({num paid = 0}) => BillingPeriodResponse(
+          id: 'dep',
+          label: 'Security deposit',
+          kind: BillingPeriodResponseKindEnum.DEPOSIT,
+          periodStart: DateTime.utc(2026, 10, 1),
+          periodEnd: DateTime.utc(2026, 10, 1),
+          dueDate: DateTime.utc(2026, 10, 1),
+          amountDue: 5000,
+          amountPaid: paid,
+          outstanding: 5000 - paid,
+          status: paid > 0
+              ? BillingPeriodResponseStatusEnum.PARTIALLY_PAID
+              : BillingPeriodResponseStatusEnum.UNPAID,
+          overdue: true,
+        );
+
+    BillingPeriodResponse rentMonth() => BillingPeriodResponse(
+          id: 'oct',
+          label: 'October 2026',
+          kind: BillingPeriodResponseKindEnum.RENT,
+          periodStart: DateTime.utc(2026, 10, 1),
+          periodEnd: DateTime.utc(2026, 10, 31),
+          dueDate: DateTime.utc(2026, 10, 1),
+          amountDue: 2500,
+          amountPaid: 2500,
+          outstanding: 0,
+          status: BillingPeriodResponseStatusEnum.PAID,
+          overdue: false,
+        );
+
+    Future<void> reachUpfront(WidgetTester tester) async {
+      await tester.scrollUntilVisible(
+        find.text('Before they moved in'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// The agreed figure alone read as though it had been handed over.
+    testWidgets('the tenant page says whether the deposit came in',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+          deposit: 5000, months: [owedDeposit(paid: 2000), rentMonth()]));
+      await tester.pumpAndSettle();
+      await reachUpfront(tester);
+
+      expect(find.text('Deposit received'), findsOneWidget);
+      expect(find.text('₱2,000 of ₱5,000'), findsOneWidget);
+    });
+
+    /// The rent roll is rent; a deposit handed over in cash is recorded here.
+    testWidgets('a deposit handed over can be recorded from the tenant page',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith(deposit: 5000, months: [owedDeposit(), rentMonth()]));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('record-deposit')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('record-deposit')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecordPaymentSheet), findsOneWidget);
+    });
+
+    /// A deposit is owed, but it is not rent the tenant is behind on.
+    testWidgets("the rent card's outstanding is rent", (tester) async {
+      await tester.pumpWidget(
+          appWith(deposit: 5000, months: [owedDeposit(), rentMonth()]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱0'), findsOneWidget);
+      expect(find.text('Month late'), findsNothing);
+      expect(find.text('Months late'), findsOneWidget);
+    });
 
     /// Scrolls rather than ensureVisible. ListView(children:) builds lazily,
     /// so the button -- last on a long screen -- does not exist in the tree
@@ -9941,6 +10101,7 @@ void _tenantLeaseTests() {
       // Pinned to none unless a test says; null leaves it unread.
       List<PaymentChannelResponse>? channels = const [],
       int occupied = 0,
+      num depositsHeld = 0,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -9980,6 +10141,7 @@ void _tenantLeaseTests() {
               tenanciesInArrears: arrears.length,
               inArrears: arrears,
               awaiting: awaiting,
+              depositsHeld: depositsHeld,
             )),
         if (threads != null)
           myInquiriesProvider.overrideWith((ref) async => threads),
@@ -10170,6 +10332,36 @@ void _tenantLeaseTests() {
           ?.color;
       expect(background('old'), LizmoColors.amberBg);
       expect(background('new'), isNull);
+    });
+
+    /// Held for tenants, not earned: apart from the rent figures.
+    testWidgets('Today says how much is held in deposits', (tester) async {
+      await tester.pumpWidget(appWith(depositsHeld: 10000));
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱10,000 in deposits held'), findsOneWidget);
+    });
+
+    /// Said apart from rent: "2 months late" would be wrong of somebody who
+    /// only owes their deposit.
+    testWidgets('a deposit not received is said as a deposit', (tester) async {
+      await tester.pumpWidget(appWith(arrears: [
+        ArrearsRow(
+          leaseId: 'l1',
+          tenantName: 'Ana Reyes',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          outstanding: 0,
+          monthsLate: 0,
+          depositOwed: 5000,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Behind on rent or deposit'), findsOneWidget);
+      expect(find.text('Bed 1, 2B · deposit ₱5,000 not received'),
+          findsOneWidget);
     });
 
     testWidgets('nobody behind means no list', (tester) async {
