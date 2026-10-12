@@ -147,6 +147,18 @@ public class Payment {
         return status == PaymentStatus.CONFIRMED;
     }
 
+    /**
+     * When it was told to the app, from the application's clock.
+     *
+     * <p>How long a declared payment has waited is counted from this, by a job
+     * reading that same clock. Stamped on persist from the machine's clock
+     * instead, the two disagree the moment anything moves the application's
+     * -- which tests do, and which is how this was found.
+     */
+    public void toldAt(Instant at) {
+        this.createdAt = at;
+    }
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {

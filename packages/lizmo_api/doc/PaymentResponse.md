@@ -20,6 +20,7 @@ Name | Type | Description | Notes
 **rejectionReason** | **String** |  | [optional] 
 **proofUrl** | **String** |  | [optional] 
 **proofUrlExpiresInSeconds** | **int** |  | [optional] 
+**declaredAt** | [**DateTime**](DateTime.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -25,6 +25,7 @@ class PaymentResponse {
     this.rejectionReason,
     this.proofUrl,
     this.proofUrlExpiresInSeconds,
+    this.declaredAt,
   });
 
   ///
@@ -111,6 +112,14 @@ class PaymentResponse {
   ///
   int? proofUrlExpiresInSeconds;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? declaredAt;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PaymentResponse &&
     other.id == id &&
@@ -124,7 +133,8 @@ class PaymentResponse {
     other.remarks == remarks &&
     other.rejectionReason == rejectionReason &&
     other.proofUrl == proofUrl &&
-    other.proofUrlExpiresInSeconds == proofUrlExpiresInSeconds;
+    other.proofUrlExpiresInSeconds == proofUrlExpiresInSeconds &&
+    other.declaredAt == declaredAt;
 
   @override
   int get hashCode =>
@@ -140,10 +150,11 @@ class PaymentResponse {
     (remarks == null ? 0 : remarks!.hashCode) +
     (rejectionReason == null ? 0 : rejectionReason!.hashCode) +
     (proofUrl == null ? 0 : proofUrl!.hashCode) +
-    (proofUrlExpiresInSeconds == null ? 0 : proofUrlExpiresInSeconds!.hashCode);
+    (proofUrlExpiresInSeconds == null ? 0 : proofUrlExpiresInSeconds!.hashCode) +
+    (declaredAt == null ? 0 : declaredAt!.hashCode);
 
   @override
-  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, rejectionReason=$rejectionReason, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds]';
+  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, rejectionReason=$rejectionReason, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds, declaredAt=$declaredAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -207,6 +218,11 @@ class PaymentResponse {
     } else {
       json[r'proofUrlExpiresInSeconds'] = null;
     }
+    if (this.declaredAt != null) {
+      json[r'declaredAt'] = this.declaredAt!.toUtc().toIso8601String();
+    } else {
+      json[r'declaredAt'] = null;
+    }
     return json;
   }
 
@@ -239,6 +255,7 @@ class PaymentResponse {
         rejectionReason: mapValueOfType<String>(json, r'rejectionReason'),
         proofUrl: mapValueOfType<String>(json, r'proofUrl'),
         proofUrlExpiresInSeconds: mapValueOfType<int>(json, r'proofUrlExpiresInSeconds'),
+        declaredAt: mapDateTime(json, r'declaredAt', r''),
       );
     }
     return null;

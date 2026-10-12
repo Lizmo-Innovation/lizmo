@@ -37,7 +37,10 @@ public record PaymentResponse(
         String remarks,
         String rejectionReason,
         String proofUrl,
-        long proofUrlExpiresInSeconds) {
+        long proofUrlExpiresInSeconds,
+        // When the tenant said so in the app -- how long anybody has been
+        // waiting is counted from here, not from the date they gave.
+        java.time.Instant declaredAt) {
 
     public static PaymentResponse of(
             Payment payment, String periodLabel, String proofUrl, long expiresIn) {
@@ -53,6 +56,7 @@ public record PaymentResponse(
                 payment.getRemarks(),
                 payment.getRejectionReason(),
                 proofUrl,
-                expiresIn);
+                expiresIn,
+                payment.getCreatedAt());
     }
 }

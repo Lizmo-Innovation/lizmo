@@ -5951,6 +5951,10 @@
                     "proofUrlExpiresInSeconds": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "declaredAt": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "description": "A recorded rent payment"
@@ -6818,6 +6822,8 @@
                             "PAYMENT_DECLARED",
                             "PAYMENT_CONFIRMED",
                             "PAYMENT_REJECTED",
+                            "PAYMENT_AWAITING_CONFIRMATION",
+                            "PAYMENT_STILL_UNCONFIRMED",
                             "MAINTENANCE_REPORTED",
                             "MAINTENANCE_STATUS_CHANGED",
                             "PLATFORM_INVOICE_ISSUED",
@@ -6948,6 +6954,10 @@
                     },
                     "sentTo": {
                         "type": "string"
+                    },
+                    "declaredAt": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "description": "A payment waiting for the landlord to confirm it"

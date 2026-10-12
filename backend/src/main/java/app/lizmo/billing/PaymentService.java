@@ -254,6 +254,7 @@ public class PaymentService {
                 status,
                 command.remarks());
         payment.sendTo(channels.sentTo(lease, command.channelId()));
+        payment.toldAt(clock.instant());
         return payments.save(payment);
     }
 

@@ -22,6 +22,7 @@ class AwaitingRow {
     this.amount,
     this.paidOn,
     this.sentTo,
+    this.declaredAt,
   });
 
   ///
@@ -96,6 +97,14 @@ class AwaitingRow {
   ///
   String? sentTo;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? declaredAt;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is AwaitingRow &&
     other.leaseId == leaseId &&
@@ -106,7 +115,8 @@ class AwaitingRow {
     other.bedLabel == bedLabel &&
     other.amount == amount &&
     other.paidOn == paidOn &&
-    other.sentTo == sentTo;
+    other.sentTo == sentTo &&
+    other.declaredAt == declaredAt;
 
   @override
   int get hashCode =>
@@ -119,10 +129,11 @@ class AwaitingRow {
     (bedLabel == null ? 0 : bedLabel!.hashCode) +
     (amount == null ? 0 : amount!.hashCode) +
     (paidOn == null ? 0 : paidOn!.hashCode) +
-    (sentTo == null ? 0 : sentTo!.hashCode);
+    (sentTo == null ? 0 : sentTo!.hashCode) +
+    (declaredAt == null ? 0 : declaredAt!.hashCode);
 
   @override
-  String toString() => 'AwaitingRow[leaseId=$leaseId, paymentId=$paymentId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, amount=$amount, paidOn=$paidOn, sentTo=$sentTo]';
+  String toString() => 'AwaitingRow[leaseId=$leaseId, paymentId=$paymentId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, amount=$amount, paidOn=$paidOn, sentTo=$sentTo, declaredAt=$declaredAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -171,6 +182,11 @@ class AwaitingRow {
     } else {
       json[r'sentTo'] = null;
     }
+    if (this.declaredAt != null) {
+      json[r'declaredAt'] = this.declaredAt!.toUtc().toIso8601String();
+    } else {
+      json[r'declaredAt'] = null;
+    }
     return json;
   }
 
@@ -200,6 +216,7 @@ class AwaitingRow {
             : num.parse('${json[r'amount']}'),
         paidOn: mapDateTime(json, r'paidOn', r''),
         sentTo: mapValueOfType<String>(json, r'sentTo'),
+        declaredAt: mapDateTime(json, r'declaredAt', r''),
       );
     }
     return null;

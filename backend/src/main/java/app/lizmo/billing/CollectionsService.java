@@ -158,9 +158,11 @@ public class CollectionsService {
         }
 
         // Oldest first: the tenant who has waited longest for an answer is the
-        // one most likely to be wondering whether they were believed.
+        // one most likely to be wondering whether they were believed. By when
+        // they told the app rather than the date they gave, which is how long
+        // they have actually been waiting.
         awaiting.sort(Comparator.comparing(
-                CollectionsSummary.AwaitingRow::paidOn,
+                CollectionsSummary.AwaitingRow::declaredAt,
                 Comparator.nullsLast(Comparator.naturalOrder())));
 
         return new CollectionsSummary(
@@ -213,7 +215,8 @@ public class CollectionsService {
                 lease.getBedId() == null ? null : bedLabels.get(lease.getBedId()),
                 row.payment().getAmountPaid(),
                 row.payment().getPaymentDate(),
-                row.payment().getSentTo());
+                row.payment().getSentTo(),
+                row.payment().getCreatedAt());
     }
 
     /**

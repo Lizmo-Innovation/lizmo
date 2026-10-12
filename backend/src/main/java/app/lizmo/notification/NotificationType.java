@@ -49,6 +49,21 @@ public enum NotificationType {
 
     PAYMENT_CONFIRMED,
     PAYMENT_REJECTED,
+
+    /**
+     * To the landlord: a declared payment has waited three days for them, and
+     * again each week until they confirm it or say it did not arrive.
+     *
+     * <p>PAYMENT_DECLARED is said once, the moment the tenant taps. Missed,
+     * nothing ever said it again, and the month stayed unpaid on both sides.
+     */
+    PAYMENT_AWAITING_CONFIRMATION,
+
+    /**
+     * To the tenant, once: theirs has waited a week. Points at the
+     * conversation with their landlord, where asking is one tap.
+     */
+    PAYMENT_STILL_UNCONFIRMED,
     /** To the landlord: a tenant says something is broken. */
     MAINTENANCE_REPORTED,
 

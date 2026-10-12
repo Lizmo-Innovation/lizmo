@@ -73,6 +73,8 @@ public record CollectionsSummary(
             BigDecimal amount,
             java.time.LocalDate paidOn,
             // Which of the landlord's accounts to check. Null for cash.
-            String sentTo) {
+            String sentTo,
+            // When the tenant told the app: how long it has been waiting.
+            java.time.Instant declaredAt) {
     }
 }

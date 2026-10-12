@@ -133,7 +133,7 @@ public class BillingService {
 
         BigDecimal applied = advance.min(period.getAmountDue());
 
-        payments.save(new Payment(
+        Payment advanced = new Payment(
                 lease.getId(),
                 period.getId(),
                 applied,
@@ -141,7 +141,9 @@ public class BillingService {
                 PaymentMethod.ADVANCE,
                 lease.getTenantId(),
                 PaymentStatus.CONFIRMED,
-                "Advance rent, paid before moving in."));
+                "Advance rent, paid before moving in.");
+        advanced.toldAt(clock.instant());
+        payments.save(advanced);
 
         period.credit(applied);
         periods.save(period);
