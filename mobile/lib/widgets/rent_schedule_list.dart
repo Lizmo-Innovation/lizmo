@@ -27,7 +27,16 @@ class RentScheduleList extends StatelessWidget {
     this.header,
     this.payments = const [],
     this.confirmer,
+    this.onReceipt,
+    this.footer,
   });
+
+  /// Opens what was received for a paid month: its receipt. Null where there
+  /// are no receipts to open, and a paid month is then one plain line.
+  final void Function(BillingPeriodResponse)? onReceipt;
+
+  /// Below the months, scrolling with them.
+  final Widget? footer;
 
   /// What the tenant has said they paid, so a month already declared says
   /// it is waiting rather than offering "I have paid" a second time.
@@ -81,17 +90,22 @@ class RentScheduleList extends StatelessWidget {
 
     final top = header;
     final offset = top == null ? 0 : 1;
+    final bottom = footer;
+    final last = newestFirst.length + offset;
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      itemCount: newestFirst.length + offset,
-      separatorBuilder: (_, index) =>
-          SizedBox(height: top != null && index == 0 ? 16 : 8),
+      itemCount: last + (bottom == null ? 0 : 1),
+      separatorBuilder: (_, index) => SizedBox(
+          height: (top != null && index == 0) || index == last - 1 ? 16 : 8),
       itemBuilder: (_, index) => top != null && index == 0
           ? top
+          : index == last
+          ? bottom!
           : _MonthRow(
               period: newestFirst[index - offset],
               onTap: onTap,
+              onReceipt: onReceipt,
               waiting: [
                 for (final payment in payments)
                   if (payment.billingPeriodId == newestFirst[index - offset].id &&
@@ -109,12 +123,14 @@ class _MonthRow extends StatelessWidget {
   const _MonthRow({
     required this.period,
     this.onTap,
+    this.onReceipt,
     this.waiting = const [],
     this.confirmer,
   });
 
   final BillingPeriodResponse period;
   final void Function(BillingPeriodResponse)? onTap;
+  final void Function(BillingPeriodResponse)? onReceipt;
 
   /// Declared towards this month and not yet answered.
   final List<PaymentResponse> waiting;
@@ -147,7 +163,8 @@ class _MonthRow extends StatelessWidget {
     // plus "Settled" underneath, which made a month with nothing left to do
     // the tallest thing on the screen.
     if (paid) {
-      return Container(
+      final receipt = onReceipt;
+      final line = Container(
         key: ValueKey('paid-${period.id}'),
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         decoration: BoxDecoration(
@@ -172,8 +189,21 @@ class _MonthRow extends StatelessWidget {
               label: period.isDeposit ? 'Received' : label,
               status: _status(paid, overdue),
             ),
+            // The receipt, where there is one to open: a month paid is
+            // something people are asked to prove.
+            if (receipt != null) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.receipt_long_outlined, size: 18, color: ink),
+            ],
           ],
         ),
+      );
+      if (receipt == null) return line;
+      return InkWell(
+        key: ValueKey('receipt-for-${period.id}'),
+        onTap: () => receipt(period),
+        borderRadius: BorderRadius.circular(14),
+        child: line,
       );
     }
 

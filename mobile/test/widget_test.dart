@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/auth/active_role.dart';
+import 'package:lizmo/billing/receipt_providers.dart';
 import 'package:lizmo/main.dart';
 import 'package:lizmo/push/push_ask_memory.dart';
 import 'package:lizmo/push/push_channel.dart';
@@ -15,6 +16,7 @@ import 'package:lizmo/push/push_permission.dart';
 import 'package:lizmo/push/push_providers.dart';
 import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/forgot_password_screen.dart';
+import 'package:lizmo/screens/receipt_screen.dart';
 import 'package:lizmo/screens/login_screen.dart';
 import 'package:lizmo/screens/register_screen.dart';
 import 'package:lizmo/screens/create_property_screen.dart';
@@ -9724,8 +9726,15 @@ void _tenantLeaseTests() {
       PaymentDetails? payment,
       _FakeRentApi? api,
       PushChannel? push,
+      List<PaymentResponse>? payments,
+      List<ReceiptResponse>? receipts,
     }) => ProviderScope(
       overrides: [
+        if (payments != null)
+          myPaymentsProvider('l1').overrideWith((ref) async => payments),
+        if (receipts != null)
+          receiptsProvider((leaseId: 'l1', landlord: false))
+              .overrideWith((ref) async => receipts),
         if (push != null) ...[
           pushChannelProvider.overrideWithValue(push),
           pushAskMemoryProvider.overrideWithValue(InMemoryPushAskMemory()),
@@ -9943,6 +9952,60 @@ void _tenantLeaseTests() {
       // Picking the GCash account picked GCash, over the Maya tapped before.
       expect(api.declared.single.paymentMethod, 'GCASH');
       expect(api.declared.single.billingPeriodId, 'b1');
+    });
+
+    /// A month paid is something people are asked to prove.
+    testWidgets('a paid month opens its receipt', (tester) async {
+      await tester.pumpWidget(tenantApp(
+        [month(paid: 2500, status: BillingPeriodResponseStatusEnum.PAID)],
+        payments: [
+          PaymentResponse(
+            id: 'p1',
+            billingPeriodId: 'b1',
+            amountPaid: 2500,
+            status: PaymentResponseStatusEnum.CONFIRMED,
+            proofUrlExpiresInSeconds: 0,
+            receiptId: 'r1',
+            receiptNumber: '2026-0001',
+          ),
+        ],
+        receipts: [
+          ReceiptResponse(
+            id: 'r1',
+            paymentId: 'p1',
+            leaseId: 'l1',
+            number: '2026-0001',
+            issuedAt: DateTime.utc(2026, 10, 4),
+            receivedFrom: 'Ana Reyes',
+            receivedBy: 'Elena Bautista',
+            propertyName: 'Sunrise Apartments',
+            place: 'Bed 1, 2B',
+            periodLabel: 'October 2026',
+            kind: ReceiptResponseKindEnum.RENT,
+            amount: 2500,
+            paymentMethod: ReceiptResponsePaymentMethodEnum.GCASH,
+            paidOn: DateTime.utc(2026, 10, 4),
+            stillOwed: 0,
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.byKey(const ValueKey('all-receipts')), findsOneWidget);
+      await tapShown(tester, find.byKey(const ValueKey('receipt-for-b1')));
+
+      expect(find.byType(ReceiptScreen), findsOneWidget);
+      expect(find.text('No. 2026-0001'), findsOneWidget);
+    });
+
+    testWidgets('with nothing confirmed, there is no receipts link',
+        (tester) async {
+      await tester.pumpWidget(tenantApp([month()], payments: const []));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+
+      expect(find.byKey(const ValueKey('all-receipts')), findsNothing);
     });
 
     /// Said, and the landlord's answer comes later: worth being told of.

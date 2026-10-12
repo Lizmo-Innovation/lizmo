@@ -101,6 +101,16 @@ NotificationDestination? _forTenant(
     final thread = notification.relatedEntityId;
     if (thread != null) return OpenScreen(Routes.inquiry(thread));
   }
+  // A payment confirmed or recorded opens its receipt: the thing worth
+  // having, and the proof of what the notification says.
+  if (type == 'PAYMENT_CONFIRMED' &&
+      notification.relatedEntityType?.toJson() == 'PAYMENT') {
+    final lease = notification.leaseId;
+    final payment = notification.relatedEntityId;
+    if (lease != null && payment != null) {
+      return OpenDetail(Detail.receiptFor(lease, payment));
+    }
+  }
   return _forTenantByType(type);
 }
 

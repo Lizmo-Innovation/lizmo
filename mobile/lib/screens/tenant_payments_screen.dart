@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
+import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/declare_payment_sheet.dart';
@@ -144,6 +145,18 @@ class _RentState extends ConsumerState<_Rent> {
     }
   }
 
+  /// A paid month's receipt; the list, when it was paid in parts.
+  void _openReceipt(BillingPeriodResponse period, List<PaymentResponse> payments) {
+    final receipts = [
+      for (final payment in payments)
+        if (payment.billingPeriodId == period.id && payment.receiptId != null)
+          payment.receiptId!,
+    ];
+    context.openInTab(receipts.length == 1
+        ? Detail.receipt(widget.leaseId, receipts.single)
+        : Detail.receipts(widget.leaseId));
+  }
+
   @override
   Widget build(BuildContext context) {
     final billing = ref.watch(myBillingProvider(widget.leaseId));
@@ -176,6 +189,21 @@ class _RentState extends ConsumerState<_Rent> {
           confirmer: widget.confirmer,
           emptyDetail: 'Your first month appears once the tenancy has started.',
           onTap: _declare,
+          onReceipt: (period) => _openReceipt(period, declared),
+          footer: declared.any((payment) => payment.receiptId != null)
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('all-receipts'),
+                    onPressed: () =>
+                        context.openInTab(Detail.receipts(widget.leaseId)),
+                    icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                    label: const Text('All receipts'),
+                    style: TextButton.styleFrom(
+                        foregroundColor: LizmoColors.teal900),
+                  ),
+                )
+              : null,
           header: HowToPayPanel(
             key: const ValueKey('landlord-how-to-pay'),
             title: 'How to pay your landlord',

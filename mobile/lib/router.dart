@@ -16,6 +16,7 @@ import 'screens/create_property_screen.dart';
 import 'screens/create_unit_screen.dart';
 import 'screens/property_detail_screen.dart';
 import 'screens/property_share_screen.dart';
+import 'screens/receipt_screen.dart';
 import 'screens/inquiries_screen.dart' show TenantMessagesScreen;
 import 'screens/inquiry_screen.dart';
 import 'screens/rent_roll_screen.dart';
@@ -191,6 +192,14 @@ abstract final class Detail {
 
   /// How the landlord's tenants pay them. Reached from the account menu.
   static const paymentChannels = 'payment-channels';
+
+  /// Every receipt on a tenancy, and one of them -- by its own id, or by the
+  /// payment it acknowledges, which is what a notification knows.
+  static String receipts(String leaseId) => 'receipts/$leaseId';
+  static String receipt(String leaseId, String receiptId) =>
+      'receipts/$leaseId/$receiptId';
+  static String receiptFor(String leaseId, String paymentId) =>
+      'receipts/$leaseId/for/$paymentId';
 }
 
 extension OpenInTab on BuildContext {
@@ -520,6 +529,37 @@ List<RouteBase> _tenantDetails() => [
         path: Detail.notifications,
         builder: (context, state) => const NotificationsScreen(),
       ),
+      ..._receiptRoutes(landlord: false),
+    ];
+
+/// Receipts, from either end: the same screens, read through the endpoint
+/// each side is allowed.
+List<RouteBase> _receiptRoutes({required bool landlord}) => [
+      GoRoute(
+        path: 'receipts/:leaseId',
+        builder: (context, state) => ReceiptsScreen(
+          leaseId: state.pathParameters['leaseId']!,
+          landlord: landlord,
+        ),
+        routes: [
+          GoRoute(
+            path: 'for/:paymentId',
+            builder: (context, state) => ReceiptScreen(
+              leaseId: state.pathParameters['leaseId']!,
+              paymentId: state.pathParameters['paymentId']!,
+              landlord: landlord,
+            ),
+          ),
+          GoRoute(
+            path: ':receiptId',
+            builder: (context, state) => ReceiptScreen(
+              leaseId: state.pathParameters['leaseId']!,
+              receiptId: state.pathParameters['receiptId']!,
+              landlord: landlord,
+            ),
+          ),
+        ],
+      ),
     ];
 
 /// What a landlord can look at from any of their tabs, mounted under each.
@@ -539,6 +579,7 @@ List<RouteBase> _landlordDetails() => [
         path: Detail.paymentChannels,
         builder: (context, state) => const PaymentChannelsScreen(),
       ),
+      ..._receiptRoutes(landlord: true),
       GoRoute(
         path: 'maintenance/:reportId',
         builder: (context, state) => MaintenanceReportScreen(
