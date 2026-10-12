@@ -6596,6 +6596,13 @@
                     },
                     "overdue": {
                         "type": "boolean"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "RENT",
+                            "DEPOSIT"
+                        ]
                     }
                 },
                 "description": "One month of rent"
@@ -6918,6 +6925,9 @@
                     "oldestDueDate": {
                         "type": "string",
                         "format": "date"
+                    },
+                    "depositOwed": {
+                        "type": "number"
                     }
                 },
                 "description": "A tenant who is behind"
@@ -6993,6 +7003,9 @@
                         "items": {
                             "$ref": "#/components/schemas/AwaitingRow"
                         }
+                    },
+                    "depositsHeld": {
+                        "type": "number"
                     }
                 },
                 "description": "Rent across every property, this month"

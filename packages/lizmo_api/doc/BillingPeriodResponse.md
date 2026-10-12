@@ -18,6 +18,7 @@ Name | Type | Description | Notes
 **outstanding** | **num** |  | [optional] 
 **status** | **String** |  | [optional] 
 **overdue** | **bool** |  | [optional] 
+**kind** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

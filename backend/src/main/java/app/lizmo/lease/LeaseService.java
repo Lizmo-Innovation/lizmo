@@ -4,6 +4,8 @@ import app.lizmo.common.ApiException;
 import app.lizmo.notification.NotificationEntityType;
 import app.lizmo.notification.NotificationService;
 import app.lizmo.notification.NotificationType;
+import app.lizmo.billing.BillingPeriod;
+import app.lizmo.billing.BillingPeriodRepository;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.inquiry.InquiryService;
 import app.lizmo.lease.dto.EndLeaseRequest;
@@ -17,6 +19,7 @@ import app.lizmo.property.PropertyRepository;
 import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
 import app.lizmo.user.UserRepository;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +49,9 @@ public class LeaseService {
     /** So the conversation stops calling them a tenant once they are not. */
     private final InquiryService conversations;
 
+    /** The deposit charge, to check a refund against what was received. */
+    private final BillingPeriodRepository periods;
+
     public LeaseService(
             LeaseRepository leases,
             PropertyAccess access,
@@ -54,7 +60,8 @@ public class LeaseService {
             BedRepository beds,
             UserRepository users,
             NotificationService notifications,
-            InquiryService conversations) {
+            InquiryService conversations,
+            BillingPeriodRepository periods) {
         this.leases = leases;
         this.access = access;
         this.properties = properties;
@@ -63,6 +70,7 @@ public class LeaseService {
         this.users = users;
         this.notifications = notifications;
         this.conversations = conversations;
+        this.periods = periods;
     }
 
     /** The tenant's own leases, newest first. */
@@ -154,13 +162,20 @@ public class LeaseService {
                     "A lease cannot end before it starts.");
         }
 
+        BigDecimal received = depositReceived(lease);
         if (command != null && command.depositReturned() != null
-                && lease.getDepositAmount() != null
-                && command.depositReturned().compareTo(lease.getDepositAmount()) > 0) {
+                && received != null
+                && command.depositReturned().compareTo(received) > 0) {
             // Giving back more than was taken is a typo, not a generosity the
-            // ledger should record silently.
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "You cannot return more than the deposit that was taken.");
+            // ledger should record silently. Measured against what actually
+            // came in, now that a deposit is paid and confirmed: a tenant who
+            // handed over P2000 of P5000 cannot be given P5000 back.
+            boolean partly = lease.getDepositAmount() != null
+                    && received.compareTo(lease.getDepositAmount()) < 0;
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, partly
+                    ? "You received P%s of the deposit, so you cannot return more than that."
+                            .formatted(received.stripTrailingZeros().toPlainString())
+                    : "You cannot return more than the deposit that was taken.");
         }
 
         boolean terminated = command != null && Boolean.TRUE.equals(command.terminated());
@@ -222,6 +237,27 @@ public class LeaseService {
      * three beds loses one tenant and is still partly occupied, and only
      * counting tells you which.
      */
+    /**
+     * The deposit actually received: what was confirmed against its charge.
+     *
+     * <p>A lease charged at move-in whose charge was never written -- nobody
+     * opened its billing before it ended -- has had nothing confirmed, because
+     * nothing can be paid against a charge that does not exist. Only a lease
+     * from before deposits were charged, with no charge recorded, falls back to
+     * the figure on the lease.
+     */
+    private BigDecimal depositReceived(Lease lease) {
+        for (BillingPeriod period : periods.findByLeaseIdOrderByPeriodStartAsc(lease.getId())) {
+            if (period.isDeposit()) {
+                return period.getAmountPaid();
+            }
+        }
+        if (lease.isChargedAtMoveIn() && lease.getDepositAmount() != null) {
+            return BigDecimal.ZERO;
+        }
+        return lease.getDepositAmount();
+    }
+
     private void freeTheSlot(Unit unit, UUID bedId) {
         if (bedId == null) {
             unit.reflectBedOccupancy(true, false);

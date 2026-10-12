@@ -112,6 +112,17 @@ public class Lease {
     @Column(name = "inquiry_id", updatable = false)
     private UUID inquiryId;
 
+    /**
+     * Whether the deposit and advance are charged at move-in -- owed, paid and
+     * confirmed like rent -- rather than assumed taken.
+     *
+     * <p>Every lease written from now on. Those written before keep what they
+     * had: an existing tenancy whose later months are not written yet must not
+     * find one of them suddenly due, and overdue, the day this changed.
+     */
+    @Column(name = "charged_at_move_in", nullable = false, updatable = false)
+    private boolean chargedAtMoveIn;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -152,6 +163,15 @@ public class Lease {
         this.dueDateDay = dueDateDay;
         this.startDate = startDate;
         this.inquiryId = inquiryId;
+    }
+
+    /** Bills the deposit and advance at move-in. Set as the lease is written. */
+    public void chargeAtMoveIn() {
+        this.chargedAtMoveIn = true;
+    }
+
+    public boolean isChargedAtMoveIn() {
+        return chargedAtMoveIn;
     }
 
     /**

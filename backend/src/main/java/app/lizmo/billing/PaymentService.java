@@ -102,7 +102,7 @@ public class PaymentService {
                 NotificationType.PAYMENT_CONFIRMED,
                 "Your landlord recorded a payment",
                 "P%s recorded against %s."
-                        .formatted(plain(payment.getAmountPaid()), period.getPeriodLabel()),
+                        .formatted(plain(payment.getAmountPaid()), period.describe()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 
@@ -135,7 +135,7 @@ public class PaymentService {
                 NotificationType.PAYMENT_DECLARED,
                 "A tenant says they have paid",
                 "P%s for %s is waiting for you to confirm."
-                        .formatted(plain(payment.getAmountPaid()), period.getPeriodLabel()),
+                        .formatted(plain(payment.getAmountPaid()), period.describe()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 
@@ -178,7 +178,7 @@ public class PaymentService {
                 NotificationType.PAYMENT_CONFIRMED,
                 "Your payment was confirmed",
                 "P%s for %s. Thank you."
-                        .formatted(plain(payment.getAmountPaid()), period.getPeriodLabel()),
+                        .formatted(plain(payment.getAmountPaid()), period.describe()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 
@@ -211,12 +211,12 @@ public class PaymentService {
                 StringUtils.hasText(remarks)
                         ? "P%s for %s. %s".formatted(
                                 plain(payment.getAmountPaid()),
-                                period == null ? "rent" : period.getPeriodLabel(),
+                                period == null ? "rent" : period.describe(),
                                 remarks.trim())
                         : "P%s for %s was not confirmed. Ask your landlord why."
                                 .formatted(
                                         plain(payment.getAmountPaid()),
-                                        period == null ? "rent" : period.getPeriodLabel()),
+                                        period == null ? "rent" : period.describe()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 

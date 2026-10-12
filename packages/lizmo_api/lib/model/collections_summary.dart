@@ -20,6 +20,7 @@ class CollectionsSummary {
     this.tenanciesInArrears,
     this.inArrears = const [],
     this.awaiting = const [],
+    this.depositsHeld,
   });
 
   ///
@@ -66,6 +67,14 @@ class CollectionsSummary {
 
   List<AwaitingRow> awaiting;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? depositsHeld;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is CollectionsSummary &&
     other.dueThisMonth == dueThisMonth &&
@@ -74,7 +83,8 @@ class CollectionsSummary {
     other.awaitingConfirmation == awaitingConfirmation &&
     other.tenanciesInArrears == tenanciesInArrears &&
     _deepEquality.equals(other.inArrears, inArrears) &&
-    _deepEquality.equals(other.awaiting, awaiting);
+    _deepEquality.equals(other.awaiting, awaiting) &&
+    other.depositsHeld == depositsHeld;
 
   @override
   int get hashCode =>
@@ -85,10 +95,11 @@ class CollectionsSummary {
     (awaitingConfirmation == null ? 0 : awaitingConfirmation!.hashCode) +
     (tenanciesInArrears == null ? 0 : tenanciesInArrears!.hashCode) +
     (inArrears.hashCode) +
-    (awaiting.hashCode);
+    (awaiting.hashCode) +
+    (depositsHeld == null ? 0 : depositsHeld!.hashCode);
 
   @override
-  String toString() => 'CollectionsSummary[dueThisMonth=$dueThisMonth, collectedThisMonth=$collectedThisMonth, outstandingAllTime=$outstandingAllTime, awaitingConfirmation=$awaitingConfirmation, tenanciesInArrears=$tenanciesInArrears, inArrears=$inArrears, awaiting=$awaiting]';
+  String toString() => 'CollectionsSummary[dueThisMonth=$dueThisMonth, collectedThisMonth=$collectedThisMonth, outstandingAllTime=$outstandingAllTime, awaitingConfirmation=$awaitingConfirmation, tenanciesInArrears=$tenanciesInArrears, inArrears=$inArrears, awaiting=$awaiting, depositsHeld=$depositsHeld]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -119,6 +130,11 @@ class CollectionsSummary {
     }
       json[r'inArrears'] = this.inArrears;
       json[r'awaiting'] = this.awaiting;
+    if (this.depositsHeld != null) {
+      json[r'depositsHeld'] = this.depositsHeld;
+    } else {
+      json[r'depositsHeld'] = null;
+    }
     return json;
   }
 
@@ -150,6 +166,9 @@ class CollectionsSummary {
         tenanciesInArrears: mapValueOfType<int>(json, r'tenanciesInArrears'),
         inArrears: ArrearsRow.listFromJson(json[r'inArrears']),
         awaiting: AwaitingRow.listFromJson(json[r'awaiting']),
+        depositsHeld: json[r'depositsHeld'] == null
+            ? null
+            : num.parse('${json[r'depositsHeld']}'),
       );
     }
     return null;

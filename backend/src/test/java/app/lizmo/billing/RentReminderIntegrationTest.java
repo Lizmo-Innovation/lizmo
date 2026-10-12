@@ -1,5 +1,6 @@
 package app.lizmo.billing;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +38,9 @@ class RentReminderIntegrationTest extends IntegrationTest {
 
     @Autowired
     private MutableClock clock;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private String landlordToken;
     private String anaToken;
@@ -325,8 +329,28 @@ class RentReminderIntegrationTest extends IntegrationTest {
         return letWith(start, null);
     }
 
+    /**
+     * A first month already paid, the quick way: an advance on a lease from
+     * before move-in charges, where it was taken as paid when written.
+     */
     private String letWithAdvance(LocalDate start) throws Exception {
-        return letWith(start, "\"advanceAmount\":2500.00");
+        String beds = mvc.perform(get("/api/v1/units/" + unitId + "/beds")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        String lease = json.readTree(letRoom(
+                landlordToken,
+                anaToken,
+                "{\"unitId\":\"%s\",\"bedId\":\"%s\"}".formatted(
+                        unitId, json.readTree(beds).get(0).get("id").asText()),
+                "{\"rentAmount\":2500.00,\"startDate\":\"%s\"}".formatted(start)))
+                .get("id").asText();
+        // Before anything reads its billing: the months are written on that
+        // first read, under whichever rule the lease carries.
+        jdbc.update("UPDATE leases SET charged_at_move_in = false, advance_amount = 2500"
+                + " WHERE id = ?::uuid", lease);
+        mvc.perform(get("/api/v1/leases/" + lease + "/billing")
+                .header("Authorization", "Bearer " + landlordToken));
+        return lease;
     }
 
     private String letWith(LocalDate start, String extra) throws Exception {

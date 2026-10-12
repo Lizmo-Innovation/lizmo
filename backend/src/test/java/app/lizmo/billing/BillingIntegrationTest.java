@@ -1,5 +1,6 @@
 package app.lizmo.billing;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -39,6 +40,9 @@ class BillingIntegrationTest extends IntegrationTest {
 
     @Autowired
     private PaymentRepository payments;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private String landlordToken;
     private String anaToken;
@@ -153,7 +157,11 @@ class BillingIntegrationTest extends IntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
-    // ---- the advance -------------------------------------------------------
+    // ---- the advance, on a lease written before move-in charges ------------
+    //
+    // A lease written now owes its advance like any month, and those tests are
+    // in MoveInChargesIntegrationTest. These are the older leases, which keep
+    // what they had.
 
     /**
      * Ariel's call: rent handed over before moving in pays the first month. A
@@ -162,7 +170,7 @@ class BillingIntegrationTest extends IntegrationTest {
      */
     @Test
     void an_advance_pays_the_first_month() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":2500.00");
+        String lease = older(today(), "2500.00");
 
         billing(lease)
                 .andExpect(jsonPath("$[0].amountPaid").value(2500.00))
@@ -177,7 +185,7 @@ class BillingIntegrationTest extends IntegrationTest {
      */
     @Test
     void the_advance_leaves_a_payment_behind_it() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":2500.00");
+        String lease = older(today(), "2500.00");
         billing(lease).andExpect(status().isOk());
 
         assertThat(payments.findByLeaseIdOrderByPaymentDateDesc(
@@ -193,7 +201,7 @@ class BillingIntegrationTest extends IntegrationTest {
 
     @Test
     void a_part_advance_leaves_the_rest_owing() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":1000.00");
+        String lease = older(today(), "1000.00");
 
         billing(lease)
                 .andExpect(jsonPath("$[0].amountPaid").value(1000.00))
@@ -207,7 +215,7 @@ class BillingIntegrationTest extends IntegrationTest {
      */
     @Test
     void a_large_advance_does_not_spill_into_next_month() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":6000.00");
+        String lease = older(today(), "6000.00");
         billing(lease).andExpect(status().isOk());
 
         clock.advanceDays(32);
@@ -221,7 +229,7 @@ class BillingIntegrationTest extends IntegrationTest {
 
     @Test
     void the_advance_is_applied_once_however_often_it_is_read() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":2500.00");
+        String lease = older(today(), "2500.00");
 
         billing(lease).andExpect(status().isOk());
         billing(lease).andExpect(status().isOk());
@@ -261,7 +269,7 @@ class BillingIntegrationTest extends IntegrationTest {
 
     @Test
     void a_month_that_was_paid_is_never_late() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":2500.00");
+        String lease = older(today(), "2500.00");
         billing(lease).andExpect(status().isOk());
 
         clock.advanceDays(40);
@@ -290,7 +298,7 @@ class BillingIntegrationTest extends IntegrationTest {
 
     @Test
     void a_former_tenant_keeps_their_rent_history() throws Exception {
-        String lease = let(today(), "\"advanceAmount\":2500.00");
+        String lease = older(today(), "2500.00");
         billing(lease).andExpect(status().isOk());
 
         mvc.perform(post("/api/v1/leases/" + lease + "/end")
@@ -315,6 +323,21 @@ class BillingIntegrationTest extends IntegrationTest {
     private ResultActions billing(String leaseId) throws Exception {
         return mvc.perform(get("/api/v1/leases/" + leaseId + "/billing")
                 .header("Authorization", "Bearer " + landlordToken));
+    }
+
+    /**
+     * A lease as it was written before deposits and advances were charged at
+     * move-in: the advance taken to have been paid when the lease was written,
+     * and no deposit charge. Those tenancies keep that, so it stays tested.
+     *
+     * <p>Set straight in the database -- the API no longer writes leases this
+     * way, and no longer accepts an advance that is not whole months.
+     */
+    private String older(LocalDate start, String advance) throws Exception {
+        String lease = let(start, null);
+        jdbc.update("UPDATE leases SET charged_at_move_in = false, advance_amount = ?::numeric"
+                + " WHERE id = ?::uuid", advance, lease);
+        return lease;
     }
 
     /** @return the lease id */

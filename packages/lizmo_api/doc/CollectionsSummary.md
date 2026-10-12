@@ -15,6 +15,7 @@ Name | Type | Description | Notes
 **tenanciesInArrears** | **int** |  | [optional] 
 **inArrears** | [**List<ArrearsRow>**](ArrearsRow.md) |  | [optional] [default to const []]
 **awaiting** | [**List<AwaitingRow>**](AwaitingRow.md) |  | [optional] [default to const []]
+**depositsHeld** | **num** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -21,6 +21,7 @@ class ArrearsRow {
     this.outstanding,
     this.monthsLate,
     this.oldestDueDate,
+    this.depositOwed,
   });
 
   ///
@@ -87,6 +88,14 @@ class ArrearsRow {
   ///
   DateTime? oldestDueDate;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  num? depositOwed;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is ArrearsRow &&
     other.leaseId == leaseId &&
@@ -96,7 +105,8 @@ class ArrearsRow {
     other.bedLabel == bedLabel &&
     other.outstanding == outstanding &&
     other.monthsLate == monthsLate &&
-    other.oldestDueDate == oldestDueDate;
+    other.oldestDueDate == oldestDueDate &&
+    other.depositOwed == depositOwed;
 
   @override
   int get hashCode =>
@@ -108,10 +118,11 @@ class ArrearsRow {
     (bedLabel == null ? 0 : bedLabel!.hashCode) +
     (outstanding == null ? 0 : outstanding!.hashCode) +
     (monthsLate == null ? 0 : monthsLate!.hashCode) +
-    (oldestDueDate == null ? 0 : oldestDueDate!.hashCode);
+    (oldestDueDate == null ? 0 : oldestDueDate!.hashCode) +
+    (depositOwed == null ? 0 : depositOwed!.hashCode);
 
   @override
-  String toString() => 'ArrearsRow[leaseId=$leaseId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, outstanding=$outstanding, monthsLate=$monthsLate, oldestDueDate=$oldestDueDate]';
+  String toString() => 'ArrearsRow[leaseId=$leaseId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, outstanding=$outstanding, monthsLate=$monthsLate, oldestDueDate=$oldestDueDate, depositOwed=$depositOwed]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -155,6 +166,11 @@ class ArrearsRow {
     } else {
       json[r'oldestDueDate'] = null;
     }
+    if (this.depositOwed != null) {
+      json[r'depositOwed'] = this.depositOwed;
+    } else {
+      json[r'depositOwed'] = null;
+    }
     return json;
   }
 
@@ -183,6 +199,9 @@ class ArrearsRow {
             : num.parse('${json[r'outstanding']}'),
         monthsLate: mapValueOfType<int>(json, r'monthsLate'),
         oldestDueDate: mapDateTime(json, r'oldestDueDate', r''),
+        depositOwed: json[r'depositOwed'] == null
+            ? null
+            : num.parse('${json[r'depositOwed']}'),
       );
     }
     return null;

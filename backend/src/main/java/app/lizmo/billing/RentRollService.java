@@ -106,8 +106,13 @@ public class RentRollService {
             billing.catchUp(tenancy.lease(), today);
         }
 
+        // Rent only. A deposit is owed and confirmed like rent, but it is held
+        // rather than earned, and a month's roll is the month's rent.
         List<BillingPeriod> everyPeriod = periods.findByLeaseIdIn(
-                tenancies.stream().map(tenancy -> tenancy.lease().getId()).toList());
+                        tenancies.stream().map(tenancy -> tenancy.lease().getId()).toList())
+                .stream()
+                .filter(period -> !period.isDeposit())
+                .toList();
 
         YearMonth earliest = everyPeriod.stream()
                 .map(period -> YearMonth.from(period.getDueDate()))

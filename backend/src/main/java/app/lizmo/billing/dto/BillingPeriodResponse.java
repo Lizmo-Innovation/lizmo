@@ -29,7 +29,9 @@ public record BillingPeriodResponse(
         BigDecimal amountPaid,
         BigDecimal outstanding,
         BillingPeriodStatus status,
-        boolean overdue) {
+        boolean overdue,
+        // RENT or DEPOSIT: a deposit is money held, and is shown apart.
+        app.lizmo.billing.BillingPeriodKind kind) {
 
     public static BillingPeriodResponse of(BillingPeriod period, LocalDate today) {
         return new BillingPeriodResponse(
@@ -42,6 +44,7 @@ public record BillingPeriodResponse(
                 period.getAmountPaid(),
                 period.outstanding(),
                 period.getStatus(),
-                period.isOverdue(today));
+                period.isOverdue(today),
+                period.getKind());
     }
 }

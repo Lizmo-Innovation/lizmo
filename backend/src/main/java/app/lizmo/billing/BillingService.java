@@ -62,7 +62,7 @@ public class BillingService {
         LocalDate today = LocalDate.now(clock);
         catchUp(lease, today);
 
-        return periods.findByLeaseIdOrderByPeriodStartAsc(lease.getId()).stream()
+        return periods.findByLeaseIdOrderByPeriodStartAscKindAsc(lease.getId()).stream()
                 .map(period -> BillingPeriodResponse.of(period, today))
                 .toList();
     }
@@ -79,8 +79,17 @@ public class BillingService {
      */
     void catchUp(Lease lease, LocalDate today) {
         Set<LocalDate> already = new HashSet<>();
+        boolean hasDeposit = false;
         for (BillingPeriod period : periods.findByLeaseIdOrderByPeriodStartAsc(lease.getId())) {
-            already.add(period.getPeriodStart());
+            if (period.isDeposit()) {
+                hasDeposit = true;
+            } else {
+                already.add(period.getPeriodStart());
+            }
+        }
+
+        if (lease.isChargedAtMoveIn() && !hasDeposit) {
+            writeDeposit(lease, today);
         }
 
         boolean first = already.isEmpty();
@@ -107,7 +116,9 @@ public class BillingService {
                 continue;
             }
 
-            if (first) {
+            // A lease charged at move-in owes its advance like any month:
+            // nothing is paid until the landlord confirms it was.
+            if (first && !lease.isChargedAtMoveIn()) {
                 applyAdvance(lease, period);
             }
             first = false;
@@ -115,7 +126,30 @@ public class BillingService {
     }
 
     /**
+     * The security deposit, owed on move-in day, once that day has come.
+     *
+     * <p>Like the months, written when somebody looks: a reminder five days
+     * ahead asks for it early, which is how the tenant hears of it in time.
+     */
+    private void writeDeposit(Lease lease, LocalDate today) {
+        BigDecimal deposit = lease.getDepositAmount();
+        LocalDate moveIn = lease.getStartDate();
+        if (deposit == null || deposit.signum() <= 0 || moveIn == null || moveIn.isAfter(today)) {
+            return;
+        }
+        try {
+            periods.saveAndFlush(BillingPeriod.deposit(lease.getId(), moveIn, deposit));
+        } catch (DataIntegrityViolationException raced) {
+            // Two screens opened at once; the unique index kept it to one.
+        }
+    }
+
+    /**
      * Rent paid before moving in pays the first month.
+     *
+     * <p>Leases written before deposits and advances were charged at move-in
+     * only: there, the advance was taken to have been paid when the lease was
+     * written, and that is what those tenancies' months already say.
      *
      * <p>Ariel's call, and recorded as a payment rather than by simply marking
      * the period paid: amount_paid has to agree with the payments behind it, or

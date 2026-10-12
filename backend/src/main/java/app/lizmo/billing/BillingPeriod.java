@@ -59,6 +59,10 @@ public class BillingPeriod {
     @Column(nullable = false)
     private BillingPeriodStatus status = BillingPeriodStatus.UNPAID;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BillingPeriodKind kind = BillingPeriodKind.RENT;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -83,6 +87,32 @@ public class BillingPeriod {
         this.amountDue = amountDue;
         this.amountPaid = BigDecimal.ZERO;
         this.status = BillingPeriodStatus.UNPAID;
+    }
+
+    /**
+     * The security deposit, owed on move-in day and confirmed like rent.
+     */
+    public static BillingPeriod deposit(UUID leaseId, LocalDate moveIn, BigDecimal amount) {
+        BillingPeriod deposit = new BillingPeriod(
+                leaseId, "Security deposit", moveIn, moveIn, moveIn, amount);
+        deposit.kind = BillingPeriodKind.DEPOSIT;
+        return deposit;
+    }
+
+    public BillingPeriodKind getKind() {
+        return kind;
+    }
+
+    public boolean isDeposit() {
+        return kind == BillingPeriodKind.DEPOSIT;
+    }
+
+    /**
+     * What it is, in a sentence: "October 2026", or "the security deposit"
+     * -- because "P5000 for Security deposit" reads like a form.
+     */
+    public String describe() {
+        return isDeposit() ? "the security deposit" : periodLabel;
     }
 
     /**

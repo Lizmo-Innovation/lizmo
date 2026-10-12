@@ -142,6 +142,7 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
                 {"rentAmount":2500.00,"startDate":"2026-10-01",
                  "depositAmount":5000.00,"advanceAmount":2500.00}
                 """));
+        received(lease, "5000.00");
 
         mvc.perform(post("/api/v1/leases/" + lease + "/end")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -167,6 +168,7 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
         String lease = leaseFrom(accept("""
                 {"rentAmount":2500.00,"startDate":"2026-10-01","depositAmount":5000.00}
                 """));
+        received(lease, "5000.00");
 
         mvc.perform(post("/api/v1/leases/" + lease + "/end")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -189,6 +191,7 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
         String lease = leaseFrom(accept("""
                 {"rentAmount":2500.00,"startDate":"2026-10-01","depositAmount":5000.00}
                 """));
+        received(lease, "5000.00");
 
         mvc.perform(post("/api/v1/leases/" + lease + "/end")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -237,6 +240,8 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
         String lease = leaseFrom(accept("""
                 {"rentAmount":2500.00,"startDate":"2026-10-01","depositAmount":5000.00}
                 """));
+
+        received(lease, "5000.00");
 
         mvc.perform(post("/api/v1/leases/" + lease + "/end")
                         .header("Authorization", "Bearer " + landlordToken)
@@ -287,6 +292,29 @@ class LeaseDepositIntegrationTest extends IntegrationTest {
      * in the terms. Unlike {@code letRoom}, the response is handed back
      * unchecked: half of these are about a refusal.
      */
+    /**
+     * The landlord recording the deposit as handed over. A refund is checked
+     * against what was received, and a deposit is now paid like rent.
+     */
+    private void received(String lease, String amount) throws Exception {
+        String months = mvc.perform(get("/api/v1/leases/" + lease + "/billing")
+                        .header("Authorization", "Bearer " + landlordToken))
+                .andReturn().getResponse().getContentAsString();
+        String deposit = null;
+        for (var month : json.readTree(months)) {
+            if (month.get("kind").asText().equals("DEPOSIT")) {
+                deposit = month.get("id").asText();
+            }
+        }
+        mvc.perform(post("/api/v1/leases/" + lease + "/payments")
+                        .header("Authorization", "Bearer " + landlordToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"billingPeriodId":"%s","amountPaid":%s,"paymentMethod":"CASH"}
+                                """.formatted(deposit, amount)))
+                .andExpect(status().isCreated());
+    }
+
     private ResultActions accept(String terms) throws Exception {
         String thread = askAbout(anaToken, propertyId);
 

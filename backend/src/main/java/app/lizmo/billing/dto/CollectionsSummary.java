@@ -36,7 +36,10 @@ public record CollectionsSummary(
         int awaitingConfirmation,
         int tenanciesInArrears,
         List<ArrearsRow> inArrears,
-        List<AwaitingRow> awaiting) {
+        List<AwaitingRow> awaiting,
+        // Deposits received on live tenancies: money held, given back at
+        // move-out, and never counted as collected rent.
+        BigDecimal depositsHeld) {
 
     /**
      * One tenant who is behind.
@@ -54,7 +57,10 @@ public record CollectionsSummary(
             String bedLabel,
             BigDecimal outstanding,
             int monthsLate,
-            java.time.LocalDate oldestDueDate) {
+            java.time.LocalDate oldestDueDate,
+            // A deposit past its move-in day and not yet received. Apart from
+            // rent: it is owed, but it is not income.
+            BigDecimal depositOwed) {
     }
 
     /**

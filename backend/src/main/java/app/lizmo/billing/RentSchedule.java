@@ -50,16 +50,34 @@ public final class RentSchedule {
         LocalDate lastDay = lease.getEndDate() == null ? today
                 : (lease.getEndDate().isBefore(today) ? lease.getEndDate() : today);
 
+        // Months paid in advance are owed on move-in day, so they exist from
+        // then -- not from the start of each, as later months do. Still never
+        // past the tenancy's last day.
+        int ahead = monthsInAdvance(lease);
+        if (ahead > 1) {
+            LocalDate lastAhead = start.plusMonths(ahead - 1L);
+            if (lease.getEndDate() != null && lease.getEndDate().isBefore(lastAhead)) {
+                lastAhead = lease.getEndDate();
+            }
+            if (lastAhead.isAfter(lastDay)) {
+                lastDay = lastAhead;
+            }
+        }
+
         for (int index = 0; ; index++) {
             LocalDate periodStart = start.plusMonths(index);
             if (periodStart.isAfter(lastDay)) {
                 break;
             }
+            boolean paidAhead = index < ahead;
             months.add(new Month(
-                    LABEL.format(periodStart),
+                    paidAhead
+                            ? LABEL.format(periodStart) + " · advance"
+                            : LABEL.format(periodStart),
                     periodStart,
                     start.plusMonths(index + 1L).minusDays(1),
-                    dueDateFor(periodStart, lease.getDueDateDay()),
+                    // Paid ahead means paid on move-in, whatever the rent day.
+                    paidAhead ? start : dueDateFor(periodStart, lease.getDueDateDay()),
                     lease.getRentAmount()));
 
             // A tenancy cannot reasonably run past this, and an unbounded loop
@@ -80,6 +98,26 @@ public final class RentSchedule {
      * lease keeps the 31 it was given: clamping on write would quietly change
      * the agreement for every other month of the year.
      */
+    /**
+     * How many months the advance pays for, on a lease that charges it at
+     * move-in: "2 months advance" is the first two months, owed that day.
+     *
+     * <p>Whole months only. The lease refuses an advance that is not, so a
+     * remainder here can only be a lease from before that rule, and is left
+     * alone rather than guessed at.
+     */
+    static int monthsInAdvance(Lease lease) {
+        if (!lease.isChargedAtMoveIn()) {
+            return 0;
+        }
+        java.math.BigDecimal advance = lease.getAdvanceAmount();
+        java.math.BigDecimal rent = lease.getRentAmount();
+        if (advance == null || rent == null || advance.signum() <= 0 || rent.signum() <= 0) {
+            return 0;
+        }
+        return Math.min(advance.divideToIntegralValue(rent).intValue(), 24);
+    }
+
     static LocalDate dueDateFor(LocalDate periodStart, short dueDateDay) {
         YearMonth month = YearMonth.from(periodStart);
         int day = Math.min(Math.max(dueDateDay, 1), month.lengthOfMonth());

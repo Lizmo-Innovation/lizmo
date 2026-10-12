@@ -212,9 +212,9 @@ public class RentReminderService {
             raise.raise(
                     lease.getTenantId(),
                     type,
-                    "Rent is due soon",
+                    period.isDeposit() ? "Your security deposit is due soon" : "Rent is due soon",
                     "P%s for %s, due on %s.%s"
-                            .formatted(plain(owed), period.getPeriodLabel(),
+                            .formatted(plain(owed), period.describe(),
                                     period.getDueDate(), alsoWaiting),
                     NotificationEntityType.BILLING_PERIOD,
                     period.getId());
@@ -222,12 +222,12 @@ public class RentReminderService {
             raise.raise(
                     lease.getTenantId(),
                     type,
-                    "Rent is overdue",
+                    period.isDeposit() ? "Your security deposit is overdue" : "Rent is overdue",
                     // No threat and no penalty: Lizmo does not know what the
                     // arrangement is between these two people, and inventing
                     // consequences would be speaking for the landlord.
                     "P%s for %s was due on %s and has not been recorded as paid.%s"
-                            .formatted(plain(owed), period.getPeriodLabel(),
+                            .formatted(plain(owed), period.describe(),
                                     period.getDueDate(), alsoWaiting),
                     NotificationEntityType.BILLING_PERIOD,
                     period.getId());
@@ -274,7 +274,7 @@ public class RentReminderService {
                     "The tenant in %s at %s says they paid P%s for %s, %s. Confirm it, or say "
                             .formatted(placeOf(live.lease()), live.property().getName(),
                                     plain(payment.getAmountPaid()),
-                                    period == null ? "rent" : period.getPeriodLabel(),
+                                    period == null ? "rent" : period.describe(),
                                     ago(waited))
                             + "it did not arrive.",
                     NotificationEntityType.PAYMENT,
@@ -304,7 +304,7 @@ public class RentReminderService {
                     "Your payment is not confirmed yet",
                     "P%s for %s has waited %s for your landlord to confirm it. It is worth "
                             .formatted(plain(payment.getAmountPaid()),
-                                    period == null ? "rent" : period.getPeriodLabel(),
+                                    period == null ? "rent" : period.describe(),
                                     days(waited))
                             + "asking them.",
                     // Their conversation with the landlord, where asking is one

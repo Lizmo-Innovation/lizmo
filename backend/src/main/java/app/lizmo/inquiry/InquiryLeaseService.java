@@ -129,6 +129,10 @@ public class InquiryLeaseService {
                 terms == null ? null : terms.depositAmount(),
                 terms == null ? null : terms.advanceAmount());
 
+        // Owed, paid and confirmed like rent, rather than assumed taken.
+        lease.chargeAtMoveIn();
+        requireWholeMonths(lease.getAdvanceAmount(), rent);
+
         try {
             lease = leases.saveAndFlush(lease);
         } catch (DataIntegrityViolationException raced) {
@@ -314,6 +318,27 @@ public class InquiryLeaseService {
             case 3 -> day + "rd";
             default -> day + "th";
         };
+    }
+
+    /**
+     * An advance pays for whole months: "P5000 covers August and September".
+     *
+     * <p>Refused otherwise, rather than rounded. P3000 on P2500 rent would
+     * pay one month and leave P500 the app has nowhere to put -- money taken
+     * and recorded nowhere.
+     */
+    private static void requireWholeMonths(BigDecimal advance, BigDecimal rent) {
+        if (advance == null || advance.signum() <= 0 || rent == null || rent.signum() <= 0) {
+            return;
+        }
+        if (advance.remainder(rent).signum() != 0) {
+            BigDecimal one = rent.stripTrailingZeros();
+            BigDecimal two = rent.multiply(BigDecimal.valueOf(2)).stripTrailingZeros();
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "An advance pays for whole months of rent: P%s or P%s, not P%s."
+                            .formatted(one.toPlainString(), two.toPlainString(),
+                                    advance.stripTrailingZeros().toPlainString()));
+        }
     }
 
     private static ApiException unavailable(String message) {

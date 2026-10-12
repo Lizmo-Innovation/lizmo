@@ -1,5 +1,6 @@
 package app.lizmo.billing;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +35,9 @@ class CollectionsIntegrationTest extends IntegrationTest {
 
     @Autowired
     private MutableClock clock;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private String landlordToken;
     private String anaToken;
@@ -99,7 +103,11 @@ class CollectionsIntegrationTest extends IntegrationTest {
 
     @Test
     void an_advance_counts_as_collected() throws Exception {
-        letWith(anaToken, 0, LocalDate.now(clock), "\"advanceAmount\":2500.00");
+        // On a lease from before move-in charges, where it was taken as paid.
+        // A lease written now counts it once the landlord confirms it.
+        String lease = let(anaToken, 0, LocalDate.now(clock));
+        jdbc.update("UPDATE leases SET charged_at_move_in = false, advance_amount = 2500"
+                + " WHERE id = ?::uuid", lease);
 
         collections()
                 .andExpect(jsonPath("$.dueThisMonth").value(2500.00))

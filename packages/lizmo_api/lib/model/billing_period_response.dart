@@ -23,6 +23,7 @@ class BillingPeriodResponse {
     this.outstanding,
     this.status,
     this.overdue,
+    this.kind,
   });
 
   ///
@@ -99,6 +100,8 @@ class BillingPeriodResponse {
   ///
   bool? overdue;
 
+  BillingPeriodResponseKindEnum? kind;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is BillingPeriodResponse &&
     other.id == id &&
@@ -110,7 +113,8 @@ class BillingPeriodResponse {
     other.amountPaid == amountPaid &&
     other.outstanding == outstanding &&
     other.status == status &&
-    other.overdue == overdue;
+    other.overdue == overdue &&
+    other.kind == kind;
 
   @override
   int get hashCode =>
@@ -124,10 +128,11 @@ class BillingPeriodResponse {
     (amountPaid == null ? 0 : amountPaid!.hashCode) +
     (outstanding == null ? 0 : outstanding!.hashCode) +
     (status == null ? 0 : status!.hashCode) +
-    (overdue == null ? 0 : overdue!.hashCode);
+    (overdue == null ? 0 : overdue!.hashCode) +
+    (kind == null ? 0 : kind!.hashCode);
 
   @override
-  String toString() => 'BillingPeriodResponse[id=$id, label=$label, periodStart=$periodStart, periodEnd=$periodEnd, dueDate=$dueDate, amountDue=$amountDue, amountPaid=$amountPaid, outstanding=$outstanding, status=$status, overdue=$overdue]';
+  String toString() => 'BillingPeriodResponse[id=$id, label=$label, periodStart=$periodStart, periodEnd=$periodEnd, dueDate=$dueDate, amountDue=$amountDue, amountPaid=$amountPaid, outstanding=$outstanding, status=$status, overdue=$overdue, kind=$kind]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -181,6 +186,11 @@ class BillingPeriodResponse {
     } else {
       json[r'overdue'] = null;
     }
+    if (this.kind != null) {
+      json[r'kind'] = this.kind;
+    } else {
+      json[r'kind'] = null;
+    }
     return json;
   }
 
@@ -215,6 +225,7 @@ class BillingPeriodResponse {
             : num.parse('${json[r'outstanding']}'),
         status: BillingPeriodResponseStatusEnum.fromJson(json[r'status']),
         overdue: mapValueOfType<bool>(json, r'overdue'),
+        kind: BillingPeriodResponseKindEnum.fromJson(json[r'kind']),
       );
     }
     return null;
@@ -342,6 +353,84 @@ class BillingPeriodResponseStatusEnumTypeTransformer {
 
   /// The singleton instance of this transformer.
   static BillingPeriodResponseStatusEnumTypeTransformer? _instance;
+}
+
+
+
+enum BillingPeriodResponseKindEnum {
+  RENT._(r'RENT'),
+  DEPOSIT._(r'DEPOSIT'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const BillingPeriodResponseKindEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [BillingPeriodResponseKindEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static BillingPeriodResponseKindEnum? fromJson(dynamic value) => BillingPeriodResponseKindEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [BillingPeriodResponseKindEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<BillingPeriodResponseKindEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <BillingPeriodResponseKindEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = BillingPeriodResponseKindEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [BillingPeriodResponseKindEnum] to String,
+/// and [decode] dynamic data back to [BillingPeriodResponseKindEnum].
+class BillingPeriodResponseKindEnumTypeTransformer {
+  factory BillingPeriodResponseKindEnumTypeTransformer() => _instance ??= const BillingPeriodResponseKindEnumTypeTransformer._();
+
+  const BillingPeriodResponseKindEnumTypeTransformer._();
+
+  String encode(BillingPeriodResponseKindEnum data) => data._value;
+
+  /// Returns the instance of [BillingPeriodResponseKindEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  BillingPeriodResponseKindEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is BillingPeriodResponseKindEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'RENT': return BillingPeriodResponseKindEnum.RENT;
+        case r'DEPOSIT': return BillingPeriodResponseKindEnum.DEPOSIT;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static BillingPeriodResponseKindEnumTypeTransformer? _instance;
 }
 
 

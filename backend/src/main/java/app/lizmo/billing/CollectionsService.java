@@ -87,13 +87,26 @@ public class CollectionsService {
         BigDecimal outstanding = BigDecimal.ZERO;
         List<Behind> behind = new ArrayList<>();
 
+        BigDecimal depositsHeld = BigDecimal.ZERO;
+
         for (Lease lease : live) {
             BigDecimal owedOnThisLease = BigDecimal.ZERO;
+            BigDecimal depositOwed = BigDecimal.ZERO;
             int monthsLate = 0;
             LocalDate oldest = null;
 
             for (BillingPeriod period : periods.findByLeaseIdOrderByPeriodStartAsc(
                     lease.getId())) {
+
+                // Held, not earned: kept out of every rent figure, and counted
+                // on its own.
+                if (period.isDeposit()) {
+                    depositsHeld = depositsHeld.add(period.getAmountPaid());
+                    if (period.isOverdue(today)) {
+                        depositOwed = depositOwed.add(period.outstanding());
+                    }
+                    continue;
+                }
 
                 // "This month" means the month rent fell due in, not the month
                 // the period covers. A tenancy running the 3rd to the 2nd
@@ -118,8 +131,10 @@ public class CollectionsService {
 
             outstanding = outstanding.add(owedOnThisLease);
 
-            if (monthsLate > 0) {
-                behind.add(new Behind(lease, owedOnThisLease, monthsLate, oldest));
+            // A deposit not received after move-in is something to chase, so
+            // the tenant is listed -- with it said apart from the rent.
+            if (monthsLate > 0 || depositOwed.signum() > 0) {
+                behind.add(new Behind(lease, owedOnThisLease, monthsLate, oldest, depositOwed));
             }
         }
 
@@ -172,7 +187,8 @@ public class CollectionsService {
                 awaiting.size(),
                 arrears.size(),
                 arrears,
-                awaiting);
+                awaiting,
+                depositsHeld);
     }
 
     /**
@@ -238,7 +254,8 @@ public class CollectionsService {
 
     /** A tenancy in arrears, before it has been dressed up for the screen. */
     private record Behind(
-            Lease lease, BigDecimal owed, int monthsLate, LocalDate oldest) {
+            Lease lease, BigDecimal owed, int monthsLate, LocalDate oldest,
+            BigDecimal depositOwed) {
     }
 
     private CollectionsSummary.ArrearsRow arrearsRow(
@@ -257,7 +274,8 @@ public class CollectionsService {
                 lease.getBedId() == null ? null : bedLabels.get(lease.getBedId()),
                 row.owed(),
                 row.monthsLate(),
-                row.oldest());
+                row.oldest(),
+                row.depositOwed());
     }
 
 }
