@@ -816,6 +816,69 @@
                 }
             }
         },
+        "/api/v1/leases/{id}/term": {
+            "put": {
+                "tags": [
+                    "Leases"
+                ],
+                "summary": "Set when a lease ends",
+                "description": "Sets, moves or takes away the last day of a lease. A later date extends it. Both of them are warned as the date nears; passing it ends nothing. The tenant is told of the change.",
+                "operationId": "changeLeaseTerm",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeaseTermRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The lease, with its new end date",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A date already gone, or before it began",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not a lease of yours",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/beds/{id}": {
             "put": {
                 "tags": [
@@ -5582,6 +5645,12 @@
                         "type": "number",
                         "description": "Rent paid before moving in, which pays for the first month. Kept apart from the deposit because it is money the landlord has earned rather than money they are holding.",
                         "example": 2500.0
+                    },
+                    "endsOn": {
+                        "type": "string",
+                        "description": "The last day of the lease, if it was agreed for a term. Null for month to month, which is the usual case. Both of them are warned as it nears; passing it ends nothing.",
+                        "format": "date",
+                        "example": "2027-08-31"
                     }
                 },
                 "description": "Terms for the lease being created"
@@ -5655,6 +5724,10 @@
                             "ENDED",
                             "TERMINATED"
                         ]
+                    },
+                    "termEndsOn": {
+                        "type": "string",
+                        "format": "date"
                     }
                 },
                 "description": "A tenant attached to a bed or a unit"
@@ -7684,6 +7757,18 @@
                     }
                 },
                 "description": "A phone to push notifications to"
+            },
+            "LeaseTermRequest": {
+                "type": "object",
+                "properties": {
+                    "endsOn": {
+                        "type": "string",
+                        "description": "The last day of the lease. Null takes the end date away, leaving it month to month. A later date is how a lease is extended.",
+                        "format": "date",
+                        "example": "2027-08-31"
+                    }
+                },
+                "description": "When a lease is meant to end"
             }
         }
     }

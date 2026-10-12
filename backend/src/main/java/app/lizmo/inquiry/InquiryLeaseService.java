@@ -131,6 +131,15 @@ public class InquiryLeaseService {
 
         // Owed, paid and confirmed like rent, rather than assumed taken.
         lease.chargeAtMoveIn();
+
+        // A term, if one was agreed. Most rooms here are month to month.
+        if (terms != null && terms.endsOn() != null) {
+            if (!terms.endsOn().isAfter(start)) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "The lease has to end after it starts.");
+            }
+            lease.endTermOn(terms.endsOn());
+        }
         requireWholeMonths(lease.getAdvanceAmount(), rent);
 
         try {

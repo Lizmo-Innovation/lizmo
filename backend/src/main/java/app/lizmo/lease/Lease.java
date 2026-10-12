@@ -99,6 +99,21 @@ public class Lease {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    /**
+     * When the lease is meant to end, if it was agreed for a term.
+     *
+     * <p>Not {@link #endDate}, which is when it did. Passing this ends
+     * nothing: somebody may still be sleeping in the bed, and only the
+     * landlord can say whether they are.
+     */
+    @Column(name = "term_ends_on")
+    private LocalDate termEndsOn;
+
+    /** The last warning sent about {@link #termEndsOn}; null for none yet. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "term_warned")
+    private TermWarning termWarned;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LeaseStatus status = LeaseStatus.ACTIVE;
@@ -186,6 +201,34 @@ public class Lease {
         }
         this.status = outcome;
         this.endDate = on;
+    }
+
+    /**
+     * Sets when the lease is meant to end, or clears it with null.
+     *
+     * <p>A new date starts the warnings over: a lease extended by a year is
+     * worth warning about again a year from now.
+     */
+    public void endTermOn(LocalDate on) {
+        if (on != null && !on.isAfter(startDate)) {
+            throw new IllegalArgumentException("A lease must end after it starts.");
+        }
+        if (!java.util.Objects.equals(on, termEndsOn)) {
+            termWarned = null;
+        }
+        this.termEndsOn = on;
+    }
+
+    public void warned(TermWarning warning) {
+        this.termWarned = warning;
+    }
+
+    public LocalDate getTermEndsOn() {
+        return termEndsOn;
+    }
+
+    public TermWarning getTermWarned() {
+        return termWarned;
     }
 
     public boolean isActive() {

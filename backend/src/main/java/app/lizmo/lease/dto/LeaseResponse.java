@@ -35,7 +35,11 @@ public record LeaseResponse(
         short dueDateDay,
         LocalDate startDate,
         LocalDate endDate,
-        LeaseStatus status) {
+        LeaseStatus status,
+
+        /* When it is meant to end, if it was agreed for a term. Not endDate,
+           which is when it did. */
+        LocalDate termEndsOn) {
 
     public static LeaseResponse of(
             Lease lease,
@@ -62,6 +66,7 @@ public record LeaseResponse(
                 lease.getDueDateDay(),
                 lease.getStartDate(),
                 lease.getEndDate(),
-                lease.getStatus());
+                lease.getStatus(),
+                lease.getTermEndsOn());
     }
 }

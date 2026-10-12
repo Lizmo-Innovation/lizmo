@@ -21,4 +21,7 @@ public interface LeaseRepository extends JpaRepository<Lease, UUID> {
     Optional<Lease> findByBedIdAndStatus(UUID bedId, LeaseStatus status);
 
     Optional<Lease> findByInquiryIdAndStatus(UUID inquiryId, LeaseStatus status);
+
+    /** Live tenancies agreed for a term: the only ones with an end to warn about. */
+    List<Lease> findByStatusAndTermEndsOnIsNotNull(LeaseStatus status);
 }

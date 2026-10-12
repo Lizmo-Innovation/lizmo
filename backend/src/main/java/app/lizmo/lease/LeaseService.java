@@ -20,6 +20,7 @@ import app.lizmo.property.Unit;
 import app.lizmo.property.UnitRepository;
 import app.lizmo.user.UserRepository;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,8 @@ public class LeaseService {
     /** The deposit charge, to check a refund against what was received. */
     private final BillingPeriodRepository periods;
 
+    private final Clock clock;
+
     public LeaseService(
             LeaseRepository leases,
             PropertyAccess access,
@@ -61,7 +64,8 @@ public class LeaseService {
             UserRepository users,
             NotificationService notifications,
             InquiryService conversations,
-            BillingPeriodRepository periods) {
+            BillingPeriodRepository periods,
+            Clock clock) {
         this.leases = leases;
         this.access = access;
         this.properties = properties;
@@ -71,6 +75,7 @@ public class LeaseService {
         this.notifications = notifications;
         this.conversations = conversations;
         this.periods = periods;
+        this.clock = clock;
     }
 
     /** The tenant's own leases, newest first. */
@@ -206,6 +211,70 @@ public class LeaseService {
                 lease.getId());
 
         return describe(lease);
+    }
+
+    /**
+     * Sets, moves or takes away the date a lease is meant to end.
+     *
+     * <p>Allowed while the property is locked: an end date bills nothing, and
+     * a landlord extending a tenant who is staying is answering for a tenancy
+     * that already exists.
+     *
+     * <p>The tenant is told, because a lease that changed under them is
+     * exactly what they would want to know -- and an extension is usually
+     * the answer to something they asked.
+     */
+    @Transactional
+    public LeaseResponse changeTerm(UUID leaseId, UUID landlordId, LocalDate endsOn) {
+        Lease lease = leases.findById(leaseId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such lease."));
+        Unit unit = units.findById(lease.getUnitId())
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such unit."));
+        access.reducible(unit.getPropertyId(), landlordId);
+
+        if (!lease.isActive()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "That lease has already ended.");
+        }
+        if (endsOn != null && endsOn.isBefore(LocalDate.now(clock))) {
+            // A date already gone is not a plan. If they have moved out, that
+            // is ending the tenancy, which frees the room; this would not.
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Pick a date from today on. If they have already left, end the tenancy.");
+        }
+        if (endsOn != null && !endsOn.isAfter(lease.getStartDate())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "The lease has to end after it starts.");
+        }
+
+        LocalDate was = lease.getTermEndsOn();
+        if (java.util.Objects.equals(was, endsOn)) {
+            return describe(lease);
+        }
+        lease.endTermOn(endsOn);
+        leases.save(lease);
+
+        notifications.raise(
+                lease.getTenantId(),
+                NotificationType.LEASE_EXPIRING,
+                termChangedTitle(was, endsOn),
+                endsOn == null
+                        ? "It carries on month to month, as long as you both want."
+                        : "Your lease now runs until %s.".formatted(LeaseDates.spoken(endsOn)),
+                NotificationEntityType.LEASE,
+                lease.getId());
+
+        return describe(lease);
+    }
+
+    private static String termChangedTitle(LocalDate was, LocalDate now) {
+        if (now == null) {
+            return "Your lease no longer has an end date";
+        }
+        if (was != null && now.isAfter(was)) {
+            return "Your lease was extended";
+        }
+        return "Your lease has an end date";
     }
 
     /**

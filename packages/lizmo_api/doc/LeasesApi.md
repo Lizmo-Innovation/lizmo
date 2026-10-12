@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost:8082*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**changeLeaseTerm**](LeasesApi.md#changeleaseterm) | **PUT** /api/v1/leases/{id}/term | Set when a lease ends
 [**deleteLeaseDocument**](LeasesApi.md#deleteleasedocument) | **DELETE** /api/v1/leases/{leaseId}/documents/{documentId} | Remove a document
 [**endLease**](LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
 [**getTenantForLease**](LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
@@ -21,6 +22,51 @@ Method | HTTP request | Description
 [**updateLeaseDocument**](LeasesApi.md#updateleasedocument) | **PATCH** /api/v1/leases/{leaseId}/documents/{documentId} | Rename it, or change who can see it
 [**uploadLeaseDocument**](LeasesApi.md#uploadleasedocument) | **POST** /api/v1/leases/{leaseId}/documents | Attach a document
 
+
+# **changeLeaseTerm**
+> LeaseResponse changeLeaseTerm(id, leaseTermRequest)
+
+Set when a lease ends
+
+Sets, moves or takes away the last day of a lease. A later date extends it. Both of them are warned as the date nears; passing it ends nothing. The tenant is told of the change.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = LeasesApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final leaseTermRequest = LeaseTermRequest(); // LeaseTermRequest | 
+
+try {
+    final result = api_instance.changeLeaseTerm(id, leaseTermRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling LeasesApi->changeLeaseTerm: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **leaseTermRequest** | [**LeaseTermRequest**](LeaseTermRequest.md)|  | 
+
+### Return type
+
+[**LeaseResponse**](LeaseResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **deleteLeaseDocument**
 > deleteLeaseDocument(leaseId, documentId)

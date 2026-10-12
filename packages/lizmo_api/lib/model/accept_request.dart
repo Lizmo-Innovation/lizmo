@@ -20,6 +20,7 @@ class AcceptRequest {
     this.startDate,
     this.depositAmount,
     this.advanceAmount,
+    this.endsOn,
   });
 
   /// Which room to give them. Required when the request is about the property rather than one room, and ignored when it names one.
@@ -94,6 +95,15 @@ class AcceptRequest {
   ///
   num? advanceAmount;
 
+  /// The last day of the lease, if it was agreed for a term. Null for month to month, which is the usual case. Both of them are warned as it nears; passing it ends nothing.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? endsOn;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is AcceptRequest &&
     other.unitId == unitId &&
@@ -102,7 +112,8 @@ class AcceptRequest {
     other.dueDateDay == dueDateDay &&
     other.startDate == startDate &&
     other.depositAmount == depositAmount &&
-    other.advanceAmount == advanceAmount;
+    other.advanceAmount == advanceAmount &&
+    other.endsOn == endsOn;
 
   @override
   int get hashCode =>
@@ -113,10 +124,11 @@ class AcceptRequest {
     (dueDateDay == null ? 0 : dueDateDay!.hashCode) +
     (startDate == null ? 0 : startDate!.hashCode) +
     (depositAmount == null ? 0 : depositAmount!.hashCode) +
-    (advanceAmount == null ? 0 : advanceAmount!.hashCode);
+    (advanceAmount == null ? 0 : advanceAmount!.hashCode) +
+    (endsOn == null ? 0 : endsOn!.hashCode);
 
   @override
-  String toString() => 'AcceptRequest[unitId=$unitId, bedId=$bedId, rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, depositAmount=$depositAmount, advanceAmount=$advanceAmount]';
+  String toString() => 'AcceptRequest[unitId=$unitId, bedId=$bedId, rentAmount=$rentAmount, dueDateDay=$dueDateDay, startDate=$startDate, depositAmount=$depositAmount, advanceAmount=$advanceAmount, endsOn=$endsOn]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -155,6 +167,11 @@ class AcceptRequest {
     } else {
       json[r'advanceAmount'] = null;
     }
+    if (this.endsOn != null) {
+      json[r'endsOn'] = _dateFormatter.format(this.endsOn!);
+    } else {
+      json[r'endsOn'] = null;
+    }
     return json;
   }
 
@@ -186,6 +203,7 @@ class AcceptRequest {
         advanceAmount: json[r'advanceAmount'] == null
             ? null
             : num.parse('${json[r'advanceAmount']}'),
+        endsOn: mapDateTime(json, r'endsOn', r''),
       );
     }
     return null;

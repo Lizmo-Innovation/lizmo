@@ -3,6 +3,7 @@ package app.lizmo.lease;
 import app.lizmo.common.ApiError;
 import app.lizmo.lease.dto.EndLeaseRequest;
 import app.lizmo.lease.dto.LeaseResponse;
+import app.lizmo.lease.dto.LeaseTermRequest;
 import app.lizmo.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -82,5 +84,22 @@ public class LeaseController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) EndLeaseRequest command) {
         return leases.end(id, currentUser.requireId(), command);
+    }
+
+    @PutMapping("/leases/{id}/term")
+    @Operation(operationId = "changeLeaseTerm", summary = "Set when a lease ends",
+            description = "Sets, moves or takes away the last day of a lease. A later "
+                    + "date extends it. Both of them are warned as the date nears; "
+                    + "passing it ends nothing. The tenant is told of the change.")
+    @ApiResponse(responseCode = "200", description = "The lease, with its new end date",
+            content = @Content(schema = @Schema(implementation = LeaseResponse.class)))
+    @ApiResponse(responseCode = "400", description = "A date already gone, or before it began",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "404", description = "Not a lease of yours",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public LeaseResponse changeTerm(
+            @PathVariable UUID id,
+            @Valid @RequestBody LeaseTermRequest command) {
+        return leases.changeTerm(id, currentUser.requireId(), command.endsOn());
     }
 }

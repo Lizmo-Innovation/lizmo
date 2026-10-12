@@ -51,5 +51,11 @@ public record AcceptRequest(
                 description = "Rent paid before moving in, which pays for the first "
                         + "month. Kept apart from the deposit because it is money the "
                         + "landlord has earned rather than money they are holding.")
-        BigDecimal advanceAmount) {
+        BigDecimal advanceAmount,
+
+        @Schema(example = "2027-08-31",
+                description = "The last day of the lease, if it was agreed for a term. "
+                        + "Null for month to month, which is the usual case. Both of "
+                        + "them are warned as it nears; passing it ends nothing.")
+        LocalDate endsOn) {
 }

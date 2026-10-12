@@ -31,6 +31,7 @@ class LeaseResponse {
     this.startDate,
     this.endDate,
     this.status,
+    this.termEndsOn,
   });
 
   ///
@@ -171,6 +172,14 @@ class LeaseResponse {
 
   LeaseResponseStatusEnum? status;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? termEndsOn;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is LeaseResponse &&
     other.id == id &&
@@ -190,7 +199,8 @@ class LeaseResponse {
     other.dueDateDay == dueDateDay &&
     other.startDate == startDate &&
     other.endDate == endDate &&
-    other.status == status;
+    other.status == status &&
+    other.termEndsOn == termEndsOn;
 
   @override
   int get hashCode =>
@@ -212,10 +222,11 @@ class LeaseResponse {
     (dueDateDay == null ? 0 : dueDateDay!.hashCode) +
     (startDate == null ? 0 : startDate!.hashCode) +
     (endDate == null ? 0 : endDate!.hashCode) +
-    (status == null ? 0 : status!.hashCode);
+    (status == null ? 0 : status!.hashCode) +
+    (termEndsOn == null ? 0 : termEndsOn!.hashCode);
 
   @override
-  String toString() => 'LeaseResponse[id=$id, tenantId=$tenantId, tenantName=$tenantName, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, rentAmount=$rentAmount, depositAmount=$depositAmount, advanceAmount=$advanceAmount, depositReturned=$depositReturned, depositSettlement=$depositSettlement, dueDateDay=$dueDateDay, startDate=$startDate, endDate=$endDate, status=$status]';
+  String toString() => 'LeaseResponse[id=$id, tenantId=$tenantId, tenantName=$tenantName, propertyId=$propertyId, propertyName=$propertyName, unitId=$unitId, unitNumber=$unitNumber, bedId=$bedId, bedLabel=$bedLabel, rentAmount=$rentAmount, depositAmount=$depositAmount, advanceAmount=$advanceAmount, depositReturned=$depositReturned, depositSettlement=$depositSettlement, dueDateDay=$dueDateDay, startDate=$startDate, endDate=$endDate, status=$status, termEndsOn=$termEndsOn]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -309,6 +320,11 @@ class LeaseResponse {
     } else {
       json[r'status'] = null;
     }
+    if (this.termEndsOn != null) {
+      json[r'termEndsOn'] = _dateFormatter.format(this.termEndsOn!);
+    } else {
+      json[r'termEndsOn'] = null;
+    }
     return json;
   }
 
@@ -353,6 +369,7 @@ class LeaseResponse {
         startDate: mapDateTime(json, r'startDate', r''),
         endDate: mapDateTime(json, r'endDate', r''),
         status: LeaseResponseStatusEnum.fromJson(json[r'status']),
+        termEndsOn: mapDateTime(json, r'termEndsOn', r''),
       );
     }
     return null;

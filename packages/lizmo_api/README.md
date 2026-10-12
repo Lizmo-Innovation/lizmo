@@ -98,6 +98,7 @@ Class | Method | HTTP request | Description
 *DevicesApi* | [**forgetDevice**](doc//DevicesApi.md#forgetdevice) | **DELETE** /api/v1/me/devices | Stop pushing to this phone
 *DevicesApi* | [**registerDevice**](doc//DevicesApi.md#registerdevice) | **PUT** /api/v1/me/devices | Push to this phone
 *FindingAPlaceApi* | [**findPropertyByCode**](doc//FindingAPlaceApi.md#findpropertybycode) | **GET** /api/v1/properties/lookup | Find a property by its code
+*LeasesApi* | [**changeLeaseTerm**](doc//LeasesApi.md#changeleaseterm) | **PUT** /api/v1/leases/{id}/term | Set when a lease ends
 *LeasesApi* | [**deleteLeaseDocument**](doc//LeasesApi.md#deleteleasedocument) | **DELETE** /api/v1/leases/{leaseId}/documents/{documentId} | Remove a document
 *LeasesApi* | [**endLease**](doc//LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
 *LeasesApi* | [**getTenantForLease**](doc//LeasesApi.md#gettenantforlease) | **GET** /api/v1/leases/{leaseId}/tenant | Who is living here
@@ -215,6 +216,7 @@ Class | Method | HTTP request | Description
  - [LandlordSummary](doc//LandlordSummary.md)
  - [LeaseDocumentResponse](doc//LeaseDocumentResponse.md)
  - [LeaseResponse](doc//LeaseResponse.md)
+ - [LeaseTermRequest](doc//LeaseTermRequest.md)
  - [LoginRequest](doc//LoginRequest.md)
  - [MaintenanceNote](doc//MaintenanceNote.md)
  - [MaintenanceReportResponse](doc//MaintenanceReportResponse.md)

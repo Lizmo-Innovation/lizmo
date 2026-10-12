@@ -38,6 +38,7 @@ doc/LandlordSummary.md
 doc/LeaseDocumentResponse.md
 doc/LeaseResponse.md
 doc/LeasesApi.md
+doc/LeaseTermRequest.md
 doc/LizmoBillingApi.md
 doc/LoginRequest.md
 doc/MaintenanceApi.md
@@ -162,6 +163,7 @@ lib/model/landlord_detail.dart
 lib/model/landlord_summary.dart
 lib/model/lease_document_response.dart
 lib/model/lease_response.dart
+lib/model/lease_term_request.dart
 lib/model/login_request.dart
 lib/model/maintenance_note.dart
 lib/model/maintenance_report_response.dart
@@ -217,6 +219,7 @@ lib/model/vacancy_row.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
 test/devices_api_test.dart
+test/lease_term_request_test.dart
 test/photo_order_test.dart
 test/property_photo_test.dart
 test/register_device_test.dart

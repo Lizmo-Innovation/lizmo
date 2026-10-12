@@ -16,6 +16,68 @@ class LeasesApi {
 
   final ApiClient apiClient;
 
+  /// Set when a lease ends
+  ///
+  /// Sets, moves or takes away the last day of a lease. A later date extends it. Both of them are warned as the date nears; passing it ends nothing. The tenant is told of the change.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [LeaseTermRequest] leaseTermRequest (required):
+  Future<Response> changeLeaseTermWithHttpInfo(String id, LeaseTermRequest leaseTermRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/leases/{id}/term'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = leaseTermRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Set when a lease ends
+  ///
+  /// Sets, moves or takes away the last day of a lease. A later date extends it. Both of them are warned as the date nears; passing it ends nothing. The tenant is told of the change.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [LeaseTermRequest] leaseTermRequest (required):
+  Future<LeaseResponse?> changeLeaseTerm(String id, LeaseTermRequest leaseTermRequest, { Future<void>? abortTrigger, }) async {
+    final response = await changeLeaseTermWithHttpInfo(id, leaseTermRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'LeaseResponse',) as LeaseResponse;
+    
+    }
+    return null;
+  }
+
   /// Remove a document
   ///
   /// Gone for good, file and record together.

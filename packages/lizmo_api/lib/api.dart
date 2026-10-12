@@ -78,6 +78,7 @@ part 'model/landlord_detail.dart';
 part 'model/landlord_summary.dart';
 part 'model/lease_document_response.dart';
 part 'model/lease_response.dart';
+part 'model/lease_term_request.dart';
 part 'model/login_request.dart';
 part 'model/maintenance_note.dart';
 part 'model/maintenance_report_response.dart';
