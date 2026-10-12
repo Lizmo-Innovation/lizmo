@@ -301,6 +301,8 @@ class ApiClient {
           return RecordPaymentRequest.fromJson(value);
         case 'RefreshRequest':
           return RefreshRequest.fromJson(value);
+        case 'RegisterDevice':
+          return RegisterDevice.fromJson(value);
         case 'RentRoll':
           return RentRoll.fromJson(value);
         case 'RentRollRow':

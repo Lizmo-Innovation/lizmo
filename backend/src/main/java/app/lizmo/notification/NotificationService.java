@@ -6,6 +6,7 @@ import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.notification.dto.NotificationResponse;
 import app.lizmo.inquiry.InquiryRepository;
+import app.lizmo.push.PushNotifier;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Telling people what happened.
@@ -34,6 +37,7 @@ public class NotificationService {
     private final PaymentRepository payments;
     private final BillingPeriodRepository periods;
     private final InquiryRepository inquiries;
+    private final PushNotifier push;
     private final Clock clock;
 
     public NotificationService(
@@ -41,11 +45,13 @@ public class NotificationService {
             PaymentRepository payments,
             BillingPeriodRepository periods,
             InquiryRepository inquiries,
+            PushNotifier push,
             Clock clock) {
         this.notifications = notifications;
         this.payments = payments;
         this.periods = periods;
         this.inquiries = inquiries;
+        this.push = push;
         this.clock = clock;
     }
 
@@ -68,8 +74,58 @@ public class NotificationService {
         if (recipient == null) {
             return;
         }
-        notifications.save(new Notification(
+        Notification saved = notifications.save(new Notification(
                 recipient, type, title, message, entityType, entityId, clock.instant()));
+
+        // To their phones too -- but only once what it announces has happened.
+        // Raised in the middle of other work (confirming a payment, writing a
+        // lease); if that work is rolled back, nothing may have been pushed
+        // about it. And before the request ends rather than in the background:
+        // Cloud Run gives the server CPU only while it is answering one.
+        afterCommit(() -> push.deliver(
+                recipient,
+                saved.getId(),
+                type.name(),
+                title,
+                message,
+                entityType == null ? null : entityType.name(),
+                entityId,
+                leaseOf(entityType, entityId),
+                propertyOf(entityType, entityId)));
+    }
+
+    private static void afterCommit(Runnable then) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            then.run();
+                        }
+                    });
+        } else {
+            then.run();
+        }
+    }
+
+    /** The tenancy a notification leads to, as {@link #mine} works it out. */
+    private UUID leaseOf(NotificationEntityType kind, UUID about) {
+        if (kind == null || about == null) {
+            return null;
+        }
+        return switch (kind) {
+            case LEASE -> about;
+            case PAYMENT -> payments.findById(about).map(p -> p.getLeaseId()).orElse(null);
+            case BILLING_PERIOD -> periods.findById(about).map(p -> p.getLeaseId()).orElse(null);
+            default -> null;
+        };
+    }
+
+    private UUID propertyOf(NotificationEntityType kind, UUID about) {
+        if (kind != NotificationEntityType.INQUIRY || about == null) {
+            return null;
+        }
+        return inquiries.findById(about).map(inquiry -> inquiry.getPropertyId()).orElse(null);
     }
 
     /**

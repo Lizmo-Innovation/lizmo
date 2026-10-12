@@ -24,6 +24,7 @@ doc/ChannelProperties.md
 doc/CollectionsSummary.md
 doc/CompletePasswordResetRequest.md
 doc/CompleteRegistrationRequest.md
+doc/DevicesApi.md
 doc/EndLeaseRequest.md
 doc/FindingAPlaceApi.md
 doc/InquiryMessageResponse.md
@@ -72,6 +73,7 @@ doc/PropertyRequest.md
 doc/PropertyResponse.md
 doc/RecordPaymentRequest.md
 doc/RefreshRequest.md
+doc/RegisterDevice.md
 doc/RentApi.md
 doc/RentRoll.md
 doc/RentRollRow.md
@@ -106,6 +108,7 @@ lib/api.dart
 lib/api/admin_api.dart
 lib/api/asking_about_a_place_api.dart
 lib/api/auth_api.dart
+lib/api/devices_api.dart
 lib/api/finding_a_place_api.dart
 lib/api/leases_api.dart
 lib/api/lizmo_billing_api.dart
@@ -187,6 +190,7 @@ lib/model/property_request.dart
 lib/model/property_response.dart
 lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
+lib/model/register_device.dart
 lib/model/rent_roll.dart
 lib/model/rent_roll_row.dart
 lib/model/report_problem_request.dart
@@ -212,6 +216,8 @@ lib/model/vacancy_floor.dart
 lib/model/vacancy_row.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
+test/devices_api_test.dart
 test/photo_order_test.dart
 test/property_photo_test.dart
+test/register_device_test.dart
 test/tenancy_test.dart

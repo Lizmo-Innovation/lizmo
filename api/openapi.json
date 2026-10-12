@@ -72,6 +72,10 @@
             "description": "Lizmo's own staff"
         },
         {
+            "name": "Devices",
+            "description": "Phones that receive push notifications"
+        },
+        {
             "name": "Signing up",
             "description": "Creating an account"
         },
@@ -760,6 +764,54 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/api/v1/me/devices": {
+            "put": {
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Push to this phone",
+                "description": "After signing in, and whenever the phone's token changes. The same token twice is one phone; a token another account held moves here.",
+                "operationId": "registerDevice",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterDevice"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Devices"
+                ],
+                "summary": "Stop pushing to this phone",
+                "description": "On signing out, so a shared phone stops being told the last person's business. Only ever the caller's own.",
+                "operationId": "forgetDevice",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -7610,6 +7662,28 @@
                     }
                 },
                 "description": "The tenancy a conversation belongs to"
+            },
+            "RegisterDevice": {
+                "required": [
+                    "platform",
+                    "token"
+                ],
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "maxLength": 4096,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "platform": {
+                        "type": "string",
+                        "enum": [
+                            "ANDROID",
+                            "IOS"
+                        ]
+                    }
+                },
+                "description": "A phone to push notifications to"
             }
         }
     }

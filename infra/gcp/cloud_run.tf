@@ -150,6 +150,19 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.api_base_url
       }
 
+      # Push notifications through Firebase, which was added to this same
+      # project: the API sends as its own service account, with no key file
+      # (see api_sends_push in iam.tf).
+      env {
+        name  = "LIZMO_PUSH_ENABLED"
+        value = "true"
+      }
+
+      env {
+        name  = "LIZMO_FIREBASE_PROJECT"
+        value = var.project_id
+      }
+
       env {
         name = "DB_URL"
         value_source {

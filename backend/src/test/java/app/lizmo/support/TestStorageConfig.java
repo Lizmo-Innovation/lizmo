@@ -68,6 +68,17 @@ public class TestStorageConfig {
     }
 
     /**
+     * Pushes recorded rather than sent: there is no Firebase under test, and
+     * the switch is off anyway. Primary, so it wins over the do-nothing
+     * sender that the switch being off brings in.
+     */
+    @Bean
+    @Primary
+    RecordingPushSender pushSender() {
+        return new RecordingPushSender();
+    }
+
+    /**
      * Signed-in people, for the tests whose subject is something else.
      */
     @Bean

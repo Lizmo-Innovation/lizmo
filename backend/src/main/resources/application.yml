@@ -90,6 +90,13 @@ lizmo:
     service-account: ${LIZMO_JOBS_SERVICE_ACCOUNT:}
     audience: ${LIZMO_JOBS_AUDIENCE:}
 
+  # Notifications to phones as well as the bell. Off unless switched on:
+  # locally there is no Firebase to reach. On in Cloud Run, with Firebase in
+  # the same project the API runs in.
+  push:
+    enabled: ${LIZMO_PUSH_ENABLED:false}
+    firebase-project: ${LIZMO_FIREBASE_PROJECT:}
+
   s3:
     bucket: ${AWS_S3_BUCKET:lizmo-uploads-local}
     region: ${AWS_REGION:ap-southeast-1}

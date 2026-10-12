@@ -13,6 +13,7 @@ import app.lizmo.document.DocumentOwnerType;
 import app.lizmo.document.StoredDocumentRepository;
 import app.lizmo.lease.LeaseRepository;
 import app.lizmo.lease.LeaseStatus;
+import app.lizmo.push.DeviceTokenRepository;
 import app.lizmo.support.Accounts;
 import app.lizmo.support.InMemoryDocumentStore;
 import app.lizmo.support.IntegrationTest;
@@ -49,6 +50,9 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
 
     @Autowired
     private LeaseRepository leases;
+
+    @Autowired
+    private DeviceTokenRepository devices;
 
     // ---- what stops it ----------------------------------------------------
 
@@ -179,6 +183,24 @@ class AccountDeletionIntegrationTest extends IntegrationTest {
                                 {"identifier":"%s","password":"%s"}
                                 """.formatted(ana.email(), Accounts.PASSWORD)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /** The phone in a drawer, never signed out of, is told nothing more either. */
+    @Test
+    void no_phone_is_pushed_to_again() throws Exception {
+        Accounts.Account ana = accounts.tenant("Ana");
+        String phone = "ana-phone-" + ana.id();
+        mvc.perform(put("/api/v1/me/devices")
+                        .header("Authorization", "Bearer " + ana.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"%s\",\"platform\":\"ANDROID\"}".formatted(phone)))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(delete("/api/v1/me")
+                        .header("Authorization", "Bearer " + ana.token()))
+                .andExpect(status().isNoContent());
+
+        assertThat(devices.findByToken(phone)).isEmpty();
     }
 
     @Test

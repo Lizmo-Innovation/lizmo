@@ -66,6 +66,7 @@ public class AccountDeletionService {
     private final StoredDocumentRepository documents;
     private final DocumentStore store;
     private final RefreshTokenRepository refreshTokens;
+    private final app.lizmo.push.DeviceTokenRepository devices;
     private final PasswordEncoder passwordEncoder;
 
     public AccountDeletionService(
@@ -79,6 +80,7 @@ public class AccountDeletionService {
             StoredDocumentRepository documents,
             DocumentStore store,
             RefreshTokenRepository refreshTokens,
+            app.lizmo.push.DeviceTokenRepository devices,
             PasswordEncoder passwordEncoder) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
@@ -90,6 +92,7 @@ public class AccountDeletionService {
         this.documents = documents;
         this.store = store;
         this.refreshTokens = refreshTokens;
+        this.devices = devices;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -139,6 +142,8 @@ public class AccountDeletionService {
         // Every session ends now, including the one making this request and any
         // refresh token sitting in another device's storage.
         refreshTokens.deleteByUserId(userId);
+        // And no phone hears about this account again, signed out or not.
+        devices.deleteByUserId(userId);
 
         user.close(released(userId), passwordEncoder.encode(UUID.randomUUID().toString()));
         users.save(user);

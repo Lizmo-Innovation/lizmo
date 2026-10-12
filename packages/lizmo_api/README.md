@@ -95,6 +95,8 @@ Class | Method | HTTP request | Description
 *AuthApi* | [**logout**](doc//AuthApi.md#logout) | **POST** /api/v1/auth/logout | Revoke a refresh token
 *AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Exchange a refresh token for a new pair
 *AuthApi* | [**startPasswordReset**](doc//AuthApi.md#startpasswordreset) | **POST** /api/v1/auth/password-reset | Send me a reset code
+*DevicesApi* | [**forgetDevice**](doc//DevicesApi.md#forgetdevice) | **DELETE** /api/v1/me/devices | Stop pushing to this phone
+*DevicesApi* | [**registerDevice**](doc//DevicesApi.md#registerdevice) | **PUT** /api/v1/me/devices | Push to this phone
 *FindingAPlaceApi* | [**findPropertyByCode**](doc//FindingAPlaceApi.md#findpropertybycode) | **GET** /api/v1/properties/lookup | Find a property by its code
 *LeasesApi* | [**deleteLeaseDocument**](doc//LeasesApi.md#deleteleasedocument) | **DELETE** /api/v1/leases/{leaseId}/documents/{documentId} | Remove a document
 *LeasesApi* | [**endLease**](doc//LeasesApi.md#endlease) | **POST** /api/v1/leases/{id}/end | End a tenancy
@@ -241,6 +243,7 @@ Class | Method | HTTP request | Description
  - [PropertyResponse](doc//PropertyResponse.md)
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)
+ - [RegisterDevice](doc//RegisterDevice.md)
  - [RentRoll](doc//RentRoll.md)
  - [RentRollRow](doc//RentRollRow.md)
  - [ReportProblemRequest](doc//ReportProblemRequest.md)

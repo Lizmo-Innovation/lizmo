@@ -10,6 +10,9 @@ locals {
     "storage.googleapis.com",
     "cloudscheduler.googleapis.com",
     "iam.googleapis.com",
+    # Push notifications. Switched on when Firebase was added to the project;
+    # listed so this stack keeps it on.
+    "fcm.googleapis.com",
   ]
 }
 
