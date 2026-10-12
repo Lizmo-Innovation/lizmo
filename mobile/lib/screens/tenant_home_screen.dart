@@ -5,6 +5,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
+import '../notice/notice_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
@@ -12,6 +13,7 @@ import '../widgets/account_sheet.dart';
 import '../widgets/lease_ending_notice.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/rent_status_card.dart';
+import '../widgets/tenant_notices.dart';
 import '../widgets/your_landlord_card.dart';
 import '../widgets/role_switcher.dart';
 
@@ -70,6 +72,13 @@ class TenantHomeScreen extends ConsumerWidget {
 
     final nothingToSay = !unfinished && waiting.isEmpty && lease == null;
 
+    // From the landlord to everybody in the building. Near the top while
+    // something is unread -- "the water is off on Saturday" is about the
+    // next few days -- and below everything else once it has been seen.
+    final notices = ref.watch(myNoticesProvider).valueOrNull ??
+        const <MyNoticeResponse>[];
+    final noticesFirst = notices.any((notice) => notice.read != true);
+
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
       body: Column(
@@ -109,6 +118,7 @@ class TenantHomeScreen extends ConsumerWidget {
                 ref.invalidate(myTenantProfileProvider);
                 ref.invalidate(myInquiriesProvider);
                 ref.invalidate(myLeasesProvider);
+                ref.invalidate(myNoticesProvider);
                 if (lease != null) {
                   ref.invalidate(myBillingProvider(lease.id!));
                   ref.invalidate(myPaymentsProvider(lease.id!));
@@ -121,6 +131,8 @@ class TenantHomeScreen extends ConsumerWidget {
                     YourLandlordCard(lease: lease!),
                     const SizedBox(height: 12),
                   ],
+
+                  if (noticesFirst) TenantNotices(notices: notices),
 
                   if (unfinished) ...[
                     _FinishYourProfile(noNumber: noNumber),
@@ -163,8 +175,7 @@ class TenantHomeScreen extends ConsumerWidget {
 
                   if (nothingToSay) const _AllQuiet(),
 
-                  const SizedBox(height: 10),
-                  _NoticesNotYet(),
+                  if (!noticesFirst) TenantNotices(notices: notices),
                 ],
               ),
             ),
@@ -292,20 +303,6 @@ class _AllQuiet extends StatelessWidget {
 ///
 /// A tenant who never sees an announcement should know whether that means
 /// there are none or that the feature does not exist.
-class _NoticesNotYet extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
-        'Announcements from your landlord will appear here. They cannot send '
-        'any yet.',
-        style: LizmoType.rowSub,
-      ),
-    );
-  }
-}
-
 class _Card extends StatelessWidget {
   const _Card({
     required this.colour,

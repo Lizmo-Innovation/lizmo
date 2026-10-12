@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 
 import '../auth/active_role.dart';
 import '../inquiry/inquiry_providers.dart';
+import '../notice/notice_providers.dart';
 import '../notifications/notification_links.dart';
 import '../notifications/notification_providers.dart';
 import '../router.dart';
@@ -43,6 +44,9 @@ final pushMessagesProvider = Provider<void>((ref) {
 
   void arrived(Map<String, String> data) {
     ref.invalidate(myNotificationsProvider);
+    if (data['relatedEntityType'] == 'NOTICE') {
+      ref.invalidate(myNoticesProvider);
+    }
     if (data['relatedEntityType'] == 'INQUIRY') {
       ref.invalidate(myInquiriesProvider);
       final thread = _present(data['relatedEntityId']);

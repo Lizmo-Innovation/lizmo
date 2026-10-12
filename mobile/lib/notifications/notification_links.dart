@@ -101,6 +101,11 @@ NotificationDestination? _forTenant(
     final thread = notification.relatedEntityId;
     if (thread != null) return OpenScreen(Routes.inquiry(thread));
   }
+  // An announcement opens itself, which is also what counts it as read.
+  if (notification.relatedEntityType?.toJson() == 'NOTICE') {
+    final notice = notification.relatedEntityId;
+    if (notice != null) return OpenDetail(Detail.notice(notice));
+  }
   // A payment confirmed or recorded opens its receipt: the thing worth
   // having, and the proof of what the notification says.
   if (type == 'PAYMENT_CONFIRMED' &&

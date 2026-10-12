@@ -6,6 +6,7 @@ import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/announcements_screen.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/widgets/post_notice_sheet.dart';
+import 'package:lizmo/widgets/tenant_notices.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
@@ -133,6 +134,8 @@ void main() {
     });
   });
 
+  _tenantSide(() => api);
+
   group('what is up', () {
     NoticeResponse notice({
       String id = 'n1',
@@ -208,6 +211,85 @@ void main() {
   });
 }
 
+void _tenantSide(_FakeAnnouncements Function() api) {
+  group("on the tenant's side", () {
+    MyNoticeResponse notice(String id, {bool read = false, String? unit}) =>
+        MyNoticeResponse(
+          id: id,
+          propertyName: 'Sunrise Apartments',
+          unitNumber: unit,
+          fromName: 'Elena Bautista',
+          title: 'Notice $id',
+          message: 'Water off from 9am to noon.',
+          postedAt: DateTime.utc(2026, 10, 10, 2),
+          until: DateTime.utc(2026, 10, 17),
+          read: read,
+        );
+
+    testWidgets('unread first, then the rest', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: TenantNotices(notices: [
+            notice('old', read: true),
+            notice('new'),
+          ]),
+        ),
+      ));
+
+      expect(find.text('FROM YOUR LANDLORD'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Notice new')).dy,
+        lessThan(tester.getTopLeft(find.text('Notice old')).dy),
+      );
+      expect(find.text('Elena · 10 Oct'), findsNWidgets(2));
+    });
+
+    /// Not a sentence about a feature to somebody looking for news.
+    testWidgets('nothing up, nothing said', (tester) async {
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(body: TenantNotices(notices: [])),
+      ));
+
+      expect(find.byKey(const ValueKey('tenant-notices')), findsNothing);
+    });
+
+    Widget screen(List<MyNoticeResponse> notices, String id) => ProviderScope(
+          overrides: [
+            announcementsApiProvider.overrideWithValue(api()),
+            myNoticesProvider.overrideWith((ref) async => notices),
+          ],
+          child: MaterialApp(home: NoticeScreen(noticeId: id)),
+        );
+
+    /// The landlord's "Seen by" counts this, and only this.
+    testWidgets('opening one reads it, and marks it read', (tester) async {
+      await tester.pumpWidget(screen([notice('n1', unit: '2B')], 'n1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Notice n1'), findsOneWidget);
+      expect(find.text('Elena Bautista · Sunrise Apartments · Unit 2B'),
+          findsOneWidget);
+      expect(find.text('Water off from 9am to noon.'), findsOneWidget);
+      expect(find.text('Up until 17 October 2026.'), findsOneWidget);
+      expect(api().read, ['n1']);
+    });
+
+    testWidgets('one already read is not marked again', (tester) async {
+      await tester.pumpWidget(screen([notice('n1', read: true)], 'n1'));
+      await tester.pumpAndSettle();
+
+      expect(api().read, isEmpty);
+    });
+
+    testWidgets('one taken down says so', (tester) async {
+      await tester.pumpWidget(screen(const [], 'gone'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No longer up'), findsOneWidget);
+    });
+  });
+}
+
 class _Landlord extends AuthController {
   @override
   AuthState build() => const AuthSignedIn(Session(
@@ -221,6 +303,12 @@ class _Landlord extends AuthController {
 class _FakeAnnouncements extends AnnouncementsApi {
   final posted = <PostNotice>[];
   final takenDown = <String>[];
+  final read = <String>[];
+
+  @override
+  Future<void> markNoticeRead(String id, {Future<void>? abortTrigger}) async {
+    read.add(id);
+  }
 
   @override
   Future<NoticeResponse?> postNotice(

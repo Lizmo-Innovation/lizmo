@@ -151,6 +151,18 @@ void main() {
 
     /// Routed by type alone, a tenant tapping "Your landlord sent a message"
     /// went nowhere.
+    test('an announcement opens itself', () {
+      expect(
+        destinationOf(
+          _news(NotificationResponseTypeEnum.NEW_NOTICE_POSTED,
+              entity: NotificationResponseRelatedEntityTypeEnum.NOTICE,
+              entityId: 'n1'),
+          LizmoProfile.tenant,
+        ),
+        isA<OpenDetail>().having((d) => d.detail, 'detail', Detail.notice('n1')),
+      );
+    });
+
     /// The receipt is the proof of what the notification says.
     test('a payment confirmed opens its receipt', () {
       expect(

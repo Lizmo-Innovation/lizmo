@@ -45,6 +45,7 @@ import 'screens/tenant_payments_screen.dart';
 import 'screens/tenant_shell.dart';
 import 'screens/unit_utilities_screen.dart';
 import 'screens/update_screen.dart';
+import 'widgets/tenant_notices.dart';
 
 /// Route paths, named so a typo is a compile error rather than a blank screen.
 abstract final class Routes {
@@ -199,6 +200,9 @@ abstract final class Detail {
   /// Every receipt on a tenancy, and one of them -- by its own id, or by the
   /// payment it acknowledges, which is what a notification knows.
   static String receipts(String leaseId) => 'receipts/$leaseId';
+
+  /// One announcement, as the tenant it is for reads it.
+  static String notice(String noticeId) => 'notice/$noticeId';
   static String receipt(String leaseId, String receiptId) =>
       'receipts/$leaseId/$receiptId';
   static String receiptFor(String leaseId, String paymentId) =>
@@ -533,6 +537,11 @@ List<RouteBase> _tenantDetails() => [
         builder: (context, state) => const NotificationsScreen(),
       ),
       ..._receiptRoutes(landlord: false),
+      GoRoute(
+        path: 'notice/:noticeId',
+        builder: (context, state) =>
+            NoticeScreen(noticeId: state.pathParameters['noticeId']!),
+      ),
     ];
 
 /// Receipts, from either end: the same screens, read through the endpoint

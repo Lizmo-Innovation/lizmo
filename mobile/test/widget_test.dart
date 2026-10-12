@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/auth/active_role.dart';
 import 'package:lizmo/billing/receipt_providers.dart';
 import 'package:lizmo/main.dart';
+import 'package:lizmo/notice/notice_providers.dart';
 import 'package:lizmo/push/push_ask_memory.dart';
 import 'package:lizmo/push/push_channel.dart';
 import 'package:lizmo/push/push_offer.dart';
@@ -8770,8 +8771,11 @@ void _tenantLeaseTests() {
       termEndsOn: ends,
     );
 
-    Widget tenantApp(LeaseResponse lease) => ProviderScope(
+    Widget tenantApp(LeaseResponse lease,
+            {List<MyNoticeResponse> notices = const []}) =>
+        ProviderScope(
       overrides: [
+        myNoticesProvider.overrideWith((ref) async => notices),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
         ),
@@ -8800,6 +8804,26 @@ void _tenantLeaseTests() {
       await tester.tap(find.byKey(const ValueKey('tab-place')));
       await tester.pumpAndSettle();
     }
+
+    /// What the landlord said to everybody, where a tenant looks first.
+    testWidgets('an announcement shows on Home', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy(), notices: [
+        MyNoticeResponse(
+          id: 'n1',
+          propertyName: 'Sunrise Apartments',
+          fromName: 'Elena Bautista',
+          title: 'Water off on Saturday',
+          message: 'From 9am to noon.',
+          postedAt: DateTime.utc(2026, 10, 10),
+          read: false,
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('FROM YOUR LANDLORD'), findsOneWidget);
+      expect(find.text('Water off on Saturday'), findsOneWidget);
+      expect(find.textContaining('will appear here'), findsNothing);
+    });
 
     testWidgets('a lease for a term says when it ends', (tester) async {
       await tester.pumpWidget(
