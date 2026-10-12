@@ -66,6 +66,61 @@ void main() {
       return result;
     }
 
+    Widget sheetAt({List<FreeRoom>? rooms}) => MaterialApp(
+          home: Scaffold(
+            body: AcceptTermsSheet(
+              tenantName: 'Ana Reyes',
+              slot: rooms == null ? 'Bed 1, 2B' : 'Sunrise Apartments',
+              askingRent: 2500,
+              rooms: rooms,
+            ),
+          ),
+        );
+
+    /// The words the thread's button uses, and nothing it does not do: it
+    /// once promised anybody else waiting would be told the room had gone.
+    testWidgets('says what starting the lease does, and who sees it',
+        (tester) async {
+      await tester.pumpWidget(sheetAt(rooms: [
+        FreeRoom(unitId: 'u1', bedId: 'b1', label: 'Bed 1, 2B', rent: 2500),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A lease for Ana Reyes'), findsOneWidget);
+      expect(
+          find.text('At Sunrise Apartments. Choose the room and set what you '
+              'agreed. Ana sees these terms in the app once the lease starts.'),
+          findsOneWidget);
+      expect(find.textContaining('told it has gone'), findsNothing);
+      expect(find.textContaining('Accept'), findsNothing);
+    });
+
+    /// A button that is off says what it is waiting for.
+    testWidgets('the button says what it is waiting for', (tester) async {
+      await tester.pumpWidget(sheetAt(rooms: [
+        FreeRoom(unitId: 'u1', bedId: 'b1', label: 'Bed 1, 2B', rent: 2500),
+      ]));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a room first'), findsOneWidget);
+
+      await tapShown(tester, find.byKey(const ValueKey('room-b1')));
+      expect(find.text('Start the lease'), findsOneWidget);
+
+      await tapShown(tester, find.byKey(const ValueKey('term-own')));
+      expect(find.text('Choose the end date first'), findsOneWidget);
+    });
+
+    testWidgets('with nothing vacant, says what to do instead', (tester) async {
+      await tester.pumpWidget(sheetAt(rooms: const []));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('Nothing is vacant here right now. Free a room first, or '
+              'let Ana know in the conversation.'),
+          findsOneWidget);
+      expect(find.text('No room to give'), findsOneWidget);
+    });
+
     testWidgets('is month to month unless they say otherwise', (tester) async {
       final terms = await accept(tester, () async {
         expect(find.text('Month to month, until one of you ends it.'),

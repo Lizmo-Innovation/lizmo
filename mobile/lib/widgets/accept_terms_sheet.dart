@@ -142,6 +142,24 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
       // A date of their own, once they have said they want one.
       (_term != LeaseTermChoices.own || _ownEnd != null);
 
+  /// Their first name, as the rest of the app says it to the landlord.
+  String get _firstName {
+    final name = widget.tenantName.trim();
+    if (name.isEmpty || name == 'this tenant') return 'Your tenant';
+    return name.split(' ').first;
+  }
+
+  /// What the Start button is waiting for, or null when nothing.
+  String? get _waitingFor {
+    if (widget.rooms != null && _room == null) {
+      return widget.rooms!.isEmpty ? 'No room to give' : 'Choose a room first';
+    }
+    if (_term == LeaseTermChoices.own && _ownEnd == null) {
+      return 'Choose the end date first';
+    }
+    return null;
+  }
+
   void _accept() {
     if (!_ready) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -235,7 +253,9 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Accept ${widget.tenantName}',
+                // The same words as the button that opened it. "Accept" was
+                // left over from requests, which conversations replaced.
+                'A lease for ${widget.tenantName}',
                 // LizmoType.screenTitle is white, because it is drawn on the
                 // teal header. This sheet is canvas-coloured, so the title was
                 // white on almost-white -- the same fault the tenant page had.
@@ -244,11 +264,18 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               ),
               const SizedBox(height: 4),
               Text(
+                // What happens, and who sees it. It used to promise that
+                // anybody else waiting on the room would be told it had gone
+                // -- from when people asked about rooms. They ask about a
+                // place now, so nobody else loses anything, and nobody is
+                // told anything.
                 widget.rooms == null
-                    ? 'They will hold ${widget.slot}. Anyone else waiting on '
-                        'it will be told it has gone.'
-                    : 'They asked about the place rather than a room, so '
-                        'choose which one they get.',
+                    ? 'For ${widget.slot}. Set what you agreed. $_firstName '
+                        'sees these terms in the app once the lease starts.'
+                    : 'At ${widget.slot}. Choose the room and set what you '
+                        'agreed. $_firstName sees these terms in the app once '
+                        'the lease starts.',
+                key: const ValueKey('lease-sheet-intro'),
                 style: LizmoType.rowSub,
               ),
               const SizedBox(height: 20),
@@ -266,7 +293,8 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      'Nothing is vacant here now. Decline, or free a room first.',
+                      'Nothing is vacant here right now. Free a room first, or '
+                      'let $_firstName know in the conversation.',
                       style:
                           LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
                     ),
@@ -412,8 +440,9 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
               const SizedBox(height: 22),
               PrimaryActionButton(
                 key: const ValueKey('accept-and-create'),
-                label: 'Accept and create the lease',
-                // Off until a room is chosen, when one is needed.
+                // A button that is off says what it is waiting for, rather
+                // than leaving the landlord to guess.
+                label: _waitingFor ?? 'Start the lease',
                 onPressed: _ready ? _accept : null,
               ),
               const SizedBox(height: 8),
