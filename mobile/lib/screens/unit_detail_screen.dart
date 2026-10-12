@@ -8,6 +8,8 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../router.dart';
+import '../tenant/tenant_providers.dart';
+import '../widgets/lease_term.dart';
 
 /// One unit and what is inside it.
 ///
@@ -92,6 +94,12 @@ class UnitDetailScreen extends ConsumerWidget {
             propertyId: propertyId,
             unitId: unitId,
           ),
+          // Only while there is room in it: a full unit has nothing to be
+          // ready for, and one out of service is shut.
+          if (unit != null &&
+              (unit.status == UnitResponseStatusEnum.VACANT ||
+                  unit.status == UnitResponseStatusEnum.PARTIALLY_OCCUPIED))
+            _ReadyRow(unit: unit),
           Expanded(
             child: isBedspace
                 ? RefreshIndicator(
@@ -957,6 +965,158 @@ class _UtilitiesRow extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// When a vacant room is ready to move into: now, or from a day. Shown on the
+/// page anybody sees after scanning the code, so somebody does not come
+/// across town for a room still being painted.
+class _ReadyRow extends ConsumerWidget {
+  const _ReadyRow({required this.unit});
+
+  final UnitResponse unit;
+
+  Future<void> _change(BuildContext context, WidgetRef ref) async {
+    final today = ref.read(todayProvider);
+    final picked = await showModalBottomSheet<TermChange>(
+      context: context,
+      backgroundColor: LizmoColors.canvas,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ReadySheet(current: unit.readyFrom, today: today),
+    );
+    if (picked == null || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final on = picked.endsOn;
+      await ref.read(unitsApiProvider).setUnitReadyFrom(
+            unit.id!,
+            ReadyFromRequest(
+                readyFrom: on == null ? null : DateTime.utc(on.year, on.month, on.day)),
+          );
+      ref.invalidate(unitProvider(unit.id!));
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(ApiFailure.from(error).message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(todayProvider);
+    final from = unit.readyFrom;
+    final later = from != null && daysUntil(from, today) > 0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      decoration: BoxDecoration(
+        color: later ? LizmoColors.amberBg : LizmoColors.tealBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          key: const ValueKey('unit-ready'),
+          onTap: () => _change(context, ref),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.event_available_outlined,
+                    size: 18,
+                    color: later ? LizmoColors.amberText : LizmoColors.teal900),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ready to move in', style: LizmoType.rowName),
+                      const SizedBox(height: 2),
+                      Text(
+                        later ? 'From ${termDate(from)}' : 'Now',
+                        style: LizmoType.rowSub,
+                      ),
+                    ],
+                  ),
+                ),
+                Text('Change',
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadySheet extends StatefulWidget {
+  const _ReadySheet({required this.current, required this.today});
+
+  final DateTime? current;
+  final DateTime today;
+
+  @override
+  State<_ReadySheet> createState() => _ReadySheetState();
+}
+
+class _ReadySheetState extends State<_ReadySheet> {
+  late String _picked =
+      widget.current != null && daysUntil(widget.current!, widget.today) > 0
+          ? LeaseTermChoices.own
+          : 'now';
+  late DateTime? _on = _picked == LeaseTermChoices.own ? widget.current : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime(widget.today.year, widget.today.month, widget.today.day);
+    final ready = _picked == 'now' || _on != null;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Ready to move in',
+                style: LizmoType.sectionHeading.copyWith(fontSize: 17)),
+            const SizedBox(height: 4),
+            Text(
+              'Shown to anybody who scans your code. Once the day comes it '
+              'says ready now, without you changing it.',
+              style: LizmoType.rowSub,
+            ),
+            const SizedBox(height: 14),
+            LeaseTermChoices(
+              choices: const [TermChoice('now', 'Ready now', null)],
+              picked: _picked,
+              onPick: (key) => setState(() => _picked = key),
+              ownDate: _on,
+              onOwnDate: (date) => setState(() => _on = date),
+              firstDate: today.add(const Duration(days: 1)),
+              lastDate: today.add(const Duration(days: 365)),
+              ownLabel: 'From a date',
+              ownHint: 'The first day somebody can move in.',
+            ),
+            const SizedBox(height: 12),
+            PrimaryActionButton(
+              key: const ValueKey('save-ready'),
+              label: ready ? 'Save' : 'Choose the day',
+              onPressed: ready
+                  ? () => Navigator.of(context)
+                      .pop(TermChange(_picked == 'now' ? null : _on))
+                  : null,
+            ),
+          ],
         ),
       ),
     );

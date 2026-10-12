@@ -9,6 +9,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/receipt_said.dart';
 import '../inquiry/inquiry_providers.dart';
+import '../property/place_details.dart';
 import '../property/property_providers.dart';
 import '../push/push_offer.dart';
 import '../router.dart';
@@ -279,6 +280,12 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
     if (propertyId == null) return;
 
     final rooms = await ref.read(freeRoomsProvider(propertyId).future);
+    // What the place asks up front, to fill in. Without it the fields are
+    // simply blank, as they were.
+    PlaceDetailsDto? place;
+    try {
+      place = await ref.read(placeDetailsProvider(propertyId).future);
+    } catch (_) {}
     if (!mounted) return;
 
     final terms = await AcceptTermsSheet.show(
@@ -287,6 +294,8 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
       slot: thread.inquiry?.propertyName ?? 'this place',
       askingRent: rooms.isEmpty ? null : rooms.first.rent,
       rooms: rooms,
+      depositMonths: place?.depositMonths,
+      advanceMonths: place?.advanceMonths,
     );
     if (terms == null || !mounted) return;
 

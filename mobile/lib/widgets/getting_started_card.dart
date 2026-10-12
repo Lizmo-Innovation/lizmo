@@ -5,6 +5,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/payment_channel_providers.dart';
 import '../inquiry/inquiry_providers.dart';
+import '../property/place_details.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 
@@ -65,6 +66,11 @@ class GettingStartedSection extends ConsumerWidget {
       final id = property.id;
       if (id == null) continue;
 
+      // Only once known: a step ticked a moment after it appeared reads as
+      // the app catching up, but one appearing unticked and then vanishing
+      // reads as it losing what was done.
+      final details = ref.watch(placeDetailsProvider(id)).valueOrNull;
+
       final steps = [
         _Step(
           label: 'Add units or beds',
@@ -73,6 +79,15 @@ class GettingStartedSection extends ConsumerWidget {
           go: Detail.property(id),
           inTab: true,
         ),
+        if (details != null)
+          _Step(
+            label: 'Say who can rent, the rules and the deposit',
+            detail: 'What people ask before anything else, on the page they '
+                'see when they scan your code.',
+            done: saysAnything(details),
+            go: Detail.placeDetails(id),
+            inTab: true,
+          ),
         _Step(
           label: 'Choose how tenants pay you here',
           detail: 'Which of your accounts this property\'s tenants send rent to.',

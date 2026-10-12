@@ -23,7 +23,14 @@ class AcceptTermsSheet extends StatefulWidget {
     required this.slot,
     required this.askingRent,
     this.rooms,
+    this.depositMonths,
+    this.advanceMonths,
   });
+
+  /// What the place asks up front, in months, from its details. Filled in as
+  /// pesos for the room's rent until the landlord types a figure of their own.
+  final int? depositMonths;
+  final int? advanceMonths;
 
   final String tenantName;
   final String slot;
@@ -41,6 +48,8 @@ class AcceptTermsSheet extends StatefulWidget {
     required String slot,
     required num? askingRent,
     List<FreeRoom>? rooms,
+    int? depositMonths,
+    int? advanceMonths,
   }) {
     return showModalBottomSheet<AcceptRequest>(
       context: context,
@@ -59,6 +68,8 @@ class AcceptTermsSheet extends StatefulWidget {
           slot: slot,
           askingRent: askingRent,
           rooms: rooms,
+          depositMonths: depositMonths,
+          advanceMonths: advanceMonths,
         ),
       ),
     );
@@ -84,6 +95,41 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
 
   final _deposit = TextEditingController();
   final _advance = TextEditingController();
+
+  /// Typed by the landlord, so no longer ours to fill in.
+  bool _depositOwn = false;
+  bool _advanceOwn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fillUpFront();
+  }
+
+  /// The place's months as pesos for this rent, where the landlord has not
+  /// put a figure of their own.
+  void _fillUpFront() {
+    final rent = _rentNow;
+    if (rent == null) return;
+    final deposit = widget.depositMonths;
+    if (!_depositOwn && deposit != null) {
+      _deposit.text = (rent * deposit).toStringAsFixed(0);
+    }
+    final advance = widget.advanceMonths;
+    if (!_advanceOwn && advance != null) {
+      _advance.text = (rent * advance).toStringAsFixed(0);
+    }
+  }
+
+  /// Said under a figure that came from the place's details.
+  String? _fromDetails(int? months, bool own) =>
+      months == null || own ? null : 'From your place details: ${_monthWord(months)}.';
+
+  static String _monthWord(int months) => switch (months) {
+        0 => 'none',
+        1 => '1 month',
+        _ => '$months months',
+      };
 
   /// How long it is for. Month to month unless they agreed a term.
   String _term = 'none';
@@ -130,6 +176,7 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
       if (room?.rent != null) {
         _rent.text = room!.rent!.toStringAsFixed(0);
       }
+      _fillUpFront();
     });
   }
 
@@ -318,6 +365,8 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
                 decoration: _decoration('2500').copyWith(prefixText: '₱ '),
+                // The deposit and advance follow it, until typed over.
+                onChanged: (_) => setState(_fillUpFront),
                 validator: (value) {
                   final text = (value ?? '').trim();
                   if (text.isEmpty) return 'Set the rent for this tenancy';
@@ -403,8 +452,18 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 controller: _deposit,
                 hint: '5000',
                 rent: _rentNow,
-                onMonths: (value) => setState(() => _deposit.text = value),
+                onMonths: (value) => setState(() {
+                  _depositOwn = true;
+                  _deposit.text = value;
+                }),
+                onChanged: (_) => setState(() => _depositOwn = true),
               ),
+              if (_fromDetails(widget.depositMonths, _depositOwn) case final said?) ...[
+                const SizedBox(height: 4),
+                Text(said,
+                    key: const ValueKey('deposit-from-details'),
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900)),
+              ],
               const SizedBox(height: 6),
               Text(
                 // Said plainly, because the two are constantly muddled and the
@@ -422,10 +481,19 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 controller: _advance,
                 hint: '2500',
                 rent: _rentNow,
-                onMonths: (value) => setState(() => _advance.text = value),
-                onChanged: (_) => setState(() {}),
+                onMonths: (value) => setState(() {
+                  _advanceOwn = true;
+                  _advance.text = value;
+                }),
+                onChanged: (_) => setState(() => _advanceOwn = true),
                 check: _wholeMonths,
               ),
+              if (_fromDetails(widget.advanceMonths, _advanceOwn) case final said?) ...[
+                const SizedBox(height: 4),
+                Text(said,
+                    key: const ValueKey('advance-from-details'),
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900)),
+              ],
               const SizedBox(height: 6),
               Text(
                 _advanceSays(),

@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../notice/notice_providers.dart';
+import '../property/place_details.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../widgets/property_photos_card.dart';
@@ -123,7 +124,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             ],
           ),
           _WaitingRequests(propertyId: propertyId),
-          _Announcements(propertyId: propertyId),
+          _BuildingTiles(propertyId: propertyId),
           // Above the rooms: what the place looks like is what a stranger
           // decides on, and the unit list is for the landlord's own work.
           PropertyPhotosCard(propertyId: propertyId),
@@ -303,67 +304,137 @@ class _WaitingRequests extends ConsumerWidget {
   }
 }
 
-/// Announcements for this building: how many are up, or the offer to post
-/// one. Always shown, unlike the requests strip -- it is something the
-/// landlord does, not something waiting on them -- but quiet, in white.
-class _Announcements extends ConsumerWidget {
-  const _Announcements({required this.propertyId});
+/// Two things a landlord does about the building as a whole, side by side so
+/// they take one row rather than two: telling everybody something, and
+/// saying what anybody asking would want to know.
+class _BuildingTiles extends ConsumerWidget {
+  const _BuildingTiles({required this.propertyId});
 
   final String propertyId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notices = ref.watch(propertyNoticesProvider(propertyId)).valueOrNull;
-    final up = notices?.where((notice) => notice.live ?? true).toList() ?? const [];
-    final latest = up.isEmpty ? null : up.first;
+    final up = notices?.where((notice) => notice.live ?? true).length ?? 0;
+    final latest = notices
+        ?.where((notice) => notice.live ?? true)
+        .firstOrNull;
+    final details = ref.watch(placeDetailsProvider(propertyId)).valueOrNull;
+    final said = details != null && saysAnything(details);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Material(
-        color: LizmoColors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFFE3E8E6)),
-        ),
-        child: InkWell(
-          key: const ValueKey('property-announcements'),
-          onTap: () => context.openInTab(Detail.announcements(propertyId)),
-          customBorder:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-            child: Row(
-              children: [
-                const Icon(Icons.campaign_outlined,
-                    size: 20, color: LizmoColors.teal900),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        up.isEmpty
-                            ? 'Tell everybody here at once'
-                            : up.length == 1
-                                ? '1 announcement up'
-                                : '${up.length} announcements up',
-                        style: LizmoType.rowName,
-                      ),
-                      if (latest != null && (latest.audience ?? 0) > 0)
-                        Text(
-                          '“${latest.title}” · seen by ${latest.seenBy ?? 0} of '
-                          '${latest.audience}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: LizmoType.rowSub.copyWith(fontSize: 12),
-                        ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right,
-                    size: 20, color: LizmoColors.slate),
-              ],
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _Tile(
+                key: const ValueKey('property-announcements'),
+                icon: Icons.campaign_outlined,
+                title: up == 0
+                    ? 'Announce'
+                    : up == 1
+                        ? '1 announcement'
+                        : '$up announcements',
+                detail: latest != null && (latest.audience ?? 0) > 0
+                    ? 'Seen by ${latest.seenBy ?? 0} of ${latest.audience}'
+                    : 'Tell everybody at once',
+                onTap: () => context.openInTab(Detail.announcements(propertyId)),
+              ),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _Tile(
+                key: const ValueKey('property-place-details'),
+                icon: Icons.rule_outlined,
+                title: 'Place details',
+                detail: said ? _summary(details) : 'Rules and deposit',
+                // Amber until said: it is what strangers decide on.
+                attention: details != null && !said,
+                onTap: () => context.openInTab(Detail.placeDetails(propertyId)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "Women only · Curfew 10pm · 2 months deposit", the first few said.
+  static String _summary(PlaceDetailsDto details) {
+    final bits = [
+      ?whoCanRentLabel(details.whoCanRent?.toJson()),
+      if (details.curfew case final curfew?) 'Curfew ${curfewLabel(curfew)}',
+      if (details.depositMonths case final months? when months > 0)
+        '${monthsLabel(months)} deposit',
+      if (details.amenities.isNotEmpty) '${details.amenities.length} included',
+    ];
+    return bits.isEmpty ? 'Set' : bits.take(2).join(' · ');
+  }
+}
+
+class _Tile extends StatelessWidget {
+  const _Tile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.onTap,
+    this.attention = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final VoidCallback onTap;
+  final bool attention;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = attention ? LizmoColors.amberText : LizmoColors.teal900;
+    return Material(
+      color: attention ? LizmoColors.amberBg : LizmoColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: attention
+            ? BorderSide.none
+            : const BorderSide(color: Color(0xFFE3E8E6)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: ink),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: LizmoType.rowName.copyWith(
+                            color: attention ? ink : LizmoColors.ink)),
+                    // One line, like the strip it replaced: the units below
+                    // are what this screen is for, and every pixel above
+                    // them comes out of their list.
+                    Text(
+                      detail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: LizmoType.rowSub.copyWith(
+                          fontSize: 11, color: attention ? ink : null),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
