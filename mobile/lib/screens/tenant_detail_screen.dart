@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/period_kind.dart';
+import '../billing/receipt_said.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../inquiry/tenancy_conversation.dart';
 import '../property/property_providers.dart';
@@ -423,11 +424,19 @@ class _UpfrontMoneyState extends ConsumerState<_UpfrontMoney> {
     setState(() => _working = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(rentApiProvider).recordPayment(widget.leaseId, request);
+      final made =
+          await ref.read(rentApiProvider).recordPayment(widget.leaseId, request);
       ref.invalidate(leaseBillingProvider(widget.leaseId));
       ref.invalidate(leasePaymentsProvider(widget.leaseId));
       ref.invalidate(collectionsProvider);
-      messenger.showSnackBar(const SnackBar(content: Text('Recorded.')));
+      if (!mounted) return;
+      messenger.showSnackBar(receiptSnackBar(
+        context,
+        done: 'Recorded.',
+        leaseId: widget.leaseId,
+        payment: made,
+        tenantName: tenantName,
+      ));
     } catch (error) {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));

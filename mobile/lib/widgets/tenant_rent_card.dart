@@ -5,8 +5,10 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../billing/period_kind.dart';
+import '../billing/receipt_said.dart';
 
 import '../property/property_providers.dart';
+import '../router.dart';
 import 'not_received_dialog.dart';
 
 /// Rent on one tenancy, as the landlord deals with it.
@@ -40,18 +42,31 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
       return;
     }
 
-    await _send(() => ref.read(rentApiProvider).confirmPayment(
-          widget.leaseId,
-          payment.id!,
-        ));
+    await _send(
+      () => ref.read(rentApiProvider).confirmPayment(
+            widget.leaseId,
+            payment.id!,
+          ),
+      done: 'Confirmed.',
+    );
   }
 
-  Future<void> _send(Future<void> Function() call) async {
+  Future<void> _send(Future<Object?> Function() call, {String? done}) async {
     setState(() => _working = true);
     try {
-      await call();
+      final made = await call();
       ref.invalidate(leaseBillingProvider(widget.leaseId));
       ref.invalidate(leasePaymentsProvider(widget.leaseId));
+      if (done != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(receiptSnackBar(
+          context,
+          done: done,
+          leaseId: widget.leaseId,
+          payment: made is PaymentResponse ? made : null,
+          tenantName:
+              ref.read(landlordLeaseProvider(widget.leaseId))?.tenantName,
+        ));
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -73,6 +88,9 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
         .where((payment) =>
             payment.status == PaymentResponseStatusEnum.PENDING_VERIFICATION)
         .toList();
+    final receipted = (payments.valueOrNull ?? const <PaymentResponse>[])
+        .where((payment) => payment.receiptId != null)
+        .length;
 
     // Rent: the deposit is owed too, but it is held rather than earned, and
     // it is under "Before they moved in" with its own state.
@@ -137,6 +155,21 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
                 busy: _working,
                 onAnswer: (agreed) => _answer(payment, agreed: agreed),
               ),
+          ],
+
+          // What the tenant was sent for each payment, to show or resend.
+          if (receipted > 0) ...[
+            const SizedBox(height: 4),
+            TextButton.icon(
+              key: const ValueKey('lease-receipts'),
+              onPressed: () => context.openInTab(Detail.receipts(widget.leaseId)),
+              icon: const Icon(Icons.receipt_long_outlined, size: 18),
+              label: Text(receipted == 1 ? '1 receipt' : '$receipted receipts'),
+              style: TextButton.styleFrom(
+                foregroundColor: LizmoColors.teal900,
+                padding: EdgeInsets.zero,
+              ),
+            ),
           ],
         ],
       ),

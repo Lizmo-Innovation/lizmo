@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../billing/receipt_said.dart';
 import '../router.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/not_received_dialog.dart';
@@ -274,18 +275,26 @@ class _RentRowState extends ConsumerState<_RentRow> {
     );
   }
 
-  Future<void> _send(Future<void> Function() call, {required String done}) async {
+  Future<void> _send(Future<Object?> Function() call, {required String done}) async {
     setState(() => _working = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await call();
+      final made = await call();
       // The month, the dashboard's figures, and the tenant's own screen all
       // read these same rows.
       ref.invalidate(rentRollProvider(widget.month));
       ref.invalidate(collectionsProvider);
       ref.invalidate(leaseBillingProvider(_leaseId));
       ref.invalidate(leasePaymentsProvider(_leaseId));
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      if (!mounted) return;
+      // With the receipt the tenant has just been sent, where there is one.
+      messenger.showSnackBar(receiptSnackBar(
+        context,
+        done: done,
+        leaseId: _leaseId,
+        payment: made is PaymentResponse ? made : null,
+        tenantName: row.tenantName,
+      ));
     } catch (error) {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));

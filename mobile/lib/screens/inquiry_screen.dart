@@ -7,6 +7,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/receipt_said.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../push/push_offer.dart';
@@ -214,12 +215,19 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
       );
       if (request == null || !mounted) return;
 
-      await ref.read(rentApiProvider).recordPayment(leaseId, request);
+      final made = await ref.read(rentApiProvider).recordPayment(leaseId, request);
       // The tenant's page and the dashboard read these same rows.
       ref.invalidate(leaseBillingProvider(leaseId));
       ref.invalidate(leasePaymentsProvider(leaseId));
       ref.invalidate(collectionsProvider);
-      messenger.showSnackBar(const SnackBar(content: Text('Recorded.')));
+      if (!mounted) return;
+      messenger.showSnackBar(receiptSnackBar(
+        context,
+        done: 'Recorded.',
+        leaseId: leaseId,
+        payment: made,
+        tenantName: tenantName,
+      ));
     } catch (error) {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));
