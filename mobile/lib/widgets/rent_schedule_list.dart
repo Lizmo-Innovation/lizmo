@@ -23,7 +23,16 @@ class RentScheduleList extends StatelessWidget {
     this.emptyDetail,
     this.onTap,
     this.header,
+    this.payments = const [],
+    this.confirmer,
   });
+
+  /// What the tenant has said they paid, so a month already declared says
+  /// it is waiting rather than offering "I have paid" a second time.
+  final List<PaymentResponse> payments;
+
+  /// Who has to confirm it, by name when known: "Waiting for Maria".
+  final String? confirmer;
 
   /// Shown above the months, scrolling with them: how to pay, on the tenant's
   /// Rent tab.
@@ -72,16 +81,33 @@ class RentScheduleList extends StatelessWidget {
           : _MonthRow(
               period: newestFirst[index - offset],
               onTap: onTap,
+              waiting: [
+                for (final payment in payments)
+                  if (payment.billingPeriodId == newestFirst[index - offset].id &&
+                      payment.status ==
+                          PaymentResponseStatusEnum.PENDING_VERIFICATION)
+                    payment,
+              ],
+              confirmer: confirmer,
             ),
     );
   }
 }
 
 class _MonthRow extends StatelessWidget {
-  const _MonthRow({required this.period, this.onTap});
+  const _MonthRow({
+    required this.period,
+    this.onTap,
+    this.waiting = const [],
+    this.confirmer,
+  });
 
   final BillingPeriodResponse period;
   final void Function(BillingPeriodResponse)? onTap;
+
+  /// Declared towards this month and not yet answered.
+  final List<PaymentResponse> waiting;
+  final String? confirmer;
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +122,15 @@ class _MonthRow extends StatelessWidget {
             ? (LizmoColors.redBg, LizmoColors.red, 'Overdue')
             : (LizmoColors.white, LizmoColors.ink, 'Due');
 
+    // What the tenant has said they paid towards this month. Covering it,
+    // the month waits on the landlord, and offering "I have paid" again only
+    // invites the same money to be declared twice.
+    final declared =
+        waiting.fold<num>(0, (sum, payment) => sum + (payment.amountPaid ?? 0));
+    final covered = declared > 0 && declared >= (period.outstanding ?? 0);
+
     // A settled month has nothing to declare against it.
-    final declarable = onTap != null && !paid;
+    final declarable = onTap != null && !paid && !covered;
 
     // Paid is one line. The three figures were the same 2,500 three ways
     // plus "Settled" underneath, which made a month with nothing left to do
@@ -189,6 +222,16 @@ class _MonthRow extends StatelessWidget {
                   style: LizmoType.rowSub.copyWith(fontSize: 11, color: ink),
                 ),
               ),
+              if (declared > 0)
+                Text(
+                  _waitingFor(declared, covered),
+                  key: ValueKey('waiting-${period.id}'),
+                  style: LizmoType.rowSub.copyWith(
+                    fontSize: 11,
+                    color: LizmoColors.teal900,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               // A button, as on Home. It was "Tap if you have paid" in 11px
               // under the figures, on the screen that exists for rent, while
               // Home gave the same action a coral button.
@@ -213,6 +256,20 @@ class _MonthRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// "Waiting for Maria · 4 days", or with how much when it is only part.
+  String _waitingFor(num declared, bool covered) {
+    final who = confirmer ?? 'your landlord';
+    final since = waiting
+        .map((payment) => payment.declaredAt)
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, (oldest, at) =>
+            oldest == null || at.isBefore(oldest) ? at : oldest);
+    final age = since == null ? '' : ' · ${waitedFor(since)}';
+    return covered
+        ? 'Waiting for $who$age'
+        : '${LizmoMoney.peso(declared)} waiting for $who$age';
   }
 
   /// The design system already has the vocabulary for this: paid, overdue, and
@@ -253,4 +310,14 @@ class _Figure extends StatelessWidget {
       ],
     );
   }
+}
+
+/// How long something has been waiting, in days: "today", "1 day", "4 days".
+///
+/// Whole days, because the reminders it sits beside are daily and "3 days
+/// 4 hours" is precision nobody acts on.
+String waitedFor(DateTime since, {DateTime? now}) {
+  final days = (now ?? DateTime.now()).difference(since.toLocal()).inDays;
+  if (days <= 0) return 'today';
+  return days == 1 ? '1 day' : '$days days';
 }

@@ -42,6 +42,21 @@ void main() {
       );
     });
 
+    /// Where Confirm is.
+    test('a payment still waiting on them opens the tenant', () {
+      expect(
+        destinationOf(
+          _news(NotificationResponseTypeEnum.PAYMENT_AWAITING_CONFIRMATION,
+              leaseId: 'l1',
+              entity: NotificationResponseRelatedEntityTypeEnum.PAYMENT,
+              entityId: 'p1'),
+          LizmoProfile.landlord,
+        ),
+        isA<OpenDetail>()
+            .having((d) => d.detail, 'detail', Detail.tenancy('l1')),
+      );
+    });
+
     test('a tenant saying they paid opens the tenant', () {
       final to = destinationOf(
         _news(NotificationResponseTypeEnum.PAYMENT_CONFIRMED, leaseId: 'l1'),
@@ -97,6 +112,8 @@ void main() {
       NotificationResponseTypeEnum.RENT_OVERDUE,
       NotificationResponseTypeEnum.PAYMENT_CONFIRMED,
       NotificationResponseTypeEnum.PAYMENT_REJECTED,
+      // With no conversation to point at.
+      NotificationResponseTypeEnum.PAYMENT_STILL_UNCONFIRMED,
     ]) {
       test('${type.toJson()} opens Payments', () {
         expect(
@@ -113,6 +130,33 @@ void main() {
           LizmoProfile.tenant,
         ),
         isNull,
+      );
+    });
+
+    /// Routed by type alone, a tenant tapping "Your landlord sent a message"
+    /// went nowhere.
+    test('a message opens the conversation', () {
+      expect(
+        destinationOf(
+          _news(NotificationResponseTypeEnum.INQUIRY_MESSAGE,
+              entity: NotificationResponseRelatedEntityTypeEnum.INQUIRY,
+              entityId: 'i1'),
+          LizmoProfile.tenant,
+        ),
+        isA<OpenScreen>().having((d) => d.path, 'path', Routes.inquiry('i1')),
+      );
+    });
+
+    /// "Worth asking them" lands where asking is one tap.
+    test('an unconfirmed payment opens the conversation with the landlord', () {
+      expect(
+        destinationOf(
+          _news(NotificationResponseTypeEnum.PAYMENT_STILL_UNCONFIRMED,
+              entity: NotificationResponseRelatedEntityTypeEnum.INQUIRY,
+              entityId: 'i1'),
+          LizmoProfile.tenant,
+        ),
+        isA<OpenScreen>().having((d) => d.path, 'path', Routes.inquiry('i1')),
       );
     });
   });

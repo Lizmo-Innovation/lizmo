@@ -56,7 +56,7 @@ NotificationDestination? destinationOf(
 
   return switch (persona) {
     LizmoProfile.landlord => _forLandlord(type, notification),
-    LizmoProfile.tenant => _forTenant(type),
+    LizmoProfile.tenant => _forTenant(type, notification),
     _ => null,
   };
 }
@@ -89,7 +89,22 @@ NotificationDestination? _forLandlord(
   return lease == null ? null : OpenDetail(Detail.tenancy(lease));
 }
 
-NotificationDestination? _forTenant(String? type) => switch (type) {
+NotificationDestination? _forTenant(
+  String? type,
+  NotificationResponse notification,
+) {
+  // Anything about a conversation opens it -- a landlord's reply, a message
+  // from the landlord they rent from, or "worth asking them" about a payment.
+  // Routed by type alone, a tenant tapping "Your landlord sent a message"
+  // went nowhere.
+  if (notification.relatedEntityType?.toJson() == 'INQUIRY') {
+    final thread = notification.relatedEntityId;
+    if (thread != null) return OpenScreen(Routes.inquiry(thread));
+  }
+  return _forTenantByType(type);
+}
+
+NotificationDestination? _forTenantByType(String? type) => switch (type) {
       // A decline or a lost bed goes to My place too: with no tenancy, that
       // tab is where somebody looks for the next one.
       'REQUEST_ACCEPTED' ||
@@ -100,7 +115,9 @@ NotificationDestination? _forTenant(String? type) => switch (type) {
       'RENT_DUE_REMINDER' ||
       'RENT_OVERDUE' ||
       'PAYMENT_CONFIRMED' ||
-      'PAYMENT_REJECTED' =>
+      'PAYMENT_REJECTED' ||
+      // Without a conversation to point at, the payment it is about.
+      'PAYMENT_STILL_UNCONFIRMED' =>
         const SwitchTab(Routes.tenantPayments),
       'MAINTENANCE_STATUS_CHANGED' => const SwitchTab(Routes.tenantMaintenance),
       _ => null,

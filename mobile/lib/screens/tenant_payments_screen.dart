@@ -4,6 +4,7 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
@@ -11,6 +12,7 @@ import '../widgets/declare_payment_sheet.dart';
 import '../widgets/lizmo_payment_channels.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/rent_schedule_list.dart';
+import '../widgets/your_landlord_card.dart';
 import '../widgets/role_switcher.dart';
 
 /// Rent: what is owed, month by month, and saying it has been paid.
@@ -80,7 +82,16 @@ class TenantPaymentsScreen extends ConsumerWidget {
                     detail: 'Once you are renting through Lizmo, what you owe '
                         'and what you have paid will be recorded here.',
                   )
-                : _Rent(leaseId: lease.id!),
+                : _Rent(
+                    leaseId: lease.id!,
+                    // By name in "Waiting for Maria", from the conversation
+                    // with them, which is where the app knows it.
+                    confirmer: threadForTenancy(
+                            ref.watch(myInquiriesProvider).valueOrNull ??
+                                const [],
+                            lease)
+                        ?.withName,
+                  ),
           ),
         ],
       ),
@@ -94,9 +105,10 @@ class TenantPaymentsScreen extends ConsumerWidget {
 /// should keep their own receipts. Tapping a month that is still owed now
 /// tells the landlord it has been paid.
 class _Rent extends ConsumerStatefulWidget {
-  const _Rent({required this.leaseId});
+  const _Rent({required this.leaseId, this.confirmer});
 
   final String leaseId;
+  final String? confirmer;
 
   @override
   ConsumerState<_Rent> createState() => _RentState();
@@ -135,6 +147,8 @@ class _RentState extends ConsumerState<_Rent> {
   Widget build(BuildContext context) {
     final billing = ref.watch(myBillingProvider(widget.leaseId));
     final payment = ref.watch(leasePaymentDetailsProvider(widget.leaseId));
+    final declared =
+        ref.watch(myPaymentsProvider(widget.leaseId)).valueOrNull ?? const [];
 
     if (_sending) {
       return const Center(child: CircularProgressIndicator());
@@ -153,9 +167,12 @@ class _RentState extends ConsumerState<_Rent> {
         onRefresh: () async {
           ref.invalidate(myBillingProvider(widget.leaseId));
           ref.invalidate(leasePaymentDetailsProvider(widget.leaseId));
+          ref.invalidate(myPaymentsProvider(widget.leaseId));
         },
         child: RentScheduleList(
           periods: periods,
+          payments: declared,
+          confirmer: widget.confirmer,
           emptyDetail: 'Your first month appears once the tenancy has started.',
           onTap: _declare,
           header: HowToPayPanel(

@@ -1,3 +1,4 @@
+import 'rent_schedule_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,10 +106,15 @@ class RentStatusCard extends ConsumerWidget {
     final payment = status.payment;
     final paid = _peso(payment.amountPaid ?? 0);
     final on = payment.paymentDate;
+    final told = payment.declaredAt;
     return _StatusCard(
       tone: _Tone.plain,
       icon: Icons.hourglass_empty,
-      kicker: 'Waiting for your landlord',
+      // How long, so "waiting" from this morning and from a fortnight ago do
+      // not read the same. Lizmo reminds the landlord after three days.
+      kicker: told == null
+          ? 'Waiting for your landlord'
+          : 'Waiting for your landlord · ${waitedFor(told)}',
       headline: on == null ? 'You paid $paid' : 'You paid $paid on ${_day(on)}',
       body: '${payment.sentTo == null ? '' : 'Sent to ${payment.sentTo}. '}'
           '${status.period.label} counts as paid once they confirm it.',

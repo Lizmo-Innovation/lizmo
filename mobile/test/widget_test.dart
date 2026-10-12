@@ -6921,6 +6921,7 @@ void _tenantLeaseTests() {
       List<MaintenanceReportResponse>? reports,
       List<InquirySummary>? threads,
       _FakeInquiriesApi? api,
+      List<PaymentResponse> payments = const [],
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -6940,6 +6941,7 @@ void _tenantLeaseTests() {
         if (threads != null)
           myInquiriesProvider.overrideWith((ref) async => threads),
         if (api != null) inquiriesApiProvider.overrideWithValue(api),
+        myPaymentsProvider('l1').overrideWith((ref) async => payments),
       ],
       child: const LizmoApp(),
     );
@@ -7195,6 +7197,85 @@ void _tenantLeaseTests() {
             messages: const [],
           ),
         );
+
+    PaymentResponse declared(num amount, {int daysAgo = 4, String month = 'b9'}) =>
+        PaymentResponse(
+          id: 'pay-$amount',
+          billingPeriodId: month,
+          periodLabel: 'September 2026',
+          amountPaid: amount,
+          paymentDate: DateTime.now().subtract(Duration(days: daysAgo)),
+          paymentMethod: PaymentResponsePaymentMethodEnum.GCASH,
+          status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
+          declaredAt: DateTime.now().subtract(Duration(days: daysAgo)),
+        );
+
+    /// Paid, and waiting: offering "I have paid" again only invites the same
+    /// money to be declared twice.
+    testWidgets('a month already declared says it is waiting, not I have paid',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        [lease()],
+        months: [month('September', 9)],
+        payments: [declared(2500)],
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waiting for your landlord · 4 days'), findsOneWidget);
+      expect(find.byKey(const ValueKey('i-paid-b9')), findsNothing);
+    });
+
+    /// By name, from the conversation with them.
+    testWidgets('it names who has to confirm it', (tester) async {
+      await tester.pumpWidget(appWith(
+        [lease()],
+        months: [month('September', 9)],
+        payments: [declared(2500, daysAgo: 1)],
+        threads: [withLandlord()],
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waiting for Maria Santos · 1 day'), findsOneWidget);
+    });
+
+    /// Part declared: the rest can still be paid.
+    testWidgets('part declared keeps the button for the rest', (tester) async {
+      await tester.pumpWidget(appWith(
+        [lease()],
+        months: [month('September', 9)],
+        payments: [declared(1000, daysAgo: 0)],
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱1,000 waiting for your landlord · today'),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('i-paid-b9')), findsOneWidget);
+    });
+
+    /// "Waiting" from this morning and from a fortnight ago read the same.
+    testWidgets('Home says how long it has been waiting', (tester) async {
+      await tester.pumpWidget(appWith(
+        [lease()],
+        months: [month('November', 11)],
+        payments: [declared(2500, month: 'b11')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waiting for your landlord · 4 days'), findsOneWidget);
+    });
+
+    test('how long something has waited reads in whole days', () {
+      final now = DateTime(2026, 10, 12, 9);
+      expect(waitedFor(DateTime(2026, 10, 12, 8), now: now), 'today');
+      expect(waitedFor(DateTime(2026, 10, 11, 8), now: now), '1 day');
+      expect(waitedFor(DateTime(2026, 10, 8, 8), now: now), '4 days');
+    });
 
     /// A tenant's landlord is not one more place they asked about.
     testWidgets('Messages pins your landlord above the places you asked about',
