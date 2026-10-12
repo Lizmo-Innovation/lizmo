@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizmo/inquiry/inquiry_providers.dart';
 import 'package:lizmo/property/property_providers.dart';
 import 'package:lizmo/screens/tenant_detail_screen.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/widgets/accept_terms_sheet.dart';
+import 'package:lizmo/widgets/lease_ending_notice.dart';
 import 'package:lizmo/widgets/lease_term.dart';
 import 'package:lizmo/widgets/leases_ending_card.dart';
 import 'package:lizmo_api/api.dart';
@@ -247,6 +249,8 @@ void main() {
     });
   });
 
+  _tenantSide();
+
   group('on Today', () {
     final today = DateTime(2026, 10, 12);
 
@@ -297,6 +301,88 @@ void main() {
 
       expect(find.byKey(const ValueKey('leases-ending-card')), findsNothing);
     });
+  });
+}
+
+void _tenantSide() {
+  group("on the tenant's side", () {
+    final today = DateTime(2026, 10, 12);
+
+    LeaseResponse renting({DateTime? ends, bool active = true}) => LeaseResponse(
+          id: 'l1',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          startDate: DateTime.utc(2026, 4, 1),
+          status: active
+              ? LeaseResponseStatusEnum.ACTIVE
+              : LeaseResponseStatusEnum.ENDED,
+          termEndsOn: ends,
+        );
+
+    Widget notice(LeaseResponse lease, {String? landlord = 'Elena Bautista'}) =>
+        ProviderScope(
+          overrides: [
+            todayProvider.overrideWithValue(today),
+            myInquiriesProvider.overrideWith((ref) async => [
+                  if (landlord != null)
+                    InquirySummary(
+                      id: 'i1',
+                      propertyId: 'p1',
+                      withName: landlord,
+                      status: InquirySummaryStatusEnum.LEASED,
+                      tenancy: Tenancy(leaseId: 'l1'),
+                    ),
+                ]),
+          ],
+          child: MaterialApp(
+            home: Scaffold(body: LeaseEndingNotice(lease: lease)),
+          ),
+        );
+
+    testWidgets('within a month, says when and who to ask', (tester) async {
+      await tester.pumpWidget(notice(renting(ends: DateTime.utc(2026, 11, 4))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your lease ends in 23 days'), findsOneWidget);
+      expect(
+          find.text('On 4 November 2026. If you want to stay, ask Elena to '
+              'extend it.'),
+          findsOneWidget);
+      expect(find.text('Message Elena'), findsOneWidget);
+    });
+
+    /// Calm: nothing has ended, the landlord just has not said.
+    testWidgets('past its end, says nothing has changed', (tester) async {
+      await tester.pumpWidget(notice(renting(ends: DateTime.utc(2026, 10, 1))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your lease has reached its end date'), findsOneWidget);
+      expect(find.textContaining('so nothing has changed'), findsOneWidget);
+    });
+
+    testWidgets('with no conversation yet, it is "your landlord"',
+        (tester) async {
+      await tester.pumpWidget(
+          notice(renting(ends: DateTime.utc(2026, 11, 4)), landlord: null));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Message your landlord'), findsOneWidget);
+    });
+
+    for (final (name, lease) in [
+      ('month to month', renting()),
+      ('far off', renting(ends: DateTime.utc(2027, 3, 31))),
+      ('already ended', renting(ends: DateTime.utc(2026, 11, 4), active: false)),
+    ]) {
+      testWidgets('says nothing when $name', (tester) async {
+        await tester.pumpWidget(notice(lease));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('lease-ending')), findsNothing);
+      });
+    }
   });
 }
 

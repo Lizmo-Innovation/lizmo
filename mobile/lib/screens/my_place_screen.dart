@@ -9,6 +9,7 @@ import '../billing/period_kind.dart';
 import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/lease_ending_notice.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/role_switcher.dart';
 import '../widgets/shared_lease_documents.dart';
@@ -114,6 +115,9 @@ class _Tenancy extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
       children: [
+        // First when there is one: where a warning about the end of the
+        // lease sends them, and the thing on this page with a date on it.
+        LeaseEndingNotice(lease: lease),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -139,6 +143,10 @@ class _Tenancy extends StatelessWidget {
               ),
               _Fact(label: 'Rent day', value: 'The ${_ordinal(lease.dueDateDay ?? 1)}'),
               _Fact(label: 'Started', value: _date(lease.startDate)),
+              // Only when there is one. Month to month is the usual
+              // arrangement, and a row saying so would read as a gap.
+              if (lease.termEndsOn != null)
+                _Fact(label: 'Ends', value: _date(lease.termEndsOn)),
             ],
           ),
         ),

@@ -120,5 +120,7 @@ NotificationDestination? _forTenantByType(String? type) => switch (type) {
       'PAYMENT_STILL_UNCONFIRMED' =>
         const SwitchTab(Routes.tenantPayments),
       'MAINTENANCE_STATUS_CHANGED' => const SwitchTab(Routes.tenantMaintenance),
+      // Where the lease is, with its end date and a way to ask about staying.
+      'LEASE_EXPIRING' => const SwitchTab(Routes.tenantPlace),
       _ => null,
     };

@@ -8749,7 +8749,7 @@ void _tenantLeaseTests() {
 
   group('deposit and advance', () {
     LeaseResponse tenancy({num? deposit, num? advance, num? returned,
-        String? settlement}) => LeaseResponse(
+        String? settlement, DateTime? ends}) => LeaseResponse(
       id: 'l1',
       tenantId: 't1',
       tenantName: 'Ana Reyes',
@@ -8765,6 +8765,7 @@ void _tenantLeaseTests() {
       dueDateDay: 5,
       startDate: DateTime.utc(2026, 10, 1),
       status: LeaseResponseStatusEnum.ACTIVE,
+      termEndsOn: ends,
     );
 
     Widget tenantApp(LeaseResponse lease) => ProviderScope(
@@ -8797,6 +8798,39 @@ void _tenantLeaseTests() {
       await tester.tap(find.byKey(const ValueKey('tab-place')));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('a lease for a term says when it ends', (tester) async {
+      await tester.pumpWidget(
+          tenantApp(tenancy(ends: DateTime.utc(2027, 9, 30))));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Ends'), findsOneWidget);
+      expect(find.text('30 September 2027'), findsOneWidget);
+    });
+
+    /// Month to month is the usual arrangement; a row saying so reads as a gap.
+    testWidgets('month to month has no Ends row', (tester) async {
+      await tester.pumpWidget(tenantApp(tenancy()));
+      await tester.pumpAndSettle();
+      await openMyPlace(tester);
+
+      expect(find.text('Ends'), findsNothing);
+    });
+
+    testWidgets('a lease ending soon is said on Home and on My place',
+        (tester) async {
+      final soon = DateTime.now().add(const Duration(days: 10));
+      await tester.pumpWidget(tenantApp(
+          tenancy(ends: DateTime.utc(soon.year, soon.month, soon.day))));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('lease-ending')), findsOneWidget);
+      expect(find.text('Your lease ends in 10 days'), findsOneWidget);
+
+      await openMyPlace(tester);
+      expect(find.byKey(const ValueKey('lease-ending')), findsOneWidget);
+    });
 
     testWidgets('the tenant sees what they handed over', (tester) async {
       await tester.pumpWidget(tenantApp(tenancy(deposit: 5000, advance: 2500)));

@@ -71,6 +71,20 @@ void main() {
     });
 
     /// Old rows, or a request since deleted. No chevron beats a dead end.
+    /// Where Extend and End the tenancy are.
+    test('a lease nearing its end opens the tenancy', () {
+      expect(
+        destinationOf(
+          _news(NotificationResponseTypeEnum.LEASE_EXPIRING,
+              leaseId: 'l1',
+              entity: NotificationResponseRelatedEntityTypeEnum.LEASE,
+              entityId: 'l1'),
+          LizmoProfile.landlord,
+        ),
+        isA<OpenDetail>().having((d) => d.detail, 'detail', Detail.tenancy('l1')),
+      );
+    });
+
     test('a request whose property is unknown leads nowhere', () {
       expect(
         destinationOf(
@@ -98,6 +112,8 @@ void main() {
       NotificationResponseTypeEnum.REQUEST_DECLINED,
       NotificationResponseTypeEnum.REQUEST_SUPERSEDED,
       NotificationResponseTypeEnum.LEASE_ENDED,
+      // Where the end date is, and a way to ask about staying.
+      NotificationResponseTypeEnum.LEASE_EXPIRING,
     ]) {
       test('${type.toJson()} opens My place', () {
         expect(

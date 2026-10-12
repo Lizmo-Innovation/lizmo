@@ -9,6 +9,7 @@ import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
+import '../widgets/lease_ending_notice.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/rent_status_card.dart';
 import '../widgets/your_landlord_card.dart';
@@ -156,6 +157,8 @@ class TenantHomeScreen extends ConsumerWidget {
                     RentStatusCard(lease: lease),
                     _Settled(lease: lease),
                     const SizedBox(height: 12),
+                    // After rent, which is due every month; this is once.
+                    LeaseEndingNotice(lease: lease),
                   ],
 
                   if (nothingToSay) const _AllQuiet(),
