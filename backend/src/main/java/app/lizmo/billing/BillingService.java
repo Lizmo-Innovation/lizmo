@@ -1,6 +1,7 @@
 package app.lizmo.billing;
 
 import app.lizmo.billing.dto.BillingPeriodResponse;
+import app.lizmo.billing.receipt.ReceiptService;
 import app.lizmo.lease.Lease;
 import app.lizmo.lease.LeasePaperworkAccess;
 import java.math.BigDecimal;
@@ -33,16 +34,19 @@ public class BillingService {
     private final BillingPeriodRepository periods;
     private final PaymentRepository payments;
     private final LeasePaperworkAccess access;
+    private final ReceiptService receipts;
     private final Clock clock;
 
     public BillingService(
             BillingPeriodRepository periods,
             PaymentRepository payments,
             LeasePaperworkAccess access,
+            ReceiptService receipts,
             Clock clock) {
         this.periods = periods;
         this.payments = payments;
         this.access = access;
+        this.receipts = receipts;
         this.clock = clock;
     }
 
@@ -181,5 +185,7 @@ public class BillingService {
 
         period.credit(applied);
         periods.save(period);
+        // Confirmed like any other, so receipted like any other.
+        receipts.issue(lease, period, advanced);
     }
 }

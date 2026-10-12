@@ -72,6 +72,8 @@ doc/PropertyByCodeResponse.md
 doc/PropertyPhoto.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
+doc/ReceiptResponse.md
+doc/ReceiptsApi.md
 doc/RecordPaymentRequest.md
 doc/RefreshRequest.md
 doc/RegisterDevice.md
@@ -119,6 +121,7 @@ lib/api/my_account_api.dart
 lib/api/notifications_api.dart
 lib/api/payment_channels_api.dart
 lib/api/properties_api.dart
+lib/api/receipts_api.dart
 lib/api/rent_api.dart
 lib/api/signing_up_api.dart
 lib/api/tenant_documents_api.dart
@@ -190,6 +193,7 @@ lib/model/property_by_code_response.dart
 lib/model/property_photo.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
+lib/model/receipt_response.dart
 lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
 lib/model/register_device.dart
@@ -222,5 +226,7 @@ test/devices_api_test.dart
 test/lease_term_request_test.dart
 test/photo_order_test.dart
 test/property_photo_test.dart
+test/receipt_response_test.dart
+test/receipts_api_test.dart
 test/register_device_test.dart
 test/tenancy_test.dart

@@ -21,6 +21,8 @@ Name | Type | Description | Notes
 **proofUrl** | **String** |  | [optional] 
 **proofUrlExpiresInSeconds** | **int** |  | [optional] 
 **declaredAt** | [**DateTime**](DateTime.md) |  | [optional] 
+**receiptId** | **String** |  | [optional] 
+**receiptNumber** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

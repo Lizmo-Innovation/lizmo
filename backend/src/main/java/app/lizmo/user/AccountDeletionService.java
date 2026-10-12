@@ -67,6 +67,7 @@ public class AccountDeletionService {
     private final DocumentStore store;
     private final RefreshTokenRepository refreshTokens;
     private final app.lizmo.push.DeviceTokenRepository devices;
+    private final app.lizmo.billing.receipt.ReceiptService receipts;
     private final PasswordEncoder passwordEncoder;
 
     public AccountDeletionService(
@@ -81,6 +82,7 @@ public class AccountDeletionService {
             DocumentStore store,
             RefreshTokenRepository refreshTokens,
             app.lizmo.push.DeviceTokenRepository devices,
+            app.lizmo.billing.receipt.ReceiptService receipts,
             PasswordEncoder passwordEncoder) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
@@ -93,6 +95,7 @@ public class AccountDeletionService {
         this.store = store;
         this.refreshTokens = refreshTokens;
         this.devices = devices;
+        this.receipts = receipts;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -147,6 +150,10 @@ public class AccountDeletionService {
 
         user.close(released(userId), passwordEncoder.encode(UUID.randomUUID().toString()));
         users.save(user);
+        // Receipts copy the names on them, so they are told too. The receipt
+        // itself stays: it is the other side's record of money that changed
+        // hands, as much as this person's.
+        receipts.forget(userId, user.getName());
 
         // The tenant profile is emptied rather than deleted. Leases point at it
         // by foreign key, and a past tenancy is the landlord's record of their

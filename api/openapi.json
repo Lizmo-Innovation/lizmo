@@ -72,6 +72,10 @@
             "description": "Lizmo's own staff"
         },
         {
+            "name": "Receipts",
+            "description": "Acknowledgement receipts for confirmed payments"
+        },
+        {
             "name": "Devices",
             "description": "Phones that receive push notifications"
         },
@@ -4178,6 +4182,42 @@
                 }
             }
         },
+        "/api/v1/me/leases/{leaseId}/receipts": {
+            "get": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "My receipts",
+                "description": "One for every payment the landlord confirmed or recorded, newest first. Not BIR official receipts.",
+                "operationId": "listMyReceipts",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The receipts",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ReceiptResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/me/leases/{leaseId}/payment-details": {
             "get": {
                 "tags": [
@@ -4509,6 +4549,42 @@
                             "*/*": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/leases/{leaseId}/receipts": {
+            "get": {
+                "tags": [
+                    "Receipts"
+                ],
+                "summary": "Receipts on this tenancy",
+                "description": "Everything acknowledged on it, newest first.",
+                "operationId": "listLeaseReceipts",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The receipts",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ReceiptResponse"
+                                    }
                                 }
                             }
                         }
@@ -6080,6 +6156,13 @@
                     "declaredAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "receiptId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "receiptNumber": {
+                        "type": "string"
                     }
                 },
                 "description": "A recorded rent payment"
@@ -7769,6 +7852,82 @@
                     }
                 },
                 "description": "When a lease is meant to end"
+            },
+            "ReceiptResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "paymentId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "leaseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "number": {
+                        "type": "string",
+                        "description": "Numbered per landlord, per year, in the order issued",
+                        "example": "2026-0042"
+                    },
+                    "issuedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "receivedFrom": {
+                        "type": "string"
+                    },
+                    "receivedBy": {
+                        "type": "string"
+                    },
+                    "propertyName": {
+                        "type": "string"
+                    },
+                    "place": {
+                        "type": "string",
+                        "example": "Bed 1, 2B"
+                    },
+                    "periodLabel": {
+                        "type": "string",
+                        "example": "October 2026"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "RENT",
+                            "DEPOSIT"
+                        ]
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "sentTo": {
+                        "type": "string"
+                    },
+                    "paidOn": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "stillOwed": {
+                        "type": "number",
+                        "description": "What was left of that month, or the deposit, once this was counted. Zero when it settled it."
+                    }
+                },
+                "description": "An acknowledgement receipt for a confirmed payment. Not a BIR official receipt."
             }
         }
     }

@@ -151,6 +151,8 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
 *PropertiesApi* | [**reorderPropertyPhotos**](doc//PropertiesApi.md#reorderpropertyphotos) | **PUT** /api/v1/properties/{propertyId}/photos/order | Put them in order
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
+*ReceiptsApi* | [**listLeaseReceipts**](doc//ReceiptsApi.md#listleasereceipts) | **GET** /api/v1/leases/{leaseId}/receipts | Receipts on this tenancy
+*ReceiptsApi* | [**listMyReceipts**](doc//ReceiptsApi.md#listmyreceipts) | **GET** /api/v1/me/leases/{leaseId}/receipts | My receipts
 *RentApi* | [**confirmPayment**](doc//RentApi.md#confirmpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/confirm | Agree the money arrived
 *RentApi* | [**declarePayment**](doc//RentApi.md#declarepayment) | **POST** /api/v1/me/leases/{leaseId}/payments | Say I have paid
 *RentApi* | [**getCollections**](doc//RentApi.md#getcollections) | **GET** /api/v1/me/collections | How rent is going
@@ -243,6 +245,7 @@ Class | Method | HTTP request | Description
  - [PropertyPhoto](doc//PropertyPhoto.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
+ - [ReceiptResponse](doc//ReceiptResponse.md)
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RegisterDevice](doc//RegisterDevice.md)

@@ -3,6 +3,7 @@ package app.lizmo.billing.dto;
 import app.lizmo.billing.Payment;
 import app.lizmo.billing.PaymentMethod;
 import app.lizmo.billing.PaymentStatus;
+import app.lizmo.billing.receipt.Receipt;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,10 +41,14 @@ public record PaymentResponse(
         long proofUrlExpiresInSeconds,
         // When the tenant said so in the app -- how long anybody has been
         // waiting is counted from here, not from the date they gave.
-        java.time.Instant declaredAt) {
+        java.time.Instant declaredAt,
+        // Its acknowledgement receipt, once confirmed or recorded.
+        UUID receiptId,
+        String receiptNumber) {
 
     public static PaymentResponse of(
-            Payment payment, String periodLabel, String proofUrl, long expiresIn) {
+            Payment payment, String periodLabel, String proofUrl, long expiresIn,
+            Receipt receipt) {
         return new PaymentResponse(
                 payment.getId(),
                 payment.getBillingPeriodId(),
@@ -57,6 +62,8 @@ public record PaymentResponse(
                 payment.getRejectionReason(),
                 proofUrl,
                 expiresIn,
-                payment.getCreatedAt());
+                payment.getCreatedAt(),
+                receipt == null ? null : receipt.getId(),
+                receipt == null ? null : receipt.getNumber());
     }
 }

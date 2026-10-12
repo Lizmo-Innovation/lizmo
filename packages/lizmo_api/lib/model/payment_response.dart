@@ -26,6 +26,8 @@ class PaymentResponse {
     this.proofUrl,
     this.proofUrlExpiresInSeconds,
     this.declaredAt,
+    this.receiptId,
+    this.receiptNumber,
   });
 
   ///
@@ -120,6 +122,22 @@ class PaymentResponse {
   ///
   DateTime? declaredAt;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? receiptId;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? receiptNumber;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PaymentResponse &&
     other.id == id &&
@@ -134,7 +152,9 @@ class PaymentResponse {
     other.rejectionReason == rejectionReason &&
     other.proofUrl == proofUrl &&
     other.proofUrlExpiresInSeconds == proofUrlExpiresInSeconds &&
-    other.declaredAt == declaredAt;
+    other.declaredAt == declaredAt &&
+    other.receiptId == receiptId &&
+    other.receiptNumber == receiptNumber;
 
   @override
   int get hashCode =>
@@ -151,10 +171,12 @@ class PaymentResponse {
     (rejectionReason == null ? 0 : rejectionReason!.hashCode) +
     (proofUrl == null ? 0 : proofUrl!.hashCode) +
     (proofUrlExpiresInSeconds == null ? 0 : proofUrlExpiresInSeconds!.hashCode) +
-    (declaredAt == null ? 0 : declaredAt!.hashCode);
+    (declaredAt == null ? 0 : declaredAt!.hashCode) +
+    (receiptId == null ? 0 : receiptId!.hashCode) +
+    (receiptNumber == null ? 0 : receiptNumber!.hashCode);
 
   @override
-  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, rejectionReason=$rejectionReason, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds, declaredAt=$declaredAt]';
+  String toString() => 'PaymentResponse[id=$id, billingPeriodId=$billingPeriodId, periodLabel=$periodLabel, amountPaid=$amountPaid, paymentDate=$paymentDate, paymentMethod=$paymentMethod, sentTo=$sentTo, status=$status, remarks=$remarks, rejectionReason=$rejectionReason, proofUrl=$proofUrl, proofUrlExpiresInSeconds=$proofUrlExpiresInSeconds, declaredAt=$declaredAt, receiptId=$receiptId, receiptNumber=$receiptNumber]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -223,6 +245,16 @@ class PaymentResponse {
     } else {
       json[r'declaredAt'] = null;
     }
+    if (this.receiptId != null) {
+      json[r'receiptId'] = this.receiptId;
+    } else {
+      json[r'receiptId'] = null;
+    }
+    if (this.receiptNumber != null) {
+      json[r'receiptNumber'] = this.receiptNumber;
+    } else {
+      json[r'receiptNumber'] = null;
+    }
     return json;
   }
 
@@ -256,6 +288,8 @@ class PaymentResponse {
         proofUrl: mapValueOfType<String>(json, r'proofUrl'),
         proofUrlExpiresInSeconds: mapValueOfType<int>(json, r'proofUrlExpiresInSeconds'),
         declaredAt: mapDateTime(json, r'declaredAt', r''),
+        receiptId: mapValueOfType<String>(json, r'receiptId'),
+        receiptNumber: mapValueOfType<String>(json, r'receiptNumber'),
       );
     }
     return null;

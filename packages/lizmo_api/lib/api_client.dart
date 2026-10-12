@@ -299,6 +299,8 @@ class ApiClient {
           return PropertyRequest.fromJson(value);
         case 'PropertyResponse':
           return PropertyResponse.fromJson(value);
+        case 'ReceiptResponse':
+          return ReceiptResponse.fromJson(value);
         case 'RecordPaymentRequest':
           return RecordPaymentRequest.fromJson(value);
         case 'RefreshRequest':

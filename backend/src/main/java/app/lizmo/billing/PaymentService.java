@@ -3,6 +3,8 @@ package app.lizmo.billing;
 import app.lizmo.billing.channel.LandlordPaymentChannelService;
 import app.lizmo.billing.dto.PaymentResponse;
 import app.lizmo.billing.dto.RecordPaymentRequest;
+import app.lizmo.billing.receipt.Receipt;
+import app.lizmo.billing.receipt.ReceiptService;
 import app.lizmo.common.ApiException;
 import app.lizmo.common.ErrorCode;
 import app.lizmo.document.DocumentOwnerType;
@@ -55,6 +57,7 @@ public class PaymentService {
     private final LeasePaperworkAccess access;
     private final NotificationService notifications;
     private final LandlordPaymentChannelService channels;
+    private final ReceiptService receipts;
     private final Clock clock;
 
     public PaymentService(
@@ -66,6 +69,7 @@ public class PaymentService {
             LeasePaperworkAccess access,
             NotificationService notifications,
             LandlordPaymentChannelService channels,
+            ReceiptService receipts,
             Clock clock) {
         this.payments = payments;
         this.periods = periods;
@@ -75,6 +79,7 @@ public class PaymentService {
         this.access = access;
         this.notifications = notifications;
         this.channels = channels;
+        this.receipts = receipts;
         this.clock = clock;
     }
 
@@ -94,15 +99,17 @@ public class PaymentService {
 
         period.credit(payment.getAmountPaid());
         periods.save(period);
+        Receipt receipt = receipts.issue(lease, period, payment);
 
         // Their own record reaching them, so a tenant is not left wondering
-        // whether the landlord wrote it down.
+        // whether the landlord wrote it down -- with the receipt that says so.
         notifications.raise(
                 lease.getTenantId(),
                 NotificationType.PAYMENT_CONFIRMED,
                 "Your landlord recorded a payment",
-                "P%s recorded against %s."
-                        .formatted(plain(payment.getAmountPaid()), period.describe()),
+                "P%s recorded against %s. Receipt %s."
+                        .formatted(plain(payment.getAmountPaid()), period.describe(),
+                                receipt.getNumber()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 
@@ -172,13 +179,15 @@ public class PaymentService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such month."));
         period.credit(payment.getAmountPaid());
         periods.save(period);
+        Receipt receipt = receipts.issue(lease, period, payment);
 
         notifications.raise(
                 lease.getTenantId(),
                 NotificationType.PAYMENT_CONFIRMED,
                 "Your payment was confirmed",
-                "P%s for %s. Thank you."
-                        .formatted(plain(payment.getAmountPaid()), period.describe()),
+                "P%s for %s. Receipt %s."
+                        .formatted(plain(payment.getAmountPaid()), period.describe(),
+                                receipt.getNumber()),
                 NotificationEntityType.PAYMENT,
                 payment.getId());
 
@@ -334,7 +343,8 @@ public class PaymentService {
                 .map(BillingPeriod::getPeriodLabel)
                 .orElse(null);
 
-        return PaymentResponse.of(payment, label, proofUrl, URL_LIFETIME.toSeconds());
+        return PaymentResponse.of(payment, label, proofUrl, URL_LIFETIME.toSeconds(),
+                receipts.ofPayment(payment.getId()));
     }
 
     private UUID landlordOf(Lease lease) {
