@@ -9995,6 +9995,52 @@ void _tenantLeaseTests() {
       expect(_tabIndex(tester), 0);
     });
 
+    AwaitingRow told(String id, int daysAgo) => AwaitingRow(
+          leaseId: 'l1',
+          paymentId: id,
+          tenantName: 'Ana Reyes',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          amount: 2500,
+          paidOn: DateTime.now().subtract(Duration(days: daysAgo)),
+          declaredAt: DateTime.now().subtract(Duration(days: daysAgo)),
+        );
+
+    /// A payment from this morning and one from a fortnight ago looked the
+    /// same.
+    testWidgets('a waiting payment says how long it has waited',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith(waiting: 2, awaiting: [told('old', 4), told('new', 1)]));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('awaiting-age-old')),
+              matching: find.text('4 days')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('awaiting-age-new')),
+              matching: find.text('1 day')),
+          findsOneWidget);
+    });
+
+    /// From the third day -- when Lizmo starts reminding them -- it stands out.
+    testWidgets('one waiting three days or more is marked', (tester) async {
+      await tester.pumpWidget(
+          appWith(waiting: 2, awaiting: [told('old', 4), told('new', 1)]));
+      await tester.pumpAndSettle();
+
+      Color? background(String id) => (tester
+              .widget<Container>(find.byKey(ValueKey('awaiting-age-$id')))
+              .decoration as BoxDecoration?)
+          ?.color;
+      expect(background('old'), LizmoColors.amberBg);
+      expect(background('new'), isNull);
+    });
+
     testWidgets('nobody behind means no list', (tester) async {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();

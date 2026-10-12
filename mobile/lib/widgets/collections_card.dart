@@ -6,6 +6,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import '../router.dart';
+import 'rent_schedule_list.dart';
 
 /// How rent is going this month, across everything a landlord owns.
 ///
@@ -267,9 +268,18 @@ class _WaitingRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      row.tenantName ?? 'A tenant',
-                      style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            row.tenantName ?? 'A tenant',
+                            style: LizmoType.rowName
+                                .copyWith(color: LizmoColors.ink),
+                          ),
+                        ),
+                        if (row.declaredAt case final told?)
+                          _Waited(paymentId: row.paymentId, since: told),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -379,6 +389,48 @@ class _Figure extends StatelessWidget {
         const SizedBox(height: 2),
         Text(value, style: LizmoType.dataMedium.copyWith(color: ink)),
       ],
+    );
+  }
+}
+
+/// How long a payment has waited for the landlord.
+///
+/// Plain for the first two days. From the third -- when Lizmo starts
+/// reminding them -- amber, because by then the tenant is the one wondering
+/// whether they were believed.
+class _Waited extends StatelessWidget {
+  const _Waited({required this.paymentId, required this.since});
+
+  final String? paymentId;
+  final DateTime since;
+
+  static const _reminded = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = DateTime.now().difference(since.toLocal()).inDays;
+    final long = days >= _reminded;
+    final text = waitedFor(since);
+
+    return Container(
+      key: ValueKey('awaiting-age-$paymentId'),
+      padding: long
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+          : EdgeInsets.zero,
+      decoration: long
+          ? BoxDecoration(
+              color: LizmoColors.amberBg,
+              borderRadius: BorderRadius.circular(999),
+            )
+          : null,
+      child: Text(
+        text,
+        style: LizmoType.rowSub.copyWith(
+          fontSize: 11,
+          color: long ? LizmoColors.amberText : LizmoColors.slate,
+          fontWeight: long ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
     );
   }
 }
