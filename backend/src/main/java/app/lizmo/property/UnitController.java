@@ -67,6 +67,25 @@ public class UnitController {
         return service.updateUnit(id, request, currentUser.requireId());
     }
 
+    @PutMapping("/units/{id}/ready-from")
+    @Operation(operationId = "setUnitReadyFrom",
+            summary = "Say when a vacant room is ready to move into",
+            description = "Null for now. Shown on the page anybody sees after scanning "
+                    + "the property code.")
+    @ApiResponse(responseCode = "200", description = "The unit",
+            content = @Content(schema = @Schema(implementation = UnitResponse.class)))
+    public UnitResponse setReadyFrom(
+            @PathVariable UUID id, @RequestBody ReadyFromRequest request) {
+        return service.setReadyFrom(id, request.readyFrom(), currentUser.requireId());
+    }
+
+    /** When a vacant room is ready; null for now. */
+    @Schema(description = "When a vacant room is ready to move into")
+    public record ReadyFromRequest(
+            @Schema(example = "2026-11-01", description = "Null for ready now")
+            java.time.LocalDate readyFrom) {
+    }
+
     @PutMapping("/units/{id}/maintenance")
     @Operation(operationId = "setUnitMaintenance",
             summary = "Take a unit out of service, or put it back",

@@ -32,13 +32,22 @@ public class PropertyDiscoveryService {
     /** What the place looks like, which is half of why anybody scans a code. */
     private final PropertyPhotoService photos;
 
+    /** The rules, the money up front, and who the landlord is. */
+    private final app.lizmo.property.place.PlaceDetailsService details;
+
+    private final java.time.Clock clock;
+
     public PropertyDiscoveryService(
             PropertyRepository properties,
             UnitRepository units,
             BedRepository beds,
             UnitUtilityRepository utilities,
-            PropertyPhotoService photos) {
+            PropertyPhotoService photos,
+            app.lizmo.property.place.PlaceDetailsService details,
+            java.time.Clock clock) {
         this.photos = photos;
+        this.details = details;
+        this.clock = clock;
         this.properties = properties;
         this.units = units;
         this.beds = beds;
@@ -57,7 +66,9 @@ public class PropertyDiscoveryService {
         return PropertyByCodeResponse.of(
                 property,
                 vacanciesIn(property.getId()),
-                photos.urlsFor(property.getId()));
+                photos.urlsFor(property.getId()),
+                details.of(property.getId()),
+                details.landlord(property.getLandlordId()));
     }
 
     /**
@@ -69,6 +80,8 @@ public class PropertyDiscoveryService {
      */
     private List<VacancyFloor> vacanciesIn(UUID propertyId) {
         Map<String, Tally> byFloor = new LinkedHashMap<>();
+        java.time.LocalDate today =
+                java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Manila")));
 
         for (Unit unit : units.findByPropertyIdOrderByUnitNumberAsc(propertyId)) {
             // Out of service is not on offer. A room being repainted should not
@@ -85,12 +98,16 @@ public class PropertyDiscoveryService {
                     && monthlyUtilities != null
                     && monthlyUtilities.signum() > 0;
 
+            // A day gone by is ready now: nobody has to remember to clear it.
+            java.time.LocalDate ready = unit.getReadyFrom() != null
+                    && unit.getReadyFrom().isAfter(today) ? unit.getReadyFrom() : null;
+
             if (unit.getRentalMode() == RentalMode.WHOLE_UNIT) {
                 if (unit.getStatus() != UnitStatus.VACANT) {
                     continue;
                 }
                 byFloor.computeIfAbsent(floor, key -> new Tally())
-                        .wholeUnit(unit.getRent(), onTop);
+                        .wholeUnit(unit.getRent(), onTop, ready);
                 continue;
             }
 
@@ -104,7 +121,8 @@ public class PropertyDiscoveryService {
                         // A bed with no price of its own asks its unit's.
                         // Null would read as free to anyone who does not know
                         // the fallback rule.
-                        .bed(bed.getRent() != null ? bed.getRent() : unit.getRent(), onTop);
+                        .bed(bed.getRent() != null ? bed.getRent() : unit.getRent(), onTop,
+                                ready);
             }
         }
 
@@ -129,15 +147,28 @@ public class PropertyDiscoveryService {
         private BigDecimal cheapest;
         private BigDecimal dearest;
         private boolean utilitiesOnTop;
+        private int readyLater;
+        private java.time.LocalDate readyFrom;
 
-        void wholeUnit(BigDecimal rent, boolean onTop) {
+        void wholeUnit(BigDecimal rent, boolean onTop, java.time.LocalDate ready) {
             wholeUnits++;
             price(rent, onTop);
+            later(ready);
         }
 
-        void bed(BigDecimal rent, boolean onTop) {
+        void bed(BigDecimal rent, boolean onTop, java.time.LocalDate ready) {
             beds++;
             price(rent, onTop);
+            later(ready);
+        }
+
+        /** Not ready yet; the soonest of those is the one worth saying. */
+        private void later(java.time.LocalDate ready) {
+            if (ready == null) {
+                return;
+            }
+            readyLater++;
+            readyFrom = readyFrom == null || ready.isBefore(readyFrom) ? ready : readyFrom;
         }
 
         private void price(BigDecimal rent, boolean onTop) {
@@ -154,7 +185,8 @@ public class PropertyDiscoveryService {
         }
 
         VacancyFloor on(String floor) {
-            return new VacancyFloor(floor, wholeUnits, beds, cheapest, dearest, utilitiesOnTop);
+            return new VacancyFloor(floor, wholeUnits, beds, cheapest, dearest, utilitiesOnTop,
+                    readyLater, readyFrom);
         }
     }
 

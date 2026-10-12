@@ -42,7 +42,9 @@ public record UnitResponse(
         BigDecimal rent,
         BigDecimal potentialMonthlyRent,
         BigDecimal monthlyUtilities,
-        UtilityBilling utilityBilling) {
+        UtilityBilling utilityBilling,
+        @Schema(description = "When a vacant room is ready to move into, if not now")
+        java.time.LocalDate readyFrom) {
 
     public static UnitResponse of(
             Unit unit,
@@ -64,6 +66,7 @@ public record UnitResponse(
                 unit.getRent(),
                 potentialMonthlyRent,
                 monthlyUtilities,
-                unit.getUtilityBilling());
+                unit.getUtilityBilling(),
+                unit.getReadyFrom());
     }
 }

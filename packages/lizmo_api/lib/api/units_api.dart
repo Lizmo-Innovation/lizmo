@@ -471,6 +471,68 @@ class UnitsApi {
     return null;
   }
 
+  /// Say when a vacant room is ready to move into
+  ///
+  /// Null for now. Shown on the page anybody sees after scanning the property code.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ReadyFromRequest] readyFromRequest (required):
+  Future<Response> setUnitReadyFromWithHttpInfo(String id, ReadyFromRequest readyFromRequest, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/units/{id}/ready-from'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = readyFromRequest;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Say when a vacant room is ready to move into
+  ///
+  /// Null for now. Shown on the page anybody sees after scanning the property code.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ReadyFromRequest] readyFromRequest (required):
+  Future<UnitResponse?> setUnitReadyFrom(String id, ReadyFromRequest readyFromRequest, { Future<void>? abortTrigger, }) async {
+    final response = await setUnitReadyFromWithHttpInfo(id, readyFromRequest, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UnitResponse',) as UnitResponse;
+    
+    }
+    return null;
+  }
+
   /// Set a unit's fixed monthly utilities
   ///
   /// Only the kinds sent are changed; the others are left alone.

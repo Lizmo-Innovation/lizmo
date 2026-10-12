@@ -22,6 +22,7 @@ Name | Type | Description | Notes
 **potentialMonthlyRent** | **num** |  | [optional] 
 **monthlyUtilities** | **num** |  | [optional] 
 **utilityBilling** | **String** |  | [optional] 
+**readyFrom** | [**DateTime**](DateTime.md) | When a vacant room is ready to move into, if not now | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

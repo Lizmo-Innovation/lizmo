@@ -74,6 +74,9 @@ public class Unit {
     @Column(name = "utility_billing", nullable = false)
     private UtilityBilling utilityBilling = UtilityBilling.COMBINED;
 
+    @Column(name = "ready_from")
+    private java.time.LocalDate readyFrom;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -152,6 +155,18 @@ public class Unit {
         } else {
             this.status = UnitStatus.OCCUPIED;
         }
+    }
+
+    /**
+     * When a vacant room is ready to move into, if not now -- being
+     * repainted, say. Null, or a day gone by, is ready now.
+     */
+    public void readyFrom(java.time.LocalDate on) {
+        this.readyFrom = on;
+    }
+
+    public java.time.LocalDate getReadyFrom() {
+        return readyFrom;
     }
 
     public void markMaintenance(boolean underMaintenance) {

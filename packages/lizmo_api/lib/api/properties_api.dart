@@ -353,6 +353,60 @@ class PropertiesApi {
     return null;
   }
 
+  /// A place's rules, money up front and what comes with it
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> getPlaceDetailsWithHttpInfo(String id, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{id}/details'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// A place's rules, money up front and what comes with it
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<PlaceDetailsDto?> getPlaceDetails(String id, { Future<void>? abortTrigger, }) async {
+    final response = await getPlaceDetailsWithHttpInfo(id, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlaceDetailsDto',) as PlaceDetailsDto;
+    
+    }
+    return null;
+  }
+
   /// View one property
   ///
   /// Note: This method returns the HTTP [Response].
@@ -638,6 +692,68 @@ class PropertiesApi {
         .cast<PropertyPhoto>()
         .toList(growable: false);
 
+    }
+    return null;
+  }
+
+  /// Set a place's details
+  ///
+  /// Replaced whole: a field left out is cleared. Shown on the page anybody sees after scanning the property code.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PlaceDetailsDto] placeDetailsDto (required):
+  Future<Response> savePlaceDetailsWithHttpInfo(String id, PlaceDetailsDto placeDetailsDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/properties/{id}/details'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = placeDetailsDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Set a place's details
+  ///
+  /// Replaced whole: a field left out is cleared. Shown on the page anybody sees after scanning the property code.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PlaceDetailsDto] placeDetailsDto (required):
+  Future<PlaceDetailsDto?> savePlaceDetails(String id, PlaceDetailsDto placeDetailsDto, { Future<void>? abortTrigger, }) async {
+    final response = await savePlaceDetailsWithHttpInfo(id, placeDetailsDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlaceDetailsDto',) as PlaceDetailsDto;
+    
     }
     return null;
   }

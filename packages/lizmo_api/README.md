@@ -150,11 +150,13 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**deleteProperty**](doc//PropertiesApi.md#deleteproperty) | **DELETE** /api/v1/properties/{id} | Delete a property
 *PropertiesApi* | [**deletePropertyPhoto**](doc//PropertiesApi.md#deletepropertyphoto) | **DELETE** /api/v1/properties/{propertyId}/photos/{photoId} | Remove a photo
 *PropertiesApi* | [**getOccupancy**](doc//PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
+*PropertiesApi* | [**getPlaceDetails**](doc//PropertiesApi.md#getplacedetails) | **GET** /api/v1/properties/{id}/details | A place's rules, money up front and what comes with it
 *PropertiesApi* | [**getProperty**](doc//PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listPropertyPhotos**](doc//PropertiesApi.md#listpropertyphotos) | **GET** /api/v1/properties/{propertyId}/photos | This property's photos
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
 *PropertiesApi* | [**reorderPropertyPhotos**](doc//PropertiesApi.md#reorderpropertyphotos) | **PUT** /api/v1/properties/{propertyId}/photos/order | Put them in order
+*PropertiesApi* | [**savePlaceDetails**](doc//PropertiesApi.md#saveplacedetails) | **PUT** /api/v1/properties/{id}/details | Set a place's details
 *PropertiesApi* | [**updateProperty**](doc//PropertiesApi.md#updateproperty) | **PUT** /api/v1/properties/{id} | Update a property
 *ReceiptsApi* | [**listLeaseReceipts**](doc//ReceiptsApi.md#listleasereceipts) | **GET** /api/v1/leases/{leaseId}/receipts | Receipts on this tenancy
 *ReceiptsApi* | [**listMyReceipts**](doc//ReceiptsApi.md#listmyreceipts) | **GET** /api/v1/me/leases/{leaseId}/receipts | My receipts
@@ -185,6 +187,7 @@ Class | Method | HTTP request | Description
 *UnitsApi* | [**listUtilities**](doc//UnitsApi.md#listutilities) | **GET** /api/v1/units/{id}/utilities | A unit's fixed monthly utilities
 *UnitsApi* | [**setBedMaintenance**](doc//UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
 *UnitsApi* | [**setUnitMaintenance**](doc//UnitsApi.md#setunitmaintenance) | **PUT** /api/v1/units/{id}/maintenance | Take a unit out of service, or put it back
+*UnitsApi* | [**setUnitReadyFrom**](doc//UnitsApi.md#setunitreadyfrom) | **PUT** /api/v1/units/{id}/ready-from | Say when a vacant room is ready to move into
 *UnitsApi* | [**setUtilities**](doc//UnitsApi.md#setutilities) | **PUT** /api/v1/units/{id}/utilities | Set a unit's fixed monthly utilities
 *UnitsApi* | [**updateBed**](doc//UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 *UnitsApi* | [**updateUnit**](doc//UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
@@ -219,6 +222,7 @@ Class | Method | HTTP request | Description
  - [InvitationDetailsResponse](doc//InvitationDetailsResponse.md)
  - [InvitationSentResponse](doc//InvitationSentResponse.md)
  - [InviteLandlordRequest](doc//InviteLandlordRequest.md)
+ - [LandlordCard](doc//LandlordCard.md)
  - [LandlordDetail](doc//LandlordDetail.md)
  - [LandlordSummary](doc//LandlordSummary.md)
  - [LeaseDocumentResponse](doc//LeaseDocumentResponse.md)
@@ -242,6 +246,7 @@ Class | Method | HTTP request | Description
  - [PaymentResponse](doc//PaymentResponse.md)
  - [PendingInvitation](doc//PendingInvitation.md)
  - [PhotoOrder](doc//PhotoOrder.md)
+ - [PlaceDetailsDto](doc//PlaceDetailsDto.md)
  - [PlatformInvoiceLine](doc//PlatformInvoiceLine.md)
  - [PlatformPaymentForAdmin](doc//PlatformPaymentForAdmin.md)
  - [PlatformPaymentRejection](doc//PlatformPaymentRejection.md)
@@ -253,6 +258,7 @@ Class | Method | HTTP request | Description
  - [PropertyPhoto](doc//PropertyPhoto.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
+ - [ReadyFromRequest](doc//ReadyFromRequest.md)
  - [ReceiptResponse](doc//ReceiptResponse.md)
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)

@@ -19,6 +19,8 @@ class VacancyFloor {
     this.cheapestRent,
     this.dearestRent,
     this.utilitiesOnTop,
+    this.readyLater,
+    this.readyFrom,
   });
 
   ///
@@ -69,6 +71,24 @@ class VacancyFloor {
   ///
   bool? utilitiesOnTop;
 
+  /// How many of the vacant ones are not ready to move into yet
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? readyLater;
+
+  /// The soonest of those is ready on this day
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? readyFrom;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is VacancyFloor &&
     other.floor == floor &&
@@ -76,7 +96,9 @@ class VacancyFloor {
     other.beds == beds &&
     other.cheapestRent == cheapestRent &&
     other.dearestRent == dearestRent &&
-    other.utilitiesOnTop == utilitiesOnTop;
+    other.utilitiesOnTop == utilitiesOnTop &&
+    other.readyLater == readyLater &&
+    other.readyFrom == readyFrom;
 
   @override
   int get hashCode =>
@@ -86,10 +108,12 @@ class VacancyFloor {
     (beds == null ? 0 : beds!.hashCode) +
     (cheapestRent == null ? 0 : cheapestRent!.hashCode) +
     (dearestRent == null ? 0 : dearestRent!.hashCode) +
-    (utilitiesOnTop == null ? 0 : utilitiesOnTop!.hashCode);
+    (utilitiesOnTop == null ? 0 : utilitiesOnTop!.hashCode) +
+    (readyLater == null ? 0 : readyLater!.hashCode) +
+    (readyFrom == null ? 0 : readyFrom!.hashCode);
 
   @override
-  String toString() => 'VacancyFloor[floor=$floor, wholeUnits=$wholeUnits, beds=$beds, cheapestRent=$cheapestRent, dearestRent=$dearestRent, utilitiesOnTop=$utilitiesOnTop]';
+  String toString() => 'VacancyFloor[floor=$floor, wholeUnits=$wholeUnits, beds=$beds, cheapestRent=$cheapestRent, dearestRent=$dearestRent, utilitiesOnTop=$utilitiesOnTop, readyLater=$readyLater, readyFrom=$readyFrom]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -123,6 +147,16 @@ class VacancyFloor {
     } else {
       json[r'utilitiesOnTop'] = null;
     }
+    if (this.readyLater != null) {
+      json[r'readyLater'] = this.readyLater;
+    } else {
+      json[r'readyLater'] = null;
+    }
+    if (this.readyFrom != null) {
+      json[r'readyFrom'] = _dateFormatter.format(this.readyFrom!);
+    } else {
+      json[r'readyFrom'] = null;
+    }
     return json;
   }
 
@@ -151,6 +185,8 @@ class VacancyFloor {
             ? null
             : num.parse('${json[r'dearestRent']}'),
         utilitiesOnTop: mapValueOfType<bool>(json, r'utilitiesOnTop'),
+        readyLater: mapValueOfType<int>(json, r'readyLater'),
+        readyFrom: mapDateTime(json, r'readyFrom', r''),
       );
     }
     return null;

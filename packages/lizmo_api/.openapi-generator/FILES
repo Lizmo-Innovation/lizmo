@@ -34,6 +34,7 @@ doc/InquiryThread.md
 doc/InvitationDetailsResponse.md
 doc/InvitationSentResponse.md
 doc/InviteLandlordRequest.md
+doc/LandlordCard.md
 doc/LandlordDetail.md
 doc/LandlordSummary.md
 doc/LeaseDocumentResponse.md
@@ -64,6 +65,7 @@ doc/PaymentNote.md
 doc/PaymentResponse.md
 doc/PendingInvitation.md
 doc/PhotoOrder.md
+doc/PlaceDetailsDto.md
 doc/PlatformInvoiceLine.md
 doc/PlatformPaymentForAdmin.md
 doc/PlatformPaymentRejection.md
@@ -76,6 +78,7 @@ doc/PropertyByCodeResponse.md
 doc/PropertyPhoto.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
+doc/ReadyFromRequest.md
 doc/ReceiptResponse.md
 doc/ReceiptsApi.md
 doc/RecordPaymentRequest.md
@@ -167,6 +170,7 @@ lib/model/inquiry_thread.dart
 lib/model/invitation_details_response.dart
 lib/model/invitation_sent_response.dart
 lib/model/invite_landlord_request.dart
+lib/model/landlord_card.dart
 lib/model/landlord_detail.dart
 lib/model/landlord_summary.dart
 lib/model/lease_document_response.dart
@@ -190,6 +194,7 @@ lib/model/payment_note.dart
 lib/model/payment_response.dart
 lib/model/pending_invitation.dart
 lib/model/photo_order.dart
+lib/model/place_details_dto.dart
 lib/model/platform_invoice_line.dart
 lib/model/platform_payment_for_admin.dart
 lib/model/platform_payment_rejection.dart
@@ -201,6 +206,7 @@ lib/model/property_by_code_response.dart
 lib/model/property_photo.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
+lib/model/ready_from_request.dart
 lib/model/receipt_response.dart
 lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
@@ -232,12 +238,15 @@ lib/model/waiting_payment.dart
 pubspec.yaml
 test/announcements_api_test.dart
 test/devices_api_test.dart
+test/landlord_card_test.dart
 test/lease_term_request_test.dart
 test/my_notice_response_test.dart
 test/notice_response_test.dart
 test/photo_order_test.dart
+test/place_details_dto_test.dart
 test/post_notice_test.dart
 test/property_photo_test.dart
+test/ready_from_request_test.dart
 test/receipt_response_test.dart
 test/receipts_api_test.dart
 test/register_device_test.dart

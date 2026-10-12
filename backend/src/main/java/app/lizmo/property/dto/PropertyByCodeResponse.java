@@ -41,10 +41,14 @@ public record PropertyByCodeResponse(
         int vacantWholeUnits,
         int vacantBeds,
         List<VacancyFloor> floors,
-        List<String> photos) {
+        List<String> photos,
+        app.lizmo.property.place.PlaceDetailsDto details,
+        app.lizmo.property.place.LandlordCard landlord) {
 
     public static PropertyByCodeResponse of(
-            Property property, List<VacancyFloor> floors, List<String> photos) {
+            Property property, List<VacancyFloor> floors, List<String> photos,
+            app.lizmo.property.place.PlaceDetailsDto details,
+            app.lizmo.property.place.LandlordCard landlord) {
         int wholeUnits = floors.stream().mapToInt(VacancyFloor::wholeUnits).sum();
         int beds = floors.stream().mapToInt(VacancyFloor::beds).sum();
         return new PropertyByCodeResponse(
@@ -58,6 +62,8 @@ public record PropertyByCodeResponse(
                 wholeUnits,
                 beds,
                 floors,
-                photos);
+                photos,
+                details,
+                landlord);
     }
 }

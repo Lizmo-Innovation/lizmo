@@ -13,6 +13,9 @@ import app.lizmo.property.dto.UtilitiesResponse;
 import app.lizmo.property.dto.UtilityRequest;
 import app.lizmo.property.dto.UtilityResponse;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -47,14 +50,21 @@ public class PropertyService {
             BedRepository beds,
             UnitUtilityRepository utilities,
             PropertyAccess access,
-            PropertyCodes codes) {
+            PropertyCodes codes,
+            Clock clock) {
         this.properties = properties;
         this.units = units;
         this.beds = beds;
         this.utilities = utilities;
         this.access = access;
         this.codes = codes;
+        this.clock = clock;
     }
+
+    /** Whose calendar "ready from" is read in. */
+    private static final ZoneId PHILIPPINES = ZoneId.of("Asia/Manila");
+
+    private final Clock clock;
 
     // ---------- Properties ----------
 
@@ -345,6 +355,23 @@ public class PropertyService {
         }
 
         unit.markMaintenance(underMaintenance);
+        return unitResponse(units.save(unit));
+    }
+
+    /**
+     * When a vacant room is ready to move into, or null for now.
+     *
+     * <p>Allowed while the property is locked: saying when a room will be
+     * ready bills nothing.
+     */
+    @Transactional
+    public UnitResponse setReadyFrom(UUID unitId, LocalDate on, UUID userId) {
+        Unit unit = requireReadableUnit(unitId, userId);
+        if (on != null && on.isBefore(LocalDate.now(clock.withZone(PHILIPPINES)))) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "Pick a day from today on, or leave it for ready now.");
+        }
+        unit.readyFrom(on);
         return unitResponse(units.save(unit));
     }
 

@@ -24,6 +24,8 @@ class PropertyByCodeResponse {
     this.vacantBeds,
     this.floors = const [],
     this.photos = const [],
+    this.details,
+    this.landlord,
   });
 
   ///
@@ -90,6 +92,22 @@ class PropertyByCodeResponse {
 
   List<String> photos;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  PlaceDetailsDto? details;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  LandlordCard? landlord;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PropertyByCodeResponse &&
     other.id == id &&
@@ -102,7 +120,9 @@ class PropertyByCodeResponse {
     other.vacantWholeUnits == vacantWholeUnits &&
     other.vacantBeds == vacantBeds &&
     _deepEquality.equals(other.floors, floors) &&
-    _deepEquality.equals(other.photos, photos);
+    _deepEquality.equals(other.photos, photos) &&
+    other.details == details &&
+    other.landlord == landlord;
 
   @override
   int get hashCode =>
@@ -117,10 +137,12 @@ class PropertyByCodeResponse {
     (vacantWholeUnits == null ? 0 : vacantWholeUnits!.hashCode) +
     (vacantBeds == null ? 0 : vacantBeds!.hashCode) +
     (floors.hashCode) +
-    (photos.hashCode);
+    (photos.hashCode) +
+    (details == null ? 0 : details!.hashCode) +
+    (landlord == null ? 0 : landlord!.hashCode);
 
   @override
-  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage, vacantWholeUnits=$vacantWholeUnits, vacantBeds=$vacantBeds, floors=$floors, photos=$photos]';
+  String toString() => 'PropertyByCodeResponse[id=$id, code=$code, name=$name, address=$address, description=$description, type=$type, usage=$usage, vacantWholeUnits=$vacantWholeUnits, vacantBeds=$vacantBeds, floors=$floors, photos=$photos, details=$details, landlord=$landlord]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -171,6 +193,16 @@ class PropertyByCodeResponse {
     }
       json[r'floors'] = this.floors;
       json[r'photos'] = this.photos;
+    if (this.details != null) {
+      json[r'details'] = this.details;
+    } else {
+      json[r'details'] = null;
+    }
+    if (this.landlord != null) {
+      json[r'landlord'] = this.landlord;
+    } else {
+      json[r'landlord'] = null;
+    }
     return json;
   }
 
@@ -202,6 +234,8 @@ class PropertyByCodeResponse {
         photos: json[r'photos'] is Iterable
             ? (json[r'photos'] as Iterable).cast<String>().toList(growable: false)
             : const [],
+        details: PlaceDetailsDto.fromJson(json[r'details']),
+        landlord: LandlordCard.fromJson(json[r'landlord']),
       );
     }
     return null;

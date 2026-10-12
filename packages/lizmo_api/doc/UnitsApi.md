@@ -17,6 +17,7 @@ Method | HTTP request | Description
 [**listUtilities**](UnitsApi.md#listutilities) | **GET** /api/v1/units/{id}/utilities | A unit's fixed monthly utilities
 [**setBedMaintenance**](UnitsApi.md#setbedmaintenance) | **PUT** /api/v1/beds/{id}/maintenance | Take a bed out of service, or put it back
 [**setUnitMaintenance**](UnitsApi.md#setunitmaintenance) | **PUT** /api/v1/units/{id}/maintenance | Take a unit out of service, or put it back
+[**setUnitReadyFrom**](UnitsApi.md#setunitreadyfrom) | **PUT** /api/v1/units/{id}/ready-from | Say when a vacant room is ready to move into
 [**setUtilities**](UnitsApi.md#setutilities) | **PUT** /api/v1/units/{id}/utilities | Set a unit's fixed monthly utilities
 [**updateBed**](UnitsApi.md#updatebed) | **PUT** /api/v1/beds/{id} | Rename a bed
 [**updateUnit**](UnitsApi.md#updateunit) | **PUT** /api/v1/units/{id} | Update a unit
@@ -350,6 +351,51 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
  **maintenanceRequest** | [**MaintenanceRequest**](MaintenanceRequest.md)|  | 
+
+### Return type
+
+[**UnitResponse**](UnitResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **setUnitReadyFrom**
+> UnitResponse setUnitReadyFrom(id, readyFromRequest)
+
+Say when a vacant room is ready to move into
+
+Null for now. Shown on the page anybody sees after scanning the property code.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = UnitsApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final readyFromRequest = ReadyFromRequest(); // ReadyFromRequest | 
+
+try {
+    final result = api_instance.setUnitReadyFrom(id, readyFromRequest);
+    print(result);
+} catch (e) {
+    print('Exception when calling UnitsApi->setUnitReadyFrom: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **readyFromRequest** | [**ReadyFromRequest**](ReadyFromRequest.md)|  | 
 
 ### Return type
 

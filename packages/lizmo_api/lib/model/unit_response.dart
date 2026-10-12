@@ -27,6 +27,7 @@ class UnitResponse {
     this.potentialMonthlyRent,
     this.monthlyUtilities,
     this.utilityBilling,
+    this.readyFrom,
   });
 
   ///
@@ -123,6 +124,15 @@ class UnitResponse {
 
   UnitResponseUtilityBillingEnum? utilityBilling;
 
+  /// When a vacant room is ready to move into, if not now
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? readyFrom;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is UnitResponse &&
     other.id == id &&
@@ -138,7 +148,8 @@ class UnitResponse {
     other.rent == rent &&
     other.potentialMonthlyRent == potentialMonthlyRent &&
     other.monthlyUtilities == monthlyUtilities &&
-    other.utilityBilling == utilityBilling;
+    other.utilityBilling == utilityBilling &&
+    other.readyFrom == readyFrom;
 
   @override
   int get hashCode =>
@@ -156,10 +167,11 @@ class UnitResponse {
     (rent == null ? 0 : rent!.hashCode) +
     (potentialMonthlyRent == null ? 0 : potentialMonthlyRent!.hashCode) +
     (monthlyUtilities == null ? 0 : monthlyUtilities!.hashCode) +
-    (utilityBilling == null ? 0 : utilityBilling!.hashCode);
+    (utilityBilling == null ? 0 : utilityBilling!.hashCode) +
+    (readyFrom == null ? 0 : readyFrom!.hashCode);
 
   @override
-  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent, monthlyUtilities=$monthlyUtilities, utilityBilling=$utilityBilling]';
+  String toString() => 'UnitResponse[id=$id, propertyId=$propertyId, unitNumber=$unitNumber, floor=$floor, sizeSqm=$sizeSqm, rentalMode=$rentalMode, capacity=$capacity, status=$status, bedCount=$bedCount, bedsUnderMaintenance=$bedsUnderMaintenance, rent=$rent, potentialMonthlyRent=$potentialMonthlyRent, monthlyUtilities=$monthlyUtilities, utilityBilling=$utilityBilling, readyFrom=$readyFrom]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -233,6 +245,11 @@ class UnitResponse {
     } else {
       json[r'utilityBilling'] = null;
     }
+    if (this.readyFrom != null) {
+      json[r'readyFrom'] = _dateFormatter.format(this.readyFrom!);
+    } else {
+      json[r'readyFrom'] = null;
+    }
     return json;
   }
 
@@ -273,6 +290,7 @@ class UnitResponse {
             ? null
             : num.parse('${json[r'monthlyUtilities']}'),
         utilityBilling: UnitResponseUtilityBillingEnum.fromJson(json[r'utilityBilling']),
+        readyFrom: mapDateTime(json, r'readyFrom', r''),
       );
     }
     return null;

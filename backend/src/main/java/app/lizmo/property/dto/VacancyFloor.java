@@ -39,7 +39,11 @@ public record VacancyFloor(
         int beds,
         BigDecimal cheapestRent,
         BigDecimal dearestRent,
-        boolean utilitiesOnTop) {
+        boolean utilitiesOnTop,
+        @Schema(description = "How many of the vacant ones are not ready to move into yet")
+        int readyLater,
+        @Schema(description = "The soonest of those is ready on this day")
+        java.time.LocalDate readyFrom) {
 
     /** So a screen can show "3 free" without adding the two itself. */
     public int vacantCount() {
