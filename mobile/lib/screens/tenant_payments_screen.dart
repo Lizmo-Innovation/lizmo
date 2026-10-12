@@ -136,6 +136,7 @@ class _RentState extends ConsumerState<_Rent> {
       messenger.showSnackBar(const SnackBar(
         content: Text('Told your landlord. They will confirm it.'),
       ));
+      if (mounted) offerPushesAfterDeclaring(context, ref);
     } on ApiFailure catch (failure) {
       messenger.showSnackBar(SnackBar(content: Text(failure.message)));
     } finally {

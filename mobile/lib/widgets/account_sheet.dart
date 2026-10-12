@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../push/push_permission.dart';
 import '../push/push_providers.dart';
 import '../router.dart';
 
@@ -59,6 +60,10 @@ class AccountSheet extends ConsumerWidget {
             const SizedBox(height: 20),
             const Divider(height: 1, color: Color(0xFFE3E8E6)),
             const SizedBox(height: 8),
+
+            // Only when they are off: a menu item for a setting that is
+            // already right is one more thing to read past.
+            const _NotificationsOff(),
 
             // Only tenants have a tenant profile to edit. A landlord-only
             // account has one in the database, but nothing that would ever be
@@ -143,6 +148,81 @@ class AccountSheet extends ConsumerWidget {
       if (session.isLandlord) 'Landlord',
     ];
     return parts.isEmpty ? '' : parts.join(' · ');
+  }
+}
+
+/// Notifications turned off, and the way back.
+///
+/// Android asks twice at most. After a first "no" it can still ask again, so
+/// that is tried first; after a second, only the phone's settings can turn
+/// them back on, so the row goes there instead.
+class _NotificationsOff extends ConsumerWidget {
+  const _NotificationsOff();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final permission = ref.watch(pushPermissionProvider).valueOrNull;
+    if (permission == null || !permission.isOff) return const SizedBox.shrink();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('notifications-off'),
+        onTap: () => _turnOn(context, ref, permission),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.notifications_off_outlined,
+                  size: 20, color: LizmoColors.coral),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Notifications are off', style: LizmoType.rowName),
+                    const SizedBox(height: 2),
+                    Text(
+                      "You won't hear about replies or payments until you "
+                      'open Lizmo.',
+                      style: LizmoType.rowSub,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Turn on',
+                style: LizmoType.rowName.copyWith(color: LizmoColors.teal900),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _turnOn(
+    BuildContext context,
+    WidgetRef ref,
+    PushPermission permission,
+  ) async {
+    final channel = ref.read(pushChannelProvider);
+    final navigator = Navigator.of(context);
+    try {
+      if (permission == PushPermission.denied &&
+          await channel.askPermission() == PushPermission.granted) {
+        ref.invalidate(pushPermissionProvider);
+        return;
+      }
+      // Closed on the way out, so the menu is read afresh -- and says the
+      // truth -- when they come back from settings.
+      navigator.pop();
+      await channel.openSettings();
+    } catch (_) {
+      // Nowhere to send them. The row stays, which is the truth.
+    }
   }
 }
 

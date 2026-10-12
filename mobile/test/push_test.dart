@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/push/push_channel.dart';
+import 'package:lizmo/push/push_permission.dart';
 import 'package:lizmo/push/push_providers.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -19,7 +20,7 @@ void main() {
 
   setUp(() {
     events = [];
-    channel = _FakeChannel(events, token: 'phone-1');
+    channel = _FakeChannel(events, 'phone-1');
     devices = _FakeDevices(events);
   });
 
@@ -30,7 +31,7 @@ void main() {
       devicesApiProvider.overrideWithValue(devices),
     ]);
     addTearDown(container.dispose);
-    container.listen(pushRegistrationProvider, (_, __) {});
+    container.listen(pushRegistrationProvider, (_, _) {});
     return container;
   }
 
@@ -95,7 +96,7 @@ void main() {
     });
 
     test('a phone with no push registers nothing', () async {
-      channel = _FakeChannel(events, token: null);
+      channel = _FakeChannel(events, null);
       containerFor(_signedIn('ana'));
       await settle();
 
@@ -152,7 +153,7 @@ void main() {
     });
 
     test('with no push, it is only signing out', () async {
-      channel = _FakeChannel(events, token: null);
+      channel = _FakeChannel(events, null);
       final container = containerFor(_signedIn('ana'));
       await settle();
       events.clear();
@@ -200,7 +201,7 @@ class _FakeAuth extends AuthController {
 }
 
 class _FakeChannel implements PushChannel {
-  _FakeChannel(this._events, {required String? token}) : _token = token;
+  _FakeChannel(this._events, this._token);
 
   final List<String> _events;
   final String? _token;
@@ -214,6 +215,24 @@ class _FakeChannel implements PushChannel {
 
   @override
   Future<void> deleteToken() async => _events.add('delete token');
+
+  @override
+  Future<PushPermission> permission() async => PushPermission.granted;
+
+  @override
+  Future<PushPermission> askPermission() async => PushPermission.granted;
+
+  @override
+  Future<void> openSettings() async {}
+
+  @override
+  Stream<Map<String, String>> get arrived => const Stream.empty();
+
+  @override
+  Stream<Map<String, String>> get opened => const Stream.empty();
+
+  @override
+  Future<Map<String, String>?> openedAtLaunch() async => null;
 }
 
 class _FakeDevices extends DevicesApi {

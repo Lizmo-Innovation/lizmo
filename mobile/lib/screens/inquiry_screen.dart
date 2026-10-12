@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../property/property_providers.dart';
+import '../push/push_offer.dart';
 import '../router.dart';
 import '../widgets/accept_terms_sheet.dart';
 import '../widgets/declare_payment_sheet.dart';
@@ -69,6 +72,11 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
 
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
+    final them = ref
+        .read(inquiryThreadProvider(widget.id))
+        .valueOrNull
+        ?.inquiry
+        ?.withName;
     try {
       await ref
           .read(inquiriesApiProvider)
@@ -87,6 +95,18 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
       }
       // The list behind this one orders by who spoke last.
       ref.invalidate(myInquiriesProvider);
+      // What they said is sent; the answer comes later, which is when a
+      // notification is worth having.
+      if (mounted) {
+        unawaited(ref.read(pushOfferProvider).offer(
+              context,
+              title: them == null || them.isEmpty
+                  ? 'Get told when they reply?'
+                  : 'Get told when $them replies?',
+              body: 'Lizmo will let you know the moment they answer, so you '
+                  "don't have to keep checking.",
+            ));
+      }
     } catch (error) {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));
@@ -143,6 +163,7 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
       messenger.showSnackBar(const SnackBar(
         content: Text('Told your landlord. They will confirm it.'),
       ));
+      if (mounted) offerPushesAfterDeclaring(context, ref);
     } catch (error) {
       messenger.showSnackBar(
           SnackBar(content: Text(ApiFailure.from(error).message)));

@@ -16,6 +16,7 @@ import '../widgets/occupancy_card.dart';
 import '../widgets/repairs_card.dart';
 import '../widgets/role_switcher.dart';
 import '../inquiry/inquiry_providers.dart';
+import '../push/push_offer.dart';
 import '../widgets/inquiries_card.dart';
 
 /// The landlord's day: what needs them, then how things stand.
@@ -41,6 +42,18 @@ class LandlordHomeScreen extends ConsumerWidget {
       _ => null,
     };
     final threads = ref.watch(myInquiriesProvider).valueOrNull;
+    // Their first enquiry is when a landlord learns somebody may be waiting
+    // on them -- the moment to offer to tell them next time.
+    ref.listen(myInquiriesProvider, (_, next) {
+      if (next.valueOrNull?.isNotEmpty ?? false) {
+        ref.read(pushOfferProvider).offer(
+              context,
+              title: 'Get told when somebody asks?',
+              body: 'Lizmo will let you know the moment a tenant asks about '
+                  'one of your places, so nobody waits on an answer.',
+            );
+      }
+    });
     final rent = ref.watch(collectionsProvider).valueOrNull;
     final lizmo = ref.watch(myLizmoStatementsProvider).valueOrNull;
     final repairs = ref.watch(maintenanceToHandleProvider).valueOrNull;

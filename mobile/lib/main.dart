@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'push/push_channel.dart';
+import 'push/push_messages.dart';
 import 'push/push_providers.dart';
 import 'router.dart';
 
@@ -34,6 +35,8 @@ class LizmoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(pushRegistrationProvider);
+    ref.watch(pushMessagesProvider);
+    ref.watch(pushOpenerProvider);
     return MaterialApp.router(
       title: 'Lizmo',
       debugShowCheckedModeBanner: false,

@@ -8,6 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizmo/auth/active_role.dart';
 import 'package:lizmo/main.dart';
+import 'package:lizmo/push/push_ask_memory.dart';
+import 'package:lizmo/push/push_channel.dart';
+import 'package:lizmo/push/push_offer.dart';
+import 'package:lizmo/push/push_permission.dart';
+import 'package:lizmo/push/push_providers.dart';
 import 'package:lizmo/router.dart';
 import 'package:lizmo/screens/forgot_password_screen.dart';
 import 'package:lizmo/screens/login_screen.dart';
@@ -5977,9 +5982,14 @@ void _landlordRequestTests() {
       List<FreeRoom> free = const [],
       List<BillingPeriodResponse> months = const [],
       List<LeaseResponse> tenants = const [],
+      PushChannel? push,
     }) =>
         ProviderScope(
           overrides: [
+            if (push != null) ...[
+              pushChannelProvider.overrideWithValue(push),
+              pushAskMemoryProvider.overrideWithValue(InMemoryPushAskMemory()),
+            ],
             authControllerProvider
                 .overrideWith(() => _FakeAuth(_signedIn(profiles))),
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
@@ -6035,13 +6045,15 @@ void _landlordRequestTests() {
     Future<void> open(WidgetTester tester, _FakeInquiriesApi api,
         {Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
         List<FreeRoom> free = const [],
-        List<BillingPeriodResponse> months = const []}) async {
+        List<BillingPeriodResponse> months = const [],
+        PushChannel? push}) async {
       await tester.pumpWidget(appWith(
           api: api,
           profiles: profiles,
           free: free,
           inbox: [summary()],
-          months: months));
+          months: months,
+          push: push));
       await tester.pumpAndSettle();
 
       if (profiles.contains(LizmoProfile.landlord)) {
@@ -6423,6 +6435,42 @@ void _landlordRequestTests() {
       await tester.pumpAndSettle();
 
       expect(tester.getTopLeft(find.text('Message number 1')).dy, before);
+    });
+
+    /// Said, and the answer comes later: when notifications are worth asking for.
+    testWidgets('sending a first message offers to tell them of the reply',
+        (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(), echo: true);
+      await open(tester, api,
+          profiles: const {LizmoProfile.tenant}, push: _NeverAskedPush());
+      expect(find.byType(PushOfferSheet), findsNothing);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-field')), 'Is it still free?');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Get told when Ana Reyes replies?'), findsOneWidget);
+    });
+
+    testWidgets("a landlord's first enquiry offers to tell them of the next",
+        (tester) async {
+      await tester.pumpWidget(appWith(
+          api: _FakeInquiriesApi(thread: thread(who: applicant())),
+          inbox: [summary()],
+          push: _NeverAskedPush()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Get told when somebody asks?'), findsOneWidget);
+    });
+
+    testWidgets('a landlord with no enquiries is not asked', (tester) async {
+      await tester.pumpWidget(appWith(
+          api: _FakeInquiriesApi(thread: thread(who: applicant())),
+          push: _NeverAskedPush()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PushOfferSheet), findsNothing);
     });
 
     testWidgets('a message is sent and the box emptied', (tester) async {
@@ -9641,8 +9689,13 @@ void _tenantLeaseTests() {
       List<BillingPeriodResponse> months, {
       PaymentDetails? payment,
       _FakeRentApi? api,
+      PushChannel? push,
     }) => ProviderScope(
       overrides: [
+        if (push != null) ...[
+          pushChannelProvider.overrideWithValue(push),
+          pushAskMemoryProvider.overrideWithValue(InMemoryPushAskMemory()),
+        ],
         todayProvider.overrideWithValue(DateTime(2026, 10, 3)),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.tenant})),
@@ -9856,6 +9909,25 @@ void _tenantLeaseTests() {
       // Picking the GCash account picked GCash, over the Maya tapped before.
       expect(api.declared.single.paymentMethod, 'GCASH');
       expect(api.declared.single.billingPeriodId, 'b1');
+    });
+
+    /// Said, and the landlord's answer comes later: worth being told of.
+    testWidgets('saying you paid offers to tell you when it is confirmed',
+        (tester) async {
+      final api = _FakeRentApi();
+      await tester.pumpWidget(
+          tenantApp([month()], api: api, push: _NeverAskedPush()));
+      await tester.pumpAndSettle();
+      await openPayments(tester);
+      await tester.tap(find.byKey(const ValueKey('i-paid-b1')));
+      await tester.pumpAndSettle();
+
+      await tapShown(tester, find.byKey(const ValueKey('method-CASH')));
+      await tapShown(tester, find.byKey(const ValueKey('declare-submit')));
+
+      expect(api.declared, hasLength(1));
+      expect(find.text('Get told when your landlord confirms it?'),
+          findsOneWidget);
     });
 
     /// Cash went to nobody's account, whatever was tapped on the way.
@@ -12573,4 +12645,10 @@ class _FakePhotosApi extends PropertiesApi {
     removed = photoId;
     photos.removeWhere((photo) => photo.id == photoId);
   }
+}
+
+/// A phone that has never been asked about notifications.
+class _NeverAskedPush extends NoPushChannel {
+  @override
+  Future<PushPermission> permission() async => PushPermission.notAsked;
 }

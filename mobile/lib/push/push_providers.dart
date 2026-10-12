@@ -5,12 +5,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 
+import 'push_ask_memory.dart';
 import 'push_channel.dart';
+import 'push_permission.dart';
 
 /// No push unless `main` found Firebase and said so.
 final pushChannelProvider = Provider<PushChannel>((ref) {
   return const NoPushChannel();
 });
+
+/// Read each time something shows it, so a change made in the phone's
+/// settings is seen the next time the account menu opens.
+final pushPermissionProvider =
+    FutureProvider.autoDispose<PushPermission>((ref) async {
+  try {
+    return await ref.watch(pushChannelProvider).permission();
+  } catch (_) {
+    return PushPermission.unsupported;
+  }
+});
+
+final pushAskMemoryProvider =
+    Provider<PushAskMemory>((ref) => StoredPushAskMemory());
 
 final devicesApiProvider = Provider<DevicesApi>((ref) {
   return DevicesApi(ref.watch(apiClientProvider));

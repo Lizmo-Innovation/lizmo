@@ -84,8 +84,14 @@ dependencies:
   # Opens the store listing when a build is too old to carry on. share_plus
   # cannot open a URL, so this is its own dependency.
   url_launcher: ^6.3.1
+
+  # Push notifications. Firebase starts in main, or the app opens without.
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
+
+  # Already in the build through lizmo_core; used directly to remember a
+  # "Not now" to notifications, rather than adding a plugin for one date.
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:

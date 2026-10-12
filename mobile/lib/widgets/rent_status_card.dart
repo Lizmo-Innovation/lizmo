@@ -188,6 +188,7 @@ class RentStatusCard extends ConsumerWidget {
       messenger.showSnackBar(const SnackBar(
         content: Text('Told your landlord. They will confirm it.'),
       ));
+      if (context.mounted) offerPushesAfterDeclaring(context, ref);
     } on ApiFailure catch (failure) {
       messenger.showSnackBar(SnackBar(content: Text(failure.message)));
     }

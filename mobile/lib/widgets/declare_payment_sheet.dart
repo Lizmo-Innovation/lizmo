@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
+import '../push/push_offer.dart';
 import 'lizmo_payment_channels.dart';
 
 /// A tenant saying they have paid.
@@ -418,4 +421,15 @@ Future<void> sendDeclaration(
 
   ref.invalidate(myBillingProvider(leaseId));
   ref.invalidate(myPaymentsProvider(leaseId));
+}
+
+/// After saying they paid, the one thing left is the landlord's answer --
+/// the moment notifications are worth asking for.
+void offerPushesAfterDeclaring(BuildContext context, WidgetRef ref) {
+  unawaited(ref.read(pushOfferProvider).offer(
+        context,
+        title: 'Get told when your landlord confirms it?',
+        body: 'Lizmo will let you know the moment they confirm your payment, '
+            'or if something is wrong with it.',
+      ));
 }
