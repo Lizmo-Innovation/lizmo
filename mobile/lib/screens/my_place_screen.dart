@@ -5,6 +5,8 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../router.dart';
+import '../billing/period_kind.dart';
+import '../property/property_providers.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/account_sheet.dart';
 import '../widgets/notification_bell.dart';
@@ -240,14 +242,19 @@ class _Fact extends StatelessWidget {
 /// with a line each saying which is which. Tenants are told "two months
 /// deposit, one month advance" at the door and then have nothing in writing;
 /// this is the writing.
-class _UpfrontMoney extends StatelessWidget {
+class _UpfrontMoney extends ConsumerWidget {
   const _UpfrontMoney({required this.lease});
 
   final LeaseResponse lease;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final settled = lease.depositReturned != null;
+    final months = ref.watch(myBillingProvider(lease.id!)).valueOrNull ?? const [];
+    final declared = ref.watch(myPaymentsProvider(lease.id!)).valueOrNull ?? const [];
+
+    final deposit = months.where((month) => month.isDeposit).firstOrNull;
+    final advance = months.where((month) => month.isAdvance).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -267,6 +274,12 @@ class _UpfrontMoney extends StatelessWidget {
               label: 'Deposit',
               value: LizmoMoney.peso(lease.depositAmount!),
             ),
+            if (deposit != null)
+              _Received(
+                key: const ValueKey('deposit-state'),
+                charges: [deposit],
+                declared: declared,
+              ),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
@@ -281,10 +294,19 @@ class _UpfrontMoney extends StatelessWidget {
               label: 'Advance rent',
               value: LizmoMoney.peso(lease.advanceAmount!),
             ),
+            if (advance.isNotEmpty)
+              _Received(
+                key: const ValueKey('advance-state'),
+                charges: advance,
+                declared: declared,
+              ),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                'Rent paid up front. It pays for your first month.',
+                advance.length > 1
+                    ? 'Rent paid up front. It pays for your first '
+                        '${advance.length} months.'
+                    : 'Rent paid up front. It pays for your first month.',
                 style: LizmoType.rowSub.copyWith(fontSize: 11),
               ),
             ),
@@ -306,6 +328,50 @@ class _UpfrontMoney extends StatelessWidget {
               ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Whether money owed at move-in actually came in: received, waiting on the
+/// landlord, part paid, or not paid yet.
+///
+/// The amounts on their own said what was agreed, and read as though it had
+/// all been handed over -- which until move-in charges, the app assumed.
+class _Received extends StatelessWidget {
+  const _Received({super.key, required this.charges, required this.declared});
+
+  final List<BillingPeriodResponse> charges;
+  final List<PaymentResponse> declared;
+
+  @override
+  Widget build(BuildContext context) {
+    final due = charges.fold<num>(0, (sum, c) => sum + (c.amountDue ?? 0));
+    final paid = charges.fold<num>(0, (sum, c) => sum + (c.amountPaid ?? 0));
+    final ids = charges.map((charge) => charge.id).toSet();
+    final waiting = declared.any((payment) =>
+        ids.contains(payment.billingPeriodId) &&
+        payment.status == PaymentResponseStatusEnum.PENDING_VERIFICATION);
+
+    final (String text, Color colour) = paid >= due && due > 0
+        ? ('Received', LizmoColors.teal900)
+        : waiting
+            ? ('Waiting for your landlord to confirm it', LizmoColors.teal900)
+            : paid > 0
+                ? ('${LizmoMoney.peso(paid)} received, '
+                        '${LizmoMoney.peso(due - paid)} still to pay',
+                    LizmoColors.amberText)
+                : ('Not paid yet', LizmoColors.amberText);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        text,
+        style: LizmoType.rowSub.copyWith(
+          fontSize: 12,
+          color: colour,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

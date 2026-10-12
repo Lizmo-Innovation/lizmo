@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/period_kind.dart';
+
 /// Rent, month by month.
 ///
 /// The same list on both sides of the app. What a tenant owes and what a
@@ -63,9 +65,18 @@ class RentScheduleList extends StatelessWidget {
     bool late(BillingPeriodResponse period) =>
         period.overdue == true &&
         period.status != BillingPeriodResponseStatusEnum.PAID;
+    bool settled(BillingPeriodResponse period) =>
+        period.status == BillingPeriodResponseStatusEnum.PAID;
+    final rent = periods.where((period) => !period.isDeposit).toList();
+    final deposits = periods.where((period) => period.isDeposit).toList();
+    // The deposit first while it is owed -- it is the first thing a tenancy
+    // asks for -- and last once received, as history: one line, the money
+    // held for them until they move out.
     final newestFirst = [
-      ...periods.where(late),
-      ...periods.reversed.where((period) => !late(period)),
+      ...deposits.where((deposit) => !settled(deposit)),
+      ...rent.where(late),
+      ...rent.reversed.where((period) => !late(period)),
+      ...deposits.where(settled),
     ];
 
     final top = header;
@@ -156,7 +167,11 @@ class _MonthRow extends StatelessWidget {
               style: LizmoType.dataMedium.copyWith(color: ink),
             ),
             const SizedBox(width: 10),
-            StatusChip(label: label, status: _status(paid, overdue)),
+            // Received, not paid: it is held for them, and comes back.
+            StatusChip(
+              label: period.isDeposit ? 'Received' : label,
+              status: _status(paid, overdue),
+            ),
           ],
         ),
       );
@@ -185,6 +200,13 @@ class _MonthRow extends StatelessWidget {
               StatusChip(label: label, status: _status(paid, overdue)),
             ],
           ),
+          if (period.isDeposit) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Held against damage, and given back when you move out.',
+              style: LizmoType.rowSub.copyWith(fontSize: 11, color: ink),
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [

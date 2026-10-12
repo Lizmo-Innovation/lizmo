@@ -1,5 +1,7 @@
 import 'package:lizmo_api/api.dart';
 
+import '../billing/period_kind.dart';
+
 /// Where a tenant stands with their rent, in the one sentence Home leads with.
 ///
 /// Worked out in one place, from the months and payments the app already
@@ -150,7 +152,14 @@ RentStatus rentStatus({
   // paid -- October settled on the 3rd -- is not due on the 5th. The next one
   // is the first rent day after the last month billed.
   final calendar = _nextRentDay(day, dueDay);
-  final billed = months.map(_due).where((due) => due.year < 9999).toList()..sort();
+  // Months of rent: a deposit falls due on move-in day, which is no guide to
+  // the next rent day.
+  final billed = months
+      .where((month) => !month.isDeposit)
+      .map(_due)
+      .where((due) => due.year < 9999)
+      .toList()
+    ..sort();
   final afterBilled = billed.isEmpty ? null : _nextRentDay(billed.last, dueDay);
   return RentPaid(
     nextDue: afterBilled != null && afterBilled.isAfter(calendar) ? afterBilled : calendar,
@@ -167,8 +176,12 @@ PaymentResponse? _pendingFor(List<PaymentResponse> payments, Set<String?> period
         .where((payment) => periods.contains(payment.billingPeriodId) && _isPending(payment))
         .firstOrNull;
 
+/// The latest month of rent fully paid. A deposit is not one: "You're all
+/// set for the security deposit" says nothing about rent.
 BillingPeriodResponse? _lastPaid(List<BillingPeriodResponse> months) {
-  final paid = months.where((month) => (month.outstanding ?? 0) <= 0).toList()
+  final paid = months
+      .where((month) => !month.isDeposit && (month.outstanding ?? 0) <= 0)
+      .toList()
     ..sort((a, b) => _due(a).compareTo(_due(b)));
   return paid.lastOrNull;
 }

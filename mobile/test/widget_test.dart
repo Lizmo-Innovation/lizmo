@@ -52,6 +52,7 @@ import 'package:lizmo/screens/lizmo_billing_screen.dart';
 import 'package:lizmo/widgets/pay_lizmo_sheet.dart';
 import 'package:lizmo/widgets/full_screen_image.dart';
 import 'package:lizmo/screens/inquiries_screen.dart';
+import 'package:lizmo/tenant/rent_status.dart';
 import 'package:lizmo/widgets/rent_schedule_list.dart';
 import 'package:lizmo/widgets/record_payment_sheet.dart';
 import 'package:lizmo/widgets/report_problem_sheet.dart';
@@ -7209,6 +7210,136 @@ void _tenantLeaseTests() {
           status: PaymentResponseStatusEnum.PENDING_VERIFICATION,
           declaredAt: DateTime.now().subtract(Duration(days: daysAgo)),
         );
+
+    /// The deposit, owed on move-in day.
+    BillingPeriodResponse depositOf({num paid = 0, bool overdue = false}) =>
+        BillingPeriodResponse(
+          id: 'dep',
+          label: 'Security deposit',
+          kind: BillingPeriodResponseKindEnum.DEPOSIT,
+          periodStart: DateTime.utc(2026, 8, 1),
+          periodEnd: DateTime.utc(2026, 8, 1),
+          dueDate: DateTime.utc(2026, 8, 1),
+          amountDue: 5000,
+          amountPaid: paid,
+          outstanding: 5000 - paid,
+          status: paid >= 5000
+              ? BillingPeriodResponseStatusEnum.PAID
+              : paid > 0
+                  ? BillingPeriodResponseStatusEnum.PARTIALLY_PAID
+                  : BillingPeriodResponseStatusEnum.UNPAID,
+          overdue: overdue,
+        );
+
+    /// The first thing a tenancy asks for, so first while it is owed.
+    testWidgets('an owed deposit comes first on Rent, with I have paid',
+        (tester) async {
+      await tester.pumpWidget(appWith([lease()], months: [
+        depositOf(),
+        month('August', 8, paid: 2500),
+        month('September', 9),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('i-paid-dep')), findsOneWidget);
+      expect(find.text('Held against damage, and given back when you move out.'),
+          findsOneWidget);
+      expect(tester.getTopLeft(find.text('Security deposit')).dy,
+          lessThan(tester.getTopLeft(find.text('September')).dy));
+    });
+
+    /// Once received it is history: one line, held for them until move-out.
+    testWidgets('a received deposit is one line at the bottom', (tester) async {
+      await tester.pumpWidget(appWith([lease()], months: [
+        depositOf(paid: 5000),
+        month('August', 8, paid: 2500),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-rent')));
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const ValueKey('paid-dep'));
+      expect(find.descendant(of: row, matching: find.text('Received')),
+          findsOneWidget);
+      expect(tester.getTopLeft(row).dy,
+          greaterThan(tester.getTopLeft(find.text('August')).dy));
+    });
+
+    /// "Security deposit was due" read like a form, and "Rent for Security
+    /// deposit" was wrong.
+    testWidgets('Home names the deposit as the deposit', (tester) async {
+      await tester.pumpWidget(
+          appWith([lease()], months: [depositOf(overdue: true)]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('The security deposit was due on'),
+          findsOneWidget);
+    });
+
+    test("a received deposit is not the month you're all set for", () {
+      final status = rentStatus(
+        months: [depositOf(paid: 5000)],
+        payments: const [],
+        today: DateTime.utc(2026, 8, 10),
+        dueDay: 1,
+      );
+      expect(status, isA<RentPaid>());
+      expect((status as RentPaid).lastPaid, isNull);
+    });
+
+    /// The amounts on their own read as though it had all been handed over.
+    testWidgets('My place says whether the deposit came in', (tester) async {
+      for (final (months, payments, said) in [
+        ([depositOf(paid: 5000)], const <PaymentResponse>[], 'Received'),
+        ([depositOf()], const <PaymentResponse>[], 'Not paid yet'),
+        (
+          [depositOf()],
+          [declared(5000, month: 'dep')],
+          'Waiting for your landlord to confirm it',
+        ),
+        (
+          [depositOf(paid: 2000)],
+          const <PaymentResponse>[],
+          '₱2,000 received, ₱3,000 still to pay',
+        ),
+      ]) {
+        // A fresh tree each time: a ProviderScope pumped over the last one
+        // keeps the values its providers already read.
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(appWith([lease(deposit: 5000)],
+            months: months, payments: payments));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('tab-place')));
+        await tester.pumpAndSettle();
+
+        expect(
+            find.descendant(
+                of: find.byKey(const ValueKey('deposit-state')),
+                matching: find.text(said)),
+            findsOneWidget,
+            reason: 'should say "$said"');
+      }
+    });
+
+    testWidgets('two months advance says so', (tester) async {
+      await tester.pumpWidget(appWith([lease(advance: 5000)], months: [
+        month('August 2026 · advance', 8),
+        month('September 2026 · advance', 9),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-place')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rent paid up front. It pays for your first 2 months.'),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('advance-state')),
+              matching: find.text('Not paid yet')),
+          findsOneWidget);
+    });
 
     /// Paid, and waiting: offering "I have paid" again only invites the same
     /// money to be declared twice.

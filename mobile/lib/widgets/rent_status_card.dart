@@ -7,6 +7,8 @@ import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../billing/period_kind.dart';
+
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/rent_status.dart';
@@ -95,7 +97,7 @@ class RentStatusCard extends ConsumerWidget {
         _ => 'Due in $days days',
       },
       headline: '${_peso(period.outstanding ?? 0)} due on ${_day(period.dueDate)}',
-      body: 'Rent for ${period.label}.',
+      body: '${period.whatFor}.',
       extra: account == null ? null : _CopyAccount(account: account),
       primary: _Action('I have paid', (context) => _declare(context, ref, period)),
       secondary: _Action('How to pay', _howToPay),
@@ -117,7 +119,7 @@ class RentStatusCard extends ConsumerWidget {
           : 'Waiting for your landlord · ${waitedFor(told)}',
       headline: on == null ? 'You paid $paid' : 'You paid $paid on ${_day(on)}',
       body: '${payment.sentTo == null ? '' : 'Sent to ${payment.sentTo}. '}'
-          '${status.period.label} counts as paid once they confirm it.',
+          '${status.period.named} counts as paid once they confirm it.',
     );
   }
 
@@ -149,7 +151,7 @@ class RentStatusCard extends ConsumerWidget {
       kicker: count == 1 ? 'Late' : '$count months late',
       headline: '${_peso(status.total)} overdue',
       body: count == 1
-          ? '${status.oldest.label} was due on ${_day(status.oldest.dueDate)}.'
+          ? '${status.oldest.named} was due on ${_day(status.oldest.dueDate)}.'
           : '$count months are unpaid, the oldest since '
               '${_day(status.oldest.dueDate)}.',
       // Still late until the landlord confirms, but not asked for twice.
