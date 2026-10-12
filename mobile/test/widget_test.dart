@@ -5974,6 +5974,7 @@ void _landlordRequestTests() {
       List<InquirySummary> inbox = const [],
       List<FreeRoom> free = const [],
       List<BillingPeriodResponse> months = const [],
+      List<LeaseResponse> tenants = const [],
     }) =>
         ProviderScope(
           overrides: [
@@ -5995,6 +5996,17 @@ void _landlordRequestTests() {
             myLeasesProvider.overrideWith((ref) async => const <LeaseResponse>[]),
             myInquiriesProvider.overrideWith((ref) async => inbox),
             inquiriesApiProvider.overrideWithValue(api),
+            // Renting, and what the tenant's page reads.
+            myTenantsProvider.overrideWith((ref) async => tenants),
+            leaseTenantProvider('l1').overrideWith((ref) async =>
+                TenantForLandlord(
+                    leaseId: 'l1', tenantId: 't1', name: 'Ana Reyes')),
+            leaseTenantDocumentsProvider('l1')
+                .overrideWith((ref) async => const <TenantDocumentResponse>[]),
+            leaseDocumentsProvider('l1')
+                .overrideWith((ref) async => const <LeaseDocumentResponse>[]),
+            leasePaymentsProvider('l1')
+                .overrideWith((ref) async => const <PaymentResponse>[]),
             // What the shortcuts read: the tenancy's months, from either end.
             myBillingProvider('l1').overrideWith((ref) async => months),
             leaseBillingProvider('l1').overrideWith((ref) async => months),
@@ -6681,22 +6693,163 @@ void _landlordRequestTests() {
       await openAsking(tester);
 
       final ana = tester.getTopLeft(find.byKey(const ValueKey('thread-i1'))).dy;
-      final bea = tester.getTopLeft(find.byKey(const ValueKey('thread-i2'))).dy;
       final carla = tester.getTopLeft(find.byKey(const ValueKey('thread-i3'))).dy;
 
-      // Unanswered, then the tenancy, then what is over.
-      expect(ana, lessThan(bea));
-      expect(bea, lessThan(carla));
-      // The chips on the rows. "Renting" is also the other segment's label,
-      // so this counts the chip inside the list.
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('thread-i2')),
-          matching: find.text('Renting'),
-        ),
-        findsOneWidget,
-      );
+      // Unanswered, then what is over.
+      expect(ana, lessThan(carla));
       expect(find.text('Ended'), findsOneWidget);
+      // A tenant's conversation is on their row under Renting, not among
+      // people asking about a room.
+      expect(find.byKey(const ValueKey('thread-i2')), findsNothing);
+    });
+
+    LeaseResponse anaRenting() => LeaseResponse(
+          id: 'l1',
+          tenantId: 't1',
+          tenantName: 'Ana Reyes',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          unitNumber: '2B',
+          bedId: 'b1',
+          bedLabel: 'Bed 1',
+          rentAmount: 2500,
+          dueDateDay: 5,
+          status: LeaseResponseStatusEnum.ACTIVE,
+        );
+
+    InquirySummary fromTenant({bool unread = true}) => InquirySummary(
+          id: 'i2',
+          propertyId: 'p1',
+          propertyName: 'Sunrise Apartments',
+          withName: 'Ana Reyes',
+          status: InquirySummaryStatusEnum.LEASED,
+          lastMessage: 'The water is off on the second floor',
+          lastMessageAt: DateTime.now().subtract(const Duration(minutes: 20)),
+          unread: unread,
+          createdAt: DateTime.now().subtract(const Duration(days: 60)),
+          tenancy: renting(),
+        );
+
+    _FakeInquiriesApi tenantApi() => _FakeInquiriesApi(
+          thread: InquiryThread(
+            inquiry: fromTenant(),
+            applicant: applicant(),
+            messages: const [],
+          ),
+        );
+
+    Future<void> openRenting(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('tenants-segment')),
+        matching: find.text('Renting'),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    /// "Inquiries (3)" counted the landlord's own tenants, and the ones
+    /// talking about their deposit after moving out.
+    testWidgets('the Inquiries count is people asking, and only them',
+        (tester) async {
+      await tester.pumpWidget(appWith(api: tenantApi(), inbox: [
+        summary(),
+        fromTenant(),
+        summary(
+          id: 'i4',
+          withName: 'Lito Ramos',
+          tenancy: renting(
+              active: false,
+              ended: DateTime.now().subtract(const Duration(days: 3))),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-tenants')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('tenants-segment')),
+              matching: find.text('Inquiries (1)')),
+          findsOneWidget);
+    });
+
+    /// Not among strangers asking about a room, which is not where anybody
+    /// looks for the person in 2B.
+    testWidgets("a tenant's row carries what they last said", (tester) async {
+      await tester.pumpWidget(appWith(
+          api: tenantApi(), inbox: [fromTenant()], tenants: [anaRenting()]));
+      await tester.pumpAndSettle();
+      await openRenting(tester);
+
+      final row = find.byKey(const ValueKey('tenant-l1'));
+      expect(find.byKey(const ValueKey('tenant-unread-l1')), findsOneWidget);
+      expect(
+          find.descendant(
+              of: row,
+              matching: find.text('The water is off on the second floor')),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('message-l1')));
+      await tester.pumpAndSettle();
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// A tenancy from before conversations has no thread; the button makes one.
+    testWidgets('a tenant with no conversation yet can still be written to',
+        (tester) async {
+      final api = tenantApi();
+      await tester.pumpWidget(
+          appWith(api: api, inbox: const [], tenants: [anaRenting()]));
+      await tester.pumpAndSettle();
+      await openRenting(tester);
+
+      await tester.tap(find.byKey(const ValueKey('message-l1')));
+      await tester.pumpAndSettle();
+
+      expect(api.openedFor, 'l1');
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// The commonest thing a landlord does about a tenant, and the page had
+    /// no way to.
+    testWidgets("the tenant's page has a Message button", (tester) async {
+      await tester.pumpWidget(appWith(
+          api: tenantApi(), inbox: [fromTenant()], tenants: [anaRenting()]));
+      await tester.pumpAndSettle();
+      await openRenting(tester);
+      await tester.tap(find.byKey(const ValueKey('tenant-l1')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TenantDetailScreen), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('message-tenant')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InquiryScreen), findsOneWidget);
+    });
+
+    /// A current tenant comes before a maybe; and they never showed here at
+    /// all, because a tenancy's conversation is not an open inquiry.
+    testWidgets('Today puts a tenant who wrote above anybody asking',
+        (tester) async {
+      await tester.pumpWidget(
+          appWith(api: tenantApi(), inbox: [summary(), fromTenant()]));
+      await tester.pumpAndSettle();
+
+      final tenant = find.byKey(const ValueKey('inquiry-i2'));
+      expect(tenant, findsOneWidget);
+      expect(find.descendant(of: tenant, matching: find.text('Tenant')),
+          findsOneWidget);
+      expect(tester.getTopLeft(tenant).dy,
+          lessThan(tester.getTopLeft(find.byKey(const ValueKey('inquiry-i1'))).dy));
+    });
+
+    testWidgets('a tenant thread already read is not on Today', (tester) async {
+      await tester.pumpWidget(appWith(
+          api: tenantApi(), inbox: [summary(), fromTenant(unread: false)]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('inquiry-i2')), findsNothing);
     });
 
     testWidgets('a conversation in the list opens it', (tester) async {

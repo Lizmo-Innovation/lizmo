@@ -7,6 +7,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
+import '../screens/inquiries_screen.dart';
 import '../screens/tenants_screen.dart';
 
 /// Conversations waiting on this landlord, across every property.
@@ -38,13 +39,23 @@ class InquiriesCard extends ConsumerWidget {
         ),
       ),
       data: (all) {
+        // A tenant writing comes first, above anybody asking: a current
+        // tenant comes before a maybe. Only unread -- a tenant's thread that
+        // has been read is not waiting on anyone. These never showed here,
+        // because a tenancy's conversation is not an open inquiry.
+        final tenants = [
+          for (final thread in all)
+            if (isCurrentTenancy(thread) && (thread.unread ?? false)) thread,
+        ];
         final open = [
           for (final thread in all)
             if (thread.status == InquirySummaryStatusEnum.OPEN) thread,
         ]..sort((a, b) => ((b.unread ?? false) ? 1 : 0)
             .compareTo((a.unread ?? false) ? 1 : 0));
 
-        return open.isEmpty ? const SizedBox.shrink() : _Queue(threads: open);
+        return open.isEmpty && tenants.isEmpty
+            ? const SizedBox.shrink()
+            : _Queue(tenants: tenants, threads: open);
       },
     );
   }
@@ -74,13 +85,18 @@ class _Frame extends StatelessWidget {
 }
 
 class _Queue extends ConsumerWidget {
-  const _Queue({required this.threads});
+  const _Queue({required this.tenants, required this.threads});
 
+  /// Tenants who have written and not been read.
+  final List<InquirySummary> tenants;
+
+  /// Everybody else still talking.
   final List<InquirySummary> threads;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unanswered = threads.where((t) => t.unread ?? false).length;
+    final unanswered =
+        tenants.length + threads.where((t) => t.unread ?? false).length;
 
     return _Frame(
       child: Column(
@@ -104,6 +120,7 @@ class _Queue extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
+          for (final thread in tenants) _ThreadRow(thread: thread, tenant: true),
           // The three oldest-waiting, not all of them: this is a card on a
           // dashboard, and a landlord with twenty conversations would have
           // nothing else on the screen.
@@ -137,9 +154,13 @@ class _Queue extends ConsumerWidget {
 }
 
 class _ThreadRow extends StatelessWidget {
-  const _ThreadRow({required this.thread});
+  const _ThreadRow({required this.thread, this.tenant = false});
 
   final InquirySummary thread;
+
+  /// Somebody who lives there, marked so a landlord can tell them from
+  /// somebody asking.
+  final bool tenant;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +210,10 @@ class _ThreadRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              if (tenant) ...[
+                const StatusChip(status: LizmoStatus.paid, label: 'Tenant'),
+                const SizedBox(width: 4),
+              ],
               const Icon(Icons.chevron_right,
                   size: 20, color: LizmoColors.slate),
             ],

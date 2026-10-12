@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../inquiry/inquiry_providers.dart';
+import '../inquiry/tenancy_conversation.dart';
 import '../property/property_providers.dart';
 import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
@@ -44,6 +46,25 @@ class TenantDetailScreen extends ConsumerWidget {
           tenant.valueOrNull?.name ?? 'Tenant',
           style: LizmoType.screenTitle.copyWith(fontSize: 18),
         ),
+        // Beside their name: talking to the tenant is the commonest thing a
+        // landlord does about one, and this page had no way to.
+        actions: [
+          TextButton.icon(
+            key: const ValueKey('message-tenant'),
+            style: TextButton.styleFrom(foregroundColor: LizmoColors.white),
+            onPressed: () => openTenancyConversation(
+              context,
+              ref,
+              leaseId,
+              known: threadForLease(
+                  ref.read(myInquiriesProvider).valueOrNull ?? const [],
+                  leaseId),
+            ),
+            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+            label: const Text('Message'),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: tenant.when(
         loading: () => const Center(child: CircularProgressIndicator()),

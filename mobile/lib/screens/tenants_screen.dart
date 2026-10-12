@@ -5,6 +5,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
+import '../inquiry/tenancy_conversation.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import 'inquiries_screen.dart';
@@ -40,8 +41,13 @@ class TenantsScreen extends ConsumerWidget {
     };
     final tenants = ref.watch(myTenantsProvider);
     final threads = ref.watch(myInquiriesProvider).valueOrNull;
+    // People asking about a room, and only them. A tenant who lives there,
+    // or has just moved out and is asking about the deposit, is not an
+    // inquiry, and counting them made "Inquiries (3)" mean something else.
     final asking = threads
-        ?.where((thread) => thread.status == InquirySummaryStatusEnum.OPEN)
+        ?.where((thread) =>
+            thread.status == InquirySummaryStatusEnum.OPEN &&
+            thread.tenancy == null)
         .length;
     final showInquiries = ref.watch(tenantsTabProvider);
 
@@ -92,7 +98,10 @@ class TenantsScreen extends ConsumerWidget {
           ),
           if (showInquiries)
             const Expanded(
+              // Tenants' conversations are on their rows under Renting, with
+              // the person they belong to.
               child: InquiriesList(
+                leaveOutTenancies: true,
                 emptyDetail: 'Somebody who scans your code and asks about the '
                     'place appears here.',
               ),
@@ -119,7 +128,11 @@ class TenantsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
                         itemCount: rows.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (_, index) => _TenantRow(lease: rows[index]),
+                        itemBuilder: (_, index) => _TenantRow(
+                          lease: rows[index],
+                          thread: threadForLease(
+                              threads ?? const [], rows[index].id),
+                        ),
                       ),
                     ),
             ),
@@ -130,23 +143,34 @@ class TenantsScreen extends ConsumerWidget {
   }
 }
 
-class _TenantRow extends StatelessWidget {
-  const _TenantRow({required this.lease});
+/// One tenant: who, where, and what they last said.
+///
+/// The row opens their page; the speech bubble opens the conversation. Their
+/// messages used to live under Inquiries, among strangers asking about a
+/// room, which is not where anybody looks for the person in 2B.
+class _TenantRow extends ConsumerWidget {
+  const _TenantRow({required this.lease, required this.thread});
 
   final LeaseResponse lease;
 
+  /// Their conversation, or null when a tenancy from before conversations
+  /// has none yet.
+  final InquirySummary? thread;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final where = lease.bedLabel == null
         ? 'Unit ${lease.unitNumber}'
         : '${lease.bedLabel}, ${lease.unitNumber}';
+    final unread = thread?.unread ?? false;
+    final said = thread?.lastMessage;
 
     return InkWell(
       key: ValueKey('tenant-${lease.id}'),
       borderRadius: BorderRadius.circular(14),
       onTap: () => context.openInTab(Detail.tenancy(lease.id!)),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
         decoration: BoxDecoration(
           color: LizmoColors.white,
           borderRadius: BorderRadius.circular(14),
@@ -154,23 +178,57 @@ class _TenantRow extends StatelessWidget {
         ),
         child: Row(
           children: [
+            if (unread)
+              Container(
+                key: ValueKey('tenant-unread-${lease.id}'),
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: const BoxDecoration(
+                  color: LizmoColors.coral,
+                  shape: BoxShape.circle,
+                ),
+              ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     lease.tenantName ?? 'A tenant',
-                    style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
+                    style: LizmoType.rowName.copyWith(
+                      color: LizmoColors.ink,
+                      fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     '$where · ${lease.propertyName ?? 'a property'}',
                     style: LizmoType.rowSub,
                   ),
+                  if ((said ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      said!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: LizmoType.rowSub.copyWith(
+                        color: unread ? LizmoColors.ink : LizmoColors.slate,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: LizmoColors.slate),
+            IconButton(
+              key: ValueKey('message-${lease.id}'),
+              tooltip: 'Message ${lease.tenantName ?? 'them'}',
+              icon: Icon(
+                unread ? Icons.mark_chat_unread_outlined : Icons.chat_bubble_outline,
+                color: unread ? LizmoColors.coral : LizmoColors.teal900,
+              ),
+              onPressed: () =>
+                  openTenancyConversation(context, ref, lease.id!, known: thread),
+            ),
           ],
         ),
       ),

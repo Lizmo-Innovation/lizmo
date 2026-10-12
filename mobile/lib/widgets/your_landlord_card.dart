@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
-import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
-import '../router.dart';
+import '../inquiry/tenancy_conversation.dart';
 
 /// The conversation a tenancy is talked about in, if it has one yet.
 ///
@@ -49,24 +47,10 @@ class _YourLandlordCardState extends ConsumerState<YourLandlordCard> {
   bool _opening = false;
 
   Future<void> _open(InquirySummary? thread) async {
-    if (thread?.id != null) {
-      await context.push(Routes.inquiry(thread!.id!));
-      return;
-    }
-
     setState(() => _opening = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      final made = await ref
-          .read(inquiriesApiProvider)
-          .openLeaseConversation(widget.lease.id!);
-      ref.invalidate(myInquiriesProvider);
-      final id = made?.id;
-      if (!mounted || id == null) return;
-      await context.push(Routes.inquiry(id));
-    } catch (error) {
-      messenger.showSnackBar(
-          SnackBar(content: Text(ApiFailure.from(error).message)));
+      await openTenancyConversation(context, ref, widget.lease.id!,
+          known: thread);
     } finally {
       if (mounted) setState(() => _opening = false);
     }
