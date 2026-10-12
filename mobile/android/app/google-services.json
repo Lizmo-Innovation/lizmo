@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "750328937436",
+    "project_id": "lizmo-test",
+    "storage_bucket": "lizmo-test.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750328937436:android:467dbb3964d556766c6d19",
+        "android_client_info": {
+          "package_name": "app.lizmo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDz3zWNMAuy3yGMrEMKSenLXjDLRmycfI8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../push/push_providers.dart';
 import '../router.dart';
 
 /// The account menu, opened from the header.
@@ -125,7 +126,7 @@ class AccountSheet extends ConsumerWidget {
                 // the router swaps the screen underneath — leaving the sheet
                 // open would strand it over the login screen.
                 Navigator.of(context).pop();
-                await ref.read(authControllerProvider.notifier).logout();
+                await ref.read(signOutProvider)();
               },
             ),
           ],

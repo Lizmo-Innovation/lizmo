@@ -84,6 +84,8 @@ dependencies:
   # Opens the store listing when a build is too old to carry on. share_plus
   # cannot open a URL, so this is its own dependency.
   url_launcher: ^6.3.1
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
 
 dev_dependencies:
   flutter_test:

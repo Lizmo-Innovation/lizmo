@@ -8,6 +8,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'app_version.dart';
 import 'auth/active_role.dart';
+import 'push/push_providers.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -631,8 +632,7 @@ class NoProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () =>
-                      ref.read(authControllerProvider.notifier).logout(),
+                  onPressed: () => ref.read(signOutProvider)(),
                   child: Text(
                     'Sign out',
                     style: LizmoType.rowName.copyWith(

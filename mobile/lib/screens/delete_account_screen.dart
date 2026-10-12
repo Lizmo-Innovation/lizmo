@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
+import '../push/push_providers.dart';
 import '../tenant/tenant_providers.dart';
 
 /// Closing the account, from inside the app.
@@ -42,7 +43,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       // Signing out locally as well: the server has ended every session, and
       // leaving a dead token in storage would show a signed-in shell that
       // fails on its first request.
-      await ref.read(authControllerProvider.notifier).logout();
+      await ref.read(signOutProvider).afterClosingTheAccount();
     } on Object catch (error) {
       if (mounted) setState(() => _error = ApiFailure.from(error).message);
     } finally {

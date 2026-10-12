@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0E5C52</color>
+    <!-- The tint Android gives the status-bar icon of a push. -->
+    <color name="push_accent">#0E5C52</color>
 </resources>
