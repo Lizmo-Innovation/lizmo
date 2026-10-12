@@ -18,6 +18,7 @@ import '../widgets/role_switcher.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../push/push_offer.dart';
 import '../widgets/inquiries_card.dart';
+import '../widgets/leases_ending_card.dart';
 
 /// The landlord's day: what needs them, then how things stand.
 ///
@@ -58,6 +59,7 @@ class LandlordHomeScreen extends ConsumerWidget {
     final lizmo = ref.watch(myLizmoStatementsProvider).valueOrNull;
     final repairs = ref.watch(maintenanceToHandleProvider).valueOrNull;
     final repairsWaiting = repairs == null ? null : repairsNeedingYou(repairs);
+    final ending = ref.watch(leasesEndingProvider);
 
     // Only once every answer is in. Unknown is not nothing, and "nothing
     // needs you" over a queue that failed to load would be a lie told at the
@@ -75,7 +77,9 @@ class LandlordHomeScreen extends ConsumerWidget {
         lizmo != null &&
         !lizmo.any(lizmoStatementNeedsPaying) &&
         repairsWaiting != null &&
-        repairsWaiting.isEmpty;
+        repairsWaiting.isEmpty &&
+        ending != null &&
+        ending.isEmpty;
 
     return Scaffold(
       backgroundColor: LizmoColors.canvas,
@@ -124,6 +128,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(myLizmoStatementsProvider);
                 ref.invalidate(maintenanceToHandleProvider);
                 ref.invalidate(myPaymentChannelsProvider);
+                ref.invalidate(myTenantsProvider);
               },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -141,6 +146,9 @@ class LandlordHomeScreen extends ConsumerWidget {
                   // arrears can wait a day.
                   const RepairsCard(),
                   const ArrearsCard(),
+                  // A question only they can answer -- are they staying? --
+                  // but rarely an urgent one, so below the money.
+                  const LeasesEndingCard(),
                   // Last of the four: nobody is standing at the door over it,
                   // but left alone it locks every property they have.
                   const LizmoStatementCard(),

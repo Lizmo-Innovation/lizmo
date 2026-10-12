@@ -5,6 +5,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../property/property_providers.dart';
 import 'date_field.dart';
+import 'lease_term.dart';
 
 /// The terms a landlord is accepting on, settled before the lease exists.
 ///
@@ -84,6 +85,22 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   final _deposit = TextEditingController();
   final _advance = TextEditingController();
 
+  /// How long it is for. Month to month unless they agreed a term.
+  String _term = 'none';
+  DateTime? _ownEnd;
+
+  /// Recomputed from the start, so "1 year" follows a start date changed
+  /// after it was picked.
+  List<TermChoice> get _terms => [
+        const TermChoice('none', 'No end date', null),
+        TermChoice('six', '6 months', termEnd(_start, 6)),
+        TermChoice('year', '1 year', termEnd(_start, 12)),
+      ];
+
+  DateTime? get _endsOn => _term == LeaseTermChoices.own
+      ? _ownEnd
+      : _terms.firstWhere((choice) => choice.key == _term).date;
+
   @override
   void dispose() {
     _rent.dispose();
@@ -120,7 +137,10 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   ///
   /// A room, when the tenant named none: the server refuses it otherwise, and
   /// a button that fails after the tap reads as the app being broken.
-  bool get _ready => widget.rooms == null || _room != null;
+  bool get _ready =>
+      (widget.rooms == null || _room != null) &&
+      // A date of their own, once they have said they want one.
+      (_term != LeaseTermChoices.own || _ownEnd != null);
 
   void _accept() {
     if (!_ready) return;
@@ -136,6 +156,10 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
       // second -- which is what lets both apps show a dash rather than "P0".
       depositAmount: _amountOrNull(_deposit),
       advanceAmount: _amountOrNull(_advance),
+      endsOn: switch (_endsOn) {
+        final end? => DateTime.utc(end.year, end.month, end.day),
+        null => null,
+      },
     ));
   }
 
@@ -305,6 +329,29 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 // Said out loud because the landlord does not choose it here,
                 // and a rent day nobody mentioned is one they discover later.
                 'Rent will fall due on the ${_ordinal(_start.day)} of each month.',
+                style: LizmoType.rowSub,
+              ),
+
+              const SizedBox(height: 18),
+              _Label('How long'),
+              const SizedBox(height: 6),
+              LeaseTermChoices(
+                choices: _terms,
+                picked: _term,
+                onPick: (key) => setState(() => _term = key),
+                ownDate: _ownEnd,
+                onOwnDate: (date) => setState(() => _ownEnd = date),
+                firstDate: _start.add(const Duration(days: 1)),
+                lastDate: _start.add(const Duration(days: 365 * 10)),
+              ),
+              Text(
+                // What an end date does, and what it does not: nobody is
+                // put out on the day.
+                _endsOn == null
+                    ? 'Month to month, until one of you ends it.'
+                    : 'You will both be told a month before it ends, and '
+                        'again in the last week. Nothing ends on its own.',
+                key: const ValueKey('term-says'),
                 style: LizmoType.rowSub,
               ),
 

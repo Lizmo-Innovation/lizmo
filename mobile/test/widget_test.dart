@@ -10174,6 +10174,7 @@ void _tenantLeaseTests() {
       List<PaymentChannelResponse>? channels = const [],
       int occupied = 0,
       num depositsHeld = 0,
+      List<LeaseResponse>? tenants,
     }) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(
@@ -10223,6 +10224,11 @@ void _tenantLeaseTests() {
           maintenanceToHandleProvider.overrideWith((ref) async => repairs),
         myLizmoStatementsProvider.overrideWith((ref) async => lizmo),
         ..._tenancyL1(),
+        // After the shared tenancy, whose empty list would otherwise win.
+        if (tenants != null) ...[
+          myTenantsProvider.overrideWith((ref) async => tenants),
+          todayProvider.overrideWithValue(DateTime(2026, 10, 12)),
+        ],
       ],
       child: const LizmoApp(),
     );
@@ -10501,6 +10507,30 @@ void _tenantLeaseTests() {
 
       // The queue is not pinned here, so it never arrives.
       expect(inHeader(find.text('—')), findsOneWidget);
+    });
+
+    /// Nothing ends on its own, so a lease past its end is still theirs to
+    /// answer: are they staying?
+    testWidgets('a lease past its end is something that needs you',
+        (tester) async {
+      await tester.pumpWidget(appWith(threads: const [], tenants: [
+        LeaseResponse(
+          id: 'l1',
+          tenantName: 'Ana Reyes',
+          unitNumber: '2B',
+          bedLabel: 'Bed 1',
+          startDate: DateTime.utc(2026, 1, 1),
+          termEndsOn: DateTime.utc(2026, 10, 1),
+        ),
+      ]));
+      await tester.pumpAndSettle();
+
+      // Below Getting started, which fills the screen with no properties.
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('leases-ending-card')), 300,
+          scrollable: find.byType(Scrollable).last);
+      expect(find.text('Past its end'), findsOneWidget);
+      expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 
     testWidgets('nothing waiting says so outright', (tester) async {

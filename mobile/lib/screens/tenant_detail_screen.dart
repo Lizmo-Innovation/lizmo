@@ -12,7 +12,10 @@ import '../property/property_providers.dart';
 import '../tenant/id_labels.dart';
 import '../widgets/full_screen_image.dart';
 import '../widgets/end_tenancy_sheet.dart';
+import '../tenant/tenant_providers.dart';
 import '../widgets/lease_attachments.dart';
+import '../widgets/lease_term.dart';
+import '../widgets/leases_ending_card.dart';
 import '../widgets/record_payment_sheet.dart';
 import '../widgets/tenant_rent_card.dart';
 
@@ -85,6 +88,11 @@ class TenantDetailScreen extends ConsumerWidget {
             // Confirm button the dashboard had just sent them for.
             TenantRentCard(leaseId: leaseId),
             const SizedBox(height: 12),
+
+            // Next to the money: how long this goes on is the other half of
+            // what the tenancy is, and the half a landlord acts on when it
+            // nears its end.
+            _LeaseTerm(leaseId: leaseId),
 
             _Section(
               title: 'Contact',
@@ -249,6 +257,126 @@ class _EndTenancyState extends ConsumerState<_EndTenancy> {
               style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
         ],
       ],
+    );
+  }
+}
+
+/// When the lease began and when it is meant to end, and changing the end.
+///
+/// "No end date" is said plainly rather than left as a dash: month to month
+/// is the usual arrangement, not a missing detail. Near the end it says how
+/// near, and past it, what is left to do -- nothing ends on its own.
+class _LeaseTerm extends ConsumerStatefulWidget {
+  const _LeaseTerm({required this.leaseId});
+
+  final String leaseId;
+
+  @override
+  ConsumerState<_LeaseTerm> createState() => _LeaseTermState();
+}
+
+class _LeaseTermState extends ConsumerState<_LeaseTerm> {
+  bool _saving = false;
+
+  Future<void> _change(LeaseResponse lease, DateTime today) async {
+    final change = await ChangeLeaseTermSheet.show(
+      context,
+      start: lease.startDate!,
+      endsOn: lease.termEndsOn,
+      today: today,
+    );
+    if (change == null || !mounted) return;
+
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ends = change.endsOn;
+      await ref.read(leasesApiProvider).changeLeaseTerm(
+            widget.leaseId,
+            LeaseTermRequest(
+              endsOn: ends == null ? null : DateTime.utc(ends.year, ends.month, ends.day),
+            ),
+          );
+      ref.invalidate(myTenantsProvider);
+      messenger.showSnackBar(SnackBar(
+        content: Text(ends == null
+            ? 'No end date now. ${_firstName(lease)} has been told.'
+            : 'Ends on ${termDate(ends)}. ${_firstName(lease)} has been told.'),
+      ));
+    } catch (error) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(ApiFailure.from(error).message)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  static String _firstName(LeaseResponse lease) {
+    final name = lease.tenantName?.trim();
+    if (name == null || name.isEmpty) return 'Your tenant';
+    return name.split(' ').first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lease = ref.watch(landlordLeaseProvider(widget.leaseId));
+    if (lease == null || lease.startDate == null) return const SizedBox.shrink();
+    final today = ref.watch(todayProvider);
+    final ends = lease.termEndsOn;
+    final left = ends == null ? null : daysUntil(ends, today);
+
+    final String? says = switch (left) {
+      null => null,
+      < 0 => 'It reached its end on ${termDate(ends!)}. If they are staying, '
+          'extend it. If they have gone, end the tenancy so the room can be '
+          'let again.',
+      // The same day Today starts listing it.
+      <= leaseEndingWithinDays =>
+        'Ends ${inDays(left)}. Extend it if they are staying.',
+      _ => null,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _Section(
+        title: 'The lease',
+        rows: [
+          _Fact('Started', termDate(lease.startDate!)),
+          _Fact('Ends', ends == null ? 'No end date' : termDate(ends)),
+        ],
+        footer: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (says != null) ...[
+              Container(
+                key: const ValueKey('lease-term-says'),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: left! < 0 ? LizmoColors.redBg : LizmoColors.amberBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  says,
+                  style: LizmoType.rowSub.copyWith(
+                    color: left < 0 ? LizmoColors.red : LizmoColors.amberText,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('change-lease-term'),
+                onPressed: _saving ? null : () => _change(lease, today),
+                icon: const Icon(Icons.event_outlined, size: 18),
+                label: Text(ends == null ? 'Set an end date' : 'Extend or change'),
+                style: TextButton.styleFrom(foregroundColor: LizmoColors.teal900),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
