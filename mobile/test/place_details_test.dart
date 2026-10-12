@@ -9,6 +9,7 @@ import 'package:lizmo/screens/place_details_screen.dart';
 import 'package:lizmo/screens/unit_detail_screen.dart';
 import 'package:lizmo/tenant/tenant_providers.dart';
 import 'package:lizmo/widgets/accept_terms_sheet.dart';
+import 'package:lizmo/widgets/before_you_ask.dart';
 import 'package:lizmo/widgets/getting_started_card.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -156,6 +157,56 @@ void main() {
 
       expect(field(tester, 'deposit-amount'), '');
       expect(find.textContaining('From your place details'), findsNothing);
+    });
+  });
+
+  group('before you ask', () {
+    Future<void> show(WidgetTester tester, PlaceDetailsDto details,
+        {num? rent = 2500}) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: BeforeYouAsk(details: details, cheapestRent: rent),
+          ),
+        ),
+      ));
+    }
+
+    /// The first month is due on move-in day, paid ahead or not.
+    testWidgets('no advance still means the first month on the day',
+        (tester) async {
+      await show(tester, PlaceDetailsDto(depositMonths: 1, advanceMonths: 0));
+
+      expect(find.text('Deposit 1 month · No advance'), findsOneWidget);
+      expect(find.text('About ₱5,000 to move in, for a ₱2,500 space'), findsOneWidget);
+    });
+
+    testWidgets('half the answer gets no total', (tester) async {
+      await show(tester, PlaceDetailsDto(depositMonths: 2));
+
+      expect(find.text('Deposit 2 months'), findsOneWidget);
+      expect(find.byKey(const ValueKey('move-in-total')), findsNothing);
+    });
+
+    testWidgets('other rules are shown as written', (tester) async {
+      await show(tester, PlaceDetailsDto(otherRules: 'Shoes off inside.'));
+
+      expect(find.text('House rules'), findsOneWidget);
+      expect(find.text('Shoes off inside.'), findsOneWidget);
+      expect(find.text('Money up front'), findsNothing);
+    });
+
+    testWidgets('a landlord too new to say how fast they reply', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LandlordCardView(
+            landlord: LandlordCard(name: 'Elena B.', since: DateTime.utc(2026, 10, 1)),
+          ),
+        ),
+      ));
+
+      expect(find.text('Let by Elena B.'), findsOneWidget);
+      expect(find.text('On Lizmo since October 2026'), findsOneWidget);
     });
   });
 

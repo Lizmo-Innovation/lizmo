@@ -5187,6 +5187,65 @@ void _findingAPlaceTests() {
       await tester.pumpAndSettle();
     }
 
+    /// The questions everybody asks first, answered before they ask.
+    testWidgets('the place says who can rent, its rules and its money',
+        (tester) async {
+      final found = place(beds: 2)
+        ..details = PlaceDetailsDto(
+          whoCanRent: PlaceDetailsDtoWhoCanRentEnum.WOMEN,
+          curfew: '22:00',
+          pets: false,
+          depositMonths: 2,
+          advanceMonths: 1,
+          amenities: [PlaceDetailsDtoAmenitiesEnum.WIFI],
+        )
+        ..landlord = LandlordCard(
+          name: 'Elena B.',
+          since: DateTime.utc(2026, 10, 1),
+          replies: LandlordCardRepliesEnum.WITHIN_A_DAY,
+        );
+      await tester.pumpWidget(appWith(found: found));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.text('Women only'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Let by Elena B.'), 300,
+          scrollable: find.byType(Scrollable).first);
+
+      expect(find.text('Before you ask'), findsOneWidget);
+      expect(find.text('Deposit 2 months · Advance 1 month'), findsOneWidget);
+      expect(find.text('About ₱7,500 to move in, for a ₱2,500 space'), findsOneWidget);
+      expect(find.text('Curfew 10pm'), findsOneWidget);
+      expect(find.text('No pets'), findsOneWidget);
+      expect(find.text('Wi-Fi'), findsOneWidget);
+      expect(find.text('Usually replies within a day · On Lizmo since October 2026'),
+          findsOneWidget);
+    });
+
+    /// Not said is not "no": nothing is shown for it at all.
+    testWidgets('a place with nothing said shows no rules', (tester) async {
+      await tester.pumpWidget(
+          appWith(found: place(beds: 2)..details = PlaceDetailsDto()));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.byKey(const ValueKey('who-can-rent')), findsNothing);
+      expect(find.byKey(const ValueKey('before-you-ask'), skipOffstage: false),
+          findsNothing);
+    });
+
+    testWidgets('each floor says when somebody could move in', (tester) async {
+      final found = place(beds: 2);
+      found.floors.first
+        ..readyLater = 1
+        ..readyFrom = DateTime.utc(2026, 11, 1);
+      await tester.pumpWidget(appWith(found: found));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(find.text('1 ready now, 1 from 1 Nov'), findsOneWidget);
+    });
+
     testWidgets('My place is the way in', (tester) async {
       await tester.pumpWidget(appWith());
       await tester.pumpAndSettle();

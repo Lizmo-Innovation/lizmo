@@ -11,6 +11,8 @@ import '../router.dart';
 import '../widgets/ask_for_number_sheet.dart';
 import '../widgets/full_screen_image.dart';
 import '../tenant/tenant_providers.dart';
+import '../property/place_details.dart';
+import '../widgets/before_you_ask.dart';
 
 /// What a tenant sees after entering the code: the place, and what is free.
 ///
@@ -135,7 +137,15 @@ class _Place extends StatelessWidget {
         const SizedBox(height: 4),
         Text(place.address ?? '', style: LizmoType.rowSub),
         const SizedBox(height: 10),
-        _Kind(label: _kind(place)),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _Kind(label: _kind(place)),
+            if (whoCanRentLabel(place.details?.whoCanRent?.toJson()) case final who?)
+              WhoCanRentBadge(label: who),
+          ],
+        ),
         if ((place.description ?? '').isNotEmpty) ...[
           const SizedBox(height: 12),
           _Description(text: place.description!),
@@ -165,11 +175,27 @@ class _Place extends StatelessWidget {
                   'between you.',
           style: LizmoType.rowSub,
         ),
+
+        if (place.details case final details?)
+          BeforeYouAsk(details: details, cheapestRent: _cheapest(floors)),
+
+        if (place.landlord case final landlord?)
+          LandlordCardView(landlord: landlord),
             ],
           ),
         ),
       ],
     );
+  }
+
+  /// The lowest rent on offer anywhere in the place, or null when none is set.
+  static num? _cheapest(List<VacancyFloor> floors) {
+    num? lowest;
+    for (final floor in floors) {
+      final rent = floor.cheapestRent;
+      if (rent != null && (lowest == null || rent < lowest)) lowest = rent;
+    }
+    return lowest;
   }
 
   static String _kind(PropertyByCodeResponse place) {
@@ -482,6 +508,17 @@ class _Floor extends StatelessWidget {
                 Text(_floorLabel(floor.floor), style: LizmoType.rowName),
                 const SizedBox(height: 2),
                 Text(_whatIsFree(units, beds), style: LizmoType.rowSub),
+                // When somebody could move in: the question after "how much".
+                Text(
+                  _ready(units + beds),
+                  key: ValueKey('ready-${floor.floor ?? 'ground'}'),
+                  style: LizmoType.rowSub.copyWith(
+                    fontSize: 12,
+                    color: (floor.readyLater ?? 0) > 0
+                        ? LizmoColors.amberText
+                        : LizmoColors.teal900,
+                  ),
+                ),
               ],
             ),
           ),
@@ -519,6 +556,20 @@ class _Floor extends StatelessWidget {
       3 => '${number}rd',
       _ => '${number}th',
     };
+  }
+
+  /// "Ready now", "Ready from 1 Nov", or "2 ready now, 1 from 1 Nov".
+  String _ready(int vacant) {
+    final later = floor.readyLater ?? 0;
+    final from = floor.readyFrom;
+    if (later == 0 || from == null) return 'Ready now';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final day = '${from.day} ${months[from.month - 1]}';
+    if (later >= vacant) return 'Ready from $day';
+    return '${vacant - later} ready now, $later from $day';
   }
 
   static String _whatIsFree(int units, int beds) {
