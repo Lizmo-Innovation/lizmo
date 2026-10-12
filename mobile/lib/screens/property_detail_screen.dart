@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
+import '../notice/notice_providers.dart';
 import '../property/property_providers.dart';
 import '../router.dart';
 import '../widgets/property_photos_card.dart';
@@ -122,6 +123,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             ],
           ),
           _WaitingRequests(propertyId: propertyId),
+          _Announcements(propertyId: propertyId),
           // Above the rooms: what the place looks like is what a stranger
           // decides on, and the unit list is for the landlord's own work.
           PropertyPhotosCard(propertyId: propertyId),
@@ -292,6 +294,74 @@ class _WaitingRequests extends ConsumerWidget {
                 ),
                 const Icon(Icons.chevron_right,
                     size: 20, color: LizmoColors.amberText),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Announcements for this building: how many are up, or the offer to post
+/// one. Always shown, unlike the requests strip -- it is something the
+/// landlord does, not something waiting on them -- but quiet, in white.
+class _Announcements extends ConsumerWidget {
+  const _Announcements({required this.propertyId});
+
+  final String propertyId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notices = ref.watch(propertyNoticesProvider(propertyId)).valueOrNull;
+    final up = notices?.where((notice) => notice.live ?? true).toList() ?? const [];
+    final latest = up.isEmpty ? null : up.first;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Material(
+        color: LizmoColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFFE3E8E6)),
+        ),
+        child: InkWell(
+          key: const ValueKey('property-announcements'),
+          onTap: () => context.openInTab(Detail.announcements(propertyId)),
+          customBorder:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                const Icon(Icons.campaign_outlined,
+                    size: 20, color: LizmoColors.teal900),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        up.isEmpty
+                            ? 'Tell everybody here at once'
+                            : up.length == 1
+                                ? '1 announcement up'
+                                : '${up.length} announcements up',
+                        style: LizmoType.rowName,
+                      ),
+                      if (latest != null && (latest.audience ?? 0) > 0)
+                        Text(
+                          '“${latest.title}” · seen by ${latest.seenBy ?? 0} of '
+                          '${latest.audience}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: LizmoType.rowSub.copyWith(fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    size: 20, color: LizmoColors.slate),
               ],
             ),
           ),

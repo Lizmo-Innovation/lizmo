@@ -67,9 +67,17 @@ class LeaseTermChoices extends StatelessWidget {
     required this.onOwnDate,
     required this.firstDate,
     required this.lastDate,
+    this.ownHint = 'The last day of the lease.',
+    this.ownLabel = 'Pick a date',
   });
 
+  /// The choice that opens a date of their own.
+  final String ownLabel;
+
   static const own = 'own';
+
+  /// Said under a date of their own: what the date means.
+  final String ownHint;
 
   final List<TermChoice> choices;
 
@@ -97,7 +105,7 @@ class LeaseTermChoices extends StatelessWidget {
           ),
         _Choice(
           key: const ValueKey('term-own'),
-          label: 'Pick a date',
+          label: ownLabel,
           detail: picked == own || ownDate == null ? null : termDate(ownDate!),
           chosen: picked == own,
           onTap: () => onPick(own),
@@ -112,10 +120,7 @@ class LeaseTermChoices extends StatelessWidget {
             lastDate: lastDate,
           ),
           const SizedBox(height: 6),
-          Text(
-            'The last day of the lease.',
-            style: LizmoType.rowSub,
-          ),
+          Text(ownHint, style: LizmoType.rowSub),
         ],
       ],
     );

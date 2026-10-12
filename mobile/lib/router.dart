@@ -8,6 +8,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 
 import 'app_version.dart';
 import 'auth/active_role.dart';
+import 'screens/announcements_screen.dart';
 import 'push/push_providers.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/login_screen.dart';
@@ -183,6 +184,8 @@ abstract final class Detail {
   static String tenancy(String leaseId) => 'lease/$leaseId';
   static String property(String id) => 'property/$id';
   static String share(String propertyId) => 'property/$propertyId/share';
+  static String announcements(String propertyId) =>
+      'property/$propertyId/announcements';
   static String unit(String propertyId, String unitId) =>
       'property/$propertyId/unit/$unitId';
   static String maintenance(String reportId) => 'maintenance/$reportId';
@@ -601,6 +604,12 @@ List<RouteBase> _landlordDetails() => [
           GoRoute(
             path: 'share',
             builder: (context, state) => PropertyShareScreen(
+              propertyId: state.pathParameters['propertyId']!,
+            ),
+          ),
+          GoRoute(
+            path: 'announcements',
+            builder: (context, state) => AnnouncementsScreen(
               propertyId: state.pathParameters['propertyId']!,
             ),
           ),
