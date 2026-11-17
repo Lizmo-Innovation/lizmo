@@ -16,9 +16,18 @@ import '../property/property_providers.dart';
 /// first photograph here is the one they see against the building, which is
 /// why it can be moved.
 class PropertyPhotosCard extends ConsumerStatefulWidget {
-  const PropertyPhotosCard({super.key, required this.propertyId});
+  const PropertyPhotosCard({
+    super.key,
+    required this.propertyId,
+    this.compact = false,
+  });
 
   final String propertyId;
+
+  /// A row of small thumbnails with Edit, for the property screen, where the
+  /// units are what the landlord came for. The full card -- cover, remove,
+  /// add -- opens from Edit.
+  final bool compact;
 
   @override
   ConsumerState<PropertyPhotosCard> createState() => _PropertyPhotosCardState();
@@ -143,6 +152,26 @@ class _PropertyPhotosCardState extends ConsumerState<PropertyPhotosCard> {
         ref.watch(propertyPhotosProvider(widget.propertyId)).valueOrNull ??
             const <PropertyPhoto>[];
     final room = photos.length < 8;
+
+    if (widget.compact && photos.isNotEmpty) {
+      return _Thumbnails(
+        photos: photos,
+        onEdit: () => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: LizmoColors.canvas,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: PropertyPhotosCard(propertyId: widget.propertyId),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: context.pageInsets(12, 0),
@@ -288,6 +317,116 @@ class _Photo extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The photos as a row of 80 by 60 thumbnails, the last saying how many more.
+class _Thumbnails extends StatelessWidget {
+  const _Thumbnails({required this.photos, required this.onEdit});
+
+  final List<PropertyPhoto> photos;
+  final VoidCallback onEdit;
+
+  static const _width = 80.0;
+  static const _gap = 8.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final across = context.pageWidth - 2 * context.pageGutter;
+    final fit = ((across + _gap) / (_width + _gap)).floor().clamp(1, 8);
+    final more = photos.length - fit;
+    final shown = more > 0 ? photos.take(fit - 1).toList() : photos;
+
+    return Padding(
+      padding: context.pageInsets(14, 0),
+      child: Column(
+        key: const ValueKey('property-photos'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Photos', style: LizmoType.sectionHeading),
+              const SizedBox(width: 8),
+              Text('${photos.length}',
+                  style: LizmoType.dataMedium
+                      .copyWith(fontSize: 13, color: LizmoColors.slateText)),
+              const Spacer(),
+              TextButton(
+                key: const ValueKey('edit-photos'),
+                onPressed: onEdit,
+                style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+                child: Text('Edit',
+                    style: LizmoType.rowName.copyWith(color: LizmoColors.teal900)),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              for (final (i, photo) in shown.indexed) ...[
+                if (i > 0) const SizedBox(width: _gap),
+                _Thumb(url: photo.url, onTap: onEdit),
+              ],
+              if (more > 0) ...[
+                const SizedBox(width: _gap),
+                _Thumb(
+                  url: photos[fit - 1].url,
+                  onTap: onEdit,
+                  more: photos.length - (fit - 1),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Thumb extends StatelessWidget {
+  const _Thumb({required this.url, required this.onTap, this.more});
+
+  final String? url;
+  final VoidCallback onTap;
+
+  /// Photos beyond this one, shown over it as "+N".
+  final int? more;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: _Thumbnails._width,
+          height: 60,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: LizmoColors.canvas,
+                child: url == null
+                    ? const Icon(Icons.image_outlined, color: LizmoColors.slate)
+                    : Image.network(
+                        url!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                            Icons.broken_image_outlined,
+                            color: LizmoColors.slate),
+                      ),
+              ),
+              if (more != null)
+                Container(
+                  color: const Color(0x9912211E),
+                  alignment: Alignment.center,
+                  child: Text('+$more',
+                      style: LizmoType.dataMedium.copyWith(color: LizmoColors.white)),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

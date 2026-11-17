@@ -152,6 +152,7 @@ Class | Method | HTTP request | Description
 *PropertiesApi* | [**getOccupancy**](doc//PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 *PropertiesApi* | [**getPlaceDetails**](doc//PropertiesApi.md#getplacedetails) | **GET** /api/v1/properties/{id}/details | A place's rules, money up front and what comes with it
 *PropertiesApi* | [**getProperty**](doc//PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
+*PropertiesApi* | [**getPropertyOverview**](doc//PropertiesApi.md#getpropertyoverview) | **GET** /api/v1/properties/{id}/overview | A building at a glance
 *PropertiesApi* | [**listProperties**](doc//PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 *PropertiesApi* | [**listPropertyPhotos**](doc//PropertiesApi.md#listpropertyphotos) | **GET** /api/v1/properties/{propertyId}/photos | This property's photos
 *PropertiesApi* | [**listUnits**](doc//PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
@@ -210,6 +211,7 @@ Class | Method | HTTP request | Description
  - [AwaitingRow](doc//AwaitingRow.md)
  - [BedRequest](doc//BedRequest.md)
  - [BedResponse](doc//BedResponse.md)
+ - [BedState](doc//BedState.md)
  - [BillingPeriodResponse](doc//BillingPeriodResponse.md)
  - [ChannelProperties](doc//ChannelProperties.md)
  - [CollectionsSummary](doc//CollectionsSummary.md)
@@ -255,6 +257,7 @@ Class | Method | HTTP request | Description
  - [PlatformStatementResponse](doc//PlatformStatementResponse.md)
  - [PostNotice](doc//PostNotice.md)
  - [PropertyByCodeResponse](doc//PropertyByCodeResponse.md)
+ - [PropertyOverview](doc//PropertyOverview.md)
  - [PropertyPhoto](doc//PropertyPhoto.md)
  - [PropertyRequest](doc//PropertyRequest.md)
  - [PropertyResponse](doc//PropertyResponse.md)
@@ -277,6 +280,7 @@ Class | Method | HTTP request | Description
  - [TenantForLandlord](doc//TenantForLandlord.md)
  - [TenantProfileRequest](doc//TenantProfileRequest.md)
  - [TenantProfileResponse](doc//TenantProfileResponse.md)
+ - [UnitOverview](doc//UnitOverview.md)
  - [UnitRequest](doc//UnitRequest.md)
  - [UnitResponse](doc//UnitResponse.md)
  - [UnreadCount](doc//UnreadCount.md)

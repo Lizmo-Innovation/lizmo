@@ -4135,6 +4135,39 @@
                 }
             }
         },
+        "/api/v1/properties/{id}/overview": {
+            "get": {
+                "tags": [
+                    "Properties"
+                ],
+                "summary": "A building at a glance",
+                "description": "How full it is, what is owed late, and each unit's beds.",
+                "operationId": "getPropertyOverview",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The overview",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyOverview"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/properties/lookup": {
             "get": {
                 "tags": [
@@ -8467,6 +8500,105 @@
                     }
                 },
                 "description": "Who lets this place, as a stranger sees them"
+            },
+            "BedState": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "let": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "One bed in a bedspace room"
+            },
+            "PropertyOverview": {
+                "type": "object",
+                "properties": {
+                    "occupied": {
+                        "type": "integer",
+                        "description": "Spaces let: beds, and whole units counted as one",
+                        "format": "int32"
+                    },
+                    "rentable": {
+                        "type": "integer",
+                        "description": "Spaces that can be let: out of service ones are not",
+                        "format": "int32"
+                    },
+                    "vacant": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "overdueTotal": {
+                        "type": "number",
+                        "description": "What is owed late across every tenancy here"
+                    },
+                    "units": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UnitOverview"
+                        }
+                    }
+                },
+                "description": "One building at a glance, for its landlord"
+            },
+            "UnitOverview": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "unitNumber": {
+                        "type": "string"
+                    },
+                    "floor": {
+                        "type": "string"
+                    },
+                    "rentalMode": {
+                        "type": "string",
+                        "enum": [
+                            "WHOLE_UNIT",
+                            "BEDSPACE"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "VACANT",
+                            "PARTIALLY_OCCUPIED",
+                            "OCCUPIED",
+                            "MAINTENANCE"
+                        ]
+                    },
+                    "rent": {
+                        "type": "number",
+                        "description": "Per bed for a bedspace room, for the unit otherwise"
+                    },
+                    "beds": {
+                        "type": "array",
+                        "description": "Each rentable bed, let or not. Empty for a whole unit",
+                        "items": {
+                            "$ref": "#/components/schemas/BedState"
+                        }
+                    },
+                    "tenantName": {
+                        "type": "string",
+                        "description": "Who a whole unit is let to, when it is"
+                    },
+                    "readyFrom": {
+                        "type": "string",
+                        "description": "When its vacant space is ready, if not now",
+                        "format": "date"
+                    },
+                    "overdueTenancies": {
+                        "type": "integer",
+                        "description": "Tenancies in it with rent owed late",
+                        "format": "int32"
+                    }
+                },
+                "description": "A unit as its property screen shows it"
             }
         }
     }

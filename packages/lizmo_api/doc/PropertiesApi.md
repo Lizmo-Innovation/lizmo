@@ -17,6 +17,7 @@ Method | HTTP request | Description
 [**getOccupancy**](PropertiesApi.md#getoccupancy) | **GET** /api/v1/me/occupancy | What is let and what is empty
 [**getPlaceDetails**](PropertiesApi.md#getplacedetails) | **GET** /api/v1/properties/{id}/details | A place's rules, money up front and what comes with it
 [**getProperty**](PropertiesApi.md#getproperty) | **GET** /api/v1/properties/{id} | View one property
+[**getPropertyOverview**](PropertiesApi.md#getpropertyoverview) | **GET** /api/v1/properties/{id}/overview | A building at a glance
 [**listProperties**](PropertiesApi.md#listproperties) | **GET** /api/v1/properties | List my properties
 [**listPropertyPhotos**](PropertiesApi.md#listpropertyphotos) | **GET** /api/v1/properties/{propertyId}/photos | This property's photos
 [**listUnits**](PropertiesApi.md#listunits) | **GET** /api/v1/properties/{id}/units | List a property's units
@@ -349,6 +350,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**PropertyResponse**](PropertyResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getPropertyOverview**
+> PropertyOverview getPropertyOverview(id)
+
+A building at a glance
+
+How full it is, what is owed late, and each unit's beds.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = PropertiesApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.getPropertyOverview(id);
+    print(result);
+} catch (e) {
+    print('Exception when calling PropertiesApi->getPropertyOverview: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**PropertyOverview**](PropertyOverview.md)
 
 ### Authorization
 

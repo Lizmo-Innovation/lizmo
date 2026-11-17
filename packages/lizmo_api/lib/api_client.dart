@@ -213,6 +213,8 @@ class ApiClient {
           return BedRequest.fromJson(value);
         case 'BedResponse':
           return BedResponse.fromJson(value);
+        case 'BedState':
+          return BedState.fromJson(value);
         case 'BillingPeriodResponse':
           return BillingPeriodResponse.fromJson(value);
         case 'ChannelProperties':
@@ -303,6 +305,8 @@ class ApiClient {
           return PostNotice.fromJson(value);
         case 'PropertyByCodeResponse':
           return PropertyByCodeResponse.fromJson(value);
+        case 'PropertyOverview':
+          return PropertyOverview.fromJson(value);
         case 'PropertyPhoto':
           return PropertyPhoto.fromJson(value);
         case 'PropertyRequest':
@@ -347,6 +351,8 @@ class ApiClient {
           return TenantProfileRequest.fromJson(value);
         case 'TenantProfileResponse':
           return TenantProfileResponse.fromJson(value);
+        case 'UnitOverview':
+          return UnitOverview.fromJson(value);
         case 'UnitRequest':
           return UnitRequest.fromJson(value);
         case 'UnitResponse':

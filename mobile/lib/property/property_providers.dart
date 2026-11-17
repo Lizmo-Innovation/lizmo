@@ -46,6 +46,19 @@ final propertyProvider =
 });
 
 /// Units within one property.
+/// One building at a glance: how full, what is late, each unit's beds.
+///
+/// Null while loading or when it could not be read, which the property
+/// screen shows as dashes -- never as a building with nothing in it.
+final propertyOverviewProvider = FutureProvider.autoDispose
+    .family<PropertyOverview?, String>((ref, propertyId) async {
+  try {
+    return await ref.watch(propertiesApiProvider).getPropertyOverview(propertyId);
+  } catch (error) {
+    throw ApiFailure.from(error);
+  }
+});
+
 final unitsProvider =
     FutureProvider.autoDispose.family<List<UnitResponse>, String>((ref, propertyId) async {
   try {

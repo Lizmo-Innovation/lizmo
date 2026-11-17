@@ -16,6 +16,7 @@ class LatticeHeader extends StatelessWidget {
     super.key,
     required this.eyebrow,
     required this.title,
+    this.subtitle,
     this.stats = const [],
     this.leading,
     this.trailing,
@@ -24,6 +25,10 @@ class LatticeHeader extends StatelessWidget {
   /// Property name shown above the title, uppercased.
   final String eyebrow;
   final String title;
+
+  /// A line under the title -- an address, say -- in the header's quieter
+  /// white.
+  final String? subtitle;
 
   /// Summary figures rendered across the bottom of the header.
   final List<LatticeHeaderStat> stats;
@@ -98,6 +103,13 @@ class LatticeHeader extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(title, style: LizmoType.screenTitle),
+              if (subtitle case final line?) ...[
+                const SizedBox(height: 4),
+                Text(
+                  line,
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.onTealMuted),
+                ),
+              ],
               if (stats.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Row(

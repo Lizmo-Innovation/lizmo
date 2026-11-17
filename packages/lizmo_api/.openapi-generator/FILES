@@ -20,6 +20,7 @@ doc/AuthResponse.md
 doc/AwaitingRow.md
 doc/BedRequest.md
 doc/BedResponse.md
+doc/BedState.md
 doc/BillingPeriodResponse.md
 doc/ChannelProperties.md
 doc/CollectionsSummary.md
@@ -75,6 +76,7 @@ doc/PlatformStatementResponse.md
 doc/PostNotice.md
 doc/PropertiesApi.md
 doc/PropertyByCodeResponse.md
+doc/PropertyOverview.md
 doc/PropertyPhoto.md
 doc/PropertyRequest.md
 doc/PropertyResponse.md
@@ -102,6 +104,7 @@ doc/TenantForLandlord.md
 doc/TenantProfileApi.md
 doc/TenantProfileRequest.md
 doc/TenantProfileResponse.md
+doc/UnitOverview.md
 doc/UnitRequest.md
 doc/UnitResponse.md
 doc/UnitsApi.md
@@ -158,6 +161,7 @@ lib/model/auth_response.dart
 lib/model/awaiting_row.dart
 lib/model/bed_request.dart
 lib/model/bed_response.dart
+lib/model/bed_state.dart
 lib/model/billing_period_response.dart
 lib/model/channel_properties.dart
 lib/model/collections_summary.dart
@@ -203,6 +207,7 @@ lib/model/platform_settings.dart
 lib/model/platform_statement_response.dart
 lib/model/post_notice.dart
 lib/model/property_by_code_response.dart
+lib/model/property_overview.dart
 lib/model/property_photo.dart
 lib/model/property_request.dart
 lib/model/property_response.dart
@@ -225,6 +230,7 @@ lib/model/tenant_document_response.dart
 lib/model/tenant_for_landlord.dart
 lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
+lib/model/unit_overview.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
 lib/model/unread_count.dart
@@ -237,6 +243,7 @@ lib/model/vacancy_row.dart
 lib/model/waiting_payment.dart
 pubspec.yaml
 test/announcements_api_test.dart
+test/bed_state_test.dart
 test/devices_api_test.dart
 test/landlord_card_test.dart
 test/lease_term_request_test.dart
@@ -245,9 +252,11 @@ test/notice_response_test.dart
 test/photo_order_test.dart
 test/place_details_dto_test.dart
 test/post_notice_test.dart
+test/property_overview_test.dart
 test/property_photo_test.dart
 test/ready_from_request_test.dart
 test/receipt_response_test.dart
 test/receipts_api_test.dart
 test/register_device_test.dart
 test/tenancy_test.dart
+test/unit_overview_test.dart

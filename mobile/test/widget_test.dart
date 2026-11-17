@@ -1448,13 +1448,16 @@ void main() {
           status: UnitResponseStatusEnum.VACANT,
         );
 
-    Widget appWith(List<UnitResponse> units) => ProviderScope(
+    Widget appWith(List<UnitResponse> units, {PropertyOverview? overview}) =>
+        ProviderScope(
           overrides: [
             authControllerProvider
                 .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
             tokenStoreProvider.overrideWithValue(InMemoryTokenStore()),
             propertiesProvider.overrideWith((ref) async => [property()]),
             unitsProvider('p1').overrideWith((ref) async => units),
+            if (overview != null)
+              propertyOverviewProvider('p1').overrideWith((ref) async => overview),
           ],
           child: const LizmoApp(),
         );
@@ -1487,33 +1490,50 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      // The distinction the whole product turns on, visible at a glance.
-      expect(find.textContaining('Bedspace'), findsOneWidget);
-      expect(find.textContaining('Whole unit'), findsOneWidget);
-      expect(find.text('per month, all beds'), findsOneWidget);
-      expect(find.text('per month'), findsOneWidget);
-      expect(find.text('2 beds'), findsOneWidget);
-
-      // Both figures are monthly, so they are comparable: two beds at 2500
-      // against a whole unit at 7000.
-      expect(find.text('₱5,000'), findsOneWidget);
+      // The distinction the whole product turns on, visible at a glance: a
+      // bedspace room is priced a bed at a time and drawn as its beds, a
+      // whole unit is one rent and one place.
+      expect(find.text('₱2,500 a bed'), findsOneWidget);
       expect(find.text('₱7,000'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bed-vacant-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('bed-vacant-1')), findsOneWidget);
+      expect(find.text('2 beds, vacant, ready now'), findsOneWidget);
+      expect(find.text('Whole unit · Vacant, ready now'), findsOneWidget);
     });
 
-    testWidgets('the header totals what the property brings in', (tester) async {
+    /// How full the place is and what is late: what a landlord opens it for.
+    testWidgets('the header says how full the place is, and what is late',
+        (tester) async {
       await tester.pumpWidget(appWith([
         unit(number: '2B', mode: UnitResponseRentalModeEnum.BEDSPACE,
-            capacity: 4, bedCount: 4, rent: 2500, potentialMonthlyRent: 10000),
-        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT,
-            rent: 7000, potentialMonthlyRent: 7000),
-      ]));
+            capacity: 4, bedCount: 4, rent: 2500),
+        unit(number: '1A', mode: UnitResponseRentalModeEnum.WHOLE_UNIT, rent: 7000),
+      ], overview: PropertyOverview(
+          occupied: 3, rentable: 5, vacant: 2, overdueTotal: 2500,
+          units: [
+            UnitOverview(id: 'u-2B', beds: [
+              BedState(label: 'Bed 1', let: true),
+              BedState(label: 'Bed 2', let: true),
+              BedState(label: 'Bed 3', let: true),
+              BedState(label: 'Bed 4', let: false),
+            ], overdueTenancies: 1),
+            UnitOverview(id: 'u-1A', beds: const [], tenantName: 'Miguel Cruz'),
+          ])));
       await tester.pumpAndSettle();
       await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Per month'), findsOneWidget);
-      expect(find.text('₱17,000'), findsOneWidget);
+      expect(find.text('Occupied'), findsOneWidget);
+      // In the header, and in the bar that takes over when it scrolls away.
+      expect(find.text('3/5'), findsWidgets);
+      expect(find.text('Vacant'), findsOneWidget);
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('₱2,500'), findsOneWidget);
+      // And the cards from the same figures.
+      expect(find.text('3 of 4 let · Bed 4 vacant, ready now'), findsOneWidget);
+      expect(find.text('1 overdue'), findsOneWidget);
+      expect(find.text('Whole unit · Let to Miguel Cruz'), findsOneWidget);
     });
 
     testWidgets('a property with no rents set totals a dash, not zero',
@@ -1535,8 +1555,9 @@ void main() {
       await tester.pumpWidget(appWith([
         for (var i = 0; i < 8; i++)
           unit(number: 'U$i', mode: UnitResponseRentalModeEnum.BEDSPACE,
-              capacity: 6, bedCount: 6, rent: 2500, potentialMonthlyRent: 15000),
-      ]));
+              capacity: 6, bedCount: 6, rent: 2500),
+      ], overview: PropertyOverview(
+          occupied: 40, rentable: 48, vacant: 8, overdueTotal: 120000)));
       await tester.pumpAndSettle();
       await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
@@ -1558,9 +1579,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Zero would claim the unit is free; not-set is a different statement.
-      // Two dashes: the unit card, and the property total in the header, which
-      // has nothing to add up either.
-      expect(find.text('—'), findsNWidgets(2));
+      // And the header's figures are not known yet, so they are dashes.
+      expect(find.text('No rent set'), findsOneWidget);
+      expect(find.text('—'), findsNWidgets(3));
       expect(find.textContaining('₱0'), findsNothing);
     });
 
@@ -2207,6 +2228,13 @@ void main() {
       await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
+      // With photos the screen shows a row of thumbnails; managing them is
+      // one tap further, on Edit.
+      final edit = find.byKey(const ValueKey('edit-photos'));
+      if (edit.evaluate().isNotEmpty) {
+        await tester.tap(edit);
+        await tester.pumpAndSettle();
+      }
     }
 
     /// The reason the feature exists, said on the screen where somebody can
@@ -2442,7 +2470,9 @@ void main() {
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Rentable'), findsOneWidget);
+      // Drawn as its beds, which a commercial unit never has.
+      expect(find.byKey(const ValueKey('bed-vacant-0')), findsOneWidget);
+      expect(find.text('3 beds, vacant, ready now'), findsOneWidget);
     });
 
     testWidgets('a residential property is still asked', (tester) async {
@@ -3104,9 +3134,9 @@ void main() {
       ]);
 
       expect(find.text('All'), findsOneWidget);
-      expect(find.text('Floor 1'), findsOneWidget);
-      expect(find.text('Floor 2'), findsOneWidget);
-      expect(find.text('Floor 10'), findsOneWidget);
+      expect(find.text('1st floor'), findsOneWidget);
+      expect(find.text('2nd floor'), findsOneWidget);
+      expect(find.text('10th floor'), findsOneWidget);
     });
 
     testWidgets('floors sort numerically, so 10 follows 9', (tester) async {
@@ -3117,13 +3147,13 @@ void main() {
       ]);
 
       final xs = {
-        for (final f in ['Floor 2', 'Floor 9', 'Floor 10'])
+        for (final f in ['2nd floor', '9th floor', '10th floor'])
           f: tester.getCenter(find.text(f)).dx,
       };
 
       // Plain string sorting would put "10" before "2".
-      expect(xs['Floor 2']!, lessThan(xs['Floor 9']!));
-      expect(xs['Floor 9']!, lessThan(xs['Floor 10']!));
+      expect(xs['2nd floor']!, lessThan(xs['9th floor']!));
+      expect(xs['9th floor']!, lessThan(xs['10th floor']!));
     });
 
     testWidgets('choosing a floor narrows the list and the figures',
@@ -3134,20 +3164,17 @@ void main() {
         whole('2B', '2', 5000),
       ]);
 
-      // Everything, before filtering.
-      expect(find.text('₱20,000'), findsOneWidget);
+      // Everything, before filtering, grouped by floor.
+      expect(find.byKey(const ValueKey('floor-label-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('floor-label-2')), findsOneWidget);
 
-      await tester.tap(find.text('Floor 2'));
+      await tester.tap(find.text('2nd floor'));
       await tester.pumpAndSettle();
 
       expect(find.text('Unit 2A'), findsOneWidget);
       expect(find.text('Unit 2B'), findsOneWidget);
       expect(find.text('Unit 1A'), findsNothing);
-
-      // The figures describe the floor now, and the title says so, or the
-      // header would be a property total sitting over one floor's list.
-      expect(find.text('Floor 2'), findsWidgets);
-      expect(find.text('₱13,000'), findsOneWidget);
+      expect(find.byKey(const ValueKey('floor-label-1')), findsNothing);
     });
 
     testWidgets('units with no floor get a bucket of their own', (tester) async {
@@ -3164,13 +3191,12 @@ void main() {
 
       expect(find.text('Unit X'), findsOneWidget);
       expect(find.text('Unit 1A'), findsNothing);
-      expect(find.text('No floor set'), findsOneWidget);
     });
 
     testWidgets('All puts everything back', (tester) async {
       await open(tester, [whole('1A', '1', 7000), whole('2A', '2', 8000)]);
 
-      await tester.tap(find.text('Floor 2'));
+      await tester.tap(find.text('2nd floor'));
       await tester.pumpAndSettle();
       expect(find.text('Unit 1A'), findsNothing);
 
@@ -3179,7 +3205,6 @@ void main() {
 
       expect(find.text('Unit 1A'), findsOneWidget);
       expect(find.text('Unit 2A'), findsOneWidget);
-      expect(find.text('₱15,000'), findsOneWidget);
     });
   });
 
@@ -3218,7 +3243,9 @@ void main() {
           status: UnitResponseStatusEnum.VACANT,
         );
 
-    Widget appWith(List<UnitResponse> units, {UnitsApi? api}) => ProviderScope(
+    Widget appWith(List<UnitResponse> units,
+            {UnitsApi? api, PropertyOverview? overview}) =>
+        ProviderScope(
           overrides: [
             authControllerProvider
                 .overrideWith(() => _FakeAuth(_signedIn({LizmoProfile.landlord}))),
@@ -3226,21 +3253,25 @@ void main() {
             if (api != null) unitsApiProvider.overrideWithValue(api),
             propertiesProvider.overrideWith((ref) async => [property()]),
             unitsProvider('p1').overrideWith((ref) async => units),
+            if (overview != null)
+              propertyOverviewProvider('p1').overrideWith((ref) async => overview),
           ],
           child: const LizmoApp(),
         );
 
+    /// The server counts what can be let; the screen says what it was told,
+    /// and draws no beds for a room that is shut.
     testWidgets('its beds stop counting towards the property', (tester) async {
-      await tester.pumpWidget(appWith([closed(), open()]));
+      await tester.pumpWidget(appWith([closed(), open()],
+          overview: PropertyOverview(occupied: 0, rentable: 1, vacant: 1, overdueTotal: 0)));
       await tester.pumpAndSettle();
       await _openProperties(tester);
       await tester.tap(find.text('Sunrise Apartments'));
       await tester.pumpAndSettle();
 
-      // The closed unit has four beds; none of them can be let, so the
-      // rentable count is zero and only the open unit's rent is totalled.
-      expect(find.text('0'), findsOneWidget);
-      expect(find.text('₱7,000'), findsWidgets);
+      expect(find.text('0/1'), findsWidgets);
+      expect(find.byKey(const ValueKey('bed-vacant-0')), findsNothing);
+      expect(find.text('Out of service'), findsOneWidget);
     });
 
     testWidgets('the card says so, rather than just showing a dash',
