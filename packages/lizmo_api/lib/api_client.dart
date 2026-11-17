@@ -325,6 +325,8 @@ class ApiClient {
           return RegisterDevice.fromJson(value);
         case 'Reminded':
           return Reminded.fromJson(value);
+        case 'RentOwed':
+          return RentOwed.fromJson(value);
         case 'RentRoll':
           return RentRoll.fromJson(value);
         case 'RentRollRow':
@@ -353,6 +355,8 @@ class ApiClient {
           return TenantProfileRequest.fromJson(value);
         case 'TenantProfileResponse':
           return TenantProfileResponse.fromJson(value);
+        case 'ThreadEvent':
+          return ThreadEvent.fromJson(value);
         case 'UnitOverview':
           return UnitOverview.fromJson(value);
         case 'UnitRequest':

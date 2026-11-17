@@ -118,8 +118,14 @@ void main() {
 
       expect(field(tester, 'deposit-amount'), '5000');
       expect(field(tester, 'advance-amount'), '2500');
-      expect(find.text('From your place details: 2 months.'), findsOneWidget);
-      expect(find.text('From your place details: 1 month.'), findsOneWidget);
+      // The months in the label, and where they came from under each.
+      expect(find.text('Deposit · 2 months'), findsOneWidget);
+      expect(find.text('Advance · 1 month'), findsOneWidget);
+      expect(find.byKey(const ValueKey('deposit-from-details')), findsOneWidget);
+      expect(find.byKey(const ValueKey('advance-from-details')), findsOneWidget);
+      // And what that comes to, before they move in.
+      expect(find.byKey(const ValueKey('move-in-total')), findsOneWidget);
+      expect(find.text('₱7,500'), findsOneWidget);
     });
 
     /// A ₱3,000 room's two months are not a ₱2,500 room's.

@@ -16,6 +16,8 @@ class InquiryThread {
     this.inquiry,
     this.messages = const [],
     this.applicant,
+    this.events = const [],
+    this.rent,
   });
 
   ///
@@ -36,21 +38,35 @@ class InquiryThread {
   ///
   Applicant? applicant;
 
+  List<ThreadEvent> events;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  RentOwed? rent;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is InquiryThread &&
     other.inquiry == inquiry &&
     _deepEquality.equals(other.messages, messages) &&
-    other.applicant == applicant;
+    other.applicant == applicant &&
+    _deepEquality.equals(other.events, events) &&
+    other.rent == rent;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (inquiry == null ? 0 : inquiry!.hashCode) +
     (messages.hashCode) +
-    (applicant == null ? 0 : applicant!.hashCode);
+    (applicant == null ? 0 : applicant!.hashCode) +
+    (events.hashCode) +
+    (rent == null ? 0 : rent!.hashCode);
 
   @override
-  String toString() => 'InquiryThread[inquiry=$inquiry, messages=$messages, applicant=$applicant]';
+  String toString() => 'InquiryThread[inquiry=$inquiry, messages=$messages, applicant=$applicant, events=$events, rent=$rent]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -64,6 +80,12 @@ class InquiryThread {
       json[r'applicant'] = this.applicant;
     } else {
       json[r'applicant'] = null;
+    }
+      json[r'events'] = this.events;
+    if (this.rent != null) {
+      json[r'rent'] = this.rent;
+    } else {
+      json[r'rent'] = null;
     }
     return json;
   }
@@ -86,6 +108,8 @@ class InquiryThread {
         inquiry: InquirySummary.fromJson(json[r'inquiry']),
         messages: InquiryMessageResponse.listFromJson(json[r'messages']),
         applicant: Applicant.fromJson(json[r'applicant']),
+        events: ThreadEvent.listFromJson(json[r'events']),
+        rent: RentOwed.fromJson(json[r'rent']),
       );
     }
     return null;

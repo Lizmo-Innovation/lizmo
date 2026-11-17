@@ -66,6 +66,8 @@ public class InquiryService {
     private final LeaseRepository leases;
     private final UnitRepository units;
     private final BedRepository beds;
+    private final ThreadEvents events;
+    private final app.lizmo.billing.TenancyRent rent;
     private final Clock clock;
 
     public InquiryService(
@@ -79,6 +81,8 @@ public class InquiryService {
             LeaseRepository leases,
             UnitRepository units,
             BedRepository beds,
+            ThreadEvents events,
+            app.lizmo.billing.TenancyRent rent,
             Clock clock) {
         this.inquiries = inquiries;
         this.messages = messages;
@@ -90,6 +94,8 @@ public class InquiryService {
         this.leases = leases;
         this.units = units;
         this.beds = beds;
+        this.events = events;
+        this.rent = rent;
         this.clock = clock;
     }
 
@@ -191,10 +197,16 @@ public class InquiryService {
 
         markRead(inquiry, asTenant);
 
+        InquirySummary summary = summarise(inquiry, userId, last);
+        Lease lease = summary.tenancy() == null
+                ? null
+                : leases.findById(summary.tenancy().leaseId()).orElse(null);
         return new InquiryThread(
-                summarise(inquiry, userId, last),
+                summary,
                 said,
-                asTenant ? null : applicant(inquiry.getTenantId()));
+                asTenant ? null : applicant(inquiry.getTenantId()),
+                events.of(inquiry, lease),
+                rent.owed(lease));
     }
 
     /** Says something, and tells the other side it was said. */

@@ -6,6 +6,7 @@ import 'package:lizmo_core/lizmo_core.dart';
 import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
+import 'inquiry_screen.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import '../widgets/poller.dart';
@@ -60,27 +61,81 @@ class InquiriesList extends ConsumerStatefulWidget {
 }
 
 class _InquiriesListState extends ConsumerState<InquiriesList> {
+  /// The conversation open beside the list, on a screen wide enough for both.
+  String? _open;
+
+  /// From 840 across, the list and the conversation side by side, as a mail
+  /// app does on a tablet: opening one no longer hides the rest.
+  static const _listWidth = 360.0;
+
   @override
   Widget build(BuildContext context) {
     final threads = ref.watch(myInquiriesProvider);
+    final wide = context.pageSize == LizmoWidth.expanded;
+    final value = threads.valueOrNull;
+    if (wide && value != null) {
+      final shown = ordered(_shown(value));
+      final open = shown.any((thread) => thread.id == _open)
+          ? _open
+          : shown.firstOrNull?.id;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: _listWidth,
+            // Its own width, so its gutters are a list's and not a page's.
+            child: PageArea(
+              child: Builder(
+                builder: (context) => _list(context, threads, open: open),
+              ),
+            ),
+          ),
+          const VerticalDivider(width: 1, color: Color(0xFFE3E8E6)),
+          Expanded(
+            child: PageArea(
+              child: open == null
+                  ? const LizmoMessageState(
+                      tone: LizmoMessageTone.neutral,
+                      icon: Icons.chat_bubble_outline,
+                      title: 'Choose a conversation',
+                      detail: 'It opens here, beside the list.',
+                    )
+                  : InquiryScreen(key: ValueKey('open-$open'), id: open),
+            ),
+          ),
+        ],
+      );
+    }
+    return _list(context, threads);
+  }
+
+  /// [open] is the conversation shown beside the list, when one is: a row
+  /// then opens there instead of over everything.
+  Widget _list(
+    BuildContext context,
+    AsyncValue<List<InquirySummary>> threads, {
+    String? open,
+  }) {
+    final beside = open != null;
 
     return Poller(
       interval: InquiriesList.every,
       onTick: () => ref.invalidate(myInquiriesProvider),
       child: RefreshIndicator(
-      onRefresh: () async => ref.invalidate(myInquiriesProvider),
-      child: switch (threads) {
-        AsyncData(:final value)
-            when _shown(value).isEmpty && widget.leading == null =>
-          LizmoMessageState(
-            tone: LizmoMessageTone.neutral,
-            icon: Icons.chat_bubble_outline,
-            title: 'Nothing here yet',
-            detail: widget.emptyDetail ??
-                'Conversations about a place appear here, from the first '
-                    'message to the day somebody moves in.',
-          ),
-        AsyncData(:final value) => ListView(
+        onRefresh: () async => ref.invalidate(myInquiriesProvider),
+        child: switch (threads) {
+          AsyncData(:final value)
+              when _shown(value).isEmpty && widget.leading == null =>
+            LizmoMessageState(
+              tone: LizmoMessageTone.neutral,
+              icon: Icons.chat_bubble_outline,
+              title: 'Nothing here yet',
+              detail:
+                  widget.emptyDetail ??
+                  'Conversations about a place appear here, from the first '
+                      'message to the day somebody moves in.',
+            ),
+          AsyncData(:final value) => ListView(
             padding: context.pageInsets(16, 24),
             children: [
               if (widget.leading case final leading?) ...[
@@ -92,10 +147,16 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
                 ],
               ],
               for (final thread in ordered(_shown(value)))
-                _ThreadRow(thread: thread),
+                _ThreadRow(
+                  thread: thread,
+                  selected: thread.id == open,
+                  onTap: beside
+                      ? () => setState(() => _open = thread.id)
+                      : null,
+                ),
             ],
           ),
-        AsyncError(:final error) => LizmoMessageState(
+          AsyncError(:final error) => LizmoMessageState(
             icon: Icons.cloud_off_outlined,
             tone: LizmoMessageTone.problem,
             title: 'Could not read your conversations',
@@ -103,7 +164,7 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
             actionLabel: 'Try again',
             onAction: () => ref.invalidate(myInquiriesProvider),
           ),
-        _ => const Center(
+          _ => const Center(
             child: SizedBox(
               width: 24,
               height: 24,
@@ -113,15 +174,15 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
               ),
             ),
           ),
-      },
+        },
       ),
     );
   }
 
   List<InquirySummary> _shown(List<InquirySummary> threads) =>
       widget.leaveOutTenancies
-          ? threads.where((thread) => !isCurrentTenancy(thread)).toList()
-          : threads;
+      ? threads.where((thread) => !isCurrentTenancy(thread)).toList()
+      : threads;
 }
 
 /// Whether a conversation belongs to somebody living there now.
@@ -164,8 +225,7 @@ class TenantMessagesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(myInquiriesProvider).valueOrNull;
-    final waiting =
-        threads?.where((thread) => thread.unread ?? false).length;
+    final waiting = threads?.where((thread) => thread.unread ?? false).length;
     final lease = ref.watch(myLeasesProvider).valueOrNull?.firstOrNull;
     final renting = lease?.status == LeaseResponseStatusEnum.ACTIVE;
 
@@ -207,7 +267,8 @@ class TenantMessagesScreen extends ConsumerWidget {
               leading: renting ? YourLandlordCard(lease: lease!) : null,
               restLabel: 'Places you asked about',
               leaveOutTenancies: true,
-              emptyDetail: 'Scan a place you like and ask about it. Whatever '
+              emptyDetail:
+                  'Scan a place you like and ask about it. Whatever '
                   'the landlord says back lands here.',
             ),
           ),
@@ -218,9 +279,15 @@ class TenantMessagesScreen extends ConsumerWidget {
 }
 
 class _ThreadRow extends StatelessWidget {
-  const _ThreadRow({required this.thread});
+  const _ThreadRow({required this.thread, this.selected = false, this.onTap});
 
   final InquirySummary thread;
+
+  /// Open beside the list.
+  final bool selected;
+
+  /// Instead of opening it over everything. Null on a phone.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -230,11 +297,11 @@ class _ThreadRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: LizmoColors.white,
+        color: selected ? LizmoColors.tealBg : LizmoColors.white,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           key: ValueKey('thread-${thread.id}'),
-          onTap: () => context.push(Routes.inquiry(thread.id!)),
+          onTap: onTap ?? () => context.push(Routes.inquiry(thread.id!)),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -263,28 +330,38 @@ class _ThreadRow extends StatelessWidget {
                             child: Text(
                               thread.withName ?? 'Somebody',
                               style: LizmoType.rowName.copyWith(
-                                color: over ? LizmoColors.slateText : LizmoColors.ink,
+                                color: over
+                                    ? LizmoColors.slateText
+                                    : LizmoColors.ink,
                                 // Weight as well as the dot. A dot and a
                                 // shade of grey is thin for the one thing
                                 // this list is read to find.
-                                fontWeight:
-                                    unread ? FontWeight.w700 : FontWeight.w500,
+                                fontWeight: unread
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
                               ),
                             ),
                           ),
                           if (thread.status == InquirySummaryStatusEnum.LEASED)
                             const StatusChip(
-                                status: LizmoStatus.paid, label: 'Renting')
+                              status: LizmoStatus.paid,
+                              label: 'Renting',
+                            )
                           else if (over)
                             const StatusChip(
-                                status: LizmoStatus.vacant, label: 'Ended')
+                              status: LizmoStatus.vacant,
+                              label: 'Ended',
+                            )
                           // Still open -- the deposit is being talked about --
                           // but not somebody asking about a room.
                           else if (thread.tenancy?.active == false)
                             const StatusChip(
-                                status: LizmoStatus.vacant, label: 'Moved out'),
+                              status: LizmoStatus.vacant,
+                              label: 'Moved out',
+                            ),
                           if (!over &&
-                              thread.status != InquirySummaryStatusEnum.LEASED &&
+                              thread.status !=
+                                  InquirySummaryStatusEnum.LEASED &&
                               thread.tenancy?.active != false)
                             Text(
                               _when(thread.lastMessageAt ?? thread.createdAt),
@@ -309,7 +386,9 @@ class _ThreadRow extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: LizmoType.rowSub.copyWith(
-                            color: unread ? LizmoColors.ink : LizmoColors.slateText,
+                            color: unread
+                                ? LizmoColors.ink
+                                : LizmoColors.slateText,
                           ),
                         ),
                       ],
@@ -344,7 +423,17 @@ class _ThreadRow extends StatelessWidget {
 
   static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 }

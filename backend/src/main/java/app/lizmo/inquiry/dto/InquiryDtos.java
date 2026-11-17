@@ -120,7 +120,51 @@ public final class InquiryDtos {
     public record InquiryThread(
             InquirySummary inquiry,
             List<InquiryMessageResponse> messages,
-            Applicant applicant) {
+            Applicant applicant,
+            // What changed the tenancy, oldest first, to sit between what was
+            // said. Empty for a stranger asking with no ID shared yet.
+            List<ThreadEvent> events,
+            // The month to settle next, while a tenancy is current. Null when
+            // nothing is owed: the panel at the top then has nothing to say.
+            app.lizmo.billing.TenancyRent.RentOwed rent) {
+    }
+
+    /** What changed the tenancy, as a card in its conversation. */
+    @Schema(description = "What kind of thing happened")
+    public enum ThreadEventKind {
+        /** The photo of their ID: what makes them somebody to let to. */
+        ID_SHARED,
+        /** The tenant said they had paid. {@code state} says what came of it. */
+        PAYMENT_REPORTED,
+        /** Confirmed, or recorded by the landlord; carries the receipt number. */
+        PAYMENT_CONFIRMED,
+        /** The landlord said it did not arrive. */
+        PAYMENT_REJECTED,
+        /** A repair, with its status in {@code state}. */
+        REPAIR_REPORTED,
+        LEASE_STARTED,
+        /** A fixed term within a month of its end; {@code label} is the date. */
+        LEASE_ENDING,
+        MOVED_OUT
+    }
+
+    /**
+     * One thing that happened.
+     *
+     * @param entityId the payment, repair or lease it is about, for "View".
+     * @param label    the month for money, the description for a repair, the
+     *                 end date for a lease ending.
+     * @param state    where it stands now: a payment's or a repair's status.
+     */
+    @Schema(description = "Something that changed the tenancy")
+    public record ThreadEvent(
+            ThreadEventKind kind,
+            Instant at,
+            UUID entityId,
+            java.math.BigDecimal amount,
+            String label,
+            String receiptNumber,
+            String state) {
     }
 
     /**

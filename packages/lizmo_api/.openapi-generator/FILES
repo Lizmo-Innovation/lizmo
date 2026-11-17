@@ -88,6 +88,7 @@ doc/RefreshRequest.md
 doc/RegisterDevice.md
 doc/Reminded.md
 doc/RentApi.md
+doc/RentOwed.md
 doc/RentRoll.md
 doc/RentRollRow.md
 doc/ReportProblemRequest.md
@@ -105,6 +106,7 @@ doc/TenantForLandlord.md
 doc/TenantProfileApi.md
 doc/TenantProfileRequest.md
 doc/TenantProfileResponse.md
+doc/ThreadEvent.md
 doc/UnitOverview.md
 doc/UnitRequest.md
 doc/UnitResponse.md
@@ -218,6 +220,7 @@ lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
 lib/model/register_device.dart
 lib/model/reminded.dart
+lib/model/rent_owed.dart
 lib/model/rent_roll.dart
 lib/model/rent_roll_row.dart
 lib/model/report_problem_request.dart
@@ -232,6 +235,7 @@ lib/model/tenant_document_response.dart
 lib/model/tenant_for_landlord.dart
 lib/model/tenant_profile_request.dart
 lib/model/tenant_profile_response.dart
+lib/model/thread_event.dart
 lib/model/unit_overview.dart
 lib/model/unit_request.dart
 lib/model/unit_response.dart
@@ -261,5 +265,7 @@ test/receipt_response_test.dart
 test/receipts_api_test.dart
 test/register_device_test.dart
 test/reminded_test.dart
+test/rent_owed_test.dart
 test/tenancy_test.dart
+test/thread_event_test.dart
 test/unit_overview_test.dart

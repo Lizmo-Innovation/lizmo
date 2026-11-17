@@ -54,7 +54,7 @@ class AcceptTermsSheet extends StatefulWidget {
     return showModalBottomSheet<AcceptRequest>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: LizmoColors.canvas,
+      backgroundColor: LizmoColors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -93,6 +93,9 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   /// which is what keeps Accept off.
   FreeRoom? _room;
 
+  /// Showing the list again after a room was chosen.
+  bool _changingRoom = false;
+
   final _deposit = TextEditingController();
   final _advance = TextEditingController();
 
@@ -122,14 +125,15 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   }
 
   /// Said under a figure that came from the place's details.
-  String? _fromDetails(int? months, bool own) =>
-      months == null || own ? null : 'From your place details: ${_monthWord(months)}.';
+  String? _fromDetails(int? months, bool own) => months == null || own
+      ? null
+      : 'From your place details. Tap the field to change it.';
 
   static String _monthWord(int months) => switch (months) {
-        0 => 'none',
-        1 => '1 month',
-        _ => '$months months',
-      };
+    0 => 'none',
+    1 => '1 month',
+    _ => '$months months',
+  };
 
   /// How long it is for. Month to month unless they agreed a term.
   String _term = 'none';
@@ -138,10 +142,10 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
   /// Recomputed from the start, so "1 year" follows a start date changed
   /// after it was picked.
   List<TermChoice> get _terms => [
-        const TermChoice('none', 'No end date', null),
-        TermChoice('six', '6 months', termEnd(_start, 6)),
-        TermChoice('year', '1 year', termEnd(_start, 12)),
-      ];
+    const TermChoice('none', 'No end date', null),
+    TermChoice('six', '6 months', termEnd(_start, 6)),
+    TermChoice('year', '1 year', termEnd(_start, 12)),
+  ];
 
   DateTime? get _endsOn => _term == LeaseTermChoices.own
       ? _ownEnd
@@ -163,7 +167,6 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     final amount = num.tryParse(_rent.text.trim());
     return amount == null || amount <= 0 ? null : amount;
   }
-
 
   /// The room, and the rent that comes with it.
   ///
@@ -211,21 +214,23 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     if (!_ready) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    Navigator.of(context).pop(AcceptRequest(
-      unitId: _room?.unitId,
-      bedId: _room?.bedId,
-      rentAmount: num.parse(_rent.text.trim()),
-      startDate: DateTime.utc(_start.year, _start.month, _start.day),
-      // Left null when untouched. A landlord who took no deposit and one who
-      // has not recorded it are different facts, and only null says the
-      // second -- which is what lets both apps show a dash rather than "P0".
-      depositAmount: _amountOrNull(_deposit),
-      advanceAmount: _amountOrNull(_advance),
-      endsOn: switch (_endsOn) {
-        final end? => DateTime.utc(end.year, end.month, end.day),
-        null => null,
-      },
-    ));
+    Navigator.of(context).pop(
+      AcceptRequest(
+        unitId: _room?.unitId,
+        bedId: _room?.bedId,
+        rentAmount: num.parse(_rent.text.trim()),
+        startDate: DateTime.utc(_start.year, _start.month, _start.day),
+        // Left null when untouched. A landlord who took no deposit and one who
+        // has not recorded it are different facts, and only null says the
+        // second -- which is what lets both apps show a dash rather than "P0".
+        depositAmount: _amountOrNull(_deposit),
+        advanceAmount: _amountOrNull(_advance),
+        endsOn: switch (_endsOn) {
+          final end? => DateTime.utc(end.year, end.month, end.day),
+          null => null,
+        },
+      ),
+    );
   }
 
   /// Why an advance cannot be taken as it stands, or null when it can.
@@ -253,13 +258,22 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     if (problem != null) return '$problem.';
 
     const names = [
-      'January', 'February', 'March', 'April', 'May', 'June', 'July',
-      'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final count = (advance ~/ rent).clamp(1, 24);
     final months = [
-      for (var i = 0; i < count; i++)
-        names[(_start.month - 1 + i) % 12],
+      for (var i = 0; i < count; i++) names[(_start.month - 1 + i) % 12],
     ];
     final listed = months.length == 1
         ? months.first
@@ -273,15 +287,57 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
     return num.tryParse(text);
   }
 
+  /// "2 months" when an amount is a whole number of this rent, else null.
+  String? _monthsOf(TextEditingController field) {
+    final amount = num.tryParse(field.text.trim());
+    final rent = _rentNow;
+    if (amount == null || amount <= 0 || rent == null) return null;
+    if (amount % rent != 0) return null;
+    return _monthWord((amount ~/ rent).toInt());
+  }
+
+  /// What they hand over before moving in: the deposit and the advance.
+  num get _upFront =>
+      (num.tryParse(_deposit.text.trim()) ?? 0) +
+      (num.tryParse(_advance.text.trim()) ?? 0);
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static String _day(DateTime day) =>
+      '${day.day} ${_months[day.month - 1]} ${day.year}';
+
   @override
   Widget build(BuildContext context) {
+    final rooms = widget.rooms;
+    final room = _room;
+    final depositMonths = _monthsOf(_deposit);
+    final advanceMonths = _monthsOf(_advance);
+    final ends = _endsOn;
+
     return SafeArea(
-      // Scrollable since the deposit and advance fields were added: the sheet
-      // is now taller than a small phone, and a bottom sheet whose action
-      // button is below the fold is a sheet nobody can complete.
+      // Scrollable: the sheet is taller than a small phone, and a bottom
+      // sheet whose action button is below the fold is a sheet nobody can
+      // complete.
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
-            20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+          20,
+          12,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -299,113 +355,171 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                // The same words as the button that opened it. "Accept" was
-                // left over from requests, which conversations replaced.
-                'A lease for ${widget.tenantName}',
-                // LizmoType.screenTitle is white, because it is drawn on the
-                // teal header. This sheet is canvas-coloured, so the title was
-                // white on almost-white -- the same fault the tenant page had.
-                style: LizmoType.screenTitle
-                    .copyWith(fontSize: 20, color: LizmoColors.teal900),
+              Semantics(
+                header: true,
+                child: Text(
+                  'A lease for ${widget.tenantName}',
+                  style: LizmoType.rowName.copyWith(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: LizmoColors.ink,
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                // What happens, and who sees it. It used to promise that
-                // anybody else waiting on the room would be told it had gone
-                // -- from when people asked about rooms. They ask about a
-                // place now, so nobody else loses anything, and nobody is
-                // told anything.
-                widget.rooms == null
-                    ? 'For ${widget.slot}. Set what you agreed. $_firstName '
-                        'sees these terms in the app once the lease starts.'
-                    : 'At ${widget.slot}. Choose the room and set what you '
-                        'agreed. $_firstName sees these terms in the app once '
-                        'the lease starts.',
+                // What happens, and who sees it. Nobody else waiting loses
+                // anything, and nobody is told anything.
+                '$_firstName will see these terms in your conversation.',
                 key: const ValueKey('lease-sheet-intro'),
                 style: LizmoType.rowSub,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              if (widget.rooms case final rooms?) ...[
-                _Label('Which room'),
-                const SizedBox(height: 6),
-                if (rooms.isEmpty)
+              if (rooms != null) ...[
+                if (room != null && !_changingRoom)
+                  // Chosen: one row, so the terms are what the sheet is about.
                   Container(
-                    key: const ValueKey('no-free-rooms'),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    key: const ValueKey('room-chosen'),
+                    padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
                     decoration: BoxDecoration(
-                      color: LizmoColors.amberBg,
+                      color: LizmoColors.tealBg,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      'Nothing is vacant here right now. Free a room first, or '
-                      'let $_firstName know in the conversation.',
-                      style:
-                          LizmoType.rowSub.copyWith(color: LizmoColors.amberText),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.bed_outlined,
+                          size: 18,
+                          color: LizmoColors.teal900,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${room.label} · ${widget.slot}',
+                            style: LizmoType.rowName.copyWith(
+                              color: LizmoColors.teal900,
+                            ),
+                          ),
+                        ),
+                        if (rooms.length > 1)
+                          TextButton(
+                            key: const ValueKey('change-room'),
+                            onPressed: () =>
+                                setState(() => _changingRoom = true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: LizmoColors.teal900,
+                              minimumSize: const Size(0, 44),
+                            ),
+                            child: const Text('Change'),
+                          ),
+                      ],
                     ),
                   )
-                else
-                  for (final room in rooms)
-                    _RoomChoice(
-                      room: room,
-                      chosen: identical(room, _room),
-                      onTap: () => _chooseRoom(room),
-                    ),
+                else ...[
+                  _Label('Which room'),
+                  const SizedBox(height: 6),
+                  if (rooms.isEmpty)
+                    Container(
+                      key: const ValueKey('no-free-rooms'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: LizmoColors.amberBg,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        'Nothing is vacant here right now. Free a room first, or '
+                        'let $_firstName know in the conversation.',
+                        style: LizmoType.rowSub.copyWith(
+                          color: LizmoColors.amberText,
+                        ),
+                      ),
+                    )
+                  else
+                    for (final choice in rooms)
+                      _RoomChoice(
+                        room: choice,
+                        chosen: identical(choice, room),
+                        onTap: () {
+                          _chooseRoom(choice);
+                          setState(() => _changingRoom = false);
+                        },
+                      ),
+                ],
                 const SizedBox(height: 18),
               ],
 
-              _Label('Monthly rent'),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _rent,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-                decoration: _decoration('2500').copyWith(prefixText: '₱ '),
-                // The deposit and advance follow it, until typed over.
-                onChanged: (_) => setState(_fillUpFront),
-                validator: (value) {
-                  final text = (value ?? '').trim();
-                  if (text.isEmpty) return 'Set the rent for this tenancy';
-                  final amount = num.tryParse(text);
-                  if (amount == null) return 'Enter an amount';
-                  // Zero would read as free for the life of the lease.
-                  if (amount <= 0) return 'The rent has to be more than nothing';
-                  return null;
-                },
-              ),
-              if (widget.askingRent != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Advertised at ${LizmoMoney.peso(widget.askingRent!)}. '
-                  'Change it here if you agreed something else.',
-                  style: LizmoType.rowSub,
+              _Pair(
+                first: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Label('Rent a month'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      key: const ValueKey('rent-amount'),
+                      controller: _rent,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      decoration: _decoration(
+                        '2500',
+                      ).copyWith(prefixText: '₱ '),
+                      // The deposit and advance follow it, until typed over.
+                      onChanged: (_) => setState(_fillUpFront),
+                      validator: (value) {
+                        final text = (value ?? '').trim();
+                        if (text.isEmpty) {
+                          return 'Set the rent for this tenancy';
+                        }
+                        final amount = num.tryParse(text);
+                        if (amount == null) return 'Enter an amount';
+                        // Zero would read as free for the life of the lease.
+                        if (amount <= 0) {
+                          return 'The rent has to be more than nothing';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
-              ],
-
-              const SizedBox(height: 18),
-              _Label('Tenancy starts'),
-              const SizedBox(height: 6),
-              LizmoDateField(
-                fieldKey: const ValueKey('start-date'),
-                value: _start,
-                // A half-typed date leaves the old one standing: the rent day
-                // below reads from it, and it must not flicker to today.
-                onChanged: (date) => setState(() => _start = date ?? _start),
-                // A tenancy can start a little in the past — somebody who
-                // moved in on Saturday and is being written up on Monday —
-                // and a long way ahead.
-                firstDate: DateTime.now().subtract(const Duration(days: 60)),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
+                second: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Label('Starts'),
+                    const SizedBox(height: 6),
+                    LizmoDateField(
+                      fieldKey: const ValueKey('start-date'),
+                      value: _start,
+                      // A half-typed date leaves the old one standing: the
+                      // rent day below reads from it.
+                      onChanged: (date) =>
+                          setState(() => _start = date ?? _start),
+                      // A tenancy can start a little in the past -- somebody
+                      // who moved in on Saturday, written up on Monday -- and
+                      // a long way ahead.
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 60),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 // Said out loud because the landlord does not choose it here,
                 // and a rent day nobody mentioned is one they discover later.
-                'Rent will fall due on the ${_ordinal(_start.day)} of each month.',
+                [
+                  if (widget.askingRent != null)
+                    'Advertised at ${LizmoMoney.peso(widget.askingRent!)}.',
+                  'Rent falls due on the ${_ordinal(_start.day)} of each month.',
+                ].join(' '),
                 style: LizmoType.rowSub,
               ),
 
@@ -422,90 +536,141 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
                 lastDate: _start.add(const Duration(days: 365 * 10)),
               ),
               Text(
-                // What an end date does, and what it does not: nobody is
-                // put out on the day.
-                _endsOn == null
+                // What an end date does, and what it does not: nobody is put
+                // out on the day.
+                ends == null
                     ? 'Month to month, until one of you ends it.'
-                    : 'You will both be told a month before it ends, and '
-                        'again in the last week. Nothing ends on its own.',
+                    : 'Ends ${_day(ends)}. You will both be told a month '
+                          'before, and again in the last week. Nothing ends on '
+                          'its own.',
                 key: const ValueKey('term-says'),
                 style: LizmoType.rowSub,
               ),
 
-              const SizedBox(height: 22),
-              Text('Before they move in', style: LizmoType.sectionHeading),
-              const SizedBox(height: 4),
-              Text(
-                // What changed: these used to be noted as already taken.
-                // They are owed now, and only count once confirmed.
-                'Both are due on move-in day. They mark them paid in the app, '
-                'and you confirm them, the same as rent. Leave either blank '
-                'if you have not agreed it.',
-                style: LizmoType.rowSub,
+              const SizedBox(height: 20),
+              _Pair(
+                first: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Label(
+                      depositMonths == null
+                          ? 'Deposit'
+                          : 'Deposit · $depositMonths',
+                    ),
+                    const SizedBox(height: 6),
+                    _MoneyField(
+                      key: const ValueKey('deposit-amount'),
+                      controller: _deposit,
+                      hint: '5000',
+                      rent: _rentNow,
+                      onMonths: (value) => setState(() {
+                        _depositOwn = true;
+                        _deposit.text = value;
+                      }),
+                      onChanged: (_) => setState(() => _depositOwn = true),
+                    ),
+                    if (_fromDetails(widget.depositMonths, _depositOwn)
+                        case final said?) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        said,
+                        key: const ValueKey('deposit-from-details'),
+                        style: LizmoType.rowSub.copyWith(
+                          color: LizmoColors.teal900,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                second: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Label(
+                      advanceMonths == null
+                          ? 'Advance'
+                          : 'Advance · $advanceMonths',
+                    ),
+                    const SizedBox(height: 6),
+                    _MoneyField(
+                      key: const ValueKey('advance-amount'),
+                      controller: _advance,
+                      hint: '2500',
+                      rent: _rentNow,
+                      onMonths: (value) => setState(() {
+                        _advanceOwn = true;
+                        _advance.text = value;
+                      }),
+                      onChanged: (_) => setState(() => _advanceOwn = true),
+                      check: _wholeMonths,
+                    ),
+                    if (_fromDetails(widget.advanceMonths, _advanceOwn)
+                        case final said?) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        said,
+                        key: const ValueKey('advance-from-details'),
+                        style: LizmoType.rowSub.copyWith(
+                          color: LizmoColors.teal900,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 14),
-              _Label('Security deposit'),
-              const SizedBox(height: 6),
-              _MoneyField(
-                key: const ValueKey('deposit-amount'),
-                controller: _deposit,
-                hint: '5000',
-                rent: _rentNow,
-                onMonths: (value) => setState(() {
-                  _depositOwn = true;
-                  _deposit.text = value;
-                }),
-                onChanged: (_) => setState(() => _depositOwn = true),
-              ),
-              if (_fromDetails(widget.depositMonths, _depositOwn) case final said?) ...[
-                const SizedBox(height: 4),
-                Text(said,
-                    key: const ValueKey('deposit-from-details'),
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900)),
-              ],
-              const SizedBox(height: 6),
-              Text(
-                // Said plainly, because the two are constantly muddled and the
-                // difference only matters at the end, when it matters a lot.
-                'Held against damage, and given back when they move out. '
-                'Kept apart from rent in your figures.',
-                style: LizmoType.rowSub,
-              ),
-
-              const SizedBox(height: 16),
-              _Label('Advance rent'),
-              const SizedBox(height: 6),
-              _MoneyField(
-                key: const ValueKey('advance-amount'),
-                controller: _advance,
-                hint: '2500',
-                rent: _rentNow,
-                onMonths: (value) => setState(() {
-                  _advanceOwn = true;
-                  _advance.text = value;
-                }),
-                onChanged: (_) => setState(() => _advanceOwn = true),
-                check: _wholeMonths,
-              ),
-              if (_fromDetails(widget.advanceMonths, _advanceOwn) case final said?) ...[
-                const SizedBox(height: 4),
-                Text(said,
-                    key: const ValueKey('advance-from-details'),
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900)),
-              ],
               const SizedBox(height: 6),
               Text(
                 _advanceSays(),
                 key: const ValueKey('advance-says'),
                 style: LizmoType.rowSub.copyWith(
-                  color: _wholeMonths(num.tryParse(_advance.text.trim()) ?? 0) == null
+                  color:
+                      _wholeMonths(num.tryParse(_advance.text.trim()) ?? 0) ==
+                          null
                       ? null
                       : LizmoColors.amberText,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                // Said plainly, because the two are constantly muddled and
+                // the difference only matters at the end, when it matters a
+                // lot.
+                'Both are due on move-in day, and you confirm them like rent. '
+                'The deposit is held against damage and given back when they '
+                'move out. Leave either blank if you have not agreed it.',
+                style: LizmoType.rowSub,
+              ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
+              if (_upFront > 0)
+                Container(
+                  key: const ValueKey('move-in-total'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LizmoColors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE3E8E6)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$_firstName pays before moving in',
+                          style: LizmoType.rowSub.copyWith(
+                            color: LizmoColors.ink,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        LizmoMoney.peso(_upFront),
+                        style: LizmoType.dataMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
               PrimaryActionButton(
                 key: const ValueKey('accept-and-create'),
                 // A button that is off says what it is waiting for, rather
@@ -536,16 +701,15 @@ class _AcceptTermsSheetState extends State<AcceptTermsSheet> {
       _ => '${day}th',
     };
   }
-
 }
 
 /// Top level rather than a method on the state, so the money fields below can
 /// share it instead of growing a second copy that drifts from this one.
 InputDecoration _decoration(String hint) {
   OutlineInputBorder border(Color colour) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: colour),
-      );
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide(color: colour),
+  );
 
   return InputDecoration(
     hintText: hint,
@@ -636,7 +800,9 @@ class _MoneyField extends StatelessWidget {
                   ),
                   child: Text(
                     months == 1 ? '1 month' : '$months months',
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
+                    style: LizmoType.rowSub.copyWith(
+                      color: LizmoColors.teal900,
+                    ),
                   ),
                 ),
             ],
@@ -679,7 +845,9 @@ class _RoomChoice extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                chosen ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                chosen
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
                 size: 18,
                 color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
               ),
@@ -704,6 +872,35 @@ class _RoomChoice extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Two fields side by side where they fit, one above the other where they
+/// do not: a narrow phone at large text has room for one figure across.
+class _Pair extends StatelessWidget {
+  const _Pair({required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) {
+    final large = MediaQuery.textScalerOf(context).scale(10) > 12;
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth < 320 || large
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [first, const SizedBox(height: 14), second],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: first),
+                const SizedBox(width: 12),
+                Expanded(child: second),
+              ],
+            ),
     );
   }
 }

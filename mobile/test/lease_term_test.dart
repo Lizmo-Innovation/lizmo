@@ -87,12 +87,65 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('A lease for Ana Reyes'), findsOneWidget);
-      expect(
-          find.text('At Sunrise Apartments. Choose the room and set what you '
-              'agreed. Ana sees these terms in the app once the lease starts.'),
+      expect(find.text('Ana will see these terms in your conversation.'),
           findsOneWidget);
       expect(find.textContaining('told it has gone'), findsNothing);
       expect(find.textContaining('Accept'), findsNothing);
+    });
+
+    /// Once chosen the room is one row; Change brings the list back.
+    testWidgets('a chosen room folds to one row', (tester) async {
+      await tester.pumpWidget(sheetAt(rooms: [
+        FreeRoom(unitId: 'u1', bedId: 'b1', label: 'Bed 1, 2B', rent: 2500),
+        FreeRoom(unitId: 'u2', bedId: 'b2', label: 'Bed 2, 2B', rent: 2500),
+      ]));
+      await tester.pumpAndSettle();
+
+      await tapShown(tester, find.byKey(const ValueKey('room-b2')));
+      expect(find.byKey(const ValueKey('room-chosen')), findsOneWidget);
+      expect(find.byKey(const ValueKey('room-b1')), findsNothing);
+
+      await tapShown(tester, find.byKey(const ValueKey('change-room')));
+      expect(find.byKey(const ValueKey('room-b1')), findsOneWidget);
+    });
+
+    /// What they hand over before moving in, as the landlord types it.
+    testWidgets('the move-in total follows the deposit and advance',
+        (tester) async {
+      await tester.pumpWidget(sheetAt());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('move-in-total')), findsNothing);
+
+      await tester.enterText(
+          find.descendant(
+              of: find.byKey(const ValueKey('deposit-amount')),
+              matching: find.byType(TextFormField)),
+          '5000');
+      await tester.enterText(
+          find.descendant(
+              of: find.byKey(const ValueKey('advance-amount')),
+              matching: find.byType(TextFormField)),
+          '2500');
+      await tester.pump();
+
+      expect(find.text('Ana pays before moving in'), findsOneWidget);
+      expect(find.text('₱7,500'), findsOneWidget);
+      expect(find.text('Deposit · 2 months'), findsOneWidget);
+    });
+
+    testWidgets('360 wide at 135% text the sheet still fits', (tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 800 * 3);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(() => tester.view.physicalSize = const Size(390 * 3, 844 * 3));
+      await tester.pumpWidget(MediaQuery(
+        data: const MediaQueryData(
+            size: Size(360, 800), textScaler: TextScaler.linear(1.35)),
+        child: sheetAt(rooms: [
+          FreeRoom(unitId: 'u1', bedId: 'b1', label: 'Bed 1, 2B', rent: 2500),
+        ]),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     });
 
     /// A button that is off says what it is waiting for.

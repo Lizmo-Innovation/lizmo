@@ -8136,6 +8136,15 @@
                     },
                     "applicant": {
                         "$ref": "#/components/schemas/Applicant"
+                    },
+                    "events": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThreadEvent"
+                        }
+                    },
+                    "rent": {
+                        "$ref": "#/components/schemas/RentOwed"
                     }
                 },
                 "description": "A conversation and its messages"
@@ -8673,6 +8682,69 @@
                     }
                 },
                 "description": "A reminder sent"
+            },
+            "RentOwed": {
+                "type": "object",
+                "properties": {
+                    "billingPeriodId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "outstanding": {
+                        "type": "number"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "overdue": {
+                        "type": "boolean"
+                    }
+                },
+                "description": "The oldest month a tenancy has not yet paid"
+            },
+            "ThreadEvent": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "description": "What kind of thing happened",
+                        "enum": [
+                            "ID_SHARED",
+                            "PAYMENT_REPORTED",
+                            "PAYMENT_CONFIRMED",
+                            "PAYMENT_REJECTED",
+                            "REPAIR_REPORTED",
+                            "LEASE_STARTED",
+                            "LEASE_ENDING",
+                            "MOVED_OUT"
+                        ]
+                    },
+                    "at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "entityId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "receiptNumber": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string"
+                    }
+                },
+                "description": "Something that changed the tenancy"
             }
         }
     }

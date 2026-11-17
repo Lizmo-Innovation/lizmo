@@ -6049,10 +6049,14 @@ void _landlordRequestTests() {
       InquirySummaryStatusEnum status = InquirySummaryStatusEnum.OPEN,
       List<InquiryMessageResponse>? messages,
       Tenancy? tenancy,
+      List<ThreadEvent> events = const [],
+      RentOwed? rent,
     }) =>
         InquiryThread(
           inquiry: summary(status: status, tenancy: tenancy),
           applicant: who,
+          events: events,
+          rent: rent,
           messages: messages ??
               [
                 InquiryMessageResponse(
@@ -6078,9 +6082,11 @@ void _landlordRequestTests() {
       List<BillingPeriodResponse> months = const [],
       List<LeaseResponse> tenants = const [],
       PushChannel? push,
+      RentApi? rent,
     }) =>
         ProviderScope(
           overrides: [
+            if (rent != null) rentApiProvider.overrideWithValue(rent),
             if (push != null) ...[
               pushChannelProvider.overrideWithValue(push),
               pushAskMemoryProvider.overrideWithValue(InMemoryPushAskMemory()),
@@ -6141,13 +6147,15 @@ void _landlordRequestTests() {
         {Set<LizmoProfile> profiles = const {LizmoProfile.landlord},
         List<FreeRoom> free = const [],
         List<BillingPeriodResponse> months = const [],
-        PushChannel? push}) async {
+        PushChannel? push,
+        RentApi? rent}) async {
       await tester.pumpWidget(appWith(
           api: api,
           profiles: profiles,
           free: free,
           inbox: [summary()],
           months: months,
+          rent: rent,
           push: push));
       await tester.pumpAndSettle();
 
@@ -6193,8 +6201,10 @@ void _landlordRequestTests() {
           findsOneWidget);
       expect(
           find.descendant(
-              of: header, matching: find.text('Sunrise Apartments')),
+              of: header, matching: find.text('Asking about Sunrise Apartments')),
           findsOneWidget);
+      // Landlords can ring them.
+      expect(find.byKey(const ValueKey('call')), findsOneWidget);
     });
 
     /// Who is asking and what they still need are answered questions once
@@ -6209,7 +6219,11 @@ void _landlordRequestTests() {
                   status: InquirySummaryStatusEnum.LEASED,
                   tenancy: renting())));
 
-      expect(find.text('Renting Bed 1, 2B since 15 Jan'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('thread-header')),
+              matching: find.textContaining('Bed 1, 2B')),
+          findsOneWidget);
       expect(find.byKey(const ValueKey('applicant')), findsNothing);
       expect(find.byKey(const ValueKey('start-lease')), findsNothing);
       expect(find.byKey(const ValueKey('already-leased')), findsNothing);
@@ -6239,7 +6253,9 @@ void _landlordRequestTests() {
                   tenancy: renting())),
           profiles: {LizmoProfile.tenant});
 
-      expect(find.text('You rent Bed 1, 2B since 15 Jan'), findsOneWidget);
+      expect(find.textContaining('Your landlord · Bed 1, 2B'), findsOneWidget);
+      // A tenant has the landlord's number on the place's page already.
+      expect(find.byKey(const ValueKey('call')), findsNothing);
     });
 
     /// After moving out it is an ordinary conversation again, and the
@@ -6311,7 +6327,7 @@ void _landlordRequestTests() {
             said('Just now', const Duration(minutes: 5)),
           ])));
 
-      expect(find.text('Today'), findsOneWidget);
+      expect(find.text('TODAY'), findsOneWidget);
       final then = DateTime.now().subtract(const Duration(days: 8));
       const months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -6319,10 +6335,208 @@ void _landlordRequestTests() {
       ];
       final label = '${then.day} ${months[then.month - 1]}'
           '${then.year == DateTime.now().year ? '' : ' ${then.year}'}';
-      expect(find.text(label), findsOneWidget);
+      expect(find.text(label.toUpperCase()), findsOneWidget);
+    });
+
+    // ---- the panel and the cards --------------------------------------------
+
+    ThreadEvent paid({String state = 'PENDING_VERIFICATION', int daysAgo = 2}) =>
+        ThreadEvent(
+          kind: ThreadEventKindEnum.PAYMENT_REPORTED,
+          at: DateTime.now().subtract(Duration(days: daysAgo)),
+          entityId: 'pay1',
+          amount: 2500,
+          label: 'November 2026',
+          state: state,
+        );
+
+    /// The tenant said they paid: the one thing for the landlord to do, above
+    /// the conversation, and done from there.
+    testWidgets('a landlord confirms from the panel', (tester) async {
+      final rent = _TodayRentApi();
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  who: applicant(),
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting(),
+                  events: [paid()])),
+          rent: rent);
+
+      expect(find.byKey(const ValueKey('panel-confirm')), findsOneWidget);
+      expect(find.text('NOVEMBER 2026'), findsOneWidget);
+      expect(find.textContaining('said they paid · 2 days'), findsOneWidget);
+
+      await tester.tap(find.text('Confirm ₱2,500'));
+      await tester.pumpAndSettle();
+
+      expect(rent.confirmed, ['l1/pay1']);
+    });
+
+    /// Nothing for them to do but wait, so nothing coral.
+    testWidgets('a tenant waiting on their landlord is told so', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting(),
+                  events: [paid()])),
+          profiles: {LizmoProfile.tenant});
+
+      expect(find.byKey(const ValueKey('panel-waiting')), findsOneWidget);
+      expect(find.textContaining('Waiting for'), findsWidgets);
+      expect(find.byKey(const ValueKey('panel-see-rent')), findsOneWidget);
+      expect(find.byKey(const ValueKey('panel-paid')), findsNothing);
+    });
+
+    testWidgets('rent overdue puts I have paid at the top', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting(),
+                  rent: RentOwed(
+                    billingPeriodId: 'bp1',
+                    label: 'November 2026',
+                    outstanding: 2500,
+                    dueDate: DateTime.now().subtract(const Duration(days: 4)),
+                    overdue: true,
+                  ))),
+          profiles: {LizmoProfile.tenant},
+          months: [unpaid()]);
+
+      expect(find.byKey(const ValueKey('panel-due')), findsOneWidget);
+      expect(find.textContaining('Overdue since'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('panel-paid')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DeclarePaymentSheet), findsOneWidget);
+    });
+
+    /// A month due in three weeks is not something to do now.
+    testWidgets('rent not due for weeks is no panel at all', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting(),
+                  rent: RentOwed(
+                    billingPeriodId: 'bp1',
+                    label: 'December 2026',
+                    outstanding: 2500,
+                    dueDate: DateTime.now().add(const Duration(days: 21)),
+                    overdue: false,
+                  ))),
+          profiles: {LizmoProfile.tenant});
+
+      expect(find.byKey(const ValueKey('panel-due')), findsNothing);
+      expect(find.byKey(const ValueKey('panel-waiting')), findsNothing);
+    });
+
+    /// What changed the tenancy sits in the thread as a card, not a message.
+    testWidgets('payments and repairs are cards in the thread', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(
+                  who: applicant(),
+                  status: InquirySummaryStatusEnum.LEASED,
+                  tenancy: renting(),
+                  events: [
+                    paid(state: 'CONFIRMED', daysAgo: 3),
+                    ThreadEvent(
+                      kind: ThreadEventKindEnum.PAYMENT_CONFIRMED,
+                      at: DateTime.now().subtract(const Duration(days: 2)),
+                      entityId: 'pay1',
+                      amount: 2500,
+                      label: 'November 2026',
+                      receiptNumber: '2026-0042',
+                    ),
+                    ThreadEvent(
+                      kind: ThreadEventKindEnum.REPAIR_REPORTED,
+                      at: DateTime.now().subtract(const Duration(hours: 4)),
+                      entityId: 'm1',
+                      label: 'The ceiling fan grinds and stops',
+                      state: 'IN_PROGRESS',
+                    ),
+                  ])));
+
+      expect(find.byKey(const ValueKey('event-paid-pay1')), findsOneWidget);
+      expect(find.text('Confirmed'), findsOneWidget);
+      expect(find.textContaining('Receipt No. 2026-0042'), findsOneWidget);
+      expect(find.text('The ceiling fan grinds and stops'), findsOneWidget);
+      expect(find.text('Being fixed'), findsOneWidget);
+      // Nothing waiting, so no panel.
+      expect(find.byKey(const ValueKey('panel-confirm')), findsNothing);
+    });
+
+    testWidgets('a landlord starts the lease from "+" too', (tester) async {
+      await open(tester, _FakeInquiriesApi(thread: thread(who: applicant())));
+
+      await tester.tap(find.byKey(const ValueKey('more-actions')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('action-start-lease')), findsOneWidget);
+    });
+
+    /// On a wide tablet opening one no longer hides the rest.
+    testWidgets('on a wide tablet the list and the conversation sit side by side',
+        (tester) async {
+      tester.view.physicalSize = const Size(1100 * 3, 1400 * 3);
+      addTearDown(() => tester.view.physicalSize = const Size(390 * 3, 844 * 3));
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await tester.pumpWidget(appWith(api: api, inbox: [
+        summary(),
+        summary(id: 'i2', withName: 'Bea Santos', unread: false),
+      ]));
+      await tester.pumpAndSettle();
+      await openAsking(tester);
+
+      // The first is open already, beside the list.
+      expect(find.byType(InquiryScreen), findsOneWidget);
+      final row = tester.getRect(find.byKey(const ValueKey('thread-i2')));
+      expect(row.width, greaterThan(300), reason: 'a list, not a sliver');
+      final said = tester.getRect(find.descendant(
+          of: find.byType(InquiryScreen),
+          matching: find.text('Is there a bed free in November?')));
+      expect(said.left, greaterThan(row.right));
+
+      await tester.ensureVisible(find.byKey(const ValueKey('thread-i2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('thread-i2')));
+      await tester.pumpAndSettle();
+      expect(api.reads, greaterThanOrEqualTo(2));
+      expect(find.byType(InquiryScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    /// A line on a tablet is still a line somebody reads across.
+    testWidgets('on a tablet a bubble stops at 520 wide', (tester) async {
+      tester.view.physicalSize = const Size(1100 * 3, 1400 * 3);
+      addTearDown(() => tester.view.physicalSize = const Size(390 * 3, 844 * 3));
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(who: applicant(), messages: [
+            said('word ' * 200, const Duration(minutes: 5)),
+          ])));
+
+      final bubble = find.ancestor(
+          of: find.text('word ' * 200), matching: find.byType(Container)).first;
+      expect(tester.getSize(bubble).width, lessThanOrEqualTo(520));
+      expect(tester.takeException(), isNull);
     });
 
     // ---- doing things from it -----------------------------------------------
+
+    Future<void> openActions(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('more-actions')));
+      await tester.pumpAndSettle();
+    }
 
     testWidgets('a tenant can say they paid, or report a repair, from here',
         (tester) async {
@@ -6335,6 +6549,8 @@ void _landlordRequestTests() {
           profiles: {LizmoProfile.tenant},
           months: [unpaid()]);
 
+      expect(find.byKey(const ValueKey('shortcut-paid')), findsNothing);
+      await openActions(tester);
       expect(find.byKey(const ValueKey('shortcut-paid')), findsOneWidget);
       expect(find.byKey(const ValueKey('shortcut-repair')), findsOneWidget);
       expect(find.byKey(const ValueKey('shortcut-record')), findsNothing);
@@ -6353,6 +6569,7 @@ void _landlordRequestTests() {
           profiles: {LizmoProfile.tenant},
           months: [unpaid()]);
 
+      await openActions(tester);
       await tester.tap(find.byKey(const ValueKey('shortcut-paid')));
       await tester.pumpAndSettle();
 
@@ -6368,6 +6585,7 @@ void _landlordRequestTests() {
                   tenancy: renting())),
           profiles: {LizmoProfile.tenant});
 
+      await openActions(tester);
       await tester.tap(find.byKey(const ValueKey('shortcut-paid')));
       await tester.pumpAndSettle();
 
@@ -6385,6 +6603,7 @@ void _landlordRequestTests() {
                   tenancy: renting())),
           profiles: {LizmoProfile.tenant});
 
+      await openActions(tester);
       await tester.tap(find.byKey(const ValueKey('shortcut-repair')));
       await tester.pumpAndSettle();
 
@@ -6401,6 +6620,7 @@ void _landlordRequestTests() {
                   tenancy: renting())),
           months: [unpaid()]);
 
+      await openActions(tester);
       expect(find.byKey(const ValueKey('shortcut-paid')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('shortcut-record')));
       await tester.pumpAndSettle();
@@ -6449,7 +6669,8 @@ void _landlordRequestTests() {
       expect(find.byKey(const ValueKey('applicant')), findsOneWidget);
       expect(find.text('Ana Reyes'), findsWidgets);
       expect(find.textContaining('27 years old'), findsOneWidget);
-      expect(find.text('09171234567'), findsOneWidget);
+      expect(
+          find.byTooltip('Call Ana Reyes'), findsOneWidget);
     });
 
     testWidgets('the tenant sees no panel about themselves', (tester) async {
@@ -6631,8 +6852,9 @@ void _landlordRequestTests() {
       expect(find.textContaining('an emergency contact'), findsOneWidget);
       expect(
           tester
-              .widget<PrimaryActionButton>(
-                  find.byKey(const ValueKey('start-lease')))
+              .widget<FilledButton>(find.descendant(
+                  of: find.byKey(const ValueKey('start-lease')),
+                  matching: find.byType(FilledButton)))
               .onPressed,
           isNull);
     });
@@ -9091,7 +9313,7 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(sheet());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Both are due on move-in day.'), findsOneWidget);
+      expect(find.textContaining('Both are due on move-in day'), findsOneWidget);
     });
   });
 

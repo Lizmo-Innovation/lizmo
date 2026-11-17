@@ -209,4 +209,9 @@ public class Payment {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    /** When the landlord confirmed or turned it down; null while it waits. */
+    public Instant getVerifiedAt() {
+        return verifiedAt;
+    }
 }
