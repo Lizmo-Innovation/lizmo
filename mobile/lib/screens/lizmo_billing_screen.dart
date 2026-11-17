@@ -183,7 +183,7 @@ class _StatementState extends ConsumerState<_Statement> {
               lizmoStatementStanding(statement),
               style: LizmoType.rowSub.copyWith(
                 fontSize: 11,
-                color: statement.overdue == true ? LizmoColors.red : null,
+                color: statement.overdue == true ? LizmoColors.redText : null,
               ),
             ),
           ],
@@ -337,7 +337,7 @@ class _Sent extends StatelessWidget {
   Widget build(BuildContext context) {
     final (what, ink) = switch (payment.status?.toJson()) {
       'CONFIRMED' => ('Confirmed', LizmoColors.teal900),
-      'REJECTED' => ('Not confirmed', LizmoColors.red),
+      'REJECTED' => ('Not confirmed', LizmoColors.redText),
       _ => ('Waiting for Lizmo to check', LizmoColors.amberText),
     };
     final remarks = payment.remarks;

@@ -399,7 +399,7 @@ class _ResetStepState extends ConsumerState<_ResetStep> {
                           : 'Send another code',
                       style: LizmoType.rowSub.copyWith(
                         color: _secondsLeft > 0
-                            ? LizmoColors.slate
+                            ? LizmoColors.slateText
                             : LizmoColors.teal900,
                       ),
                     ),

@@ -612,7 +612,7 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
             ),
           ),
         ],
@@ -825,7 +825,7 @@ class _PhotographTileState extends ConsumerState<_PhotographTile> {
                       existing == null ? widget.hint : 'Uploaded',
                       style: LizmoType.rowSub.copyWith(
                         color: existing == null
-                            ? LizmoColors.slate
+                            ? LizmoColors.slateText
                             : LizmoColors.teal900,
                       ),
                     ),
@@ -840,7 +840,7 @@ class _PhotographTileState extends ConsumerState<_PhotographTile> {
                   // and the button should say so.
                   existing == null ? 'Add' : 'Replace',
                   style: LizmoType.rowName.copyWith(
-                    color: _uploading ? LizmoColors.slate : LizmoColors.teal900,
+                    color: _uploading ? LizmoColors.slateText : LizmoColors.teal900,
                   ),
                 ),
               ),
@@ -850,7 +850,7 @@ class _PhotographTileState extends ConsumerState<_PhotographTile> {
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
             ),
           ],
         ],

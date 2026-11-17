@@ -108,7 +108,7 @@ class _FindPropertyScreenState extends ConsumerState<FindPropertyScreen> {
                     hintStyle: LizmoType.dataMedium.copyWith(
                       fontSize: 26 * scale,
                       letterSpacing: 3,
-                      color: LizmoColors.slate,
+                      color: LizmoColors.slateText,
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 18),
                   ),

@@ -112,7 +112,7 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(
               'Delete',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.red),
+              style: LizmoType.rowName.copyWith(color: LizmoColors.redText),
             ),
           ),
         ],
@@ -202,7 +202,7 @@ class _LeaseAttachmentsState extends ConsumerState<LeaseAttachments> {
             const SizedBox(height: 10),
             Text(
               _error!,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
             ),
           ],
         ],
@@ -304,7 +304,7 @@ class _RowState extends State<_Row> {
                               fontSize: 11,
                               color: shared
                                   ? LizmoColors.teal900
-                                  : LizmoColors.slate,
+                                  : LizmoColors.slateText,
                             ),
                             // Two lines: "Your tenant can see this · Tap to
                             // download" does not fit on one at this width, and

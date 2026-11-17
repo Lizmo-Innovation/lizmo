@@ -196,7 +196,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(_error!,
-                        style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                        style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
                   ],
                 ],
               ),
@@ -304,7 +304,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(_error!,
-                        style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                        style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
                   ],
                   const SizedBox(height: 14),
                   Align(
@@ -471,7 +471,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
-      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
     );
   }
 }

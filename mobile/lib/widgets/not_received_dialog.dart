@@ -68,7 +68,7 @@ class _NotReceivedDialogState extends State<NotReceivedDialog> {
           key: const ValueKey('reject-confirm'),
           onPressed: () => Navigator.of(context).pop(_why.text.trim()),
           child: Text('Not received',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+              style: LizmoType.rowName.copyWith(color: LizmoColors.redText)),
         ),
       ],
     );

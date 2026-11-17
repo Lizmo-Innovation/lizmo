@@ -107,7 +107,7 @@ class _Row extends ConsumerWidget {
                     _when(notification.createdAt),
                     style: LizmoType.rowSub.copyWith(
                       fontSize: 11,
-                      color: LizmoColors.slate,
+                      color: LizmoColors.slateText,
                     ),
                   ),
                 ],

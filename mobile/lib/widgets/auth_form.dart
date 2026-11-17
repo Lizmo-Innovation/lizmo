@@ -43,7 +43,7 @@ class PasswordChecklist extends StatelessWidget {
                   style: LizmoType.rowSub.copyWith(
                     fontSize: context.lizmoSize(13),
                     color: missingLabels.contains(rule.label)
-                        ? LizmoColors.slate
+                        ? LizmoColors.slateText
                         : LizmoColors.teal900,
                   ),
                 ),
@@ -72,7 +72,7 @@ InputDecoration authFieldDecoration(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }
 
@@ -158,7 +158,7 @@ class AuthErrorBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),

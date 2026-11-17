@@ -123,7 +123,7 @@ class _PropertyPhotosCardState extends ConsumerState<PropertyPhotosCard> {
           TextButton(
             key: const ValueKey('confirm-remove-photo'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Remove', style: TextStyle(color: LizmoColors.red)),
+            child: Text('Remove', style: TextStyle(color: LizmoColors.redText)),
           ),
         ],
       ),

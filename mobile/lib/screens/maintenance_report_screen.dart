@@ -163,7 +163,7 @@ class _MaintenanceReportScreenState
                 title: 'Your tenant says it is still broken',
                 text: report.reopenReason!,
                 colour: LizmoColors.redBg,
-                ink: LizmoColors.red,
+                ink: LizmoColors.redText,
               ),
             ],
             if ((report.landlordRemarks ?? '').isNotEmpty) ...[

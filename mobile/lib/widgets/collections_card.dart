@@ -176,7 +176,7 @@ class ArrearsCard extends ConsumerWidget {
       key: const ValueKey('arrears-card'),
       title: onlyRent ? 'Behind on rent' : 'Behind on rent or deposit',
       count: arrears.length == 1 ? 'One tenant' : '${arrears.length} tenants',
-      countInk: LizmoColors.red,
+      countInk: LizmoColors.redText,
       rows: [for (final row in arrears) _ArrearsRow(row: row)],
     );
   }
@@ -366,20 +366,20 @@ class _ArrearsRow extends StatelessWidget {
                   children: [
                     Text(
                       row.tenantName ?? 'A tenant',
-                      style: LizmoType.rowName.copyWith(color: LizmoColors.red),
+                      style: LizmoType.rowName.copyWith(color: LizmoColors.redText),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$where · $behind',
                       style: LizmoType.rowSub
-                          .copyWith(fontSize: 11, color: LizmoColors.red),
+                          .copyWith(fontSize: 11, color: LizmoColors.redText),
                     ),
                   ],
                 ),
               ),
               Text(
                 LizmoMoney.peso((row.outstanding ?? 0) + deposit),
-                style: LizmoType.dataMedium.copyWith(color: LizmoColors.red),
+                style: LizmoType.dataMedium.copyWith(color: LizmoColors.redText),
               ),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right, size: 18, color: LizmoColors.red),
@@ -445,7 +445,7 @@ class _Waited extends StatelessWidget {
         text,
         style: LizmoType.rowSub.copyWith(
           fontSize: 11,
-          color: long ? LizmoColors.amberText : LizmoColors.slate,
+          color: long ? LizmoColors.amberText : LizmoColors.slateText,
           fontWeight: long ? FontWeight.w600 : FontWeight.w500,
         ),
       ),

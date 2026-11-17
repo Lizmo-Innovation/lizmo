@@ -15,7 +15,7 @@ enum LizmoStatus {
   pending(LizmoColors.amberBg, LizmoColors.amberText, LizmoColors.amber),
 
   /// Overdue, rejected.
-  overdue(LizmoColors.redBg, LizmoColors.red, LizmoColors.red),
+  overdue(LizmoColors.redBg, LizmoColors.redText, LizmoColors.red),
 
   /// Nothing is happening here: a vacant bed, an inactive assignment.
   ///
@@ -23,7 +23,7 @@ enum LizmoStatus {
   /// giving it teal would read as healthy and red as a problem, when it is
   /// simply an empty slot. It also keeps the three meaningful colours scarce,
   /// which is what makes them scannable in a long list.
-  vacant(Color(0xFFEFF2F1), LizmoColors.slate, LizmoColors.slate);
+  vacant(Color(0xFFEFF2F1), LizmoColors.slateText, LizmoColors.slate);
 
   const LizmoStatus(this.background, this.foreground, this.dot);
 

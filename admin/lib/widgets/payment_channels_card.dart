@@ -80,7 +80,7 @@ class _PaymentChannelsCardState extends ConsumerState<PaymentChannelsCard> {
           TextButton(
             key: const ValueKey('confirm-delete-channel'),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Delete', style: TextStyle(color: LizmoColors.red)),
+            child: Text('Delete', style: TextStyle(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -131,7 +131,7 @@ class _PaymentChannelsCardState extends ConsumerState<PaymentChannelsCard> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
             error: (error, _) => Text(ApiFailure.from(error).message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
             data: (rows) => rows.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -160,7 +160,7 @@ class _PaymentChannelsCardState extends ConsumerState<PaymentChannelsCard> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+            Text(_error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           ],
         ],
       ),
@@ -257,7 +257,7 @@ class _Row extends StatelessWidget {
             key: ValueKey('delete-channel-$id'),
             onPressed: busy ? null : onDelete,
             child: Text('Delete',
-                style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.red)),
+                style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.redText)),
           ),
         ],
       ),

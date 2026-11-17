@@ -216,7 +216,7 @@ class _SignOutButton extends ConsumerWidget {
       ),
       child: Text(
         'Sign out',
-        style: LizmoType.rowSub.copyWith(color: LizmoColors.slate),
+        style: LizmoType.rowSub.copyWith(color: LizmoColors.slateText),
       ),
     );
   }

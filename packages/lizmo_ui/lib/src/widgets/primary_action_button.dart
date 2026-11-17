@@ -42,7 +42,7 @@ class PrimaryActionButton extends StatelessWidget {
               style: enabled
                   ? LizmoType.buttonLabel
                   : LizmoType.buttonLabel.copyWith(
-                      color: LizmoColors.white.withValues(alpha: 0.75),
+                      color: LizmoColors.onCoral.withValues(alpha: 0.6),
                     ),
             ),
           ),

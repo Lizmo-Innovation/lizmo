@@ -95,7 +95,7 @@ class _YourLandlordCardState extends ConsumerState<YourLandlordCard> {
                       style: LizmoType.rowSub.copyWith(
                         fontSize: 11,
                         letterSpacing: 0.8,
-                        color: LizmoColors.slate,
+                        color: LizmoColors.slateText,
                       ),
                     ),
                   ),
@@ -129,7 +129,7 @@ class _YourLandlordCardState extends ConsumerState<YourLandlordCard> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: LizmoType.rowSub.copyWith(
-                  color: unread ? LizmoColors.ink : LizmoColors.slate,
+                  color: unread ? LizmoColors.ink : LizmoColors.slateText,
                 ),
               ),
               const SizedBox(height: 8),

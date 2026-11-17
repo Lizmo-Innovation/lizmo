@@ -255,7 +255,7 @@ class _EndTenancyState extends ConsumerState<_EndTenancy> {
         if (_error != null) ...[
           const SizedBox(height: 8),
           Text(_error!,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
         ],
       ],
     );
@@ -359,7 +359,7 @@ class _LeaseTermState extends ConsumerState<_LeaseTerm> {
                 child: Text(
                   says,
                   style: LizmoType.rowSub.copyWith(
-                    color: left < 0 ? LizmoColors.red : LizmoColors.amberText,
+                    color: left < 0 ? LizmoColors.redText : LizmoColors.amberText,
                   ),
                 ),
               ),
@@ -572,7 +572,7 @@ class _Section extends StatelessWidget {
                           : row.value!,
                       style: LizmoType.rowName.copyWith(
                         color: (row.value == null || row.value!.isEmpty)
-                            ? LizmoColors.slate
+                            ? LizmoColors.slateText
                             : LizmoColors.ink,
                       ),
                     ),

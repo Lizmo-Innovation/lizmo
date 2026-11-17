@@ -48,7 +48,7 @@ class LizmoStatementCard extends ConsumerWidget {
                   owed.length == 1 ? '1 to pay' : '${owed.length} to pay',
                   style: LizmoType.rowSub.copyWith(
                     color: owed.any((statement) => statement.overdue == true)
-                        ? LizmoColors.red
+                        ? LizmoColors.redText
                         : LizmoColors.amberText,
                     fontWeight: FontWeight.w600,
                   ),
@@ -72,7 +72,7 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final overdue = statement.overdue == true;
-    final ink = overdue ? LizmoColors.red : LizmoColors.ink;
+    final ink = overdue ? LizmoColors.redText : LizmoColors.ink;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

@@ -128,7 +128,7 @@ class GettingStartedSection extends ConsumerWidget {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
-              color: LizmoColors.slate,
+              color: LizmoColors.slateText,
             ),
           ),
         ),
@@ -216,7 +216,7 @@ class _StepRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = step.done ? LizmoColors.slate : LizmoColors.ink;
+    final ink = step.done ? LizmoColors.slateText : LizmoColors.ink;
 
     return InkWell(
       key: ValueKey('get-started-step-${step.label}'),
@@ -242,7 +242,7 @@ class _StepRow extends StatelessWidget {
                     style: LizmoType.rowName.copyWith(
                       color: ink,
                       decoration: step.done ? TextDecoration.lineThrough : null,
-                      decorationColor: LizmoColors.slate,
+                      decorationColor: LizmoColors.slateText,
                     ),
                   ),
                   if (!step.done) ...[

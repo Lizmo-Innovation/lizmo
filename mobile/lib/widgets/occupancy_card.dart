@@ -89,7 +89,7 @@ class _Figures extends StatelessWidget {
               // out loud. Slots, not units.
               '$occupied of $lettable let',
               style: LizmoType.rowSub.copyWith(
-                color: empty == 0 ? LizmoColors.teal900 : LizmoColors.slate,
+                color: empty == 0 ? LizmoColors.teal900 : LizmoColors.slateText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -221,7 +221,7 @@ class _VacancyRow extends StatelessWidget {
               ),
               Text(
                 LizmoMoney.peso((row.emptyRent ?? 0)),
-                style: LizmoType.dataMedium.copyWith(color: LizmoColors.slate),
+                style: LizmoType.dataMedium.copyWith(color: LizmoColors.slateText),
               ),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right,

@@ -156,7 +156,7 @@ class _Blocked extends StatelessWidget {
             child: Text(
               failure.message,
               style: LizmoType.rowSub.copyWith(
-                color: tenancy ? LizmoColors.amberText : LizmoColors.red,
+                color: tenancy ? LizmoColors.amberText : LizmoColors.redText,
               ),
             ),
           ),
@@ -219,7 +219,7 @@ class _Confirm extends StatelessWidget {
         ),
         if (error != null) ...[
           const SizedBox(height: 12),
-          Text(error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+          Text(error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
         ],
         const SizedBox(height: 16),
         if (submitting)

@@ -125,7 +125,7 @@ class AccountSheet extends ConsumerWidget {
               label: 'Sign out',
               // Red rather than coral: coral is the action accent, and signing
               // out is a departure rather than the screen's main action.
-              colour: LizmoColors.red,
+              colour: LizmoColors.redText,
               onTap: () async {
                 // Close the sheet first. Signing out changes auth state, and
                 // the router swaps the screen underneath — leaving the sheet

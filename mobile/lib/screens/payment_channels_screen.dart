@@ -167,7 +167,7 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
           TextButton(
             key: const ValueKey('confirm-delete-channel'),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Delete', style: TextStyle(color: LizmoColors.red)),
+            child: Text('Delete', style: TextStyle(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -467,7 +467,7 @@ class _ChannelRow extends StatelessWidget {
                 key: ValueKey('delete-channel-$id'),
                 onPressed: busy ? null : onDelete,
                 child: Text('Delete',
-                    style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.red)),
+                    style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.redText)),
               ),
             ],
           ),

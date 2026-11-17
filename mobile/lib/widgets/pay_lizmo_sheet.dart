@@ -244,7 +244,7 @@ class _PayLizmoSheetState extends State<PayLizmoSheet> {
                     'Required. The receipt from GCash, Maya or your bank.',
                 style: LizmoType.rowSub.copyWith(
                   fontSize: 11,
-                  color: _proofError == null ? null : LizmoColors.red,
+                  color: _proofError == null ? null : LizmoColors.redText,
                 ),
               ),
               const SizedBox(height: 18),
@@ -298,6 +298,6 @@ InputDecoration _field(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }

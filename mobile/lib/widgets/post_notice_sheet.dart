@@ -227,7 +227,7 @@ class _PostNoticeSheetState extends ConsumerState<PostNoticeSheet> {
 
             if (_error case final message?) ...[
               const SizedBox(height: 8),
-              Text(message, style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+              Text(message, style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
             ],
             const SizedBox(height: 16),
             PrimaryActionButton(

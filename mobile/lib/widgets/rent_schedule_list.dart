@@ -146,7 +146,7 @@ class _MonthRow extends StatelessWidget {
     final (Color background, Color ink, String label) = paid
         ? (LizmoColors.tealBg, LizmoColors.teal900, 'Paid')
         : overdue
-            ? (LizmoColors.redBg, LizmoColors.red, 'Overdue')
+            ? (LizmoColors.redBg, LizmoColors.redText, 'Overdue')
             : (LizmoColors.white, LizmoColors.ink, 'Due');
 
     // What the tenant has said they paid towards this month. Covering it,

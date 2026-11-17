@@ -342,7 +342,7 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
           TextButton(
             key: const ValueKey('confirm-close-inquiry'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('End it', style: TextStyle(color: LizmoColors.red)),
+            child: Text('End it', style: TextStyle(color: LizmoColors.redText)),
           ),
         ],
       ),

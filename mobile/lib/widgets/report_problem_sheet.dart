@@ -190,7 +190,7 @@ class _ReportProblemSheetState extends State<ReportProblemSheet> {
                 label: Text(
                   full ? 'That is three' : 'Add photos',
                   style: LizmoType.rowName.copyWith(
-                    color: full ? LizmoColors.slate : LizmoColors.teal900,
+                    color: full ? LizmoColors.slateText : LizmoColors.teal900,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
@@ -242,7 +242,7 @@ InputDecoration _field(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }
 

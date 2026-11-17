@@ -369,7 +369,7 @@ InputDecoration _field(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }
 

@@ -132,7 +132,7 @@ class _TenantRentCardState extends ConsumerState<TenantRentCard> {
                   child: _Figure(
                     label: late == 1 ? 'Month late' : 'Months late',
                     value: '$late',
-                    ink: late > 0 ? LizmoColors.red : LizmoColors.slate,
+                    ink: late > 0 ? LizmoColors.redText : LizmoColors.slateText,
                   ),
                 ),
               ],
@@ -253,7 +253,7 @@ class _Waiting extends StatelessWidget {
                     key: ValueKey('reject-${payment.id}'),
                     onPressed: busy ? null : () => onAnswer(false),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: LizmoColors.red,
+                      foregroundColor: LizmoColors.redText,
                       side: const BorderSide(color: Color(0xFFE3E8E6)),
                     ),
                     child: const Text('Not received'),

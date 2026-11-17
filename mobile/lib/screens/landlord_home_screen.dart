@@ -186,7 +186,7 @@ class _SectionLabel extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
-          color: LizmoColors.slate,
+          color: LizmoColors.slateText,
         ),
       ),
     );

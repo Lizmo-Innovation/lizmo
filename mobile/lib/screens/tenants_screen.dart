@@ -212,7 +212,7 @@ class _TenantRow extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: LizmoType.rowSub.copyWith(
-                        color: unread ? LizmoColors.ink : LizmoColors.slate,
+                        color: unread ? LizmoColors.ink : LizmoColors.slateText,
                       ),
                     ),
                   ],

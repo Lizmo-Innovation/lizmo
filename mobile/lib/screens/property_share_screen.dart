@@ -201,7 +201,7 @@ class _ShareState extends State<_Share> {
                   Text(
                     propertyKindAndUsageLabel(property),
                     style: LizmoType.rowSub.copyWith(
-                      color: LizmoColors.slate,
+                      color: LizmoColors.slateText,
                       letterSpacing: 0.6,
                       fontSize: 14 * scale,
                     ),

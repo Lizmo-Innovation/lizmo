@@ -578,7 +578,7 @@ class _RenameBedDialogState extends State<_RenameBedDialog> {
           decoration: InputDecoration(
             hintText: 'Bed 1 upper bunk',
             hintStyle: LizmoType.rowSub,
-            errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+            errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
           ),
           validator: (value) => (value == null || value.trim().isEmpty)
               ? 'Give the bed a name'
@@ -590,7 +590,7 @@ class _RenameBedDialogState extends State<_RenameBedDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cancel',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+              style: LizmoType.rowName.copyWith(color: LizmoColors.slateText)),
         ),
         TextButton(
           onPressed: _submit,
@@ -719,7 +719,7 @@ class _BedPriceDialogState extends State<_BedPriceDialog> {
                 prefixText: '₱',
                 hintText: widget.unitRent?.toString() ?? '2500',
                 hintStyle: LizmoType.rowSub,
-                errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+                errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
               ),
               validator: (value) {
                 final text = (value ?? '').trim();
@@ -749,7 +749,7 @@ class _BedPriceDialogState extends State<_BedPriceDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cancel',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+              style: LizmoType.rowName.copyWith(color: LizmoColors.slateText)),
         ),
         TextButton(
           onPressed: _submit,

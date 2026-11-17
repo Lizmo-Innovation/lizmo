@@ -177,7 +177,7 @@ class _Choice extends StatelessWidget {
                 Text(
                   detail!,
                   style: LizmoType.rowSub.copyWith(
-                    color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
+                    color: chosen ? LizmoColors.teal900 : LizmoColors.slateText,
                   ),
                 ),
             ],
@@ -340,7 +340,7 @@ class _ChangeLeaseTermSheetState extends State<ChangeLeaseTermSheet> {
                   onPressed: () => Navigator.of(context).pop(const TermChange(null)),
                   child: Text(
                     'Remove the end date',
-                    style: LizmoType.rowName.copyWith(color: LizmoColors.slate),
+                    style: LizmoType.rowName.copyWith(color: LizmoColors.slateText),
                   ),
                 ),
               ),

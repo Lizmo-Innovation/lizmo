@@ -132,7 +132,7 @@ class _NoticeCardState extends ConsumerState<_NoticeCard> {
             key: const ValueKey('confirm-take-down'),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text('Take it down',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowName.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -183,7 +183,7 @@ class _NoticeCardState extends ConsumerState<_NoticeCard> {
                 child: Text(
                   notice.title ?? '',
                   style: LizmoType.rowName.copyWith(
-                    color: live ? LizmoColors.ink : LizmoColors.slate,
+                    color: live ? LizmoColors.ink : LizmoColors.slateText,
                   ),
                 ),
               ),
@@ -216,7 +216,7 @@ class _NoticeCardState extends ConsumerState<_NoticeCard> {
                     fontWeight: FontWeight.w600,
                     color: seen == audience && audience > 0
                         ? LizmoColors.teal900
-                        : LizmoColors.slate,
+                        : LizmoColors.slateText,
                   ),
                 ),
               ),
@@ -225,7 +225,7 @@ class _NoticeCardState extends ConsumerState<_NoticeCard> {
                 onPressed: _working ? null : _takeDown,
                 child: Text(
                   'Take down',
-                  style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+                  style: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
                 ),
               ),
             ],

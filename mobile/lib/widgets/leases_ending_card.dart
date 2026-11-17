@@ -126,7 +126,7 @@ class _EndingRow extends StatelessWidget {
               Text(
                 left < 0 ? 'Past its end' : 'Ends ${inDays(left)}',
                 style: LizmoType.rowSub.copyWith(
-                  color: left < 0 ? LizmoColors.red : LizmoColors.amberText,
+                  color: left < 0 ? LizmoColors.redText : LizmoColors.amberText,
                   fontWeight: FontWeight.w600,
                 ),
               ),

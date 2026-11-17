@@ -36,7 +36,7 @@ class HowToPayPanel extends StatelessWidget {
       // Unknown is not "none": a failed load saying there are no details
       // would send somebody to ask over a bad connection.
       AsyncError() => Text('Could not load how to pay. Pull down to try again.',
-          style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+          style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
       _ => const Padding(
           padding: EdgeInsets.all(8),
           child: Center(child: CircularProgressIndicator(strokeWidth: 2)),

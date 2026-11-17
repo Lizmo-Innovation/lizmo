@@ -75,7 +75,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                   )),
                   const SizedBox(height: 4),
                   Text('Admin console', style: LizmoType.eyebrow.copyWith(
-                    color: LizmoColors.slate,
+                    color: LizmoColors.slateText,
                   )),
                   const SizedBox(height: 32),
 
@@ -162,7 +162,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
-      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
     );
   }
 }
@@ -187,7 +187,7 @@ class _ErrorBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -212,7 +212,7 @@ class _SubmittingButton extends StatelessWidget {
         height: 18,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(LizmoColors.white),
+          valueColor: AlwaysStoppedAnimation(LizmoColors.onCoral),
         ),
       ),
     );

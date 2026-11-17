@@ -269,7 +269,7 @@ class _Form extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(error!,
-                        style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                        style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
                   ),
                 ],
               ),
@@ -289,7 +289,7 @@ class _Form extends StatelessWidget {
                     width: 18, height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(LizmoColors.white),
+                      valueColor: AlwaysStoppedAnimation(LizmoColors.onCoral),
                     ),
                   ),
                 )
@@ -336,7 +336,7 @@ class _PasswordRules extends StatelessWidget {
                   rule.label,
                   style: LizmoType.rowSub.copyWith(
                     color: missing.contains(rule.label)
-                        ? LizmoColors.slate
+                        ? LizmoColors.slateText
                         : LizmoColors.teal900,
                   ),
                 ),
@@ -452,6 +452,6 @@ InputDecoration _decoration(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }

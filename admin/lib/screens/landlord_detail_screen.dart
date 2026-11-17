@@ -288,7 +288,7 @@ class _LockButtonState extends ConsumerState<_LockButton> {
       ),
       child: Text(locked ? 'Unlock' : 'Lock', style: LizmoType.rowName.copyWith(
         fontSize: 13,
-        color: locked ? LizmoColors.teal900 : LizmoColors.red,
+        color: locked ? LizmoColors.teal900 : LizmoColors.redText,
       )),
     );
   }
@@ -319,7 +319,7 @@ class _Statements extends ConsumerWidget {
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           ),
           error: (error, _) => Text(ApiFailure.from(error).message,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           data: (rows) => rows.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),

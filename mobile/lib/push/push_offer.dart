@@ -132,7 +132,7 @@ class PushOfferSheet extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
                   'Not now',
-                  style: LizmoType.rowName.copyWith(color: LizmoColors.slate),
+                  style: LizmoType.rowName.copyWith(color: LizmoColors.slateText),
                 ),
               ),
             ),

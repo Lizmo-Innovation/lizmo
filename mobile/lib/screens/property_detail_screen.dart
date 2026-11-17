@@ -761,7 +761,7 @@ class _Chip extends StatelessWidget {
             label,
             style: LizmoType.chipLabel.copyWith(
               fontSize: 13,
-              color: selected ? LizmoColors.teal900 : LizmoColors.slate,
+              color: selected ? LizmoColors.teal900 : LizmoColors.slateText,
             ),
           ),
         ),

@@ -84,7 +84,7 @@ abstract final class LizmoType {
     fontSize: 12,
     fontWeight: FontWeight.w400,
     fontVariations: [FontVariation('wght', 400)],
-    color: LizmoColors.slate,
+    color: LizmoColors.slateText,
   );
 
   /// Chip label, 11/600. Colour is set per status by the chip itself.
@@ -103,17 +103,17 @@ abstract final class LizmoType {
         fontSize: 11,
         fontWeight: FontWeight.w400,
         fontVariations: _wght(400),
-        color: LizmoColors.white.withValues(alpha: 0.65),
+        color: LizmoColors.onTealMuted,
       );
 
-  /// Primary action button label, 14/700.
+  /// Primary action button label, 14/700, Ink on coral for contrast.
   static const TextStyle buttonLabel = TextStyle(
     fontFamily: _body,
     package: _package,
     fontSize: 14,
     fontWeight: FontWeight.w700,
     fontVariations: [FontVariation('wght', 700)],
-    color: LizmoColors.white,
+    color: LizmoColors.onCoral,
   );
 
   // ---- Data (IBM Plex Mono) ----
@@ -126,7 +126,7 @@ abstract final class LizmoType {
         fontSize: 11,
         fontWeight: FontWeight.w400,
         letterSpacing: 1,
-        color: LizmoColors.white.withValues(alpha: 0.7),
+        color: LizmoColors.onTealMuted,
       );
 
   /// Stat card figure on the teal header, 19/600.
@@ -155,7 +155,7 @@ abstract final class LizmoType {
     fontSize: 14,
     fontWeight: FontWeight.w500,
     fontVariations: _wght(500),
-    color: LizmoColors.white.withValues(alpha: 0.72),
+    color: LizmoColors.onTealMuted,
     height: 1.4,
   );
 }

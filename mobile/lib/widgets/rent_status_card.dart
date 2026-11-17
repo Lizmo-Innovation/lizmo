@@ -241,9 +241,9 @@ class _StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final (background, ink, muted) = switch (tone) {
       _Tone.done => (LizmoColors.tealBg, LizmoColors.teal900, LizmoColors.teal900),
-      _Tone.plain => (LizmoColors.white, LizmoColors.ink, LizmoColors.slate),
+      _Tone.plain => (LizmoColors.white, LizmoColors.ink, LizmoColors.slateText),
       _Tone.attention => (LizmoColors.amberBg, LizmoColors.amberText, LizmoColors.amberText),
-      _Tone.late => (LizmoColors.redBg, LizmoColors.red, LizmoColors.red),
+      _Tone.late => (LizmoColors.redBg, LizmoColors.redText, LizmoColors.redText),
     };
 
     return Container(
@@ -377,7 +377,7 @@ class _CopyAccountState extends State<_CopyAccount> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${account.channel ?? ''} · ${account.accountName ?? ''}',
-                      style: LizmoType.rowSub.copyWith(color: LizmoColors.slate)),
+                      style: LizmoType.rowSub.copyWith(color: LizmoColors.slateText)),
                   const SizedBox(height: 2),
                   Text(account.accountNumber ?? '',
                       style: LizmoType.dataMedium.copyWith(color: LizmoColors.ink)),

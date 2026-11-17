@@ -355,12 +355,12 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text('Cancel',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.slate)),
+                style: LizmoType.rowName.copyWith(color: LizmoColors.slateText)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text('Delete',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowName.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -404,7 +404,7 @@ class _CreateUnitScreenState extends ConsumerState<CreateUnitScreen> {
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
-      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
     );
   }
 }
@@ -478,7 +478,7 @@ class _ModeOption extends StatelessWidget {
           child: Text(
             label,
             style: LizmoType.rowName.copyWith(
-              color: selected ? LizmoColors.teal900 : LizmoColors.slate,
+              color: selected ? LizmoColors.teal900 : LizmoColors.slateText,
             ),
           ),
         ),
@@ -517,7 +517,7 @@ class _ErrorBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,
-                style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -660,7 +660,7 @@ class _DeleteSection extends StatelessWidget {
         'Delete this unit',
         // Red, not coral: coral is the action accent and belongs to the screen's
         // main action, which this is the opposite of.
-        style: LizmoType.rowName.copyWith(color: LizmoColors.red),
+        style: LizmoType.rowName.copyWith(color: LizmoColors.redText),
       ),
     );
   }

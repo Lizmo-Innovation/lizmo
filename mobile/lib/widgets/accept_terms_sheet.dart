@@ -557,7 +557,7 @@ InputDecoration _decoration(String hint) {
     focusedBorder: border(LizmoColors.teal900),
     errorBorder: border(LizmoColors.red),
     focusedErrorBorder: border(LizmoColors.red),
-    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+    errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
   );
 }
 
@@ -697,7 +697,7 @@ class _RoomChoice extends StatelessWidget {
                     ? 'No price set'
                     : LizmoMoney.peso(room.rent!),
                 style: LizmoType.rowSub.copyWith(
-                  color: chosen ? LizmoColors.teal900 : LizmoColors.slate,
+                  color: chosen ? LizmoColors.teal900 : LizmoColors.slateText,
                 ),
               ),
             ],

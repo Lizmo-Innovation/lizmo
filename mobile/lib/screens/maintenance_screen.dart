@@ -206,7 +206,7 @@ class _ReportCardState extends ConsumerState<_ReportCard> {
             key: const ValueKey('withdraw-confirm'),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text('Take it back',
-                style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+                style: LizmoType.rowName.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),
@@ -314,7 +314,7 @@ class _ReportCardState extends ConsumerState<_ReportCard> {
                         onPressed: _reopen,
                         child: Text('Still broken',
                             style: LizmoType.rowSub
-                                .copyWith(color: LizmoColors.red)),
+                                .copyWith(color: LizmoColors.redText)),
                       ),
                       TextButton(
                         key: ValueKey('fixed-${report.id}'),
@@ -342,7 +342,7 @@ class _ReportCardState extends ConsumerState<_ReportCard> {
                 key: ValueKey('withdraw-${report.id}'),
                 onPressed: _withdraw,
                 child: Text('Take it back',
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.slate)),
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.slateText)),
               ),
             ),
         ],
@@ -486,7 +486,7 @@ class _StillBrokenState extends State<_StillBroken> {
             Navigator.of(context).pop(why);
           },
           child: Text('Send',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.red)),
+              style: LizmoType.rowName.copyWith(color: LizmoColors.redText)),
         ),
       ],
     );

@@ -521,7 +521,7 @@ class _Waiting extends StatelessWidget {
                 key: ValueKey('reject-${payment.paymentId}'),
                 onPressed: busy ? null : onRefuse,
                 child: Text('Not received',
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
               ),
               TextButton(
                 key: ValueKey('confirm-${payment.paymentId}'),

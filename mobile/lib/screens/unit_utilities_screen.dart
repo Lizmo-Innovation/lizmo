@@ -243,7 +243,7 @@ class _UtilityRow extends StatelessWidget {
               hintText: '500',
               hintStyle: LizmoType.rowSub,
               isDense: true,
-              errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
             ),
             validator: (value) {
               final text = (value ?? '').trim();
@@ -309,7 +309,7 @@ class _ErrorBanner extends StatelessWidget {
           const Icon(Icons.error_outline, size: 18, color: LizmoColors.red),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(message, style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+            child: Text(message, style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
           ),
         ],
       ),

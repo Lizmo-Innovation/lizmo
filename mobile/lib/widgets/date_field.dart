@@ -188,7 +188,7 @@ class _LizmoDateFieldState extends State<LizmoDateField> {
         if (_problem != null) ...[
           const SizedBox(height: 6),
           Text(_problem!,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
         ],
       ],
     );

@@ -17,9 +17,12 @@ void main() {
       expect(LizmoStatus.pending.dot, LizmoColors.amber);
     });
 
+    /// Red for the dot; the darker red for its word, which on the red tint
+    /// would otherwise be 3.5:1.
     test('overdue is red', () {
       expect(LizmoStatus.overdue.background, LizmoColors.redBg);
-      expect(LizmoStatus.overdue.foreground, LizmoColors.red);
+      expect(LizmoStatus.overdue.foreground, LizmoColors.redText);
+      expect(LizmoStatus.overdue.dot, LizmoColors.red);
     });
   });
 

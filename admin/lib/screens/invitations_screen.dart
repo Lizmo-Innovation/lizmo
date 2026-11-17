@@ -148,7 +148,7 @@ class _RevokeButtonState extends ConsumerState<_RevokeButton> {
       ),
       child: Text(
         'Withdraw',
-        style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.red),
+        style: LizmoType.rowName.copyWith(fontSize: 13, color: LizmoColors.redText),
       ),
     );
   }
@@ -310,7 +310,7 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+              Text(_error!, style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
             ],
           ],
         ),
@@ -337,7 +337,7 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
-      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
     );
   }
 }

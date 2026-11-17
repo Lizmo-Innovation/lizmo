@@ -174,7 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       focusedBorder: border(LizmoColors.teal900),
       errorBorder: border(LizmoColors.red),
       focusedErrorBorder: border(LizmoColors.red),
-      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+      errorStyle: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
     );
   }
 }
@@ -212,7 +212,7 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: LizmoType.rowSub.copyWith(color: LizmoColors.red),
+              style: LizmoType.rowSub.copyWith(color: LizmoColors.redText),
             ),
           ),
         ],

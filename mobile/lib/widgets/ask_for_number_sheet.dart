@@ -145,7 +145,7 @@ class _AskForNumberSheetState extends ConsumerState<AskForNumberSheet> {
               if (_error case final message?) ...[
                 const SizedBox(height: 10),
                 Text(message,
-                    style: LizmoType.rowSub.copyWith(color: LizmoColors.red)),
+                    style: LizmoType.rowSub.copyWith(color: LizmoColors.redText)),
               ],
               const SizedBox(height: 16),
               PrimaryActionButton(

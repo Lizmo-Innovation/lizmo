@@ -263,7 +263,7 @@ class _ThreadRow extends StatelessWidget {
                             child: Text(
                               thread.withName ?? 'Somebody',
                               style: LizmoType.rowName.copyWith(
-                                color: over ? LizmoColors.slate : LizmoColors.ink,
+                                color: over ? LizmoColors.slateText : LizmoColors.ink,
                                 // Weight as well as the dot. A dot and a
                                 // shade of grey is thin for the one thing
                                 // this list is read to find.
@@ -291,7 +291,7 @@ class _ThreadRow extends StatelessWidget {
                               style: LizmoType.rowSub.copyWith(
                                 color: unread
                                     ? LizmoColors.coral
-                                    : LizmoColors.slate,
+                                    : LizmoColors.slateText,
                                 fontSize: 12,
                               ),
                             ),
@@ -309,7 +309,7 @@ class _ThreadRow extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: LizmoType.rowSub.copyWith(
-                            color: unread ? LizmoColors.ink : LizmoColors.slate,
+                            color: unread ? LizmoColors.ink : LizmoColors.slateText,
                           ),
                         ),
                       ],
