@@ -183,14 +183,18 @@ void main() {
         (tester) async {
       await show(tester, PlaceDetailsDto(depositMonths: 1, advanceMonths: 0));
 
-      expect(find.text('Deposit 1 month · No advance'), findsOneWidget);
-      expect(find.text('About ₱5,000 to move in, for a ₱2,500 space'), findsOneWidget);
+      expect(find.text('Deposit · 1 month'), findsOneWidget);
+      expect(find.text('No advance'), findsOneWidget);
+      expect(find.text('First month'), findsOneWidget);
+      expect(
+          tester.widget<Text>(find.byKey(const ValueKey('move-in-total'))).data,
+          '₱5,000');
     });
 
     testWidgets('half the answer gets no total', (tester) async {
       await show(tester, PlaceDetailsDto(depositMonths: 2));
 
-      expect(find.text('Deposit 2 months'), findsOneWidget);
+      expect(find.text('Deposit · 2 months'), findsOneWidget);
       expect(find.byKey(const ValueKey('move-in-total')), findsNothing);
     });
 
@@ -211,8 +215,11 @@ void main() {
         ),
       ));
 
-      expect(find.text('Let by Elena B.'), findsOneWidget);
+      expect(find.text('Elena B.'), findsOneWidget);
+      // No reply time to say, so none is made up.
+      expect(find.text('Landlord'), findsOneWidget);
       expect(find.text('On Lizmo since October 2026'), findsOneWidget);
+      expect(find.text('EB'), findsOneWidget);
     });
   });
 

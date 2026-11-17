@@ -7,5 +7,8 @@ public enum Amenity {
     FURNISHED,
     LAUNDRY,
     PARKING,
-    CCTV
+    CCTV,
+    /** Water in the rent: in a boarding house it often is, and it is asked. */
+    WATER,
+    SHARED_KITCHEN
 }

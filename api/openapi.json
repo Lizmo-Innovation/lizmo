@@ -8542,7 +8542,9 @@
                                 "FURNISHED",
                                 "LAUNDRY",
                                 "PARKING",
-                                "CCTV"
+                                "CCTV",
+                                "WATER",
+                                "SHARED_KITCHEN"
                             ]
                         }
                     }

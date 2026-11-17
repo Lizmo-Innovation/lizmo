@@ -5242,16 +5242,21 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.text('Women only'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Let by Elena B.'), 300,
+      await tester.scrollUntilVisible(find.text('Elena B.'), 300,
           scrollable: find.byType(Scrollable).first);
 
       expect(find.text('Before you ask'), findsOneWidget);
-      expect(find.text('Deposit 2 months · Advance 1 month'), findsOneWidget);
-      expect(find.text('About ₱7,500 to move in, for a ₱2,500 space'), findsOneWidget);
+      expect(find.text('Deposit · 2 months'), findsOneWidget);
+      expect(find.text('Advance · 1 month'), findsOneWidget);
+      expect(find.text('for a ₱2,500 bed'), findsOneWidget);
+      expect(
+          tester.widget<Text>(find.byKey(const ValueKey('move-in-total'))).data,
+          '₱7,500');
       expect(find.text('Curfew 10pm'), findsOneWidget);
       expect(find.text('No pets'), findsOneWidget);
       expect(find.text('Wi-Fi'), findsOneWidget);
-      expect(find.text('Usually replies within a day · On Lizmo since October 2026'),
+      expect(find.text('Landlord · usually answers within a day'), findsOneWidget);
+      expect(find.text('On Lizmo since October 2026'),
           findsOneWidget);
     });
 
@@ -5276,7 +5281,7 @@ void _findingAPlaceTests() {
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.text('1 ready now, 1 from 1 Nov'), findsOneWidget);
+      expect(find.text('1 now, 1 from 1 Nov'), findsOneWidget);
     });
 
     testWidgets('My place is the way in', (tester) async {
@@ -5325,9 +5330,12 @@ void _findingAPlaceTests() {
 
       expect(find.text('Sunrise Apartments'), findsWidgets);
       expect(find.text('12 Mabini St'), findsOneWidget);
-      expect(find.text('3 spaces vacant'), findsOneWidget);
-      expect(find.text('2nd floor'), findsOneWidget);
-      expect(find.text('3 bedspaces vacant'), findsOneWidget);
+      // The three facts, then where the space is.
+      expect(
+          tester.widget<Text>(find.byKey(const ValueKey('fact-vacant'))).data, '3');
+      expect(find.text('spaces vacant'), findsOneWidget);
+      expect(find.text('2ND FLOOR'), findsOneWidget);
+      expect(find.text('3 bedspaces'), findsOneWidget);
     });
 
     /// The landlord types this field themselves. A number becomes an ordinary
@@ -5349,7 +5357,7 @@ void _findingAPlaceTests() {
         await openFind(tester);
         await enterCode(tester, 'PHK7M4Q2');
 
-        expect(find.text(shown), findsOneWidget,
+        expect(find.text(shown.toUpperCase()), findsOneWidget,
             reason: 'a floor written "$written" should read "$shown"');
       }
     });
@@ -5360,7 +5368,7 @@ void _findingAPlaceTests() {
       await openFind(tester);
       await enterCode(tester, 'PHK7M4Q2');
 
-      expect(find.text('Ground level'), findsOneWidget);
+      expect(find.text('GROUND LEVEL'), findsOneWidget);
     });
 
     /// The whole point: somebody with the code learns how much is vacant and
@@ -5372,7 +5380,7 @@ void _findingAPlaceTests() {
 
       expect(find.textContaining('Bed '), findsNothing);
       expect(find.textContaining('Unit '), findsNothing);
-      expect(find.text('1 unit and 3 bedspaces vacant'), findsOneWidget);
+      expect(find.text('1 unit and 3 bedspaces'), findsOneWidget);
     });
 
     /// On the floor card specifically: the bar below quotes the cheapest
@@ -5478,13 +5486,13 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.byKey(const ValueKey('photo-count')), findsOneWidget);
-      expect(find.text('1/3'), findsOneWidget);
+      expect(find.text('1 / 3'), findsOneWidget);
 
       await tester.drag(find.byKey(const ValueKey('property-photos')),
           const Offset(-400, 0));
       await tester.pumpAndSettle();
 
-      expect(find.text('2/3'), findsOneWidget);
+      expect(find.text('2 / 3'), findsOneWidget);
     });
 
     /// One photograph is not a set to count through.
@@ -5536,7 +5544,9 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       // No vacancy is a real answer, not an empty screen.
-      expect(find.text('No vacant at the moment'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nothing-vacant')), findsOneWidget);
+      expect(
+          tester.widget<Text>(find.byKey(const ValueKey('fact-vacant'))).data, '0');
     });
 
     /// Rent alone is not what a tenant hands over, and utilities are charged
@@ -5566,7 +5576,10 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       // What to do about it, rather than the landlord's unfinished paperwork.
-      expect(find.text('Ask the landlord'), findsOneWidget);
+      expect(find.descendant(
+              of: find.byKey(const ValueKey('whats-vacant')),
+              matching: find.text('Ask')),
+          findsOneWidget);
       expect(find.text('Price not set'), findsNothing);
       // And no "from" price on the bar, since there is none to quote.
       expect(find.byKey(const ValueKey('from-price')), findsNothing);
@@ -5620,7 +5633,7 @@ void _findingAPlaceTests() {
       waiting.complete(place(beds: 2));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('property-loading')), findsNothing);
-      expect(find.text('2 spaces vacant'), findsOneWidget);
+      expect(find.byKey(const ValueKey('key-facts')), findsOneWidget);
     });
 
     /// The button starts the conversation and drops the tenant into it: the
@@ -5709,6 +5722,118 @@ void _findingAPlaceTests() {
 
     /// The second thing anybody wants to know, and it used to be 13px at the
     /// right-hand edge of a floor card.
+    // ---- the scan page, in the order a stranger decides -------------------
+
+    PropertyByCodeResponse ready(PropertyByCodeResponse found) => found
+      ..details = PlaceDetailsDto(
+        whoCanRent: PlaceDetailsDtoWhoCanRentEnum.WOMEN,
+        depositMonths: 2,
+        advanceMonths: 1,
+        amenities: [
+          PlaceDetailsDtoAmenitiesEnum.WATER,
+          PlaceDetailsDtoAmenitiesEnum.WIFI,
+          PlaceDetailsDtoAmenitiesEnum.SHARED_KITCHEN,
+        ],
+      );
+
+    /// The price, how much is free, and how soon: whether it is worth asking.
+    testWidgets('three facts settle whether to ask', (tester) async {
+      await tester.pumpWidget(appWith(found: place(beds: 4)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      String fact(String key) =>
+          tester.widget<Text>(find.byKey(ValueKey(key))).data!;
+      expect(fact('fact-price'), '₱2,500');
+      expect(find.text('a bed, monthly'), findsOneWidget);
+      expect(fact('fact-vacant'), '4');
+      expect(fact('fact-move-in'), 'Now');
+    });
+
+    testWidgets('everything still being readied says when', (tester) async {
+      final later = place(beds: 2);
+      later.floors.first
+        ..readyLater = 2
+        ..readyFrom = DateTime.utc(2026, 12, 1);
+      await tester.pumpWidget(appWith(found: later));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(tester.widget<Text>(find.byKey(const ValueKey('fact-move-in'))).data,
+          '1 Dec');
+      expect(find.text('From 1 Dec'), findsOneWidget);
+    });
+
+    /// What comes with the rent, and what does not.
+    testWidgets('in the rent: water, the kitchen, and utilities on top',
+        (tester) async {
+      await tester.pumpWidget(appWith(found: ready(place(beds: 2, utilitiesOnTop: true))));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('utilities-on-top')), 300,
+          scrollable: find.byType(Scrollable).first);
+
+      expect(find.text('In the rent'), findsOneWidget);
+      expect(find.text('Water'), findsOneWidget);
+      expect(find.text('Shared kitchen'), findsOneWidget);
+    });
+
+    /// Beside the button, what moving in costs.
+    testWidgets('the bar says what moving in costs', (tester) async {
+      await tester.pumpWidget(appWith(found: ready(place(beds: 2))));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('ask-move-in')),
+              matching: find.text('₱7,500')),
+          findsOneWidget);
+    });
+
+    /// The line the spec draws: at 360 wide and 135% text, the name, the
+    /// badges, the facts and the first floor are one scroll away, and Ask is
+    /// never cut.
+    testWidgets('360 wide at 135% text, the decision is one scroll away',
+        (tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 800 * 3);
+      tester.platformDispatcher.textScaleFactorTestValue = 1.35;
+      addTearDown(() {
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+      await tester.pumpWidget(appWith(
+          found: ready(place(beds: 3, photos: const ['https://example.invalid/a.jpg']))));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+      expect(tester.takeException(), isNull);
+
+      // Stacked, full width, and wholly on screen.
+      final ask = tester.getRect(find.byKey(const ValueKey('ask-about-place')));
+      expect(ask.width, greaterThan(300));
+      expect(ask.bottom, lessThanOrEqualTo(800));
+      expect(ask.height, greaterThanOrEqualTo(60));
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      final top = tester.getRect(find.byKey(const ValueKey('floor-2'))).top;
+      expect(top, lessThan(ask.top), reason: 'the first floor in view above Ask');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('on a tablet the page is a 720 column', (tester) async {
+      tester.view.physicalSize = const Size(1100 * 3, 1400 * 3);
+      addTearDown(() => tester.view.physicalSize = const Size(390 * 3, 844 * 3));
+      await tester.pumpWidget(appWith(found: place(beds: 2)));
+      await openFind(tester);
+      await enterCode(tester, 'PHK7M4Q2');
+
+      expect(tester.getRect(find.byKey(const ValueKey('key-facts'))).width,
+          lessThanOrEqualTo(720));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the cheapest rent going is named on the bar', (tester) async {
       await tester.pumpWidget(
           appWith(found: place(beds: 2, cheapest: 2500, dearest: 3200)));
@@ -5716,7 +5841,7 @@ void _findingAPlaceTests() {
       await enterCode(tester, 'PHK7M4Q2');
 
       expect(find.byKey(const ValueKey('from-price')), findsOneWidget);
-      expect(find.text('From'), findsOneWidget);
+      expect(find.text('From '), findsOneWidget);
       expect(
           tester.widget<Text>(find.byKey(const ValueKey('from-price'))).data,
           '₱2,500');

@@ -421,6 +421,8 @@ enum PlaceDetailsDtoAmenitiesEnum {
   LAUNDRY._(r'LAUNDRY'),
   PARKING._(r'PARKING'),
   CCTV._(r'CCTV'),
+  WATER._(r'WATER'),
+  SHARED_KITCHEN._(r'SHARED_KITCHEN'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -485,6 +487,8 @@ class PlaceDetailsDtoAmenitiesEnumTypeTransformer {
         case r'LAUNDRY': return PlaceDetailsDtoAmenitiesEnum.LAUNDRY;
         case r'PARKING': return PlaceDetailsDtoAmenitiesEnum.PARKING;
         case r'CCTV': return PlaceDetailsDtoAmenitiesEnum.CCTV;
+        case r'WATER': return PlaceDetailsDtoAmenitiesEnum.WATER;
+        case r'SHARED_KITCHEN': return PlaceDetailsDtoAmenitiesEnum.SHARED_KITCHEN;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
