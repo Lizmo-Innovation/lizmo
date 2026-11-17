@@ -339,14 +339,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Leases ending'), findsOneWidget);
-      expect(find.text('2 tenants'), findsOneWidget);
-      expect(find.text('Ends in 23 days'), findsOneWidget);
-      expect(find.text('Past its end'), findsOneWidget);
-      expect(find.text('Tenant far'), findsNothing);
-      expect(find.text('Tenant none'), findsNothing);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.textContaining('Ends in 23 days'), findsOneWidget);
+      expect(find.textContaining('Past its end'), findsOneWidget);
+      expect(find.textContaining('Tenant far'), findsNothing);
+      expect(find.textContaining('Tenant none'), findsNothing);
       expect(
-        tester.getTopLeft(find.text('Tenant past')).dy,
-        lessThan(tester.getTopLeft(find.text('Tenant soon')).dy),
+        tester.getTopLeft(find.textContaining('Tenant past')).dy,
+        lessThan(tester.getTopLeft(find.textContaining('Tenant soon')).dy),
       );
     });
 

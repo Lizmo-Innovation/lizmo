@@ -172,6 +172,7 @@ Class | Method | HTTP request | Description
 *RentApi* | [**listMyPayments**](doc//RentApi.md#listmypayments) | **GET** /api/v1/me/leases/{leaseId}/payments | What I have paid
 *RentApi* | [**recordPayment**](doc//RentApi.md#recordpayment) | **POST** /api/v1/leases/{leaseId}/payments | Record money I received
 *RentApi* | [**rejectPayment**](doc//RentApi.md#rejectpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/reject | Say it did not arrive
+*RentApi* | [**remindTenant**](doc//RentApi.md#remindtenant) | **POST** /api/v1/leases/{leaseId}/remind | Remind a tenant that rent is late
 *SigningUpApi* | [**acceptInvitation**](doc//SigningUpApi.md#acceptinvitation) | **POST** /api/v1/auth/invitations/accept | Become a landlord
 *SigningUpApi* | [**completeRegistration**](doc//SigningUpApi.md#completeregistration) | **POST** /api/v1/auth/register/complete | Finish signing up
 *SigningUpApi* | [**getInvitation**](doc//SigningUpApi.md#getinvitation) | **GET** /api/v1/auth/invitations/{token} | What this invitation is for
@@ -266,6 +267,7 @@ Class | Method | HTTP request | Description
  - [RecordPaymentRequest](doc//RecordPaymentRequest.md)
  - [RefreshRequest](doc//RefreshRequest.md)
  - [RegisterDevice](doc//RegisterDevice.md)
+ - [Reminded](doc//Reminded.md)
  - [RentRoll](doc//RentRoll.md)
  - [RentRollRow](doc//RentRollRow.md)
  - [ReportProblemRequest](doc//ReportProblemRequest.md)

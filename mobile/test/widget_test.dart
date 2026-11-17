@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:lizmo/billing/payment_channel_providers.dart';
 import 'package:lizmo/screens/payment_channels_screen.dart';
+import 'package:lizmo/widgets/todo_card.dart';
+import 'package:lizmo/widgets/collections_card.dart';
 import 'package:lizmo/widgets/payment_channel_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -6720,7 +6722,7 @@ void _landlordRequestTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
-      expect(find.text('1 waiting on you'), findsOneWidget);
+      expect(find.byKey(const ValueKey('unread-dot')), findsOneWidget);
       expect(find.text('Ana Reyes'), findsWidgets);
       expect(find.text('Bea Santos'), findsOneWidget);
     });
@@ -7018,16 +7020,19 @@ void _landlordRequestTests() {
 
     /// A card on a dashboard, not an inbox: a landlord with twenty of them
     /// would have nothing else on the screen.
-    testWidgets('Today shows three and offers the rest', (tester) async {
+    testWidgets('Today shows five and offers the rest', (tester) async {
       final api = _FakeInquiriesApi(thread: thread(who: applicant()));
       await tester.pumpWidget(appWith(api: api, inbox: [
-        for (var i = 1; i <= 5; i++)
+        for (var i = 1; i <= 7; i++)
           summary(id: 'i$i', withName: 'Asker $i', unread: i == 1),
       ]));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('inquiry-i1')), findsOneWidget);
-      expect(find.byKey(const ValueKey('inquiry-i5')), findsNothing);
+      expect(find.byKey(const ValueKey('inquiry-i7')), findsNothing);
+      expect(find.text('See all 7'), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('all-conversations')));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('all-conversations')));
       await tester.pumpAndSettle();
@@ -10386,8 +10391,12 @@ void _tenantLeaseTests() {
       int occupied = 0,
       num depositsHeld = 0,
       List<LeaseResponse>? tenants,
+      RentApi? rent,
+      // The figures never arrive: the server still waking.
+      bool stillWaking = false,
     }) => ProviderScope(
       overrides: [
+        if (rent != null) rentApiProvider.overrideWithValue(rent),
         authControllerProvider.overrideWith(
           () => _FakeAuth(_signedIn({LizmoProfile.landlord})),
         ),
@@ -10417,6 +10426,10 @@ void _tenantLeaseTests() {
         myNotificationsProvider.overrideWith(
           (ref) async => const <NotificationResponse>[],
         ),
+        if (stillWaking)
+          collectionsProvider
+              .overrideWith((ref) => Completer<CollectionsSummary>().future)
+        else
         collectionsProvider.overrideWith((ref) async => CollectionsSummary(
               dueThisMonth: due,
               collectedThisMonth: collected,
@@ -10428,7 +10441,10 @@ void _tenantLeaseTests() {
               depositsHeld: depositsHeld,
             )),
         if (threads != null)
-          myInquiriesProvider.overrideWith((ref) async => threads),
+          myInquiriesProvider.overrideWith((ref) async => threads)
+        else if (stillWaking)
+          myInquiriesProvider
+              .overrideWith((ref) => Completer<List<InquirySummary>>().future),
         if (repairsFail != null)
           maintenanceToHandleProvider.overrideWith((ref) async => throw repairsFail)
         else if (repairs != null)
@@ -10444,17 +10460,25 @@ void _tenantLeaseTests() {
       child: const LizmoApp(),
     );
 
-    testWidgets('the three figures a landlord opens the app for',
+    testWidgets('the month in one bar: paid, waiting and behind',
         (tester) async {
-      await tester.pumpWidget(appWith());
+      await tester.pumpWidget(appWith(waiting: 1, awaiting: [
+        AwaitingRow(leaseId: 'l1', paymentId: 'pay1', tenantName: 'Ana Reyes',
+            unitNumber: '2B', amount: 1000),
+      ], tenants: const []));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('rent-bar-2')), 300,
+          scrollable: find.byType(Scrollable).last);
 
-      expect(find.text('Due'), findsOneWidget);
-      expect(find.text('₱5,000'), findsOneWidget);
-      expect(find.text('Collected'), findsOneWidget);
-      expect(find.text('₱2,500'), findsOneWidget);
-      expect(find.text('Owed in all'), findsOneWidget);
-      expect(find.text('₱7,500'), findsOneWidget);
+      expect(find.textContaining('October rent'), findsOneWidget);
+      // ₱2,500 paid of ₱5,000, ₱1,000 told and not confirmed, the rest late.
+      expect(
+        _labelAbove(tester, find.byKey(const ValueKey('rent-bar-0'))),
+        'October rent: ₱2,500 paid, '
+        '₱1,000 waiting for you to confirm, ₱1,500 behind',
+      );
+      expect(find.text('₱7,500 owed in all, across every month'), findsOneWidget);
     });
 
     /// Four zeroes read as a broken screen rather than an empty portfolio.
@@ -10465,7 +10489,7 @@ void _tenantLeaseTests() {
 
       expect(find.textContaining('once somebody is renting from you'),
           findsOneWidget);
-      expect(find.text('Due'), findsNothing);
+      expect(find.byKey(const ValueKey('rent-bar')), findsNothing);
     });
 
     /// The only line here about the landlord's own behaviour rather than
@@ -10476,7 +10500,12 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('confirm-card')), findsOneWidget);
-      expect(find.text('2 waiting for you to confirm'), findsOneWidget);
+      expect(find.text('Payments to confirm'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('confirm-card')),
+              matching: find.text('2')),
+          findsOneWidget);
     });
 
     testWidgets('nothing waiting means no prompt', (tester) async {
@@ -10492,18 +10521,31 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Behind on rent'), findsOneWidget);
-      expect(find.text('One tenant'), findsOneWidget);
-      expect(find.text('Ana Reyes'), findsOneWidget);
-      expect(find.textContaining('Bed 1, 2B · 2 months late'), findsOneWidget);
-      expect(find.text('₱5,000'), findsWidgets);
+      expect(find.text('Ana Reyes · Bed 1, 2B'), findsOneWidget);
+      expect(find.textContaining('₱5,000 · overdue'), findsOneWidget);
+      expect(find.byKey(const ValueKey('remind-l1')), findsOneWidget);
     });
 
-    testWidgets('one month late reads as one month', (tester) async {
-      await tester.pumpWidget(
-          appWith(arrears: [behind(months: 1, owed: 2500)]));
+    /// How long, in days, from the month that has been late longest.
+    testWidgets('late is said in days since it was due', (tester) async {
+      final row = behind(months: 1, owed: 2500)
+        ..oldestDueDate = DateTime.utc(2026, 9, 30);
+      // Tenants pinned, which pins today to 12 October.
+      await tester.pumpWidget(appWith(arrears: [row], tenants: const []));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('1 month late'), findsOneWidget);
+      expect(find.text('₱2,500 · overdue 12 days'), findsOneWidget);
+    });
+
+    /// Once a day at most: the button says it went, rather than inviting a
+    /// second.
+    testWidgets('a tenant already reminded today shows Reminded', (tester) async {
+      final row = behind()..remindedAt = DateTime.now();
+      await tester.pumpWidget(appWith(arrears: [row]));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('reminded-l1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('remind-l1')), findsNothing);
     });
 
     /// Seeing who is behind and then having to go and find them is the half
@@ -10548,7 +10590,7 @@ void _tenantLeaseTests() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sent to GCash · Elena Reyes · 09171112222'), findsOneWidget);
+      expect(find.text('· sent to GCash · Elena Reyes · 09171112222'), findsOneWidget);
     });
 
     testWidgets('each waiting payment is named, and opens its tenant',
@@ -10567,10 +10609,13 @@ void _tenantLeaseTests() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Ana Reyes'), findsOneWidget);
-      expect(find.text('Bed 1, 2B · paid 3 Sep'), findsOneWidget);
+      expect(find.text('Ana Reyes · Bed 1, 2B'), findsOneWidget);
+      // Alone on Today: the full Confirm, named for a screen reader.
+      expect(_labelAbove(tester, find.byKey(const ValueKey('confirm-pay1'))),
+          'Confirm ₱2,500 from Ana Reyes');
+      expect(find.byKey(const ValueKey('nothing-else')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('awaiting-pay1')));
+      await tester.tap(find.text('Ana Reyes · Bed 1, 2B'));
       await tester.pumpAndSettle();
 
       expect(find.byType(TenantDetailScreen), findsOneWidget);
@@ -10649,8 +10694,9 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Behind on rent or deposit'), findsOneWidget);
-      expect(find.text('Bed 1, 2B · deposit ₱5,000 not received'),
-          findsOneWidget);
+      expect(find.text('deposit ₱5,000 not received'), findsOneWidget);
+      // Remind is about rent; a deposit is settled between them.
+      expect(find.byKey(const ValueKey('remind-l1')), findsNothing);
     });
 
     testWidgets('nobody behind means no list', (tester) async {
@@ -10682,7 +10728,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
-      expect(find.text('1 waiting on you'), findsOneWidget);
+      expect(find.byKey(const ValueKey('unread-dot')), findsOneWidget);
     });
 
     testWidgets('one already answered is listed without a nudge',
@@ -10691,7 +10737,7 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('inquiries-card')), findsOneWidget);
-      expect(find.text('1 waiting on you'), findsNothing);
+      expect(find.byKey(const ValueKey('unread-dot')), findsNothing);
     });
 
     Finder inHeader(Finder finder) =>
@@ -10740,7 +10786,7 @@ void _tenantLeaseTests() {
       await tester.scrollUntilVisible(
           find.byKey(const ValueKey('leases-ending-card')), 300,
           scrollable: find.byType(Scrollable).last);
-      expect(find.text('Past its end'), findsOneWidget);
+      expect(find.textContaining('Past its end'), findsOneWidget);
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
     });
 
@@ -10805,11 +10851,11 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(inRepairs(find.text('Repairs')), findsOneWidget);
-      expect(inRepairs(find.text('1 new')), findsOneWidget);
+      expect(inRepairs(find.text('1')), findsOneWidget);
       expect(inRepairs(find.text('The ceiling fan grinds and stops')), findsOneWidget);
       expect(inRepairs(find.text('Ana Reyes · Bed 1, 2B · Sunrise Apartments')),
           findsOneWidget);
-      expect(inRepairs(find.text('New · 2h')), findsOneWidget);
+      expect(inRepairs(find.text('2 h')), findsOneWidget);
       expect(find.byKey(const ValueKey('all-caught-up')), findsNothing);
 
       await tester.ensureVisible(find.byKey(const ValueKey('repair-m1')));
@@ -10869,13 +10915,14 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(inRepairs(find.text('Sink leaking')), findsNothing);
-      expect(inRepairs(find.text('1 in progress · See all repairs ›')), findsOneWidget);
+      expect(inRepairs(find.text('See all · 1 in progress')), findsOneWidget);
     });
 
-    /// Today is a summary; the Maintenance tab has them all.
-    testWidgets('only the three that have waited longest are listed',
+    /// Today is a summary; the Maintenance tab has them all. With somebody
+    /// asking too, each card keeps to its first two.
+    testWidgets('beside other kinds, only the two that waited longest',
         (tester) async {
-      await tester.pumpWidget(appWith(threads: const [], repairs: [
+      await tester.pumpWidget(appWith(threads: [asking()], repairs: [
         repair('m1', description: 'Newest', hoursAgo: 1),
         repair('m2', description: 'Oldest', hoursAgo: 80),
         repair('m3', description: 'Middle', hoursAgo: 30),
@@ -10883,12 +10930,13 @@ void _tenantLeaseTests() {
       ]));
       await tester.pumpAndSettle();
 
-      expect(inRepairs(find.text('4 new')), findsOneWidget);
+      expect(inRepairs(find.text('4')), findsOneWidget);
       expect(inRepairs(find.text('Newest')), findsNothing);
+      expect(inRepairs(find.text('Middle')), findsNothing);
       final oldest = tester.getTopLeft(inRepairs(find.text('Oldest'))).dy;
       final second = tester.getTopLeft(inRepairs(find.text('Second oldest'))).dy;
       expect(oldest, lessThan(second));
-      expect(inRepairs(find.text('1 more · See all repairs ›')), findsOneWidget);
+      expect(inRepairs(find.text('See all 4')), findsOneWidget);
     });
 
     testWidgets('see all opens the Maintenance tab', (tester) async {
@@ -10904,6 +10952,210 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.byType(MaintenanceInboxScreen), findsOneWidget);
+    });
+
+    // ---- Today: order, size, and the actions on the rows -----------------
+
+    AwaitingRow toConfirm(String id, {int daysAgo = 1}) => AwaitingRow(
+          leaseId: 'l1',
+          paymentId: id,
+          tenantName: 'Tenant $id',
+          unitNumber: '2B',
+          amount: 2500,
+          paymentMethod: AwaitingRowPaymentMethodEnum.GCASH,
+          remarks: 'Ref 0042',
+          proofUrl: 'https://example.test/$id.jpg',
+          declaredAt: DateTime.now().subtract(Duration(days: daysAgo)),
+        );
+
+    Finder card(String key) => find.byKey(ValueKey(key));
+
+    /// Most perishable first, whatever the counts: one person asking sits
+    /// above three payments.
+    testWidgets('the kinds keep their order, not their size', (tester) async {
+      await tester.pumpWidget(appWith(
+        threads: [asking()],
+        waiting: 3,
+        awaiting: [toConfirm('a'), toConfirm('b'), toConfirm('c')],
+        arrears: [behind(), behind(leaseId: 'l2'), behind(leaseId: 'l3')],
+        repairs: [repair('m1')],
+        properties: [PropertyResponse(id: 'p1', name: 'Sunrise Apartments')],
+      ));
+      await tester.pumpAndSettle();
+
+      final order = [
+        'inquiries-card', 'confirm-card', 'repairs-card', 'arrears-card',
+      ].map((key) => tester.getTopLeft(card(key)).dy).toList();
+      for (var i = 1; i < order.length; i++) {
+        expect(order[i], greaterThan(order[i - 1]));
+      }
+    });
+
+    /// Several kinds share the screen: each keeps to two, and the rest is
+    /// one tap away.
+    testWidgets('beside other kinds a card shows two and See all',
+        (tester) async {
+      await tester.pumpWidget(appWith(
+        threads: [asking()],
+        waiting: 3,
+        awaiting: [toConfirm('a', daysAgo: 3), toConfirm('b', daysAgo: 2),
+            toConfirm('c', daysAgo: 1)],
+      ));
+      await tester.pumpAndSettle();
+
+      // Oldest first.
+      expect(find.byKey(const ValueKey('awaiting-a')), findsOneWidget);
+      expect(find.byKey(const ValueKey('awaiting-b')), findsOneWidget);
+      expect(find.byKey(const ValueKey('awaiting-c')), findsNothing);
+      // The short Confirm, beside the row.
+      expect(find.widgetWithText(OutlinedButton, 'Confirm'), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('nothing-else')), findsNothing);
+
+      await tester.ensureVisible(find.text('See all 3'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('See all 3'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('awaiting-c')), findsOneWidget);
+    });
+
+    /// Alone on Today, the one card has the room to be dealt with there and
+    /// then: the reference, the screenshot, and Confirm with the amount.
+    testWidgets('one kind alone is shown in full', (tester) async {
+      await tester.pumpWidget(appWith(
+        threads: const [],
+        waiting: 1,
+        awaiting: [toConfirm('a')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ref 0042'), findsOneWidget);
+      expect(find.byKey(const ValueKey('screenshot-a')), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Confirm ₱2,500'), findsOneWidget);
+      expect(find.text('Nothing else needs you today.'), findsOneWidget);
+    });
+
+    testWidgets('Confirm on Today confirms, without opening the tenant',
+        (tester) async {
+      final rent = _TodayRentApi();
+      await tester.pumpWidget(appWith(
+        threads: [asking()],
+        waiting: 1,
+        awaiting: [toConfirm('a')],
+        rent: rent,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('confirm-a')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('confirm-a')));
+      await tester.pumpAndSettle();
+
+      expect(rent.confirmed, ['l1/a']);
+      expect(find.text('Confirmed ₱2,500 from Tenant a.'), findsOneWidget);
+      expect(find.byType(TenantDetailScreen), findsNothing);
+    });
+
+    testWidgets('Remind sends one, and says so', (tester) async {
+      final rent = _TodayRentApi();
+      await tester.pumpWidget(appWith(arrears: [behind()], rent: rent));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('remind-l1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('remind-l1')));
+      await tester.pumpAndSettle();
+
+      expect(rent.reminded, ['l1']);
+      expect(find.text('Reminder sent to Ana Reyes.'), findsOneWidget);
+    });
+
+    /// A count is a way in: Behind goes to the tenants behind.
+    testWidgets('a header count scrolls to its card', (tester) async {
+      await tester.pumpWidget(appWith(
+        threads: [for (var i = 1; i <= 2; i++) asking()..id = 'i$i'],
+        waiting: 2,
+        awaiting: [toConfirm('a'), toConfirm('b')],
+        repairs: [repair('m1'), repair('m2')],
+        arrears: [behind(), behind(leaseId: 'l2')],
+        properties: [PropertyResponse(id: 'p1', name: 'Sunrise Apartments')],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.descendant(
+          of: find.byType(LatticeHeader), matching: find.text('Behind')));
+      await tester.pumpAndSettle();
+
+      final top = tester.getTopLeft(card('arrears-card')).dy;
+      expect(top, greaterThanOrEqualTo(0));
+      expect(top, lessThan(tester.view.physicalSize.height / 3 / 2));
+    });
+
+    /// The server waking after a quiet spell: shapes, not spinners, and
+    /// after five seconds a word on why.
+    testWidgets('the first load is skeleton cards, then an explanation',
+        (tester) async {
+      await tester.pumpWidget(appWith(stillWaking: true));
+      // Settles: the skeletons do not animate, and the five seconds are a
+      // timer, not frames.
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('today-loading')), findsOneWidget);
+      expect(find.byType(TodoSkeleton), findsWidgets);
+      expect(find.byKey(const ValueKey('still-loading')), findsNothing);
+
+      await tester.pump(const Duration(seconds: 6));
+
+      expect(find.byKey(const ValueKey('still-loading')), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('360 wide at 135% text, every kind fits', (tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 800 * 3);
+      tester.platformDispatcher.textScaleFactorTestValue = 1.35;
+      addTearDown(() {
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+      await tester.pumpWidget(appWith(
+          threads: [asking()],
+          waiting: 1,
+          awaiting: [toConfirm('a')],
+          repairs: [repair('m1')],
+          arrears: [behind()],
+          tenants: [
+            LeaseResponse(
+              id: 'l9',
+              tenantName: 'Ana Reyes',
+              unitNumber: '2B',
+              startDate: DateTime.utc(2026, 1, 1),
+              termEndsOn: DateTime.utc(2026, 10, 20),
+            ),
+          ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(card('inquiries-card'), findsOneWidget);
+    });
+
+    /// A wide tablet has the room to show what to do and how things stand
+    /// at once.
+    testWidgets('on a wide tablet the figures sit beside the to-dos',
+        (tester) async {
+      tester.view.physicalSize = const Size(1100 * 3, 1400 * 3);
+      addTearDown(() => tester.view.physicalSize = const Size(390 * 3, 844 * 3));
+      await tester.pumpWidget(appWith(
+        threads: [asking()],
+        properties: [PropertyResponse(id: 'p1', name: 'Sunrise Apartments')],
+      ));
+      await tester.pumpAndSettle();
+
+      final todo = tester.getRect(card('inquiries-card'));
+      final figures = tester.getRect(find.byType(CollectionsCard));
+      expect(figures.left, greaterThan(todo.right));
+      expect(figures.top, lessThan(todo.bottom));
+      expect(tester.takeException(), isNull);
     });
 
     /// Hidden, a failure would read as nothing broken.
@@ -11217,7 +11469,9 @@ void _tenantLeaseTests() {
       await tester.pumpAndSettle();
 
       expect(find.text('Occupancy'), findsOneWidget);
-      expect(find.text('1 of 4 let'), findsOneWidget);
+      expect(find.text('Occupied  1/4'), findsOneWidget);
+      expect(_labelAbove(tester, find.byKey(const ValueKey('occupied-figure'))),
+          '1 of 4 let');
     });
 
     /// The figure that turns "three beds free" into a reason to do something.
@@ -11268,7 +11522,9 @@ void _tenantLeaseTests() {
       await tester.pumpWidget(appWith(occupied: 4, empty: 0, emptyRent: 0));
       await tester.pumpAndSettle();
 
-      expect(find.text('4 of 4 let'), findsOneWidget);
+      expect(_labelAbove(tester, find.byKey(const ValueKey('occupied-figure'))),
+          '4 of 4 let');
+      expect(find.byKey(const ValueKey('vacant-where')), findsNothing);
       expect(find.text('Where the space is'), findsNothing);
     });
 
@@ -12892,4 +13148,31 @@ class _FakePhotosApi extends PropertiesApi {
 class _NeverAskedPush extends NoPushChannel {
   @override
   Future<PushPermission> permission() async => PushPermission.notAsked;
+}
+
+/// The label a [Semantics] above [of] gives it, whether or not it is on
+/// screen right now.
+String? _labelAbove(WidgetTester tester, Finder of) => tester
+    .widget<Semantics>(
+        find.ancestor(of: of, matching: find.byType(Semantics)).first)
+    .properties
+    .label;
+
+class _TodayRentApi extends RentApi {
+  final confirmed = <String>[];
+  final reminded = <String>[];
+
+  @override
+  Future<PaymentResponse?> confirmPayment(String leaseId, String paymentId,
+      {Future<void>? abortTrigger}) async {
+    confirmed.add('$leaseId/$paymentId');
+    return null;
+  }
+
+  @override
+  Future<Reminded?> remindTenant(String leaseId,
+      {Future<void>? abortTrigger}) async {
+    reminded.add(leaseId);
+    return Reminded(sentAt: DateTime.now());
+  }
 }

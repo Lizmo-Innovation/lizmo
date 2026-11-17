@@ -2618,6 +2618,49 @@
                 }
             }
         },
+        "/api/v1/leases/{leaseId}/remind": {
+            "post": {
+                "tags": [
+                    "Rent"
+                ],
+                "summary": "Remind a tenant that rent is late",
+                "description": "What is owed, and nothing else: no threats, no penalties. Once a day at most for each tenancy.",
+                "operationId": "remindTenant",
+                "parameters": [
+                    {
+                        "name": "leaseId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "When it was sent",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Reminded"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Nothing is late, or one went today",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/leases/{leaseId}/payments": {
             "get": {
                 "tags": [
@@ -7473,6 +7516,10 @@
                     },
                     "depositOwed": {
                         "type": "number"
+                    },
+                    "remindedAt": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "description": "A tenant who is behind"
@@ -7513,6 +7560,23 @@
                     "declaredAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "paymentMethod": {
+                        "type": "string",
+                        "enum": [
+                            "CASH",
+                            "GCASH",
+                            "MAYA",
+                            "BANK_TRANSFER",
+                            "OTHER",
+                            "ADVANCE"
+                        ]
+                    },
+                    "remarks": {
+                        "type": "string"
+                    },
+                    "proofUrl": {
+                        "type": "string"
                     }
                 },
                 "description": "A payment waiting for the landlord to confirm it"
@@ -8599,6 +8663,16 @@
                     }
                 },
                 "description": "A unit as its property screen shows it"
+            },
+            "Reminded": {
+                "type": "object",
+                "properties": {
+                    "sentAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "description": "A reminder sent"
             }
         }
     }

@@ -7,14 +7,14 @@ import '../property/property_providers.dart';
 import '../router.dart';
 import '../tenant/tenant_providers.dart';
 import 'lease_term.dart';
+import 'todo_card.dart';
 
 /// How close to its end a lease has to be before Today mentions it.
 const leaseEndingWithinDays = 30;
 
 /// Tenancies ending within a month, or past their end with nothing done,
 /// soonest first. Null while the tenants are not known yet.
-final leasesEndingProvider =
-    Provider.autoDispose<List<LeaseResponse>?>((ref) {
+final leasesEndingProvider = Provider.autoDispose<List<LeaseResponse>?>((ref) {
   final tenants = ref.watch(myTenantsProvider).valueOrNull;
   if (tenants == null) return null;
   final today = ref.watch(todayProvider);
@@ -34,7 +34,10 @@ final leasesEndingProvider =
 /// answer -- are they staying? -- and the answer is a tap away: extend it, or
 /// end the tenancy. Nothing here happens on its own.
 class LeasesEndingCard extends ConsumerWidget {
-  const LeasesEndingCard({super.key});
+  const LeasesEndingCard({super.key, this.compact = false});
+
+  /// Other kinds of to-do are on Today too.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,38 +45,16 @@ class LeasesEndingCard extends ConsumerWidget {
     if (ending.isEmpty) return const SizedBox.shrink();
     final today = ref.watch(todayProvider);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        key: const ValueKey('leases-ending-card'),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: LizmoColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E8E6)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Leases ending', style: LizmoType.sectionHeading),
-                ),
-                Text(
-                  ending.length == 1 ? 'One tenant' : '${ending.length} tenants',
-                  style: LizmoType.rowSub.copyWith(
-                    color: LizmoColors.amberText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            for (final lease in ending) _EndingRow(lease: lease, today: today),
-          ],
-        ),
-      ),
+    return TodoCard(
+      key: const ValueKey('leases-ending-card'),
+      icon: Icons.event_outlined,
+      tone: TodoTone.ending,
+      title: 'Leases ending',
+      count: ending.length,
+      compact: compact,
+      rows: [
+        for (final lease in ending) _EndingRow(lease: lease, today: today),
+      ],
     );
   }
 }
@@ -92,48 +73,15 @@ class _EndingRow extends StatelessWidget {
         ? 'Unit ${lease.unitNumber}'
         : '${lease.bedLabel}, ${lease.unitNumber}';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        key: ValueKey('ending-${lease.id}'),
-        // To the tenancy, where Extend and End are.
-        onTap: () => context.openInTab(Detail.tenancy(lease.id!)),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: LizmoColors.canvas,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      lease.tenantName ?? 'A tenant',
-                      style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$where · ${termDate(ends)}',
-                      style: LizmoType.rowSub.copyWith(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                left < 0 ? 'Past its end' : 'Ends ${inDays(left)}',
-                style: LizmoType.rowSub.copyWith(
-                  color: left < 0 ? LizmoColors.redText : LizmoColors.amberText,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 18, color: LizmoColors.slate),
-            ],
-          ),
+    return TodoRow(
+      key: ValueKey('ending-${lease.id}'),
+      leading: TodoAvatar(name: lease.tenantName, tone: TodoTone.ending),
+      title: '${lease.tenantName ?? 'A tenant'} · $where',
+      onTap: () => context.openInTab(Detail.tenancy(lease.id!)),
+      sub: Text(
+        '${left < 0 ? 'Past its end' : 'Ends ${inDays(left)}'} · ${termDate(ends)}',
+        style: LizmoType.rowSub.copyWith(
+          color: left < 0 ? LizmoColors.redText : LizmoColors.slateText,
         ),
       ),
     );

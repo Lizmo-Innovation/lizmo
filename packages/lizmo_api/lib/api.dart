@@ -119,6 +119,7 @@ part 'model/receipt_response.dart';
 part 'model/record_payment_request.dart';
 part 'model/refresh_request.dart';
 part 'model/register_device.dart';
+part 'model/reminded.dart';
 part 'model/rent_roll.dart';
 part 'model/rent_roll_row.dart';
 part 'model/report_problem_request.dart';

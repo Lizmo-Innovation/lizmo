@@ -81,16 +81,29 @@ class _Figures extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text('Occupancy', style: LizmoType.sectionHeading),
-            ),
-            Text(
+            Expanded(child: Text('Occupancy', style: LizmoType.sectionHeading)),
+            Semantics(
               // The headline, because it is the sentence a landlord would say
               // out loud. Slots, not units.
-              '$occupied of $lettable let',
-              style: LizmoType.rowSub.copyWith(
-                color: empty == 0 ? LizmoColors.teal900 : LizmoColors.slateText,
-                fontWeight: FontWeight.w600,
+              label: '$occupied of $lettable let',
+              excludeSemantics: true,
+              child: Text.rich(
+                key: const ValueKey('occupied-figure'),
+                TextSpan(
+                  style: LizmoType.rowSub,
+                  children: [
+                    const TextSpan(text: 'Occupied  '),
+                    TextSpan(
+                      text: '$occupied/$lettable',
+                      style: LizmoType.dataMedium.copyWith(
+                        fontSize: 14,
+                        color: empty == 0
+                            ? LizmoColors.teal900
+                            : LizmoColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -98,6 +111,17 @@ class _Figures extends StatelessWidget {
         const SizedBox(height: 12),
 
         _Bar(occupied: occupied, lettable: lettable),
+        // Where the gaps are, in one line, before any figure: "5 vacant: 3 at
+        // Sunrise Apartments, 2 at Casa Verde".
+        if (empty > 0 && summary.vacancies.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            '$empty vacant: ${[for (final row in summary.vacancies)
+              if ((row.empty ?? 0) > 0) '${row.empty} at ${row.propertyName ?? 'a property'}'].join(', ')}',
+            key: const ValueKey('vacant-where'),
+            style: LizmoType.rowSub,
+          ),
+        ],
         const SizedBox(height: 12),
 
         Row(
@@ -142,8 +166,10 @@ class _Figures extends StatelessWidget {
 
         if (summary.vacancies.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Text('Where the space is',
-              style: LizmoType.rowName.copyWith(color: LizmoColors.ink)),
+          Text(
+            'Where the space is',
+            style: LizmoType.rowName.copyWith(color: LizmoColors.ink),
+          ),
           const SizedBox(height: 8),
           for (final row in summary.vacancies) _VacancyRow(row: row),
         ],
@@ -221,11 +247,16 @@ class _VacancyRow extends StatelessWidget {
               ),
               Text(
                 LizmoMoney.peso((row.emptyRent ?? 0)),
-                style: LizmoType.dataMedium.copyWith(color: LizmoColors.slateText),
+                style: LizmoType.dataMedium.copyWith(
+                  color: LizmoColors.slateText,
+                ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right,
-                  size: 18, color: LizmoColors.slate),
+              const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: LizmoColors.slate,
+              ),
             ],
           ),
         ),

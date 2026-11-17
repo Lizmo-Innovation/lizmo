@@ -18,6 +18,9 @@ Name | Type | Description | Notes
 **paidOn** | [**DateTime**](DateTime.md) |  | [optional] 
 **sentTo** | **String** |  | [optional] 
 **declaredAt** | [**DateTime**](DateTime.md) |  | [optional] 
+**paymentMethod** | **String** |  | [optional] 
+**remarks** | **String** |  | [optional] 
+**proofUrl** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

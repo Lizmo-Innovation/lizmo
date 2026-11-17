@@ -45,6 +45,9 @@ public class CollectionsService {
     private final UserRepository users;
     private final app.lizmo.property.BedRepository beds;
     private final BillingService billing;
+    private final app.lizmo.document.StoredDocumentRepository documents;
+    private final app.lizmo.document.DocumentStore store;
+    private final LandlordReminders reminders;
     private final Clock clock;
 
     public CollectionsService(
@@ -56,6 +59,9 @@ public class CollectionsService {
             UserRepository users,
             app.lizmo.property.BedRepository beds,
             BillingService billing,
+            app.lizmo.document.StoredDocumentRepository documents,
+            app.lizmo.document.DocumentStore store,
+            LandlordReminders reminders,
             Clock clock) {
         this.properties = properties;
         this.units = units;
@@ -65,6 +71,9 @@ public class CollectionsService {
         this.users = users;
         this.beds = beds;
         this.billing = billing;
+        this.documents = documents;
+        this.store = store;
+        this.reminders = reminders;
         this.clock = clock;
     }
 
@@ -160,10 +169,12 @@ public class CollectionsService {
             arrears.add(arrearsRow(row, bedLabels));
         }
 
-        // Worst first: the tenant furthest behind is the one a landlord needs
-        // to deal with, and a list sorted by anything else buries them.
+        // Oldest first: the month that has been late longest is the one a
+        // landlord needs to deal with, and a list sorted by anything else
+        // buries it. A deposit with no rent late sorts after them.
         arrears.sort(Comparator
-                .comparingInt(CollectionsSummary.ArrearsRow::monthsLate).reversed()
+                .comparing(CollectionsSummary.ArrearsRow::oldestDueDate,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(CollectionsSummary.ArrearsRow::outstanding,
                         Comparator.reverseOrder()));
 
@@ -232,7 +243,16 @@ public class CollectionsService {
                 row.payment().getAmountPaid(),
                 row.payment().getPaymentDate(),
                 row.payment().getSentTo(),
-                row.payment().getCreatedAt());
+                row.payment().getCreatedAt(),
+                row.payment().getPaymentMethod(),
+                row.payment().getRemarks(),
+                documents.findByOwnerTypeAndOwnerId(
+                                app.lizmo.document.DocumentOwnerType.PAYMENT, row.payment().getId())
+                        .stream()
+                        .findFirst()
+                        .map(document -> store.presignedUrl(
+                                document.getStorageKey(), java.time.Duration.ofMinutes(10)))
+                        .orElse(null));
     }
 
     /**
@@ -275,7 +295,8 @@ public class CollectionsService {
                 row.owed(),
                 row.monthsLate(),
                 row.oldest(),
-                row.depositOwed());
+                row.depositOwed(),
+                reminders.lastSent(lease));
     }
 
 }

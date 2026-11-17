@@ -86,6 +86,7 @@ doc/ReceiptsApi.md
 doc/RecordPaymentRequest.md
 doc/RefreshRequest.md
 doc/RegisterDevice.md
+doc/Reminded.md
 doc/RentApi.md
 doc/RentRoll.md
 doc/RentRollRow.md
@@ -216,6 +217,7 @@ lib/model/receipt_response.dart
 lib/model/record_payment_request.dart
 lib/model/refresh_request.dart
 lib/model/register_device.dart
+lib/model/reminded.dart
 lib/model/rent_roll.dart
 lib/model/rent_roll_row.dart
 lib/model/report_problem_request.dart
@@ -258,5 +260,6 @@ test/ready_from_request_test.dart
 test/receipt_response_test.dart
 test/receipts_api_test.dart
 test/register_device_test.dart
+test/reminded_test.dart
 test/tenancy_test.dart
 test/unit_overview_test.dart

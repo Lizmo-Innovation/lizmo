@@ -20,6 +20,7 @@ Method | HTTP request | Description
 [**listMyPayments**](RentApi.md#listmypayments) | **GET** /api/v1/me/leases/{leaseId}/payments | What I have paid
 [**recordPayment**](RentApi.md#recordpayment) | **POST** /api/v1/leases/{leaseId}/payments | Record money I received
 [**rejectPayment**](RentApi.md#rejectpayment) | **POST** /api/v1/leases/{leaseId}/payments/{paymentId}/reject | Say it did not arrive
+[**remindTenant**](RentApi.md#remindtenant) | **POST** /api/v1/leases/{leaseId}/remind | Remind a tenant that rent is late
 
 
 # **confirmPayment**
@@ -501,6 +502,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**PaymentResponse**](PaymentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **remindTenant**
+> Reminded remindTenant(leaseId)
+
+Remind a tenant that rent is late
+
+What is owed, and nothing else: no threats, no penalties. Once a day at most for each tenancy.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = RentApi();
+final leaseId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final result = api_instance.remindTenant(leaseId);
+    print(result);
+} catch (e) {
+    print('Exception when calling RentApi->remindTenant: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **leaseId** | **String**|  | 
+
+### Return type
+
+[**Reminded**](Reminded.md)
 
 ### Authorization
 

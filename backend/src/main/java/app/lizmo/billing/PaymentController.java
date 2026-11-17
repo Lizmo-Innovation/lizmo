@@ -39,10 +39,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class PaymentController {
 
     private final PaymentService payments;
+    private final LandlordReminders reminders;
     private final CurrentUser currentUser;
 
-    public PaymentController(PaymentService payments, CurrentUser currentUser) {
+    public PaymentController(
+            PaymentService payments, LandlordReminders reminders, CurrentUser currentUser) {
         this.payments = payments;
+        this.reminders = reminders;
         this.currentUser = currentUser;
     }
 
@@ -101,6 +104,22 @@ public class PaymentController {
             @PathVariable UUID paymentId,
             @RequestParam(required = false) String remarks) {
         return payments.reject(leaseId, paymentId, currentUser.requireId(), remarks);
+    }
+
+    @PostMapping("/api/v1/leases/{leaseId}/remind")
+    @Operation(operationId = "remindTenant", summary = "Remind a tenant that rent is late",
+            description = "What is owed, and nothing else: no threats, no penalties. Once a "
+                    + "day at most for each tenancy.")
+    @ApiResponse(responseCode = "200", description = "When it was sent")
+    @ApiResponse(responseCode = "400", description = "Nothing is late, or one went today",
+            content = @Content(schema = @Schema(implementation = app.lizmo.common.ApiError.class)))
+    public Reminded remind(@PathVariable UUID leaseId) {
+        return new Reminded(reminders.remind(leaseId, currentUser.requireId()));
+    }
+
+    /** When a reminder went. */
+    @Schema(description = "A reminder sent")
+    public record Reminded(java.time.Instant sentAt) {
     }
 
     // ---- the tenant --------------------------------------------------------

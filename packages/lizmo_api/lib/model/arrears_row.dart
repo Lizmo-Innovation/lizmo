@@ -22,6 +22,7 @@ class ArrearsRow {
     this.monthsLate,
     this.oldestDueDate,
     this.depositOwed,
+    this.remindedAt,
   });
 
   ///
@@ -96,6 +97,14 @@ class ArrearsRow {
   ///
   num? depositOwed;
 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? remindedAt;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is ArrearsRow &&
     other.leaseId == leaseId &&
@@ -106,7 +115,8 @@ class ArrearsRow {
     other.outstanding == outstanding &&
     other.monthsLate == monthsLate &&
     other.oldestDueDate == oldestDueDate &&
-    other.depositOwed == depositOwed;
+    other.depositOwed == depositOwed &&
+    other.remindedAt == remindedAt;
 
   @override
   int get hashCode =>
@@ -119,10 +129,11 @@ class ArrearsRow {
     (outstanding == null ? 0 : outstanding!.hashCode) +
     (monthsLate == null ? 0 : monthsLate!.hashCode) +
     (oldestDueDate == null ? 0 : oldestDueDate!.hashCode) +
-    (depositOwed == null ? 0 : depositOwed!.hashCode);
+    (depositOwed == null ? 0 : depositOwed!.hashCode) +
+    (remindedAt == null ? 0 : remindedAt!.hashCode);
 
   @override
-  String toString() => 'ArrearsRow[leaseId=$leaseId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, outstanding=$outstanding, monthsLate=$monthsLate, oldestDueDate=$oldestDueDate, depositOwed=$depositOwed]';
+  String toString() => 'ArrearsRow[leaseId=$leaseId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, outstanding=$outstanding, monthsLate=$monthsLate, oldestDueDate=$oldestDueDate, depositOwed=$depositOwed, remindedAt=$remindedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -171,6 +182,11 @@ class ArrearsRow {
     } else {
       json[r'depositOwed'] = null;
     }
+    if (this.remindedAt != null) {
+      json[r'remindedAt'] = this.remindedAt!.toUtc().toIso8601String();
+    } else {
+      json[r'remindedAt'] = null;
+    }
     return json;
   }
 
@@ -202,6 +218,7 @@ class ArrearsRow {
         depositOwed: json[r'depositOwed'] == null
             ? null
             : num.parse('${json[r'depositOwed']}'),
+        remindedAt: mapDateTime(json, r'remindedAt', r''),
       );
     }
     return null;

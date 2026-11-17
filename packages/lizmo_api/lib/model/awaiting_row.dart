@@ -23,6 +23,9 @@ class AwaitingRow {
     this.paidOn,
     this.sentTo,
     this.declaredAt,
+    this.paymentMethod,
+    this.remarks,
+    this.proofUrl,
   });
 
   ///
@@ -105,6 +108,24 @@ class AwaitingRow {
   ///
   DateTime? declaredAt;
 
+  AwaitingRowPaymentMethodEnum? paymentMethod;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? remarks;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? proofUrl;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is AwaitingRow &&
     other.leaseId == leaseId &&
@@ -116,7 +137,10 @@ class AwaitingRow {
     other.amount == amount &&
     other.paidOn == paidOn &&
     other.sentTo == sentTo &&
-    other.declaredAt == declaredAt;
+    other.declaredAt == declaredAt &&
+    other.paymentMethod == paymentMethod &&
+    other.remarks == remarks &&
+    other.proofUrl == proofUrl;
 
   @override
   int get hashCode =>
@@ -130,10 +154,13 @@ class AwaitingRow {
     (amount == null ? 0 : amount!.hashCode) +
     (paidOn == null ? 0 : paidOn!.hashCode) +
     (sentTo == null ? 0 : sentTo!.hashCode) +
-    (declaredAt == null ? 0 : declaredAt!.hashCode);
+    (declaredAt == null ? 0 : declaredAt!.hashCode) +
+    (paymentMethod == null ? 0 : paymentMethod!.hashCode) +
+    (remarks == null ? 0 : remarks!.hashCode) +
+    (proofUrl == null ? 0 : proofUrl!.hashCode);
 
   @override
-  String toString() => 'AwaitingRow[leaseId=$leaseId, paymentId=$paymentId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, amount=$amount, paidOn=$paidOn, sentTo=$sentTo, declaredAt=$declaredAt]';
+  String toString() => 'AwaitingRow[leaseId=$leaseId, paymentId=$paymentId, tenantName=$tenantName, propertyName=$propertyName, unitNumber=$unitNumber, bedLabel=$bedLabel, amount=$amount, paidOn=$paidOn, sentTo=$sentTo, declaredAt=$declaredAt, paymentMethod=$paymentMethod, remarks=$remarks, proofUrl=$proofUrl]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -187,6 +214,21 @@ class AwaitingRow {
     } else {
       json[r'declaredAt'] = null;
     }
+    if (this.paymentMethod != null) {
+      json[r'paymentMethod'] = this.paymentMethod;
+    } else {
+      json[r'paymentMethod'] = null;
+    }
+    if (this.remarks != null) {
+      json[r'remarks'] = this.remarks;
+    } else {
+      json[r'remarks'] = null;
+    }
+    if (this.proofUrl != null) {
+      json[r'proofUrl'] = this.proofUrl;
+    } else {
+      json[r'proofUrl'] = null;
+    }
     return json;
   }
 
@@ -217,6 +259,9 @@ class AwaitingRow {
         paidOn: mapDateTime(json, r'paidOn', r''),
         sentTo: mapValueOfType<String>(json, r'sentTo'),
         declaredAt: mapDateTime(json, r'declaredAt', r''),
+        paymentMethod: AwaitingRowPaymentMethodEnum.fromJson(json[r'paymentMethod']),
+        remarks: mapValueOfType<String>(json, r'remarks'),
+        proofUrl: mapValueOfType<String>(json, r'proofUrl'),
       );
     }
     return null;
@@ -266,4 +311,90 @@ class AwaitingRow {
   static const requiredKeys = <String>{
   };
 }
+
+
+enum AwaitingRowPaymentMethodEnum {
+  CASH._(r'CASH'),
+  GCASH._(r'GCASH'),
+  MAYA._(r'MAYA'),
+  BANK_TRANSFER._(r'BANK_TRANSFER'),
+  OTHER._(r'OTHER'),
+  ADVANCE._(r'ADVANCE'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const AwaitingRowPaymentMethodEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [AwaitingRowPaymentMethodEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static AwaitingRowPaymentMethodEnum? fromJson(dynamic value) => AwaitingRowPaymentMethodEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [AwaitingRowPaymentMethodEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<AwaitingRowPaymentMethodEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <AwaitingRowPaymentMethodEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = AwaitingRowPaymentMethodEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [AwaitingRowPaymentMethodEnum] to String,
+/// and [decode] dynamic data back to [AwaitingRowPaymentMethodEnum].
+class AwaitingRowPaymentMethodEnumTypeTransformer {
+  factory AwaitingRowPaymentMethodEnumTypeTransformer() => _instance ??= const AwaitingRowPaymentMethodEnumTypeTransformer._();
+
+  const AwaitingRowPaymentMethodEnumTypeTransformer._();
+
+  String encode(AwaitingRowPaymentMethodEnum data) => data._value;
+
+  /// Returns the instance of [AwaitingRowPaymentMethodEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  AwaitingRowPaymentMethodEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is AwaitingRowPaymentMethodEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'CASH': return AwaitingRowPaymentMethodEnum.CASH;
+        case r'GCASH': return AwaitingRowPaymentMethodEnum.GCASH;
+        case r'MAYA': return AwaitingRowPaymentMethodEnum.MAYA;
+        case r'BANK_TRANSFER': return AwaitingRowPaymentMethodEnum.BANK_TRANSFER;
+        case r'OTHER': return AwaitingRowPaymentMethodEnum.OTHER;
+        case r'ADVANCE': return AwaitingRowPaymentMethodEnum.ADVANCE;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static AwaitingRowPaymentMethodEnumTypeTransformer? _instance;
+}
+
 

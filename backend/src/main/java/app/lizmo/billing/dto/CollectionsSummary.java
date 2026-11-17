@@ -60,7 +60,10 @@ public record CollectionsSummary(
             java.time.LocalDate oldestDueDate,
             // A deposit past its move-in day and not yet received. Apart from
             // rent: it is owed, but it is not income.
-            BigDecimal depositOwed) {
+            BigDecimal depositOwed,
+            // When the landlord last sent a reminder by hand. Null for never,
+            // or not in the last day -- the button says which.
+            java.time.Instant remindedAt) {
     }
 
     /**
@@ -81,6 +84,11 @@ public record CollectionsSummary(
             // Which of the landlord's accounts to check. Null for cash.
             String sentTo,
             // When the tenant told the app: how long it has been waiting.
-            java.time.Instant declaredAt) {
+            java.time.Instant declaredAt,
+            app.lizmo.billing.PaymentMethod paymentMethod,
+            // What the tenant wrote with it -- often the reference number.
+            String remarks,
+            // Their screenshot, for a short while. Null when they sent none.
+            String proofUrl) {
     }
 }

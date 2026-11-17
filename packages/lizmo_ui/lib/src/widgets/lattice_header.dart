@@ -70,13 +70,7 @@ class LatticeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (leading != null) ...[
-                Row(
-                  children: [
-                    leading!,
-                    const Spacer(),
-                    ?trailing,
-                  ],
-                ),
+                Row(children: [leading!, const Spacer(), ?trailing]),
                 const SizedBox(height: 10),
               ],
 
@@ -107,7 +101,9 @@ class LatticeHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   line,
-                  style: LizmoType.rowSub.copyWith(color: LizmoColors.onTealMuted),
+                  style: LizmoType.rowSub.copyWith(
+                    color: LizmoColors.onTealMuted,
+                  ),
                 ),
               ],
               if (stats.isNotEmpty) ...[
@@ -119,7 +115,8 @@ class LatticeHeader extends StatelessWidget {
                       // give a little back so the labels keep to one line.
                       if (i > 0) SizedBox(width: stats.length > 3 ? 8 : 10),
                       Expanded(
-                          child: _StatCard(stat: stat, compact: stats.length > 3)),
+                        child: _StatCard(stat: stat, compact: stats.length > 3),
+                      ),
                     ],
                   ],
                 ),
@@ -134,11 +131,19 @@ class LatticeHeader extends StatelessWidget {
 
 /// One summary figure in a [LatticeHeader].
 class LatticeHeaderStat {
-  const LatticeHeaderStat({required this.value, required this.label});
+  const LatticeHeaderStat({
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
 
   /// Rendered in mono — this is a figure, not prose.
   final String value;
   final String label;
+
+  /// Where the figure leads, when it leads somewhere: a count of things to do
+  /// is a way in to them.
+  final VoidCallback? onTap;
 }
 
 class _StatCard extends StatelessWidget {
@@ -149,8 +154,30 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final card = _card();
+    final onTap = stat.onTap;
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      label: '${stat.value} ${stat.label}',
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: card,
+        ),
+      ),
+    );
+  }
+
+  Widget _card() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: LizmoColors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
@@ -179,4 +206,3 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
-

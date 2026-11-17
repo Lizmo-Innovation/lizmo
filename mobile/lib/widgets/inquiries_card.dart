@@ -9,6 +9,7 @@ import '../inquiry/inquiry_providers.dart';
 import '../router.dart';
 import '../screens/inquiries_screen.dart';
 import '../screens/tenants_screen.dart';
+import 'todo_card.dart';
 
 /// Conversations waiting on this landlord, across every property.
 ///
@@ -18,7 +19,10 @@ import '../screens/tenants_screen.dart';
 /// Unread first, because that is what "waiting on you" means now: a thread
 /// where the last word was theirs is one nobody has answered.
 class InquiriesCard extends ConsumerWidget {
-  const InquiriesCard({super.key});
+  const InquiriesCard({super.key, this.compact = false});
+
+  /// Other kinds of to-do are on Today too: show the first two.
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,129 +32,70 @@ class InquiriesCard extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       // Said rather than hidden. Hidden, a failure reads as nobody asking,
       // which is the one thing this card must never say falsely.
-      error: (error, _) => _Frame(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Conversations', style: LizmoType.sectionHeading),
-            const SizedBox(height: 6),
-            Text(ApiFailure.from(error).message, style: LizmoType.rowSub),
-          ],
-        ),
+      error: (error, _) => TodoCard(
+        key: const ValueKey('inquiries-card'),
+        icon: Icons.chat_bubble_outline,
+        tone: TodoTone.asking,
+        title: 'People asking',
+        count: 0,
+        rows: const [],
+        body: Text(ApiFailure.from(error).message, style: LizmoType.rowSub),
       ),
       data: (all) {
-        // A tenant writing comes first, above anybody asking: a current
-        // tenant comes before a maybe. Only unread -- a tenant's thread that
-        // has been read is not waiting on anyone. These never showed here,
-        // because a tenancy's conversation is not an open inquiry.
-        final tenants = [
-          for (final thread in all)
-            if (isCurrentTenancy(thread) && (thread.unread ?? false)) thread,
-        ];
-        final open = [
-          for (final thread in all)
-            if (thread.status == InquirySummaryStatusEnum.OPEN) thread,
-        ]..sort((a, b) => ((b.unread ?? false) ? 1 : 0)
-            .compareTo((a.unread ?? false) ? 1 : 0));
-
-        return open.isEmpty && tenants.isEmpty
-            ? const SizedBox.shrink()
-            : _Queue(tenants: tenants, threads: open);
+        final waiting = inquiriesWaiting(all);
+        if (waiting.isEmpty) return const SizedBox.shrink();
+        return TodoCard(
+          key: const ValueKey('inquiries-card'),
+          icon: Icons.chat_bubble_outline,
+          tone: TodoTone.asking,
+          title: 'People asking',
+          count: waiting.length,
+          compact: compact,
+          seeAll: TodoSeeAll(
+            key: const ValueKey('all-conversations'),
+            onTap: () {
+              // Straight to the Inquiries half, rather than landing on
+              // Renting and leaving them to find the control.
+              ref.read(tenantsTabProvider.notifier).state = true;
+              context.go(Routes.tenants);
+            },
+          ),
+          rows: [
+            for (final thread in waiting)
+              _ThreadRow(thread: thread, tenant: isCurrentTenancy(thread)),
+          ],
+        );
       },
     );
   }
 }
 
-class _Frame extends StatelessWidget {
-  const _Frame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        key: const ValueKey('inquiries-card'),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: LizmoColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE3E8E6)),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _Queue extends ConsumerWidget {
-  const _Queue({required this.tenants, required this.threads});
-
-  /// Tenants who have written and not been read.
-  final List<InquirySummary> tenants;
-
-  /// Everybody else still talking.
-  final List<InquirySummary> threads;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unanswered =
-        tenants.length + threads.where((t) => t.unread ?? false).length;
-
-    return _Frame(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Conversations', style: LizmoType.sectionHeading),
-              ),
-              if (unanswered > 0)
-                Text(
-                  unanswered == 1
-                      ? '1 waiting on you'
-                      : '$unanswered waiting on you',
-                  style: LizmoType.rowSub.copyWith(
-                    color: LizmoColors.amberText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          for (final thread in tenants) _ThreadRow(thread: thread, tenant: true),
-          // The three oldest-waiting, not all of them: this is a card on a
-          // dashboard, and a landlord with twenty conversations would have
-          // nothing else on the screen.
-          for (final thread in threads.take(3)) _ThreadRow(thread: thread),
-          if (threads.length > 3)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                key: const ValueKey('all-conversations'),
-                onPressed: () {
-                  // Straight to the Inquiries half, rather than landing
-                  // on Renting and leaving them to find the control.
-                  ref.read(tenantsTabProvider.notifier).state = true;
-                  context.go(Routes.tenants);
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  'All ${threads.length} conversations',
-                  style: LizmoType.rowSub.copyWith(color: LizmoColors.teal900),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+/// Who is on the asking card, in order.
+///
+/// A tenant writing comes first, above anybody asking: a current tenant
+/// comes before a maybe. Only unread -- a tenant's thread that has been read
+/// is not waiting on anyone. Then everybody still asking: unread first, and
+/// within that whoever has waited longest.
+List<InquirySummary> inquiriesWaiting(List<InquirySummary> all) {
+  DateTime at(InquirySummary thread) =>
+      thread.lastMessageAt ?? thread.createdAt ?? DateTime(2000);
+  final tenants = [
+    for (final thread in all)
+      if (isCurrentTenancy(thread) && (thread.unread ?? false)) thread,
+  ]..sort((a, b) => at(a).compareTo(at(b)));
+  final open =
+      [
+        for (final thread in all)
+          if (thread.status == InquirySummaryStatusEnum.OPEN &&
+              !isCurrentTenancy(thread))
+            thread,
+      ]..sort((a, b) {
+        final unread = ((b.unread ?? false) ? 1 : 0).compareTo(
+          (a.unread ?? false) ? 1 : 0,
+        );
+        return unread != 0 ? unread : at(a).compareTo(at(b));
+      });
+  return [...tenants, ...open];
 }
 
 class _ThreadRow extends StatelessWidget {
@@ -164,61 +109,39 @@ class _ThreadRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unread = thread.unread ?? false;
+    final last = thread.lastMessage;
+    final place = thread.propertyName;
+    final sub = [
+      if (last != null && last.isNotEmpty)
+        '“$last”'
+      else
+        'Asked about ${place ?? 'your place'}',
+      if (last != null && last.isNotEmpty && place != null) place,
+    ].join(' · ');
+    final at = thread.lastMessageAt ?? thread.createdAt;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        key: ValueKey('inquiry-${thread.id}'),
-        onTap: () => context.push(Routes.inquiry(thread.id!)),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: LizmoColors.canvas,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              if (unread)
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 10),
-                  decoration: const BoxDecoration(
-                    color: LizmoColors.coral,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      thread.withName ?? 'Somebody',
-                      style: LizmoType.rowName,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      thread.lastMessage ??
-                          'Asked about ${thread.propertyName ?? 'your place'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: LizmoType.rowSub,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (tenant) ...[
-                const StatusChip(status: LizmoStatus.paid, label: 'Tenant'),
-                const SizedBox(width: 4),
-              ],
-              const Icon(Icons.chevron_right,
-                  size: 20, color: LizmoColors.slate),
-            ],
-          ),
-        ),
+    return TodoRow(
+      key: ValueKey('inquiry-${thread.id}'),
+      leading: TodoAvatar(name: thread.withName, tone: TodoTone.asking),
+      title: thread.withName ?? 'Somebody',
+      unread: thread.unread ?? false,
+      onTap: () => context.push(Routes.inquiry(thread.id!)),
+      sub: Text(
+        sub,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: LizmoType.rowSub,
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (tenant) ...[
+            const StatusChip(status: LizmoStatus.paid, label: 'Tenant'),
+            const SizedBox(width: 6),
+          ],
+          if (at != null)
+            Text(ageShort(at), style: todoMono(LizmoColors.slateText)),
+        ],
       ),
     );
   }

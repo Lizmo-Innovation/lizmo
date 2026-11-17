@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **monthsLate** | **int** |  | [optional] 
 **oldestDueDate** | [**DateTime**](DateTime.md) |  | [optional] 
 **depositOwed** | **num** |  | [optional] 
+**remindedAt** | [**DateTime**](DateTime.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
