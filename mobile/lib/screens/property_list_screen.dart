@@ -87,7 +87,7 @@ class PropertyListScreen extends ConsumerWidget {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: context.pageInsets(8, 12),
               child: PrimaryActionButton(
                 label: '+ Add a property',
                 onPressed: () => context.push(Routes.propertyNew),
@@ -173,7 +173,7 @@ class _PropertyList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+      padding: context.pageInsets(18, 4),
       itemCount: properties.length,
       itemBuilder: (context, index) => _PropertyCard(property: properties[index]),
     );

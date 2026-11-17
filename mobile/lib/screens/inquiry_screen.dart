@@ -517,7 +517,7 @@ class _Thread extends StatelessWidget {
                   // new message appears in view on its own, and sending only
                   // has to return to 0 if somebody had scrolled up.
                   reverse: true,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: context.pageInsets(16, 8),
                   itemCount: entries.length,
                   itemBuilder: (context, index) =>
                       switch (entries[entries.length - 1 - index]) {

@@ -111,7 +111,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 : RefreshIndicator(
                     onRefresh: () async => ref.invalidate(myMaintenanceProvider),
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      padding: context.pageInsets(16, 24),
                       children: [
                         if (lease != null && !nothingYet) ...[
                           report,

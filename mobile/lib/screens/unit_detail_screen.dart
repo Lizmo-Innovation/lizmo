@@ -193,7 +193,7 @@ class _WholeUnit extends StatelessWidget {
     final size = unit?.sizeSqm;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+      padding: context.pageInsets(14, 4),
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -262,7 +262,7 @@ class _BedList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+      padding: context.pageInsets(18, 4),
       itemCount: beds.length,
       itemBuilder: (context, index) =>
           _BedRow(

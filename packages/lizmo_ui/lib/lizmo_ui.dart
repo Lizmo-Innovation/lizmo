@@ -7,6 +7,7 @@
 library;
 
 export 'src/theme/lizmo_colors.dart';
+export 'src/theme/lizmo_layout.dart';
 export 'src/theme/lizmo_money.dart';
 export 'src/theme/lizmo_scale.dart';
 export 'src/theme/lizmo_type.dart';

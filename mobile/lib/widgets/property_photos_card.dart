@@ -145,7 +145,7 @@ class _PropertyPhotosCardState extends ConsumerState<PropertyPhotosCard> {
     final room = photos.length < 8;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: context.pageInsets(12, 0),
       child: Container(
         key: const ValueKey('property-photos'),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +42,7 @@ class LizmoApp extends ConsumerWidget {
       title: 'Lizmo',
       debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(routerProvider),
+      builder: (context, child) => _ScreenSizedText(child: child!),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: LizmoColors.teal900,
@@ -58,8 +60,61 @@ class LizmoApp extends ConsumerWidget {
             ),
           ),
         ),
+        // A sheet across a whole tablet is a form a metre wide; centred and
+        // capped, it reads as the same sheet as on a phone.
+        bottomSheetTheme: const BottomSheetThemeData(
+          constraints: BoxConstraints(maxWidth: 560),
+        ),
         useMaterial3: true,
       ),
     );
   }
+}
+
+/// Type a little larger on a tablet, on top of the reader's own setting.
+///
+/// Gentle and capped: the square root of how much wider the screen is than a
+/// 390 phone, never past 1.15, so a tablet reads comfortably without its
+/// headings outgrowing the page. On a phone it is exactly 1 and changes
+/// nothing.
+class _ScreenSizedText extends StatelessWidget {
+  const _ScreenSizedText({required this.child});
+
+  final Widget child;
+
+  static const _phone = 390.0;
+  static const _most = 1.15;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final shortest = media.size.shortestSide;
+    final by = shortest <= _phone ? 1.0 : math.min(_most, math.sqrt(shortest / _phone));
+    if (by == 1.0) return child;
+    return MediaQuery(
+      data: media.copyWith(textScaler: _Times(media.textScaler, by)),
+      child: child,
+    );
+  }
+}
+
+class _Times extends TextScaler {
+  const _Times(this.base, this.by);
+
+  final TextScaler base;
+  final double by;
+
+  @override
+  double scale(double fontSize) => base.scale(fontSize) * by;
+
+  @override
+  // ignore: deprecated_member_use
+  double get textScaleFactor => base.textScaleFactor * by;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _Times && other.base == base && other.by == by;
+
+  @override
+  int get hashCode => Object.hash(base, by);
 }

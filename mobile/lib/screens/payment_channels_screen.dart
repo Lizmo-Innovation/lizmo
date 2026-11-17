@@ -223,7 +223,7 @@ class _PaymentChannelsScreenState extends ConsumerState<PaymentChannelsScreen> {
           ref.invalidate(myPaymentNoteProvider);
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          padding: context.pageInsets(16, 32),
           children: [
             Text(
               'Your tenants see these when they pay rent, in this order. Each '

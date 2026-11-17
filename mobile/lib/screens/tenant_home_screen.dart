@@ -125,7 +125,7 @@ class TenantHomeScreen extends ConsumerWidget {
                 }
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                padding: context.pageInsets(18, 24),
                 children: [
                   if (landlordWrote) ...[
                     YourLandlordCard(lease: lease!),

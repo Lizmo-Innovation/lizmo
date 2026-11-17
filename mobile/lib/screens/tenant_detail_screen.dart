@@ -80,7 +80,7 @@ class TenantDetailScreen extends ConsumerWidget {
           detail: ApiFailure.from(error).message,
         ),
         data: (person) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: context.pageInsets(8, 24),
           children: [
             // First. Money is what a landlord opens a tenant to check, and a
             // payment waiting on them is the one thing here with somebody on

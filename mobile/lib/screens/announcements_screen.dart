@@ -72,7 +72,7 @@ class AnnouncementsScreen extends ConsumerWidget {
                       onRefresh: () async =>
                           ref.invalidate(propertyNoticesProvider(propertyId)),
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                        padding: context.pageInsets(18, 16),
                         children: [
                           for (final notice in all) ...[
                             _NoticeCard(notice: notice, propertyId: propertyId),
@@ -86,7 +86,7 @@ class AnnouncementsScreen extends ConsumerWidget {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: context.pageInsets(8, 12),
               child: PrimaryActionButton(
                 key: const ValueKey('post-notice'),
                 label: 'Post an announcement',

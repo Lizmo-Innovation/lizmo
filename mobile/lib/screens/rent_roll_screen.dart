@@ -206,7 +206,7 @@ class _Rows extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: context.pageInsets(8, 24),
       children: [
         for (final group in groups.values) ...[
           Padding(

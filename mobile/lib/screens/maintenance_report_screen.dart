@@ -81,7 +81,7 @@ class _MaintenanceReportScreenState
           detail: ApiFailure.from(error).message,
         ),
         data: (report) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: context.pageInsets(16, 24),
           children: [
             Container(
               padding: const EdgeInsets.all(16),

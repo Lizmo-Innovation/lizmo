@@ -178,3 +178,170 @@ class _Tab extends StatelessWidget {
     );
   }
 }
+
+/// A section's screen with its way between sections: a bar along the bottom
+/// on a phone, a rail down the side on a tablet.
+///
+/// On a tablet held upright the bar would be five buttons spread across the
+/// width of a page, a long way from each other and from the thumb; the rail
+/// keeps them together at the edge and gives the page back its height.
+class SectionScaffold extends StatelessWidget {
+  const SectionScaffold({
+    super.key,
+    required this.tabs,
+    required this.index,
+    required this.onTap,
+    required this.body,
+  });
+
+  final List<SectionTab> tabs;
+  final int index;
+  final ValueChanged<int> onTap;
+  final Widget body;
+
+  /// From here up the sections go down the side.
+  static const railFrom = 600.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final rail = MediaQuery.sizeOf(context).width >= railFrom;
+    return Scaffold(
+      backgroundColor: LizmoColors.canvas,
+      body: rail
+          ? Row(
+              children: [
+                SectionRail(tabs: tabs, index: index, onTap: onTap),
+                Expanded(child: PageArea(child: body)),
+              ],
+            )
+          : PageArea(child: body),
+      bottomNavigationBar: rail
+          ? null
+          : SectionTabBar(tabs: tabs, index: index, onTap: onTap),
+    );
+  }
+}
+
+/// The sections down the side of a tablet.
+class SectionRail extends StatelessWidget {
+  const SectionRail({
+    super.key,
+    required this.tabs,
+    required this.index,
+    required this.onTap,
+  });
+
+  final List<SectionTab> tabs;
+  final int index;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 92,
+      decoration: const BoxDecoration(
+        color: LizmoColors.white,
+        border: Border(right: BorderSide(color: Color(0xFFE3E8E6))),
+      ),
+      child: SafeArea(
+        right: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            children: [
+              for (final (position, tab) in tabs.indexed)
+                _RailItem(
+                  key: tab.key,
+                  tab: tab,
+                  selected: position == index,
+                  onTap: () => onTap(position),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RailItem extends StatelessWidget {
+  const _RailItem({
+    super.key,
+    required this.tab,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SectionTab tab;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = selected ? LizmoColors.teal900 : LizmoColors.slateText;
+    return Semantics(
+      label: tab.label,
+      selected: selected,
+      button: true,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: selected ? LizmoColors.tealTint : null,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(tab.icon, size: 22, color: colour),
+                    if (tab.unread)
+                      Positioned(
+                        top: 4,
+                        right: 14,
+                        child: Container(
+                          key: const ValueKey('rail-unread'),
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: LizmoColors.coral,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: LizmoColors.white,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // The rail is narrow and its words are not: "Maintenance" at
+              // large text gives way by shrinking a little, never by cutting.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  tab.label,
+                  maxLines: 1,
+                  style: LizmoType.rowSub.copyWith(
+                    color: colour,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

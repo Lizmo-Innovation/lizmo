@@ -79,7 +79,7 @@ class TenantsScreen extends ConsumerWidget {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            padding: context.pageInsets(14, 4),
             child: SegmentedButton<bool>(
               key: const ValueKey('tenants-segment'),
               segments: [
@@ -125,7 +125,7 @@ class TenantsScreen extends ConsumerWidget {
                   : RefreshIndicator(
                       onRefresh: () async => ref.invalidate(myTenantsProvider),
                       child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                        padding: context.pageInsets(18, 24),
                         itemCount: rows.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (_, index) => _TenantRow(

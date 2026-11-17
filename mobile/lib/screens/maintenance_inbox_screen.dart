@@ -92,7 +92,7 @@ class MaintenanceInboxScreen extends ConsumerWidget {
                         ],
                       )
                     : ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        padding: context.pageInsets(8, 24),
                         children: [
                           _Section(title: 'Needs you', rows: fresh),
                           _Section(title: 'In progress', rows: underway),

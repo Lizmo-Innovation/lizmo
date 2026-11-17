@@ -206,7 +206,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
           ].join(' · ');
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+            padding: context.pageInsets(18, 24),
             children: [
               Container(
                 padding: const EdgeInsets.all(18),

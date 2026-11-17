@@ -42,7 +42,7 @@ class LizmoBillingScreen extends ConsumerWidget {
           ref.invalidate(lizmoPaymentDetailsProvider);
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: context.pageInsets(16, 24),
           children: [
             HowToPayPanel(
               key: const ValueKey('lizmo-how-to-pay'),

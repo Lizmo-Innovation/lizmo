@@ -158,7 +158,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: context.pageInsets(8, 12),
               child: PrimaryActionButton(
                 label: '+ Add a unit',
                 onPressed: () => context.push(Routes.unitNew(propertyId)),
@@ -265,7 +265,7 @@ class _WaitingRequests extends ConsumerWidget {
 
     final count = waiting.length;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: context.pageInsets(12, 0),
       child: Material(
         color: LizmoColors.amberBg,
         borderRadius: BorderRadius.circular(14),
@@ -323,7 +323,7 @@ class _BuildingTiles extends ConsumerWidget {
     final said = details != null && saysAnything(details);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: context.pageInsets(12, 0),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -496,7 +496,7 @@ class _UnitList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+      padding: context.pageInsets(18, 4),
       itemCount: units.length,
       itemBuilder: (context, index) =>
           _UnitCard(unit: units[index], propertyId: propertyId),
@@ -708,7 +708,7 @@ class _FloorFilter extends StatelessWidget {
       height: 56,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: context.pageInsets(12, 0),
         children: [
           _Chip(
             label: 'All',

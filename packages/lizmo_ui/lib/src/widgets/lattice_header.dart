@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/lizmo_colors.dart';
+import '../theme/lizmo_layout.dart';
 import '../theme/lizmo_type.dart';
 import 'lattice_background.dart';
 
@@ -52,10 +53,12 @@ class LatticeHeader extends StatelessWidget {
         painter: const LatticePainter(),
         child: Container(
           width: double.infinity,
+          // Full width in teal, but its words line up with the page's
+          // column: on a tablet, the same centred column as the content.
           padding: EdgeInsets.fromLTRB(
-            22,
+            context.pageGutter + 6,
             MediaQuery.paddingOf(context).top + 22,
-            22,
+            context.pageGutter + 6,
             20,
           ),
           child: Column(

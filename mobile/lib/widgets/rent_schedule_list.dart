@@ -94,7 +94,7 @@ class RentScheduleList extends StatelessWidget {
     final last = newestFirst.length + offset;
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      padding: context.pageInsets(18, 24),
       itemCount: last + (bottom == null ? 0 : 1),
       separatorBuilder: (_, index) => SizedBox(
           height: (top != null && index == 0) || index == last - 1 ? 16 : 8),

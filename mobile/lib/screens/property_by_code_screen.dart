@@ -713,7 +713,7 @@ class _AskBarState extends ConsumerState<_AskBar> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: context.pageInsets(12, 12),
           child: Row(
             children: [
               if (from != null) ...[

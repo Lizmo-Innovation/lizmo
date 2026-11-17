@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lizmo_ui/lizmo_ui.dart';
 
 import '../inquiry/inquiry_providers.dart';
 import '../widgets/section_tab_bar.dart';
@@ -56,29 +55,24 @@ class LandlordShell extends ConsumerWidget {
     // Tenants holds the conversations as well as the tenancies, so the dot
     // belongs on it: somebody asking is waiting on an answer.
     final unread = ref.watch(unreadInquiriesProvider) > 0;
-    return Scaffold(
-      backgroundColor: LizmoColors.canvas,
+    return SectionScaffold(
       body: shell,
-      bottomNavigationBar: SectionTabBar(
-        tabs: [
-          for (final tab in _tabs)
-            tab.key == const ValueKey('tab-tenants')
-                ? SectionTab(
-                    key: tab.key,
-                    icon: tab.icon,
-                    label: tab.label,
-                    unread: unread,
-                  )
-                : tab,
-        ],
-        index: shell.currentIndex,
-        // initialLocation: tapping the tab you are already on returns it to its
-        // root, which is what a second tap on a tab means everywhere else.
-        onTap: (index) => shell.goBranch(
-          index,
-          initialLocation: index == shell.currentIndex,
-        ),
-      ),
+      tabs: [
+        for (final tab in _tabs)
+          tab.key == const ValueKey('tab-tenants')
+              ? SectionTab(
+                  key: tab.key,
+                  icon: tab.icon,
+                  label: tab.label,
+                  unread: unread,
+                )
+              : tab,
+      ],
+      index: shell.currentIndex,
+      // initialLocation: tapping the tab you are already on returns it to its
+      // root, which is what a second tap on a tab means everywhere else.
+      onTap: (index) =>
+          shell.goBranch(index, initialLocation: index == shell.currentIndex),
     );
   }
 }

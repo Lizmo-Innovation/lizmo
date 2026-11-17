@@ -132,7 +132,7 @@ class _FormState extends ConsumerState<_Form> {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            padding: context.pageInsets(18, 16),
             children: [
               Text(
                 'What people ask before anything else. It shows on the page they '
@@ -299,7 +299,7 @@ class _FormState extends ConsumerState<_Form> {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: context.pageInsets(8, 12),
             child: PrimaryActionButton(
               key: const ValueKey('save-place-details'),
               label: _saving ? 'Saving…' : 'Save',

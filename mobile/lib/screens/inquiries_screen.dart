@@ -81,7 +81,7 @@ class _InquiriesListState extends ConsumerState<InquiriesList> {
                     'message to the day somebody moves in.',
           ),
         AsyncData(:final value) => ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: context.pageInsets(16, 24),
             children: [
               if (widget.leading case final leading?) ...[
                 leading,

@@ -131,7 +131,7 @@ class LandlordHomeScreen extends ConsumerWidget {
                 ref.invalidate(myTenantsProvider);
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                padding: context.pageInsets(18, 16),
                 children: [
                   // Above what needs them: a property that is not set up has
                   // nothing waiting on it yet, and that is the problem.

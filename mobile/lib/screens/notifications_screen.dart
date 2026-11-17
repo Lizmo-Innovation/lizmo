@@ -74,7 +74,7 @@ class NotificationsScreen extends ConsumerWidget {
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(myNotificationsProvider),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  padding: context.pageInsets(12, 24),
                   children: const [NotificationFeed()],
                 ),
               ),

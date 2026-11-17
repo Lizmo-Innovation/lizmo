@@ -68,7 +68,7 @@ class _Looking extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+      padding: context.pageInsets(24, 24),
       children: [
         const Icon(Icons.bed_outlined, size: 34, color: LizmoColors.slate),
         const SizedBox(height: 14),
@@ -113,7 +113,7 @@ class _Tenancy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      padding: context.pageInsets(18, 24),
       children: [
         // First when there is one: where a warning about the end of the
         // lease sends them, and the thing on this page with a date on it.

@@ -117,7 +117,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
             );
           }
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+            padding: context.pageInsets(18, 24),
             children: [
               RepaintBoundary(
                 key: _paper,
@@ -202,7 +202,7 @@ class ReceiptsScreen extends ConsumerWidget {
             onRefresh: () async => ref.invalidate(
                 receiptsProvider((leaseId: leaseId, landlord: landlord))),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+              padding: context.pageInsets(18, 24),
               children: [
                 for (final MapEntry(key: year, value: ofYear) in years.entries) ...[
                   Padding(
