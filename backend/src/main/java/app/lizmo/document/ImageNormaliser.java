@@ -49,6 +49,14 @@ public class ImageNormaliser {
      * @throws ApiException if the bytes are not an image this can decode
      */
     public byte[] normalise(byte[] original) {
+        return normalise(original, MAX_EDGE);
+    }
+
+    /**
+     * The same, no longer than {@code maxEdge} on its longest side: a preview
+     * to draw small, made from the original rather than from a copy.
+     */
+    public byte[] normalise(byte[] original, int maxEdge) {
         // Read before decoding: the orientation tag is about to stop existing,
         // and without applying it a portrait photo is saved on its side.
         int orientation = readOrientation(original);
@@ -56,7 +64,7 @@ public class ImageNormaliser {
         BufferedImage decoded = decode(original);
         // Scaled before rotating: uniform scaling and rotation commute, and
         // turning a 400KB image is a great deal cheaper than turning a 4MB one.
-        BufferedImage scaled = scaleWithin(decoded, MAX_EDGE);
+        BufferedImage scaled = scaleWithin(decoded, maxEdge);
         BufferedImage upright = applyOrientation(scaled, orientation);
 
         return encodeJpeg(upright);

@@ -259,6 +259,8 @@ class ApiClient {
           return MaintenanceReportResponse.fromJson(value);
         case 'MaintenanceRequest':
           return MaintenanceRequest.fromJson(value);
+        case 'MessageAttachment':
+          return MessageAttachment.fromJson(value);
         case 'MyNoticeResponse':
           return MyNoticeResponse.fromJson(value);
         case 'NewMessage':

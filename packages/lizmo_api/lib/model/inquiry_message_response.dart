@@ -17,6 +17,7 @@ class InquiryMessageResponse {
     this.body,
     this.sentAt,
     this.mine,
+    this.attachments = const [],
   });
 
   ///
@@ -51,12 +52,15 @@ class InquiryMessageResponse {
   ///
   bool? mine;
 
+  List<MessageAttachment> attachments;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is InquiryMessageResponse &&
     other.id == id &&
     other.body == body &&
     other.sentAt == sentAt &&
-    other.mine == mine;
+    other.mine == mine &&
+    _deepEquality.equals(other.attachments, attachments);
 
   @override
   int get hashCode =>
@@ -64,10 +68,11 @@ class InquiryMessageResponse {
     (id == null ? 0 : id!.hashCode) +
     (body == null ? 0 : body!.hashCode) +
     (sentAt == null ? 0 : sentAt!.hashCode) +
-    (mine == null ? 0 : mine!.hashCode);
+    (mine == null ? 0 : mine!.hashCode) +
+    (attachments.hashCode);
 
   @override
-  String toString() => 'InquiryMessageResponse[id=$id, body=$body, sentAt=$sentAt, mine=$mine]';
+  String toString() => 'InquiryMessageResponse[id=$id, body=$body, sentAt=$sentAt, mine=$mine, attachments=$attachments]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -91,6 +96,7 @@ class InquiryMessageResponse {
     } else {
       json[r'mine'] = null;
     }
+      json[r'attachments'] = this.attachments;
     return json;
   }
 
@@ -113,6 +119,7 @@ class InquiryMessageResponse {
         body: mapValueOfType<String>(json, r'body'),
         sentAt: mapDateTime(json, r'sentAt', r''),
         mine: mapValueOfType<bool>(json, r'mine'),
+        attachments: MessageAttachment.listFromJson(json[r'attachments']),
       );
     }
     return null;

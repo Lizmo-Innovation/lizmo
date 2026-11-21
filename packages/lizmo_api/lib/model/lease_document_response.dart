@@ -250,6 +250,9 @@ enum LeaseDocumentResponseDocTypeEnum {
   TENANT_PHOTO._(r'TENANT_PHOTO'),
   PROPERTY_PHOTO._(r'PROPERTY_PHOTO'),
   OTHER._(r'OTHER'),
+  MESSAGE_PHOTO._(r'MESSAGE_PHOTO'),
+  MESSAGE_PREVIEW._(r'MESSAGE_PREVIEW'),
+  MESSAGE_FILE._(r'MESSAGE_FILE'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -314,6 +317,9 @@ class LeaseDocumentResponseDocTypeEnumTypeTransformer {
         case r'TENANT_PHOTO': return LeaseDocumentResponseDocTypeEnum.TENANT_PHOTO;
         case r'PROPERTY_PHOTO': return LeaseDocumentResponseDocTypeEnum.PROPERTY_PHOTO;
         case r'OTHER': return LeaseDocumentResponseDocTypeEnum.OTHER;
+        case r'MESSAGE_PHOTO': return LeaseDocumentResponseDocTypeEnum.MESSAGE_PHOTO;
+        case r'MESSAGE_PREVIEW': return LeaseDocumentResponseDocTypeEnum.MESSAGE_PREVIEW;
+        case r'MESSAGE_FILE': return LeaseDocumentResponseDocTypeEnum.MESSAGE_FILE;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

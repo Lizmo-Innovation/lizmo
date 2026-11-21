@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -100,6 +101,36 @@ public class InquiryController {
     public InquiryMessageResponse send(
             @PathVariable UUID id, @Valid @RequestBody NewMessage command) {
         return service.send(id, currentUser.requireId(), command);
+    }
+
+    @PostMapping(path = "/{id}/messages/files",
+            consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(operationId = "sendInquiryFiles", summary = "Send photos or a PDF",
+            description = "Up to four photos, or one PDF, each up to 10MB, with words or "
+                    + "without. Photos are re-encoded, so no location or camera details "
+                    + "leave the phone.")
+    @ApiResponse(responseCode = "201", description = "What was sent",
+            content = @Content(schema = @Schema(implementation = InquiryMessageResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Too many, too large, not a photo or "
+            + "PDF, or the conversation is closed",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public InquiryMessageResponse sendFiles(
+            @PathVariable UUID id,
+            @RequestPart(value = "body", required = false) String body,
+            @RequestPart(value = "file1", required = false)
+                    org.springframework.web.multipart.MultipartFile file1,
+            @RequestPart(value = "file2", required = false)
+                    org.springframework.web.multipart.MultipartFile file2,
+            @RequestPart(value = "file3", required = false)
+                    org.springframework.web.multipart.MultipartFile file3,
+            @RequestPart(value = "file4", required = false)
+                    org.springframework.web.multipart.MultipartFile file4) {
+        java.util.List<org.springframework.web.multipart.MultipartFile> files = new java.util.ArrayList<>();
+        for (var file : new org.springframework.web.multipart.MultipartFile[] {file1, file2, file3, file4}) {
+            if (file != null) files.add(file);
+        }
+        return service.sendWithFiles(id, currentUser.requireId(), body, files);
     }
 
     @PostMapping("/{id}/read")

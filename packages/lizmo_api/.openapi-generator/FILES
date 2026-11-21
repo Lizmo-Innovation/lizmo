@@ -49,6 +49,7 @@ doc/MaintenanceNote.md
 doc/MaintenanceReportResponse.md
 doc/MaintenanceRequest.md
 doc/MaintenanceToHandleApi.md
+doc/MessageAttachment.md
 doc/MyAccountApi.md
 doc/MyNoticeResponse.md
 doc/NewMessage.md
@@ -187,6 +188,7 @@ lib/model/login_request.dart
 lib/model/maintenance_note.dart
 lib/model/maintenance_report_response.dart
 lib/model/maintenance_request.dart
+lib/model/message_attachment.dart
 lib/model/my_notice_response.dart
 lib/model/new_message.dart
 lib/model/notice_response.dart
@@ -253,6 +255,7 @@ test/bed_state_test.dart
 test/devices_api_test.dart
 test/landlord_card_test.dart
 test/lease_term_request_test.dart
+test/message_attachment_test.dart
 test/my_notice_response_test.dart
 test/notice_response_test.dart
 test/photo_order_test.dart

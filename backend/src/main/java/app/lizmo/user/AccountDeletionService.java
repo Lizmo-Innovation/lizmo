@@ -68,6 +68,7 @@ public class AccountDeletionService {
     private final RefreshTokenRepository refreshTokens;
     private final app.lizmo.push.DeviceTokenRepository devices;
     private final app.lizmo.billing.receipt.ReceiptService receipts;
+    private final app.lizmo.inquiry.MessageAttachments messageAttachments;
     private final PasswordEncoder passwordEncoder;
 
     public AccountDeletionService(
@@ -83,6 +84,7 @@ public class AccountDeletionService {
             RefreshTokenRepository refreshTokens,
             app.lizmo.push.DeviceTokenRepository devices,
             app.lizmo.billing.receipt.ReceiptService receipts,
+            app.lizmo.inquiry.MessageAttachments messageAttachments,
             PasswordEncoder passwordEncoder) {
         this.users = users;
         this.tenantProfiles = tenantProfiles;
@@ -96,6 +98,7 @@ public class AccountDeletionService {
         this.refreshTokens = refreshTokens;
         this.devices = devices;
         this.receipts = receipts;
+        this.messageAttachments = messageAttachments;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -138,6 +141,9 @@ public class AccountDeletionService {
                 ErrorCode.NOT_FOUND, "No such account."));
 
         deletePhotographs(userId);
+        // What they sent in conversations: photos of their room, their
+        // screenshots. The words stay, as they always have.
+        messageAttachments.forget(userId);
         deleteLeasePaperwork(userId);
         // Account numbers and QR codes are personal details too.
         paymentChannels.forget(userId);

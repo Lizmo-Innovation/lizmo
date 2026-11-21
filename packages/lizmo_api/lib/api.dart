@@ -87,6 +87,7 @@ part 'model/login_request.dart';
 part 'model/maintenance_note.dart';
 part 'model/maintenance_report_response.dart';
 part 'model/maintenance_request.dart';
+part 'model/message_attachment.dart';
 part 'model/my_notice_response.dart';
 part 'model/new_message.dart';
 part 'model/notice_response.dart';

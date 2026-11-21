@@ -55,6 +55,20 @@ public abstract class IntegrationTest {
     @Autowired
     protected Accounts accounts;
 
+    @Autowired
+    private MutableClock sharedClock;
+
+    /**
+     * Every test starts at today. The clock is one bean for the whole run,
+     * and a test that moves it on and leaves it there made the next class's
+     * leases start in the future -- refused as ending before they began,
+     * depending only on the order the classes happened to run in.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void startAtToday() {
+        sharedClock.reset();
+    }
+
     /**
      * A tenancy, the way one now comes about: a conversation about the
      * property, and the landlord writing the lease into it.

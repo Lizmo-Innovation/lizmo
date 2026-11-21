@@ -92,6 +92,7 @@ Class | Method | HTTP request | Description
 *AskingAboutAPlaceApi* | [**markInquiryRead**](doc//AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
 *AskingAboutAPlaceApi* | [**openLeaseConversation**](doc//AskingAboutAPlaceApi.md#openleaseconversation) | **POST** /api/v1/leases/{leaseId}/conversation | The conversation for a tenancy
 *AskingAboutAPlaceApi* | [**readInquiry**](doc//AskingAboutAPlaceApi.md#readinquiry) | **GET** /api/v1/inquiries/{id} | One conversation
+*AskingAboutAPlaceApi* | [**sendInquiryFiles**](doc//AskingAboutAPlaceApi.md#sendinquiryfiles) | **POST** /api/v1/inquiries/{id}/messages/files | Send photos or a PDF
 *AskingAboutAPlaceApi* | [**sendInquiryMessage**](doc//AskingAboutAPlaceApi.md#sendinquirymessage) | **POST** /api/v1/inquiries/{id}/messages | Say something
 *AskingAboutAPlaceApi* | [**startInquiry**](doc//AskingAboutAPlaceApi.md#startinquiry) | **POST** /api/v1/inquiries | Ask about a place
 *AskingAboutAPlaceApi* | [**startLeaseFromInquiry**](doc//AskingAboutAPlaceApi.md#startleasefrominquiry) | **POST** /api/v1/inquiries/{id}/lease | Write the tenancy they agreed on
@@ -235,6 +236,7 @@ Class | Method | HTTP request | Description
  - [MaintenanceNote](doc//MaintenanceNote.md)
  - [MaintenanceReportResponse](doc//MaintenanceReportResponse.md)
  - [MaintenanceRequest](doc//MaintenanceRequest.md)
+ - [MessageAttachment](doc//MessageAttachment.md)
  - [MyNoticeResponse](doc//MyNoticeResponse.md)
  - [NewMessage](doc//NewMessage.md)
  - [NoticeResponse](doc//NoticeResponse.md)

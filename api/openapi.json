@@ -1794,7 +1794,10 @@
                                 "RECEIPT",
                                 "TENANT_PHOTO",
                                 "PROPERTY_PHOTO",
-                                "OTHER"
+                                "OTHER",
+                                "MESSAGE_PHOTO",
+                                "MESSAGE_PREVIEW",
+                                "MESSAGE_FILE"
                             ]
                         }
                     }
@@ -2924,7 +2927,10 @@
                                 "RECEIPT",
                                 "TENANT_PHOTO",
                                 "PROPERTY_PHOTO",
-                                "OTHER"
+                                "OTHER",
+                                "MESSAGE_PHOTO",
+                                "MESSAGE_PREVIEW",
+                                "MESSAGE_FILE"
                             ],
                             "default": "LEASE_CONTRACT"
                         }
@@ -3196,6 +3202,79 @@
                     },
                     "400": {
                         "description": "Empty, too long, or closed",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/inquiries/{id}/messages/files": {
+            "post": {
+                "tags": [
+                    "Asking about a place"
+                ],
+                "summary": "Send photos or a PDF",
+                "description": "Up to four photos, or one PDF, each up to 10MB, with words or without. Photos are re-encoded, so no location or camera details leave the phone.",
+                "operationId": "sendInquiryFiles",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "body": {
+                                        "type": "string"
+                                    },
+                                    "file1": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "file2": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "file3": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "file4": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "What was sent",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InquiryMessageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Too many, too large, not a photo or PDF, or the conversation is closed",
                         "content": {
                             "*/*": {
                                 "schema": {
@@ -6184,7 +6263,10 @@
                             "RECEIPT",
                             "TENANT_PHOTO",
                             "PROPERTY_PHOTO",
-                            "OTHER"
+                            "OTHER",
+                            "MESSAGE_PHOTO",
+                            "MESSAGE_PREVIEW",
+                            "MESSAGE_FILE"
                         ]
                     },
                     "url": {
@@ -6595,7 +6677,10 @@
                             "RECEIPT",
                             "TENANT_PHOTO",
                             "PROPERTY_PHOTO",
-                            "OTHER"
+                            "OTHER",
+                            "MESSAGE_PHOTO",
+                            "MESSAGE_PREVIEW",
+                            "MESSAGE_FILE"
                         ]
                     },
                     "label": {
@@ -8073,6 +8158,12 @@
                     },
                     "mine": {
                         "type": "boolean"
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MessageAttachment"
+                        }
                     }
                 },
                 "description": "Something somebody said"
@@ -8747,6 +8838,37 @@
                     }
                 },
                 "description": "Something that changed the tenancy"
+            },
+            "MessageAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "description": "What kind of file",
+                        "enum": [
+                            "PHOTO",
+                            "PDF"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "byteSize": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "previewUrl": {
+                        "type": "string"
+                    }
+                },
+                "description": "A photo or PDF sent in a conversation"
             }
         }
     }

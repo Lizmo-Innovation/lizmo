@@ -41,14 +41,17 @@ public class DocumentRetentionService {
     private final StoredDocumentRepository documents;
     private final DocumentStore store;
     private final LeaseRepository leases;
+    private final app.lizmo.inquiry.MessageAttachments messageAttachments;
 
     public DocumentRetentionService(
             StoredDocumentRepository documents,
             DocumentStore store,
-            LeaseRepository leases) {
+            LeaseRepository leases,
+            app.lizmo.inquiry.MessageAttachments messageAttachments) {
         this.documents = documents;
         this.store = store;
         this.leases = leases;
+        this.messageAttachments = messageAttachments;
     }
 
     /**
@@ -92,6 +95,8 @@ public class DocumentRetentionService {
                 removed++;
             }
         }
+        // Photos and PDFs sent in conversations, by the same year.
+        removed += messageAttachments.purgeAsOf(today);
         return removed;
     }
 

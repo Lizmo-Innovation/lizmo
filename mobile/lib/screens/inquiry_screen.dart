@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
 import 'package:lizmo_api/api.dart';
 import 'package:lizmo_core/lizmo_core.dart';
@@ -10,6 +11,7 @@ import 'package:lizmo_ui/lizmo_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../billing/receipt_said.dart';
+import '../inquiry/attachments.dart';
 import '../inquiry/inquiry_providers.dart';
 import '../property/place_details.dart';
 import '../property/property_providers.dart';
@@ -45,6 +47,12 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
   final _poller = GlobalKey<PollerState>();
   bool _sending = false;
 
+  /// Photos or a PDF chosen and not yet sent.
+  final _pending = <PendingFile>[];
+
+  static const _mostPhotos = 4;
+  static const _mostBytes = 10 * 1024 * 1024;
+
   /// How often an open conversation is re-read.
   ///
   /// A reply landing within five seconds reads as instant to somebody in the
@@ -72,7 +80,8 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
 
   Future<void> _send() async {
     final body = _composer.text.trim();
-    if (body.isEmpty || _sending) return;
+    final files = [..._pending];
+    if ((body.isEmpty && files.isEmpty) || _sending) return;
 
     // Writing is activity, so the fast interval is worth paying for: a reply
     // usually follows one.
@@ -86,9 +95,27 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
         ?.inquiry
         ?.withName;
     try {
-      await ref
-          .read(inquiriesApiProvider)
-          .sendInquiryMessage(widget.id, NewMessage(body: body));
+      final api = ref.read(inquiriesApiProvider);
+      if (files.isEmpty) {
+        await api.sendInquiryMessage(widget.id, NewMessage(body: body));
+      } else {
+        http.MultipartFile? part(int i) => i < files.length
+            ? http.MultipartFile.fromBytes(
+                'file${i + 1}',
+                files[i].bytes,
+                filename: files[i].name,
+              )
+            : null;
+        await api.sendInquiryFiles(
+          widget.id,
+          body: body.isEmpty ? null : body,
+          file1: part(0),
+          file2: part(1),
+          file3: part(2),
+          file4: part(3),
+        );
+        if (mounted) setState(() => _pending.clear());
+      }
       _composer.clear();
       ref.invalidate(inquiryThreadProvider(widget.id));
       // Back to the newest, where what was just said is about to land. Only
@@ -294,6 +321,76 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
     if (!ok) {
       messenger.showSnackBar(SnackBar(content: Text('Could not call $phone.')));
     }
+  }
+
+  /// Adds photos or a PDF to what will be sent, within what one message holds:
+  /// four photos, or one PDF on its own.
+  Future<void> _pick(Future<List<PendingFile>> Function() how) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final List<PendingFile> chosen;
+    try {
+      chosen = await how();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('That could not be opened. Try another one.'),
+        ),
+      );
+      return;
+    }
+    if (chosen.isEmpty || !mounted) return;
+
+    String? refused;
+    final pdf = chosen.any((file) => file.pdf);
+    if (chosen.any((file) => file.bytes.length > _mostBytes)) {
+      refused = 'That file is larger than 10MB. Choose a smaller one.';
+    } else if (pdf && _pending.isNotEmpty) {
+      refused = 'A PDF goes in a message of its own. Send these first.';
+    } else if (!pdf && _pending.any((file) => file.pdf)) {
+      refused = 'A PDF goes in a message of its own. Send it first.';
+    } else if (_pending.length + chosen.length > _mostPhotos) {
+      refused = 'Up to $_mostPhotos photos in one message.';
+    }
+    if (refused != null) {
+      messenger.showSnackBar(SnackBar(content: Text(refused)));
+      return;
+    }
+    setState(() => _pending.addAll(chosen));
+  }
+
+  /// Photos and PDFs, for both sides, while the conversation is open.
+  List<_Action> _filesFor(InquiryThread thread) {
+    if (thread.inquiry?.status == InquirySummaryStatusEnum.CLOSED) {
+      return const [];
+    }
+    final picker = ref.read(attachmentPickerProvider);
+    final room = _mostPhotos - _pending.length;
+    return [
+      _Action(
+        'Take a photo',
+        Icons.photo_camera_outlined,
+        'action-camera',
+        () => _pick(() async {
+          final shot = await picker.camera();
+          return shot == null ? const [] : [shot];
+        }),
+      ),
+      _Action(
+        'Choose photos',
+        Icons.photo_library_outlined,
+        'action-photos',
+        () => _pick(() => picker.photos(room)),
+      ),
+      _Action(
+        'Send a PDF',
+        Icons.picture_as_pdf_outlined,
+        'action-pdf',
+        () => _pick(() async {
+          final file = await picker.pdf();
+          return file == null ? const [] : [file];
+        }),
+      ),
+    ];
   }
 
   /// What can be done from here besides talking, for this side.
@@ -567,7 +664,10 @@ class _InquiryScreenState extends ConsumerState<InquiryScreen> {
               scroll: _scroll,
               sending: _sending,
               onSend: _send,
-              actions: _actionsFor(value),
+              actions: [..._actionsFor(value), ..._filesFor(value)],
+              pending: _pending,
+              onRemovePending: (index) =>
+                  setState(() => _pending.removeAt(index)),
               onActions: _showActions,
               panel: _Panel(
                 thread: value,
@@ -624,7 +724,12 @@ class _Thread extends StatelessWidget {
     required this.actions,
     required this.onActions,
     required this.panel,
+    required this.pending,
+    required this.onRemovePending,
   });
+
+  final List<PendingFile> pending;
+  final void Function(int index) onRemovePending;
 
   final InquiryThread thread;
   final TextEditingController composer;
@@ -699,6 +804,8 @@ class _Thread extends StatelessWidget {
             sending: sending,
             onSend: onSend,
             onMore: actions.isEmpty ? null : () => onActions(actions),
+            pending: pending,
+            onRemove: onRemovePending,
           ),
       ],
     );
@@ -1511,8 +1618,13 @@ class _Message extends StatelessWidget {
     final mine = message.mine ?? false;
     const big = Radius.circular(16);
     const small = Radius.circular(4);
+    final said = message.body ?? '';
+    final body = said.trim();
+    final files = message.attachments;
+    final ink = mine ? LizmoColors.white : LizmoColors.ink;
 
     return Padding(
+      key: ValueKey('message-${message.id}'),
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: mine
@@ -1521,7 +1633,9 @@ class _Message extends StatelessWidget {
         children: [
           Container(
             constraints: BoxConstraints(maxWidth: maxWidth),
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            padding: files.isEmpty
+                ? const EdgeInsets.fromLTRB(14, 10, 14, 10)
+                : const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: mine ? LizmoColors.teal900 : LizmoColors.white,
               borderRadius: mine
@@ -1539,12 +1653,39 @@ class _Message extends StatelessWidget {
                     ),
               border: mine ? null : Border.all(color: const Color(0xFFE3E8E6)),
             ),
-            child: Text(
-              message.body ?? '',
-              style: LizmoType.rowSub.copyWith(
-                fontSize: 14,
-                color: mine ? LizmoColors.white : LizmoColors.ink,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (files.isNotEmpty)
+                  _Files(files: files, mine: mine, width: maxWidth - 12),
+                if (body.isNotEmpty)
+                  Padding(
+                    padding: files.isEmpty
+                        ? EdgeInsets.zero
+                        : const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                    child: Text(
+                      said,
+                      style: LizmoType.rowSub.copyWith(
+                        fontSize: 14,
+                        color: ink,
+                      ),
+                    ),
+                  ),
+                // What it was, once it has gone: the year passed, or whoever
+                // sent it closed their account.
+                if (body.isEmpty && files.isEmpty)
+                  Text(
+                    'Attachment removed',
+                    key: const ValueKey('attachment-removed'),
+                    style: LizmoType.rowSub.copyWith(
+                      fontStyle: FontStyle.italic,
+                      color: mine
+                          ? LizmoColors.onTealMuted
+                          : LizmoColors.slateText,
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 3),
@@ -1570,12 +1711,305 @@ class _Message extends StatelessWidget {
   }
 }
 
+/// Photos as a picture or a grid of them; a PDF as a chip that opens it.
+class _Files extends StatelessWidget {
+  const _Files({required this.files, required this.mine, required this.width});
+
+  final List<MessageAttachment> files;
+  final bool mine;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = [
+      for (final file in files)
+        if (file.kind == MessageAttachmentKindEnum.PHOTO) file,
+    ];
+    final pdfs = [
+      for (final file in files)
+        if (file.kind == MessageAttachmentKindEnum.PDF) file,
+    ];
+    final across = math.min(width, 260.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (photos.length == 1)
+          _Photo(
+            photo: photos.first,
+            width: across,
+            height: across * 0.75,
+            onTap: () => _Gallery.show(context, photos, 0),
+          )
+        else if (photos.isNotEmpty)
+          SizedBox(
+            width: across,
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final (i, photo) in photos.indexed)
+                  _Photo(
+                    photo: photo,
+                    width: (across - 4) / 2,
+                    height: (across - 4) / 2,
+                    onTap: () => _Gallery.show(context, photos, i),
+                  ),
+              ],
+            ),
+          ),
+        for (final pdf in pdfs) _PdfChip(file: pdf, mine: mine, width: across),
+      ],
+    );
+  }
+}
+
+class _Photo extends StatelessWidget {
+  const _Photo({
+    required this.photo,
+    required this.width,
+    required this.height,
+    required this.onTap,
+  });
+
+  final MessageAttachment photo;
+  final double width;
+  final double height;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = photo.previewUrl ?? photo.url;
+    return Semantics(
+      button: true,
+      label: 'Photo. Opens larger.',
+      child: GestureDetector(
+        key: ValueKey('attachment-${photo.id}'),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: width,
+            height: height,
+            color: LizmoColors.tealTint,
+            child: url == null
+                ? null
+                : Image(
+                    image: AttachmentImage(url, id: 'preview-${photo.id}'),
+                    fit: BoxFit.cover,
+                    // An hour-old link, or no signal: the conversation goes
+                    // on without the picture.
+                    errorBuilder: (_, _, _) => const Center(
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: LizmoColors.slate,
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfChip extends StatelessWidget {
+  const _PdfChip({required this.file, required this.mine, required this.width});
+
+  final MessageAttachment file;
+  final bool mine;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = file.name ?? 'A PDF';
+    return Material(
+      color: mine
+          ? LizmoColors.white.withValues(alpha: 0.12)
+          : LizmoColors.canvas,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        key: ValueKey('attachment-${file.id}'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          final url = file.url;
+          if (url == null) return;
+          final messenger = ScaffoldMessenger.of(context);
+          final ok = await launchUrl(
+            Uri.parse(url),
+            mode: LaunchMode.externalApplication,
+          );
+          if (!ok) {
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('That PDF could not be opened. Try again.'),
+              ),
+            );
+          }
+        },
+        child: SizedBox(
+          width: width,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: LizmoColors.redBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 20,
+                    color: LizmoColors.redText,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: LizmoType.rowName.copyWith(
+                          fontSize: 13,
+                          color: mine ? LizmoColors.white : LizmoColors.ink,
+                        ),
+                      ),
+                      Text(
+                        [
+                          'PDF',
+                          fileSize(file.byteSize),
+                        ].where((part) => part.isNotEmpty).join(' · '),
+                        style: LizmoType.rowSub.copyWith(
+                          fontSize: 11,
+                          color: mine
+                              ? LizmoColors.onTealMuted
+                              : LizmoColors.slateText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A message's photos, full size, one at a time.
+class _Gallery extends StatefulWidget {
+  const _Gallery({required this.photos, required this.start});
+
+  final List<MessageAttachment> photos;
+  final int start;
+
+  static Future<void> show(
+    BuildContext context,
+    List<MessageAttachment> photos,
+    int start,
+  ) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _Gallery(photos: photos, start: start),
+    );
+  }
+
+  @override
+  State<_Gallery> createState() => _GalleryState();
+}
+
+class _GalleryState extends State<_Gallery> {
+  late final _pages = PageController(initialPage: widget.start);
+  late int _showing = widget.start;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      key: const ValueKey('attachment-gallery'),
+      backgroundColor: Colors.transparent,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pages,
+            itemCount: widget.photos.length,
+            onPageChanged: (page) => setState(() => _showing = page),
+            itemBuilder: (context, index) {
+              final photo = widget.photos[index];
+              final url = photo.url;
+              return InteractiveViewer(
+                child: Center(
+                  child: url == null
+                      ? const SizedBox.shrink()
+                      : Image(
+                          image: AttachmentImage(url, id: 'full-${photo.id}'),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => Text(
+                            'That photo could not be loaded. Close this and '
+                            'open the conversation again.',
+                            textAlign: TextAlign.center,
+                            style: LizmoType.rowSub.copyWith(
+                              color: LizmoColors.white,
+                            ),
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: LizmoColors.white),
+            ),
+          ),
+          if (widget.photos.length > 1)
+            Positioned(
+              bottom: 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  '${_showing + 1} / ${widget.photos.length}',
+                  style: LizmoType.dataMedium.copyWith(
+                    fontSize: 12,
+                    color: LizmoColors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.sending,
     required this.onSend,
     required this.onMore,
+    required this.pending,
+    required this.onRemove,
   });
 
   final TextEditingController controller;
@@ -1584,6 +2018,10 @@ class _Composer extends StatelessWidget {
 
   /// The things to do that are not talking. Null when there are none.
   final VoidCallback? onMore;
+
+  /// Photos or a PDF chosen and not yet sent.
+  final List<PendingFile> pending;
+  final void Function(int index) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -1598,77 +2036,196 @@ class _Composer extends StatelessWidget {
         color: LizmoColors.white,
         border: Border(top: BorderSide(color: Color(0xFFE3E8E6))),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (onMore != null) ...[
-            _Round(
-              key: const ValueKey('more-actions'),
-              tooltip: 'More',
-              fill: LizmoColors.tealTint,
-              onTap: onMore,
-              child: const Icon(
-                Icons.add,
-                color: LizmoColors.teal900,
-                size: 22,
+          if (pending.isNotEmpty) ...[
+            SizedBox(
+              key: const ValueKey('pending-tray'),
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: pending.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) => _PendingTile(
+                  file: pending[index],
+                  onRemove: () => onRemove(index),
+                  index: index,
+                ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(height: 8),
           ],
-          Expanded(
-            child: TextField(
-              key: const ValueKey('message-field'),
-              controller: controller,
-              minLines: 1,
-              maxLines: 4,
-              maxLength: 2000,
-              textCapitalization: TextCapitalization.sentences,
-              style: LizmoType.rowName.copyWith(fontWeight: FontWeight.w400),
-              decoration: InputDecoration(
-                hintText: 'Write a message',
-                hintStyle: LizmoType.rowSub.copyWith(fontSize: 14),
-                counterText: '',
-                filled: true,
-                fillColor: LizmoColors.canvas,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (onMore != null) ...[
+                _Round(
+                  key: const ValueKey('more-actions'),
+                  tooltip: 'More',
+                  fill: LizmoColors.tealTint,
+                  onTap: onMore,
+                  child: const Icon(
+                    Icons.add,
+                    color: LizmoColors.teal900,
+                    size: 22,
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: const BorderSide(color: Color(0xFFE3E8E6)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: const BorderSide(color: LizmoColors.teal900),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: TextField(
+                  key: const ValueKey('message-field'),
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  maxLength: 2000,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: LizmoType.rowName.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: pending.isEmpty
+                        ? 'Write a message'
+                        : 'Add a message',
+                    hintStyle: LizmoType.rowSub.copyWith(fontSize: 14),
+                    counterText: '',
+                    filled: true,
+                    fillColor: LizmoColors.canvas,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(color: Color(0xFFE3E8E6)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(color: LizmoColors.teal900),
+                    ),
+                  ),
+                  onSubmitted: (_) => onSend(),
                 ),
               ),
-              onSubmitted: (_) => onSend(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _Round(
-            key: const ValueKey('send-message'),
-            tooltip: 'Send',
-            fill: LizmoColors.teal900,
-            onTap: sending ? null : onSend,
-            child: sending
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(LizmoColors.white),
-                    ),
-                  )
-                : const Icon(
-                    Icons.send_rounded,
-                    color: LizmoColors.white,
-                    size: 20,
-                  ),
+              const SizedBox(width: 8),
+              _Round(
+                key: const ValueKey('send-message'),
+                tooltip: 'Send',
+                fill: LizmoColors.teal900,
+                onTap: sending ? null : onSend,
+                child: sending
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(LizmoColors.white),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.send_rounded,
+                        color: LizmoColors.white,
+                        size: 20,
+                      ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One file waiting to go, with a way to take it back out.
+class _PendingTile extends StatelessWidget {
+  const _PendingTile({
+    required this.file,
+    required this.onRemove,
+    required this.index,
+  });
+
+  final PendingFile file;
+  final VoidCallback onRemove;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: file.pdf
+              ? Container(
+                  width: 150,
+                  height: 64,
+                  padding: const EdgeInsets.all(8),
+                  color: LizmoColors.canvas,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: LizmoColors.redText,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          file.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: LizmoType.rowSub.copyWith(
+                            color: LizmoColors.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Image.memory(
+                  file.bytes,
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 64,
+                    height: 64,
+                    color: LizmoColors.tealTint,
+                    child: const Icon(
+                      Icons.image_outlined,
+                      color: LizmoColors.teal900,
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          top: -6,
+          right: -6,
+          child: Semantics(
+            button: true,
+            label: 'Remove ${file.pdf ? file.name : 'this photo'}',
+            excludeSemantics: true,
+            child: GestureDetector(
+              key: ValueKey('pending-remove-$index'),
+              onTap: onRemove,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  color: LizmoColors.ink,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  size: 14,
+                  color: LizmoColors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

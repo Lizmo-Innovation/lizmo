@@ -84,7 +84,34 @@ public final class InquiryDtos {
             UUID id,
             String body,
             Instant sentAt,
-            boolean mine) {
+            boolean mine,
+            // Photos and PDFs sent with it, in the order sent. Empty for words
+            // alone; the body is empty for a photo sent on its own.
+            List<MessageAttachment> attachments) {
+    }
+
+    /** A photo or a PDF. */
+    @Schema(description = "What kind of file")
+    public enum AttachmentKind {
+        PHOTO,
+        PDF
+    }
+
+    /**
+     * A file sent in a conversation.
+     *
+     * @param name       the PDF's name as it was on the phone; null for a photo.
+     * @param url        the file, for an hour. Read again for a fresh one.
+     * @param previewUrl a small copy of a photo, for the thread; null for a PDF.
+     */
+    @Schema(description = "A photo or PDF sent in a conversation")
+    public record MessageAttachment(
+            UUID id,
+            AttachmentKind kind,
+            String name,
+            Long byteSize,
+            String url,
+            String previewUrl) {
     }
 
     /**

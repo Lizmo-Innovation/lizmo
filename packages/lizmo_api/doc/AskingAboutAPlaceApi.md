@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**markInquiryRead**](AskingAboutAPlaceApi.md#markinquiryread) | **POST** /api/v1/inquiries/{id}/read | Mark it seen
 [**openLeaseConversation**](AskingAboutAPlaceApi.md#openleaseconversation) | **POST** /api/v1/leases/{leaseId}/conversation | The conversation for a tenancy
 [**readInquiry**](AskingAboutAPlaceApi.md#readinquiry) | **GET** /api/v1/inquiries/{id} | One conversation
+[**sendInquiryFiles**](AskingAboutAPlaceApi.md#sendinquiryfiles) | **POST** /api/v1/inquiries/{id}/messages/files | Send photos or a PDF
 [**sendInquiryMessage**](AskingAboutAPlaceApi.md#sendinquirymessage) | **POST** /api/v1/inquiries/{id}/messages | Say something
 [**startInquiry**](AskingAboutAPlaceApi.md#startinquiry) | **POST** /api/v1/inquiries | Ask about a place
 [**startLeaseFromInquiry**](AskingAboutAPlaceApi.md#startleasefrominquiry) | **POST** /api/v1/inquiries/{id}/lease | Write the tenancy they agreed on
@@ -225,6 +226,59 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: */*
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **sendInquiryFiles**
+> InquiryMessageResponse sendInquiryFiles(id, body, file1, file2, file3, file4)
+
+Send photos or a PDF
+
+Up to four photos, or one PDF, each up to 10MB, with words or without. Photos are re-encoded, so no location or camera details leave the phone.
+
+### Example
+```dart
+import 'package:lizmo_api/api.dart';
+
+final api_instance = AskingAboutAPlaceApi();
+final id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final body = body_example; // String | 
+final file1 = BINARY_DATA_HERE; // MultipartFile | 
+final file2 = BINARY_DATA_HERE; // MultipartFile | 
+final file3 = BINARY_DATA_HERE; // MultipartFile | 
+final file4 = BINARY_DATA_HERE; // MultipartFile | 
+
+try {
+    final result = api_instance.sendInquiryFiles(id, body, file1, file2, file3, file4);
+    print(result);
+} catch (e) {
+    print('Exception when calling AskingAboutAPlaceApi->sendInquiryFiles: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **body** | **String**|  | [optional] 
+ **file1** | **MultipartFile**|  | [optional] 
+ **file2** | **MultipartFile**|  | [optional] 
+ **file3** | **MultipartFile**|  | [optional] 
+ **file4** | **MultipartFile**|  | [optional] 
+
+### Return type
+
+[**InquiryMessageResponse**](InquiryMessageResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
  - **Accept**: */*
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

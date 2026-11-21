@@ -73,6 +73,7 @@ import 'package:lizmo/screens/update_screen.dart';
 import 'package:lizmo/app_version.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:http/http.dart' show MultipartFile;
+import 'package:lizmo/inquiry/attachments.dart';
 
 /// Answers what the oldest allowed build is, or refuses to.
 class _FakeVersionApi extends AdminApi {
@@ -6053,6 +6054,30 @@ class _FakeInquiriesApi extends AskingAboutAPlaceApi {
     return thread;
   }
 
+  /// The files of each message sent with them, by field: file1, file2...
+  final sentFiles = <List<String>>[];
+  final sentWith = <String?>[];
+
+  @override
+  Future<InquiryMessageResponse?> sendInquiryFiles(
+    String id, {
+    String? body,
+    MultipartFile? file1,
+    MultipartFile? file2,
+    MultipartFile? file3,
+    MultipartFile? file4,
+    Future<void>? abortTrigger,
+  }) async {
+    if (failWith != null) throw failWith!;
+    sentWith.add(body);
+    sentFiles.add([
+      for (final file in [file1, file2, file3, file4])
+        if (file != null) '${file.field}:${file.filename}',
+    ]);
+    return InquiryMessageResponse(
+        id: 'files${sentFiles.length}', body: body ?? '', sentAt: DateTime.now(), mine: true);
+  }
+
   @override
   Future<InquiryMessageResponse?> sendInquiryMessage(
     String id,
@@ -6208,10 +6233,12 @@ void _landlordRequestTests() {
       List<LeaseResponse> tenants = const [],
       PushChannel? push,
       RentApi? rent,
+      AttachmentPicker? picker,
     }) =>
         ProviderScope(
           overrides: [
             if (rent != null) rentApiProvider.overrideWithValue(rent),
+            if (picker != null) attachmentPickerProvider.overrideWithValue(picker),
             if (push != null) ...[
               pushChannelProvider.overrideWithValue(push),
               pushAskMemoryProvider.overrideWithValue(InMemoryPushAskMemory()),
@@ -6273,7 +6300,8 @@ void _landlordRequestTests() {
         List<FreeRoom> free = const [],
         List<BillingPeriodResponse> months = const [],
         PushChannel? push,
-        RentApi? rent}) async {
+        RentApi? rent,
+        AttachmentPicker? picker}) async {
       await tester.pumpWidget(appWith(
           api: api,
           profiles: profiles,
@@ -6281,6 +6309,7 @@ void _landlordRequestTests() {
           inbox: [summary()],
           months: months,
           rent: rent,
+          picker: picker,
           push: push));
       await tester.pumpAndSettle();
 
@@ -6637,6 +6666,171 @@ void _landlordRequestTests() {
       expect(api.reads, greaterThanOrEqualTo(2));
       expect(find.byType(InquiryScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    // ---- photos and PDFs -----------------------------------------------------
+
+    InquiryMessageResponse withFiles(String id, List<MessageAttachment> files,
+            {String body = '', bool mine = false}) =>
+        InquiryMessageResponse(
+          id: id,
+          body: body,
+          sentAt: DateTime.now().subtract(const Duration(minutes: 10)),
+          mine: mine,
+          attachments: files,
+        );
+    MessageAttachment photoFile(String id) => MessageAttachment(
+          id: id,
+          kind: MessageAttachmentKindEnum.PHOTO,
+          url: 'https://example.invalid/$id.jpg',
+          previewUrl: 'https://example.invalid/$id-preview.jpg',
+          byteSize: 400000,
+        );
+
+    Future<void> chooseFrom(WidgetTester tester, String action) async {
+      await tester.tap(find.byKey(const ValueKey('more-actions')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey(action)));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('photos show in the thread, and open larger', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(who: applicant(), messages: [
+            withFiles('m1', [photoFile('a')]),
+            withFiles('m2', [photoFile('b'), photoFile('c'), photoFile('d')],
+                body: 'The ceiling, three ways'),
+          ])));
+
+      expect(find.byKey(const ValueKey('attachment-a')), findsOneWidget);
+      expect(find.byKey(const ValueKey('attachment-d')), findsOneWidget);
+      expect(find.text('The ceiling, three ways'), findsOneWidget);
+      // A photo on its own is not an empty message.
+      expect(find.byKey(const ValueKey('attachment-removed')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('attachment-c')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('attachment-gallery')), findsOneWidget);
+      expect(find.text('2 / 3'), findsOneWidget);
+    });
+
+    testWidgets('a PDF is a chip with its name and size', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(who: applicant(), messages: [
+            withFiles('m1', [
+              MessageAttachment(
+                id: 'p',
+                kind: MessageAttachmentKindEnum.PDF,
+                name: 'house-rules.pdf',
+                byteSize: 2048,
+                url: 'https://example.invalid/p.pdf',
+              ),
+            ]),
+          ])));
+
+      expect(find.text('house-rules.pdf'), findsOneWidget);
+      expect(find.text('PDF · 2 KB'), findsOneWidget);
+    });
+
+    /// Gone after the year, or with the account of whoever sent it.
+    testWidgets('a message whose file has gone says so', (tester) async {
+      await open(
+          tester,
+          _FakeInquiriesApi(
+              thread: thread(who: applicant(), messages: [withFiles('m1', const [])])));
+
+      expect(find.byKey(const ValueKey('attachment-removed')), findsOneWidget);
+    });
+
+    testWidgets('chosen photos wait above the box, and go with the words',
+        (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      final picker = _FakePicker(gallery: [
+        PendingFile(name: 'leak.jpg', bytes: _pixel),
+        PendingFile(name: 'stain.jpg', bytes: _pixel),
+      ]);
+      await open(tester, api, picker: picker);
+
+      await chooseFrom(tester, 'action-photos');
+      expect(find.byKey(const ValueKey('pending-tray')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pending-remove-1')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('pending-remove-1')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('pending-remove-1')), findsNothing);
+
+      await tester.enterText(find.byKey(const ValueKey('message-field')), 'From this morning');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(api.sentFiles, [
+        ['file1:leak.jpg'],
+      ]);
+      expect(api.sentWith, ['From this morning']);
+      expect(find.byKey(const ValueKey('pending-tray')), findsNothing);
+      expect(api.said, isEmpty, reason: 'sent with the files, not as text alone');
+    });
+
+    testWidgets('a photo on its own can be sent', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api,
+          picker: _FakePicker(shot: PendingFile(name: 'gate.jpg', bytes: _pixel)));
+
+      await chooseFrom(tester, 'action-camera');
+      await tester.tap(find.byKey(const ValueKey('send-message')));
+      await tester.pumpAndSettle();
+
+      expect(api.sentFiles, [
+        ['file1:gate.jpg'],
+      ]);
+      expect(api.sentWith, [null]);
+    });
+
+    testWidgets('a PDF goes on its own', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api,
+          picker: _FakePicker(
+            gallery: [PendingFile(name: 'leak.jpg', bytes: _pixel)],
+            file: PendingFile(name: 'rules.pdf', bytes: _pixel, pdf: true),
+          ));
+
+      await chooseFrom(tester, 'action-photos');
+      await chooseFrom(tester, 'action-pdf');
+
+      expect(find.textContaining('A PDF goes in a message of its own'), findsOneWidget);
+      expect(find.text('rules.pdf'), findsNothing);
+    });
+
+    /// The gallery is told how many more fit, and the screen holds the line
+    /// if it hands over more anyway.
+    testWidgets('four photos at most', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      final picker = _FakePicker(gallery: [
+        for (var i = 0; i < 3; i++) PendingFile(name: 'p$i.jpg', bytes: _pixel),
+      ]);
+      await open(tester, api, picker: picker);
+
+      await chooseFrom(tester, 'action-photos');
+      await chooseFrom(tester, 'action-photos');
+      expect(picker.asked, [4, 1]);
+      expect(find.byKey(const ValueKey('pending-remove-3')), findsOneWidget);
+    });
+
+    testWidgets('more than four is refused', (tester) async {
+      final api = _FakeInquiriesApi(thread: thread(who: applicant()));
+      await open(tester, api,
+          picker: _FakePicker(ignoresLimit: true, gallery: [
+            for (var i = 0; i < 5; i++) PendingFile(name: 'p$i.jpg', bytes: _pixel),
+          ]));
+
+      await chooseFrom(tester, 'action-photos');
+
+      expect(find.text('Up to 4 photos in one message.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('pending-tray')), findsNothing);
     });
 
     /// A line on a tablet is still a line somebody reads across.
@@ -13522,4 +13716,41 @@ class _TodayRentApi extends RentApi {
     reminded.add(leaseId);
     return Reminded(sentAt: DateTime.now());
   }
+}
+
+/// A one-pixel PNG, for a photo that is never really drawn.
+final _pixel = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);
+
+/// Hands over whatever it was given, as the camera, gallery or files app.
+class _FakePicker implements AttachmentPicker {
+  _FakePicker({this.gallery = const [], this.shot, this.file, this.ignoresLimit = false});
+
+  final List<PendingFile> gallery;
+  final PendingFile? shot;
+  final PendingFile? file;
+
+  /// Hands over more than it was asked for, as no real gallery would.
+  final bool ignoresLimit;
+
+  /// How many the screen asked for each time.
+  final asked = <int>[];
+
+  @override
+  Future<PendingFile?> camera() async => shot;
+
+  @override
+  Future<List<PendingFile>> photos(int most) async {
+    asked.add(most);
+    return ignoresLimit ? gallery : gallery.take(most).toList();
+  }
+
+  @override
+  Future<PendingFile?> pdf() async => file;
 }

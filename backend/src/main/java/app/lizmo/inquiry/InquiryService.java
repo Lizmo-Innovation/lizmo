@@ -67,6 +67,7 @@ public class InquiryService {
     private final UnitRepository units;
     private final BedRepository beds;
     private final ThreadEvents events;
+    private final MessageAttachments attachments;
     private final app.lizmo.billing.TenancyRent rent;
     private final Clock clock;
 
@@ -82,6 +83,7 @@ public class InquiryService {
             UnitRepository units,
             BedRepository beds,
             ThreadEvents events,
+            MessageAttachments attachments,
             app.lizmo.billing.TenancyRent rent,
             Clock clock) {
         this.inquiries = inquiries;
@@ -95,6 +97,7 @@ public class InquiryService {
         this.units = units;
         this.beds = beds;
         this.events = events;
+        this.attachments = attachments;
         this.rent = rent;
         this.clock = clock;
     }
@@ -184,14 +187,18 @@ public class InquiryService {
         Inquiry inquiry = reachable(inquiryId, userId);
         boolean asTenant = inquiry.getTenantId().equals(userId);
 
+        List<InquiryMessage> all = messages.findByInquiryIdOrderBySentAtAsc(inquiryId);
+        java.util.Map<UUID, List<app.lizmo.inquiry.dto.InquiryDtos.MessageAttachment>> files =
+                attachments.of(all.stream().map(InquiryMessage::getId).toList());
         List<InquiryMessageResponse> said = new ArrayList<>();
         InquiryMessage last = null;
-        for (InquiryMessage message : messages.findByInquiryIdOrderBySentAtAsc(inquiryId)) {
+        for (InquiryMessage message : all) {
             said.add(new InquiryMessageResponse(
                     message.getId(),
                     message.getBody(),
                     message.getSentAt(),
-                    message.getSenderId().equals(userId)));
+                    message.getSenderId().equals(userId),
+                    files.getOrDefault(message.getId(), List.of())));
             last = message;
         }
 
@@ -229,7 +236,43 @@ public class InquiryService {
 
         InquiryMessage saved = say(inquiry, userId, body, property);
         return new InquiryMessageResponse(
-                saved.getId(), saved.getBody(), saved.getSentAt(), true);
+                saved.getId(), saved.getBody(), saved.getSentAt(), true, List.of());
+    }
+
+    /**
+     * Says something with photos or a PDF, in one go: the message and its
+     * files are saved together or not at all.
+     *
+     * <p>Words are optional here. A photo of the leak says enough.
+     */
+    @Transactional
+    public InquiryMessageResponse sendWithFiles(
+            UUID inquiryId, UUID userId, String text,
+            List<org.springframework.web.multipart.MultipartFile> files) {
+        Inquiry inquiry = reachable(inquiryId, userId);
+
+        if (inquiry.getStatus() == InquiryStatus.CLOSED) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "This conversation is closed. Ask about the place again to reopen it.");
+        }
+        String body = text == null ? "" : text.trim();
+        if (body.length() > 2000) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "That is longer than 2000 characters. Split it in two.");
+        }
+        List<MessageAttachments.Upload> uploads = attachments.read(files);
+        if (uploads.isEmpty() && body.isEmpty()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Write something or add a photo first.");
+        }
+
+        Property property = properties.findById(inquiry.getPropertyId())
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "No such property."));
+
+        InquiryMessage saved = say(inquiry, userId, body, property);
+        attachments.attach(saved.getId(), userId, uploads);
+        return new InquiryMessageResponse(
+                saved.getId(), saved.getBody(), saved.getSentAt(), true,
+                attachments.of(List.of(saved.getId())).getOrDefault(saved.getId(), List.of()));
     }
 
     /** Ends it, from either side. */
@@ -511,11 +554,19 @@ public class InquiryService {
                 propertyName,
                 nameOf(otherSide),
                 inquiry.getStatus(),
-                last == null ? null : preview(last.getBody()),
+                last == null ? null : previewOf(last),
                 inquiry.getLastMessageAt(),
                 inquiry.unreadFor(asTenant),
                 inquiry.getCreatedAt(),
                 tenancyOf(inquiry));
+    }
+
+    /** The words, or -- for a photo sent on its own -- what was sent. */
+    private String previewOf(InquiryMessage last) {
+        if (last.getBody() == null || last.getBody().isBlank()) {
+            return attachments.describe(last.getId());
+        }
+        return preview(last.getBody());
     }
 
     private static String preview(String body) {

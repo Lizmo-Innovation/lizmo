@@ -292,6 +292,113 @@ class AskingAboutAPlaceApi {
     return null;
   }
 
+  /// Send photos or a PDF
+  ///
+  /// Up to four photos, or one PDF, each up to 10MB, with words or without. Photos are re-encoded, so no location or camera details leave the phone.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] body:
+  ///
+  /// * [MultipartFile] file1:
+  ///
+  /// * [MultipartFile] file2:
+  ///
+  /// * [MultipartFile] file3:
+  ///
+  /// * [MultipartFile] file4:
+  Future<Response> sendInquiryFilesWithHttpInfo(String id, { String? body, MultipartFile? file1, MultipartFile? file2, MultipartFile? file3, MultipartFile? file4, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/inquiries/{id}/messages/files'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['multipart/form-data'];
+
+    bool hasFields = false;
+    final mp = MultipartRequest('POST', Uri.parse(path));
+    if (body != null) {
+      hasFields = true;
+      mp.fields[r'body'] = parameterToString(body);
+    }
+    if (file1 != null) {
+      hasFields = true;
+      mp.fields[r'file1'] = file1.field;
+      mp.files.add(file1);
+    }
+    if (file2 != null) {
+      hasFields = true;
+      mp.fields[r'file2'] = file2.field;
+      mp.files.add(file2);
+    }
+    if (file3 != null) {
+      hasFields = true;
+      mp.fields[r'file3'] = file3.field;
+      mp.files.add(file3);
+    }
+    if (file4 != null) {
+      hasFields = true;
+      mp.fields[r'file4'] = file4.field;
+      mp.files.add(file4);
+    }
+    if (hasFields) {
+      postBody = mp;
+    }
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Send photos or a PDF
+  ///
+  /// Up to four photos, or one PDF, each up to 10MB, with words or without. Photos are re-encoded, so no location or camera details leave the phone.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] body:
+  ///
+  /// * [MultipartFile] file1:
+  ///
+  /// * [MultipartFile] file2:
+  ///
+  /// * [MultipartFile] file3:
+  ///
+  /// * [MultipartFile] file4:
+  Future<InquiryMessageResponse?> sendInquiryFiles(String id, { String? body, MultipartFile? file1, MultipartFile? file2, MultipartFile? file3, MultipartFile? file4, Future<void>? abortTrigger, }) async {
+    final response = await sendInquiryFilesWithHttpInfo(id, body: body, file1: file1, file2: file2, file3: file3, file4: file4, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'InquiryMessageResponse',) as InquiryMessageResponse;
+    
+    }
+    return null;
+  }
+
   /// Say something
   ///
   /// Note: This method returns the HTTP [Response].

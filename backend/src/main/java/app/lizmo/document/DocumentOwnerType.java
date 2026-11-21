@@ -26,5 +26,8 @@ public enum DocumentOwnerType {
     PLATFORM_PAYMENT_CHANNEL,
 
     /** A QR code a tenant scans to pay their landlord. One per channel. */
-    LANDLORD_PAYMENT_CHANNEL
+    LANDLORD_PAYMENT_CHANNEL,
+
+    /** A photo or PDF sent in a conversation. */
+    INQUIRY_MESSAGE
 }

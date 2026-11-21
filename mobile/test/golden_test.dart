@@ -54,6 +54,9 @@ class _FakeAuth extends AuthController {
 
 Widget _app(Set<LizmoProfile> profiles) => ProviderScope(
       overrides: [
+        // Today's header says the date; a picture of it cannot depend on
+        // which day the test runs.
+        todayProvider.overrideWithValue(DateTime(2026, 11, 17)),
         authControllerProvider.overrideWith(
           () => _FakeAuth(AuthSignedIn(Session(
             userId: 'u1',
@@ -646,6 +649,9 @@ void main() {
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
+        // Today's header says the date; a picture of it cannot depend on
+        // which day the test runs.
+        todayProvider.overrideWithValue(DateTime(2026, 11, 17)),
         authControllerProvider.overrideWith(
           () => _FakeAuth(AuthSignedIn(Session(
             userId: 'u1',

@@ -29,5 +29,12 @@ public enum DocumentType {
       */
     PROPERTY_PHOTO,
 
-    OTHER
+    OTHER,
+
+    /** A photo sent in a conversation, re-encoded. */
+    MESSAGE_PHOTO,
+    /** The small copy of a {@link #MESSAGE_PHOTO}, for the thread. */
+    MESSAGE_PREVIEW,
+    /** A PDF sent in a conversation. */
+    MESSAGE_FILE
 }
